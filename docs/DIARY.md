@@ -524,3 +524,43 @@ Ou seja: o jogo não usa o sequenciador do SDK. Ele tem um mixer próprio no ARM
 - A razão RMS(derivada)/RMS = 0,30 indica sinal musical, não ruído.
 - Nenhum comando sem implementação até a exploração.
 - O `boej.exe` também grava o WAV.
+
+---
+
+## 2026-10-22: Etapa 7: vídeos Mobiclip
+
+**Como o jogo toca os vídeos** (ov127, pela descompilação)
+- O player do jogo lê o contêiner `.mods` (cabeçalho `MODSN3\n`, 256x192, 20 ou 24 fps). Cada quadro traz no fim a palavra do próximo: tamanho em `>> 14`.
+- O decodificador recebe só o estado (r0) e devolve os bytes consumidos. O estado tem:
+  - +0: ponteiro para os dados do quadro;
+  - +4/+8: largura e altura;
+  - +0x0C..+0x20: 6 planos Y (o atual e 5 referências);
+  - +0x24..+0x38: 6 planos de croma, com Co e Cg lado a lado (128 + 128 bytes por linha);
+  - +0x3C/+0x44: tabelas copiadas pelo jogo.
+- A conversão YCoCg → RGB555 (`func_ov127_0212a9c0`) e o filtro de blocos (`0x0212c018`) são código C normal do jogo, já recompilado.
+- Todos os 63 vídeos do jogo são 256x192, de uma tela só. A tela de cima preta durante a abertura é o comportamento esperado.
+
+**O problema**
+- O decodificador é o blob de assembly escrito à mão em 0x02130754 (0x659C bytes).
+- Ele chama sub-rotinas pondo em `lr` um ponto de retorno mais adiante e saltando por tabelas de offsets (`add pc, rT, rB`). O modelo recompilado (`bx lr` = retorno da função C++) não consegue seguir isso.
+
+**Solução: interpretador ARM** (`runtime/src/interp.cpp`)
+- Interpretador ARMv5TE em estado ARM:
+  - processamento de dados com todos os shifts;
+  - MRS/MSR;
+  - MUL/MLA e multiplicações longas, multiplicações DSP (SMLAxy etc.), QADD/QSUB, CLZ, SWP;
+  - LDR/STR, LDRH/LDRSB/LDRSH/LDRD/STRD, LDM/STM;
+  - B/BL/BX/BLX, SWI e MCR/MRC.
+- `interpret_arm(c, entry)` executa até voltar ao `lr` da entrada. Ele busca as instruções da memória do guest, então funcionaria também com o código copiado para a ITCM.
+- Thumb e LDM/STM no banco de usuário param com `unhandled` (o blob não usa).
+- O hook `mobiclip_skip` virou `mobiclip_decode`, que roda o blob original no interpretador. É bit a bit o decodificador do jogo, sem reimplementar o codec.
+
+**Resultado**
+- A abertura (`op00f.mods`, 2000 quadros a 20 fps) toca inteira com imagem:
+  - logo Mobiclip;
+  - cenas animadas com a letra;
+  - logo do jogo;
+  - tela de título no fim, como antes.
+- As cores conferem (conversão YCoCg do próprio jogo).
+- Custo: 3000 quadros em modo rápido passaram de 6,7 s para 8,7 s, ~0,7 ms por quadro de jogo. O orçamento é de 16,7 ms.
+- O build para Windows compila.

@@ -61,7 +61,7 @@ Se o seu dump tiver outro SHA-1, abra uma issue informando o código do jogo e o
 - [x] Vídeo 3D: geometria do GX, rasterizador por software (texturas, translucidez, toon, névoa, edge marking, sombras)
 - [ ] Resolução interna maior; anti-aliasing e wireframe do 3D
 - [x] Áudio: comandos SND de canal/captura/alarme, 16 canais (PCM8/16, IMA-ADPCM, PSG, ruído) mixados a 32 kHz pelo SDL3 (o jogo mixa música e streams no ARM9 e não usa o sequenciador do SDK)
-- [ ] Vídeos Mobiclip (`.mods`): hoje os quadros são pulados (a abertura toca em preto, só com a letra)
+- [x] Vídeos Mobiclip (`.mods`): o decodificador original (assembly escrito à mão) roda num interpretador ARM embutido
 - [ ] Wi-Fi/DWC desativado (o Nintendo WFC foi encerrado)
 - [x] Dump usado só na preparação: o jogo roda a partir do `boej.pak` (mapeado em memória)
 - [ ] Configurações, controles remapeáveis
@@ -72,7 +72,7 @@ Se o seu dump tiver outro SHA-1, abra uma issue informando o código do jogo e o
 | Pasta | Conteúdo |
 |---|---|
 | `recompiler/` | `ntr-recomp` (C++20): manifesto do dsd → C++ |
-| `runtime/` | Runtime (C++20): memória, CPU, IRQ, timers, threads, PXI/ARM7 em HLE, VRAM, 2D, 3D, janela SDL3 |
+| `runtime/` | Runtime (C++20): memória, CPU, interpretador ARM, IRQ, timers, threads, PXI/ARM7 em HLE, VRAM, 2D, 3D, som, janela SDL3 |
 | `game/` | Executável `boej` |
 | `tools/` | Ferramentas em Python (`ntr/` lê a ROM; `extract.py` extrai; `compare_dumps.py` compara dumps; `analyze.py` roda dsd/Ghidra; `ghidra/` tem os scripts do Ghidra; `tests/` tem os testes) |
 | `config/boej/` | `dumps.json` (dumps conhecidos), `layout/<variante>.json` (endereços, overlays, hashes), `dsd/` (funções, seções e relocações do ds-decomp), `names.tsv` (nomes identificados, com evidência), `hle.tsv` (funções substituídas no host) e `code_blobs.tsv` (código que o dsd classifica como dados). Nenhum dado do jogo |

@@ -130,6 +130,8 @@ Cpu& cpu();
 void cpu_reset(uint32_t mode);
 void call_address(Cpu& c, uint32_t target);  // lookup + call, used by call_indirect
 void overlay_set_active(uint32_t overlay_id, bool active);  // per 4 KiB page; the last loaded wins
+// Runs ARM code at `entry` in the interpreter (interp.cpp) until it returns to c.r[14].
+void interpret_arm(Cpu& c, uint32_t entry);
 
 // --- ROM ----------------------------------------------------------------------
 

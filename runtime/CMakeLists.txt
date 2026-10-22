@@ -9,6 +9,7 @@ add_library(ntr-runtime STATIC
     src/gpu3d.cpp
     src/hle.cpp
     src/host.cpp
+    src/interp.cpp
     src/io.cpp
     src/irq.cpp
     src/memory.cpp

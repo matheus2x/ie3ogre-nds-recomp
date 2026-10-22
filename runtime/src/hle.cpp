@@ -105,14 +105,10 @@ namespace ntr {
 
 // --- video ---------------------------------------------------------------------------
 // The Mobiclip (.mods) decoder is a hand-written ARM blob that jumps through computed
-// addresses. Until it gets a native replacement, frames are skipped: the call returns
-// 0 bytes consumed and the movie's frame counters still run to the end.
+// addresses and calls by setting lr ahead of the jump, which the recompiled model cannot
+// follow. It runs in the interpreter: r0 is the decoder state, r0 on return the number of
+// bytes the frame used. The game itself converts the YCoCg planes and deblocks them.
 
-void hle_mobiclip_skip(Cpu& c, GuestFn) {
-    static bool warned = false;
-    if (!warned) NTR_LOG("[video] Mobiclip decoding is not implemented; movie frames are skipped\n");
-    warned = true;
-    c.r[0] = 0;
-}
+void hle_mobiclip_decode(Cpu& c, GuestFn) { interpret_arm(c, 0x02130754); }
 
 }  // namespace ntr
