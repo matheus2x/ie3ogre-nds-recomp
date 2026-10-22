@@ -5,6 +5,7 @@
   python3 tools/analyze.py names                # apply config/boej/names.tsv to the dsd symbols
   python3 tools/analyze.py ghidra               # headless Ghidra project -> build/ghidra/boej.gpr
   python3 tools/analyze.py decompile 0x02000c8c ov132:0x0213acc0 FS_LoadOverlay   # -> stdout
+  python3 tools/analyze.py asm 0x0201f7a4                 # disassembly -> stdout
   python3 tools/analyze.py export ram itcm      # whole blocks -> build/ghidra/export/<block>.c
 
 dsd (ds-decomp) finds function boundaries, sections and relocations for the ARM9,
@@ -120,18 +121,26 @@ def cmd_ghidra(args):
     print(f"project: {out / 'boej.gpr'}")
 
 
-def cmd_decompile(args):
+def run_query_script(script: str, result_name: str, targets: list[str]):
     ghidra, env = ghidra_env()
     out = ROOT / "build" / "ghidra"
     if not (out / "boej.gpr").exists():
         sys.exit("error: run 'tools/analyze.py ghidra' first")
-    result = out / "decompile.c"
+    result = out / result_name
     run([ghidra / "support" / "analyzeHeadless", out, "boej",
          "-process", "arm9_static.bin", "-noanalysis", "-readOnly",
          "-scriptPath", ROOT / "tools" / "ghidra",
-         "-postScript", "Decompile.java", result, *args.targets,
-         "-log", out / "decompile.log"], env=env, stdout=subprocess.DEVNULL)
+         "-postScript", script, result, *targets,
+         "-log", out / "query.log"], env=env, stdout=subprocess.DEVNULL)
     print(result.read_text())
+
+
+def cmd_decompile(args):
+    run_query_script("Decompile.java", "decompile.c", args.targets)
+
+
+def cmd_asm(args):
+    run_query_script("Disasm.java", "disasm.s", args.targets)
 
 
 def cmd_export(args):
@@ -185,13 +194,14 @@ def cmd_names(args):
         for i, line in enumerate(lines):
             parts = line.split(" ")
             addr = next((int(p[5:], 16) for p in parts if p.startswith("addr:")), None)
-            if addr in table and parts[1].startswith("kind:function"):
+            # Labels cover alternate entry points inside a function (e.g. _ll_sdiv).
+            if addr in table and parts[1].startswith(("kind:function", "kind:label")):
                 parts[0] = table[addr]
                 lines[i] = " ".join(parts)
                 found.add(addr)
         missing = sorted(set(table) - found)
         if missing:
-            sys.exit(f"error: {module}: no dsd function at " + ", ".join(f"{a:#010x}" for a in missing))
+            sys.exit(f"error: {module}: no dsd function or label at " + ", ".join(f"{a:#010x}" for a in missing))
         path.write_text("\n".join(lines) + "\n")
         total += len(found)
         print(f"{module}: {len(found)} names")
@@ -212,6 +222,9 @@ def main():
     p = sub.add_parser("decompile", help="decompile functions from the Ghidra project")
     p.add_argument("targets", nargs="+", help="0xADDR, ovNNN:0xADDR or function name")
     p.set_defaults(func=cmd_decompile)
+    p = sub.add_parser("asm", help="disassemble functions from the Ghidra project")
+    p.add_argument("targets", nargs="+", help="0xADDR, ovNNN:0xADDR or function name")
+    p.set_defaults(func=cmd_asm)
     p = sub.add_parser("export", help="decompile whole memory blocks to build/ghidra/export/<block>.c")
     p.add_argument("blocks", nargs="+", help="block names: ram, itcm, ov000...")
     p.set_defaults(func=cmd_export)

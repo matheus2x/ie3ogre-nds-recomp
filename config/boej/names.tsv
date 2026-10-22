@@ -233,3 +233,155 @@ main	0x020084b0	MI_Init	call; OS_Init sequence after OS_InitException
 main	0x02003fdc	OSi_InitVramExclusive	call; OS_Init sequence after OS_InitVAlarm
 main	0x02003e7c	OS_InitReset	call; OS_Init after OS_InitThread, registers PXI tag 12 (OS)
 main	0x02002728	OSi_WaitVCount0	call; last in OS_Init, spins until VCOUNT == 0
+main	0x02006f7c	MI_DmaFill32	src mi_dma.c; DMAxCNT 32-bit + src fixed (0x85000000)
+main	0x02007000	MI_DmaCopy32	src; DMAxCNT 32-bit (0x84000000)
+main	0x020070a4	MI_DmaCopy16	src; DMAxCNT 16-bit
+main	0x0200714c	MI_DmaFill32Async	src; IRQ-on-end variant (0xC5000000)
+main	0x02007254	MI_DmaCopy32Async	src; IRQ-on-end variant (0xC4000000)
+main	0x02007350	MI_WaitDma	src; busy wait + DMA0 SAD workaround
+main	0x020073ac	MI_StopDma	src; clears enable bits
+main	0x02007414	MI_StopAllDma	src; MI_StopDma(0..3)
+main	0x020074c8	MIi_CheckAnotherAutoDMA	src; only checks channel 0
+main	0x02007804	MIi_CpuClear16	src mi_memory.c
+main	0x0200781c	MIi_CpuCopy16	src
+main	0x02007838	MIi_CpuClear32	src
+main	0x0200784c	MIi_CpuCopy32	src
+main	0x02007864	MIi_CpuSend32	src; fixed destination
+main	0x0200787c	MIi_CpuClearFast	src; 32-byte unrolled
+main	0x020078c8	MIi_CpuCopyFast	src; ldm/stm 32 bytes
+main	0x02007988	MI_CpuFill8	src; byte fill with alignment fixups
+main	0x02007b00	MI_CpuCopy8	src; byte copy with alignment fixups
+itcm	0x01ff845c	MIi_DmaSetParameters	call; all async DMA paths go through it
+main	0x02006f6c	MI_SetWramBank	call; MI_Init(3) writes WRAMCNT
+main	0x02008274	MI_SwapWord	src; used by OSi_DoTryLockByWord
+main	0x0200827c	MI_UncompressLZ8	src; LZ77 header type/size
+main	0x0200835c	MI_UncompressHuffman	src; bit size in header low nibble
+main	0x020084c8	MTX_Identity22_	src fx_mtx22.c; 2x2 identity (0x1000)
+main	0x020084e0	MTX_Identity33_	src fx_mtx33.c
+main	0x020085cc	MTX_Identity43_	src fx_mtx43.c
+main	0x0200958c	FX_Div	src fx_cp.c; FX_DivAsync + FX_GetDivResult
+main	0x0200959c	FX_Inv	src; FX_InvAsync + FX_GetDivResult
+main	0x020095ac	FX_Sqrt	src; SQRTCNT 64-bit mode
+main	0x020095e0	FX_GetDivResultFx64c	src; raw 64-bit quotient
+main	0x02009604	FX_GetDivResult	src; rounded fx32
+main	0x02009638	FX_InvAsync	src; 0x1000 / x
+main	0x02009668	FX_GetSqrtResult	src
+main	0x02009694	FX_DivAsync	src; DIVCNT 64/32 mode
+main	0x02009734	VEC_Add	src fx_vec.c
+main	0x02009764	VEC_Subtract	src
+main	0x02009794	VEC_DotProduct	src
+main	0x020097d0	VEC_CrossProduct	src
+main	0x02009850	VEC_Mag	src; hardware sqrt
+main	0x020098b0	VEC_Normalize	src
+main	0x020099c4	VEC_MultAdd	src
+main	0x02009a1c	VEC_Distance	src
+main	0x02009a98	FX_Atan2Idx	src fx_atan.c
+main	0x02009cac	CP_SaveContext	src fx_cp.c; saves DIV/SQRT registers
+main	0x02009cec	CP_RestoreContext	src
+main	0x02009d28	MATH_CountPopulation	src math.c; SWAR popcount
+main	0x0200ae30	RTC_GetDateAsync	src rtc_api.c; request type 0 (date)
+main	0x0200aea0	RTC_GetDate	src; async + RTCi_WaitBusy
+main	0x0200aed8	RTC_GetTimeAsync	src; request type 1 (time)
+main	0x0200af48	RTC_GetTime	src
+main	0x0200af80	RTC_GetDateTimeAsync	src; request type 2 (date+time)
+main	0x0200affc	RTC_GetDateTime	src
+main	0x0200b034	RTCi_CallbackFromPxi	src; RTC result state machine
+main	0x0200b4ec	RTCi_WaitBusy	src
+main	0x0200b504	RTCi_ReadRawDateTimeAsync	src; PXI command 0x10
+main	0x0200b514	RTCi_ReadRawDateAsync	src; PXI command 0x11
+main	0x0200b524	RTCi_ReadRawTimeAsync	src; PXI command 0x12
+main	0x0200bb68	SND_Init	src snd_main.c; mutex init + SND_CommandInit
+main	0x0200bba0	SNDi_LockMutex	src
+main	0x0200bbb4	SNDi_UnlockMutex	src
+main	0x0200bbc8	SND_CommandInit	src snd_command.c; 256 x 0x18-byte command pool
+main	0x0200bc98	SND_RecvCommandReply	src; waits for ARM7 to finish command tags
+main	0x0200bd98	SND_AllocCommand	src; SNDi_IsCommandAvailable + SNDi_AllocCommand, blocks on flag 1
+main	0x0200be20	SND_PushCommand	src
+main	0x0200bff4	SND_WaitForCommandProc	src
+main	0x0200c060	SND_GetCurrentCommandTag	src
+main	0x0200c08c	SND_IsFinishedCommandTag	src
+main	0x0200c0dc	SND_CountFreeCommand	src
+main	0x0200c118	SND_CountReservedCommand	src
+main	0x0200c154	SND_CountWaitingCommand	src; 0x100 - free - reserved
+main	0x0200c170	SNDi_PxiFifoCallback	src
+main	0x0200c1f8	SNDi_RequestCommandProc	src; PXI tag 7 word 0
+main	0x0200c220	SNDi_AllocCommand	src; free-list pop
+main	0x0200c268	SNDi_IsCommandAvailable	src
+main	0x0200b734	SND_StopSeq	src snd_interface.c; SND_COMMAND 1
+main	0x0200b754	SND_PrepareSeq	src; SND_COMMAND 2
+main	0x0200b77c	SND_StartPreparedSeq	src; SND_COMMAND 3
+main	0x0200b7e8	SND_SetTrackAllocatableChannel	src; SND_COMMAND 9
+main	0x0200b810	SND_StartTimer	src; SND_COMMAND 12
+main	0x0200b838	SND_StopTimer	src; bumps per-alarm ids then SND_COMMAND 13
+main	0x0200b89c	SND_SetupCapture	src; SND_COMMAND 17
+main	0x0200b8dc	SND_SetupAlarm	src; SND_COMMAND 18
+main	0x0200b91c	SND_LockChannel	src; SND_COMMAND 26
+main	0x0200b93c	SND_UnlockChannel	src; SND_COMMAND 27
+main	0x0200b95c	SND_SetChannelTimer	src; SND_COMMAND 19
+main	0x0200b97c	SND_SetChannelVolume	src; SND_COMMAND 20
+main	0x0200b9a4	SND_SetChannelPan	src; SND_COMMAND 21
+main	0x0200b9c4	SND_SetupChannelPcm	src; SND_COMMAND 14
+main	0x0200ba10	SND_SetupChannelPsg	src; SND_COMMAND 15
+main	0x0200ba38	SND_SetupChannelNoise	src; SND_COMMAND 16
+main	0x0200ba6c	SND_InvalidateBankData	src; SND_COMMAND 31
+main	0x0200ba8c	SND_InvalidateWaveData	src; SND_COMMAND 32
+main	0x0200baac	SND_SetOutputSelector	src; SND_COMMAND 25
+main	0x0200bad4	SNDi_SetPlayerParam	src; SND_COMMAND 6
+main	0x0200bafc	SNDi_SetTrackParam	src; SND_COMMAND 7
+main	0x0200bb24	SNDi_PushCommandImpl	src; alloc + fill + push
+main	0x02015f64	TP_GetUserInfo	src tp.c; reads calibration from owner info
+main	0x02015ff8	TP_SetCalibrateParam	src
+main	0x020161d0	TP_WaitRawResult	src; TP_WaitBusy(SAMPLING) + copy result
+main	0x020161ec	TP_RequestAutoSamplingStartAsync	src; (vcount, frequency, buffer, size)
+main	0x020162f4	TP_RequestAutoSamplingStopAsync	src; PXI tag 6
+main	0x02016394	TP_GetLatestIndexInAuto	src
+main	0x020163a4	TP_CalcCalibrateParam	src
+main	0x02016590	TP_GetCalibratedPoint	src
+main	0x020166ac	TP_WaitBusy	src; spins on request flags
+main	0x020166c4	TP_CheckBusy	src
+main	0x02016860	PMi_CommonCallback	src pm.c; PXI tag 8 receive
+main	0x02016e7c	PM_GoSleepMode	src; IME/IF juggling around sleep
+main	0x02017168	PMi_SetLCDPower	src; POWCNT1 LCD bit + PM command
+main	0x020173a4	PM_GetLCDPower	mmio POWCNT1 & 1
+main	0x0200d020	FSi_SendCommand	src fs_file.c; command id in bits 8-15, busy/blocking flags
+main	0x0200da40	FS_WaitAsync	src; sleeps on file queue until not busy
+main	0x0200dc1c	FS_CancelFile	src; sets cancel flag
+main	0x0200dc64	FS_ConvertPathToFileID	src; FS command 4 (FINDPATH)
+main	0x0200dd88	FS_OpenFileEx	src; FS command 13 (OPENFILE), path buffer 280 bytes
+main	0x0200de0c	FS_CloseFile	src; FS command 8
+main	0x0200de20	FS_GetFileLength	src
+main	0x0200de78	FS_GetFilePosition	src
+main	0x0200ded0	FS_SeekFile	src; FS command 14
+main	0x0200defc	FS_ReadFile	src; FS command 0, blocking
+main	0x0200dfc8	FS_OpenFile	src; FS_OpenFileEx(file, path, FS_FILEMODE_R)
+main	0x0200dfd8	FS_GetLength	src; thunk to FS_GetFileLength
+main	0x0200dfe4	FS_GetPosition	src; thunk to FS_GetFilePosition
+main	0x0200fb0c	FSi_ReadRomDirect	src fs_rom.c; ROM archive read -> CARDi_ReadRom
+main	0x0200ff60	CARD_GetResultCode	src card_common.c
+main	0x020107d4	CARDi_SetupBackupType	call; CARD_IdentifyBackup helper, per-device page/size/timeouts
+main	0x02010340	CARDi_WaitForTask	src; waits busy flag then claims the card task
+main	0x02010bbc	CARDi_RequestStreamCommand	src card_backup.c; 9 args (src, dst, len, cb, arg, async, req, retry, mode)
+main	0x02010c28	CARD_IdentifyBackup	src; game passes 0x1001 (EEPROM, 64 KB)
+main	0x0201f794	_ll_mod	asm; CW runtime signed 64-bit remainder (shares body with _ll_sdiv)
+main	0x0201f7a4	_ll_sdiv	asm; CW runtime signed 64-bit division
+main	0x0201f954	_ull_div	asm; CW runtime unsigned 64-bit division
+main	0x0201f960	_ull_mod	asm; CW runtime unsigned 64-bit remainder
+main	0x0201f99c	_ll_mul	asm; umull + 2x mla
+main	0x0201f9bc	_s32_div_f	asm; CW runtime signed 32-bit div (q in r0, r in r1)
+main	0x0201fbc8	_u32_div_f	asm; CW runtime unsigned 32-bit div, returns on divisor 0
+main	0x0202185c	wcstombs	src MSL; wide -> multibyte copy with terminator
+main	0x020218d4	memcpy	src MSL; byte loop
+main	0x020218f4	memmove	src MSL; backward copy when dst > src
+main	0x02021940	memset	src MSL; __fill_mem + return dst
+main	0x02021954	memchr	src MSL
+main	0x02021980	__memrchr	src MSL
+main	0x020219ac	memcmp	src MSL
+main	0x020219ec	__fill_mem	src MSL; word-aligned fill
+main	0x0201769c	NNS_FndInitList	src NitroSystem fnd/list.c; (list, offset)
+main	0x020176b4	NNSi_FndSetFirstListObject	src; static helper for empty list
+main	0x020176e0	NNS_FndAppendListObject	src
+main	0x02017734	NNS_FndPrependListObject	src
+main	0x02017784	NNS_FndInsertListObject	src
+main	0x020177e8	NNS_FndRemoveListObject	src
+main	0x02017848	NNS_FndGetNextListObject	src
+main	0x02017860	NNS_FndGetPrevListObject	src
