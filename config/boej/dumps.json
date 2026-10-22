@@ -1,0 +1,23 @@
+{
+  "game_code": "BOEJ",
+  "maker_code": "HF",
+  "canonical": "retail",
+  "dumps": [
+    {
+      "variant": "retail",
+      "region": "Japan",
+      "name": "Inazuma Eleven 3 - Sekai e no Chousen!! - The Ogre (Japan).nds",
+      "size": 536870912,
+      "sha1": "9380f1d7ee75e7c6ef24f1b76c88ecdc85088957",
+      "notes": "Dump do cartucho original, sem modificações. Referência para o recompilador."
+    },
+    {
+      "variant": "fan-translation",
+      "region": "Japan",
+      "name": "5421 - Inazuma Eleven 3 - Sekai heno Chousen The Ogre (J)(BAHAMUT).nds",
+      "size": 536870912,
+      "sha1": "a70e9a336f6ea8ff78003938dcd024533f034a68",
+      "notes": "Tradução de fãs. ARM9/ARM7 idênticos ao retail; muda strings/tabelas em 33 overlays e 512 arquivos."
+    }
+  ]
+}

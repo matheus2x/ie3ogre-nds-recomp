@@ -1,0 +1,27 @@
+# Game data: never commit ROMs or anything extracted from them.
+*.nds
+*.srl
+*.dsi
+*.sav
+*.dsv
+build/
+data/
+saves/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Ghidra / analysis databases
+*.gpr
+*.rep/
+*.lock
+*.lock~
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
