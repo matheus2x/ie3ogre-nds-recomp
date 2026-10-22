@@ -2,6 +2,7 @@
 """Static-analysis pipeline for the retail dump.
 
   python3 tools/analyze.py dsd <retail.nds>     # dsd extract + init -> config/boej/dsd (function map)
+  python3 tools/analyze.py manifest [ov126 ...]  # recompiler input -> build/recomp/manifest.tsv
   python3 tools/analyze.py names                # apply config/boej/names.tsv to the dsd symbols
   python3 tools/analyze.py ghidra               # headless Ghidra project -> build/ghidra/boej.gpr
   python3 tools/analyze.py decompile 0x02000c8c ov132:0x0213acc0 FS_LoadOverlay   # -> stdout
@@ -108,6 +109,10 @@ def cmd_ghidra(args):
         # dsd's copy has the DS Protect functions (ov129) decrypted.
         entries.append(f"overlay\t{name}\t{ov['ram_address']}\t{dsd_extract / 'arm9_overlays' / (name + '.bin')}\t"
                        f"{dsd_config / 'overlays' / name / 'symbols.txt'}")
+    for line in (ROOT / "config" / "boej" / "hle.tsv").read_text().splitlines():
+        if line.strip() and not line.startswith("#"):
+            name, hle_id, *_ = line.split("\t")
+            lines.append(f"hle\t{name}\t{hle_id}")
     manifest = out / "manifest.tsv"
     manifest.write_text("\n".join(entries) + "\n")
 
@@ -208,6 +213,62 @@ def cmd_names(args):
     print(f"applied {total} names; rebuild with 'tools/analyze.py ghidra'")
 
 
+def read_sections(path: Path) -> list[tuple[int, int, str]]:
+    out = []
+    for line in path.read_text().splitlines():
+        parts = dict(p.split(":", 1) for p in line.split()[1:] if ":" in p)
+        if {"start", "end", "kind"} <= parts.keys():
+            out.append((int(parts["start"], 16), int(parts["end"], 16), parts["kind"]))
+    return out
+
+
+def cmd_manifest(args):
+    """Write build/recomp/manifest.tsv: modules, code sections, functions and labels."""
+    layout = json.loads((ROOT / "config" / "boej" / "layout" / "retail.json").read_text())
+    extract = ROOT / "build" / "extract" / "retail"
+    dsd_extract = ROOT / "build" / "dsd" / "extract"
+    out = ROOT / "build" / "recomp"
+    out.mkdir(parents=True, exist_ok=True)
+    arm9 = layout["arm9"]
+
+    static = out / "arm9_static.bin"
+    size = int(arm9["autoload_start"], 16) - int(arm9["ram_address"], 16)
+    static.write_bytes((extract / "arm9.bin").read_bytes()[:size])
+    modules = [("main", arm9["ram_address"], static, symbols_file("main"))]
+    for name, auto in (("itcm", arm9["autoloads"][0]), ("dtcm", arm9["autoloads"][1])):
+        base = auto["ram_address"]
+        modules.append((name, base, extract / "autoload" / f"{base[2:]}.bin", symbols_file(name)))
+    wanted = set(args.overlays) if args.overlays else None
+    for ov in layout["overlays"]:
+        name = f"ov{ov['id']:03d}"
+        if wanted is None or name in wanted:
+            modules.append((name, ov["ram_address"], dsd_extract / "arm9_overlays" / f"{name}.bin",
+                            symbols_file(name)))
+
+    lines = []
+    for name, base, data, symbols in modules:
+        lines.append(f"module\t{name}\t{base}\t{data}")
+        for start, end, kind in read_sections(symbols.parent / "delinks.txt"):
+            lines.append(f"section\t{start:#010x}\t{end:#010x}\t{kind}")
+        for line in symbols.read_text().splitlines():
+            parts = line.split(" ")
+            kind = parts[1]
+            addr = parts[-1][5:]
+            if kind.startswith("kind:function("):
+                params = kind[len("kind:function("):-1].split(",")
+                size = next(p[5:] for p in params if p.startswith("size="))
+                lines.append(f"func\t{addr}\t{size}\t{params[0]}\t{parts[0]}")
+            elif kind.startswith("kind:label("):
+                lines.append(f"entry\t{addr}\t{kind[len('kind:label('):-1]}\t{parts[0]}")
+    for line in (ROOT / "config" / "boej" / "hle.tsv").read_text().splitlines():
+        if line.strip() and not line.startswith("#"):
+            name, hle_id, *_ = line.split("\t")
+            lines.append(f"hle\t{name}\t{hle_id}")
+    manifest = out / "manifest.tsv"
+    manifest.write_text("\n".join(lines) + "\n")
+    print(f"manifest: {manifest} ({len(modules)} modules)")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(required=True)
@@ -215,6 +276,9 @@ def main():
     p.add_argument("rom", type=Path)
     p.add_argument("--force", action="store_true", help="overwrite config/boej/dsd")
     p.set_defaults(func=cmd_dsd)
+    p = sub.add_parser("manifest", help="write build/recomp/manifest.tsv for ntr-recomp")
+    p.add_argument("overlays", nargs="*", help="overlay names to include (default: all)")
+    p.set_defaults(func=cmd_manifest)
     p = sub.add_parser("names", help="apply config/boej/names.tsv to the dsd symbols")
     p.set_defaults(func=cmd_names)
     p = sub.add_parser("ghidra", help="build the headless Ghidra project")

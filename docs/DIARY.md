@@ -258,3 +258,76 @@ As tags 3 (NVRAM) e 9 (MIC) não aparecem no ARM9 estático; falta conferir nas 
 **Pendente**
 - As rotinas de ponto flutuante em software (por volta de 0x0201E678–0x02020AF8) vão ser identificadas **empiricamente**: rodar cada uma com vetores de teste, quando o recompilador existir, em vez de chutar nomes pelo pseudo-C.
 - Também faltam: o restante de GX/G2/G3 e das VRAM banks, CTRDG, WM, NNS (G2D/G3D/SND/heaps) e Mobiclip.
+
+---
+
+## 2026-10-22: Etapa 3, recompilador e runtime (primeiro marco atingido)
+
+**Decisão.** Recompilador e runtime em C++20, seguindo o modelo do FFCCEOT-Recomp.
+
+**Pipeline**
+1. `tools/analyze.py manifest` gera `build/recomp/manifest.tsv` a partir do dsd, com módulos, seções, funções, entradas no meio de funções (`label`) e a lista HLE (`config/boej/hle.tsv`).
+2. `ntr-recomp` (em `recompiler/`) gera `build/recomp/gen`:
+   - os blocos `<módulo>_<n>.cpp`;
+   - o `funcs.h`;
+   - o `registry.cpp`, com a tabela de funções de cada módulo para as chamadas indiretas.
+3. O CMake compila tudo junto com o runtime (`runtime/`) no executável `game/boej`.
+4. `tools/build.py` faz os três passos de uma vez.
+
+**Recompilador**
+- Análise de fluxo por função (alcançabilidade), de modo que os literal pools não são decodificados como código.
+- Labels e `goto` para desvios locais. Cada instrução vira um bloco C++ e condições viram `if`.
+- **Instruções ARM**: processamento de dados com barrel shifter e carry; MUL/MLA; multiplicações longas; multiplicações DSP (SMLAxy…); QADD; CLZ; LDR/STR, halfword e LDRD/STRD; LDM/STM; SWP; MRS/MSR; MCR/MRC; SWI; BLX.
+- **Instruções Thumb**: o conjunto v5 completo.
+- **Chamadas**: BL vira chamada direta C++ quando o alvo é conhecido. Alvos no slot de outra overlay vão para `call_indirect`. Desvio para fora da função vira tail call.
+- **Retornos**: `bx lr`, `pop {pc}`, `ldmia sp!,{..,pc}`, `ldr pc,[sp],#4` e `mov pc, lr` viram `return`.
+- **Jump tables**: tanto `addls pc, pc, rN, lsl #2` quanto `ldr pc, [pc, rN, lsl #2]` viram `switch`.
+  - Bug encontrado: o limite vinha do `cmp` mais próximo, mas o CodeWarrior também emite `cmp rN,#max; bgt; cmp rN,#0; addge pc…`.
+  - Agora o limite vem do `cmp` seguido de `bhi`/`bgt`, ou do próprio despacho `ls`/`le`; senão, da contagem dos `b` da tabela.
+  - Esse bug deixava o `__strtoul` do MSL em laço infinito.
+- **Literal pools**: as cargas viram constantes, porque o código vem do retail.
+- **Tempo emulado**: todo desvio para trás decrementa `c.budget`; quando ele zera, o runtime roda `poll()`, que avança o tempo e entrega IRQs. É isso que faz espera ativa em RAM terminar.
+- **HLE**: funções em `hle.tsv` viram `hle_<id>(c, &orig_…)`, e o hook pode chamar a versão original recompilada.
+- **Números**: 16.057 funções e 747 mil instruções, em menos de 1 s. Só 1 caso não tratado ("fell off function end"). A build do código gerado leva ~80 s com 16 núcleos (`-O1`).
+
+**Runtime**
+- **Memória**: tabela de páginas de 4 KiB para leitura e escrita, com RAM principal espelhada, ITCM, DTCM, WRAM, paleta, VRAM (só a visão LCDC por enquanto) e OAM. Um caminho lento trata o MMIO.
+- **I/O**: arquivo de registradores mais DIV/SQRT, DISPSTAT/VCOUNT, timers, IF (escrever 1 limpa), DMA imediato, IPC/PXI e o barramento do cartão (respostas a 0xB8 e 0xB7).
+- **Tempo**: ciclos emulados e scanlines (VBlank/HBlank/VCount); timers com IRQ de overflow.
+- **CPU**: modos com bancos de r13/r14/SPSR, CP15 (ID, cache e TCM) e BIOS em HLE (Div, Sqrt, CpuSet, CpuFastSet, CRC16, LZ77, RL, IsDebugger).
+- **Boot fiel ao firmware**: o ARM9 **comprimido** é copiado da ROM do usuário, e o crt0 do jogo o descomprime e faz o autoload. O header vai para 0x027FFE00, e as configurações do usuário (inclusive a calibração do touch) para 0x027FFC80.
+- **Threads em fibers do host** (ucontext no Linux, Fibers no Windows):
+  - `OS_SaveContext`/`OS_LoadContext` guardam e retomam o estado da CPU por fiber.
+  - Um contexto novo cria uma fiber que começa no pc do contexto.
+  - `OS_InitContext` descarta a fiber associada a um `OSThread` reaproveitado.
+- **IRQ**: `OS_IrqHandler` virou HLE completo em C++. O original usa `lr = OS_IrqHandler_ThreadSwitch` para encadear a troca de thread, e isso não sobrevive como chamada do host. A troca de thread dentro da IRQ libera as IRQs para a nova thread.
+- **Overlays**: `FS_StartOverlay`/`FS_EndOverlay` marcam qual overlay ocupa cada slot. Todas as 133 estão sempre recompiladas.
+- **Cartão**: só `CARDi_ReadRomWithCPU` (cópia direta da ROM) e `CARDi_TryReadCardDma` (devolve 0) foram substituídas. A lógica de tarefa e callback do SDK roda original, na thread do cartão.
+- **ARM7 em HLE**:
+  - handshake do IPCSYNC e bitmap de tags prontas em 0x02FFFF8C;
+  - **cartão/backup** (tag 11): INIT com ponteiro compartilhado, leitura, escrita, verificação e apagamento sobre `saves/boej.sav` (64 KB), com escrita atômica (arquivo temporário e rename);
+  - **touch** (tag 6): por enquanto sempre "sem toque";
+  - **som** (tag 7): só conta os comandos e avança o `finishCommandTag` (o ponteiro dele fica em 0x02095920).
+- **Depuração**:
+  - `NTR_TRACE` mantém um buffer circular das últimas funções, impresso ao receber SIGINT/SIGTERM;
+  - logs por variável de ambiente: `NTR_LOG_IRQ`, `NTR_LOG_THREAD`, `NTR_LOG_CARD`, `NTR_LOG_SND`.
+
+**Resultado**
+- O boot do dump retail executa o crt0, `OS_Init` (PXI, threads, cartão, PM, CTRDG) e `NitroMain`.
+- Carrega as overlays 130, 16, 126, 131 e 5 e cria 10 threads.
+- Atende as IRQs de VBlank e timer, lê o save inteiro e chega a escrever na VRAM do motor B (0x0620xxxx). Isso dá 12 mil escritas "não mapeadas", porque o mapeamento dos bancos de VRAM ainda não existe.
+- Não há travamento nem instrução não tratada até esse ponto.
+
+**Limitações conhecidas**
+- O tempo emulado avança rápido demais: cerca de 48 mil VBlanks em 20 s. Ainda falta sincronizar com o relógio do host.
+- `OS_SaveContext` não salva o contexto do divisor (CP) do jogo.
+- O DMA de modos temporizados (VBlank, HBlank, GX FIFO) roda na hora.
+- O GPU 2D/3D, o mapeamento de VRAM e o áudio não existem. RTC, PM, WM e CTRDG ainda só registram os pedidos.
+- Pendente desde a Fase 2: identificar as rotinas de ponto flutuante em software. O teste diferencial com Unicorn ainda não foi montado.
+
+**Próximos passos**
+1. Mapeamento dos bancos de VRAM (VRAMCNT) e renderização 2D/3D (melonDS como referência, ou um renderer próprio), com janela SDL3.
+2. Ritmo de quadros em 60 Hz, sincronizado com o host.
+3. Entrada (teclas e touch) e RTC.
+4. Driver de som do ARM7 em HLE (SDAT/sequências, streams `sadl`).
+5. Teste diferencial por função contra Unicorn.

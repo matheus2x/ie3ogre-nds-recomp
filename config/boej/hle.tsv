@@ -1,0 +1,25 @@
+# Functions whose recompiled body is replaced by a host implementation (runtime/src/hle.cpp).
+# name	hle_id	reason
+_ll_mul	ll_mul	CodeWarrior runtime -> native 64-bit math
+_ll_sdiv	ll_sdiv	native; entry shares body with _ll_mod
+_ll_mod	ll_mod	native
+_ull_div	ull_div	native
+_ull_mod	ull_mod	native; entry jumps into _ll_sdiv body
+_s32_div_f	s32_div	native; q in r0, r in r1
+_u32_div_f	u32_div	native; q in r0, r in r1
+DC_FlushAll	nop	no data cache on the host
+DC_InvalidateRange	nop	no data cache on the host
+DC_StoreRange	nop	no data cache on the host
+DC_FlushRange	nop	no data cache on the host
+DC_WaitWriteBufferEmpty	nop	no write buffer on the host
+IC_InvalidateAll	nop	recompiled code never changes
+IC_InvalidateRange	nop	recompiled code never changes
+OS_Halt	os_halt	waits for the next interrupt on the host scheduler
+OS_SaveContext	os_save_context	thread switch on host fibers
+OS_LoadContext	os_load_context	thread switch on host fibers
+CARDi_ReadRomWithCPU	card_read_cpu	copies from the user's ROM image instead of driving the card bus
+CARDi_TryReadCardDma	card_no_dma	forces the CPU path above (returns 0)
+OS_InitContext	os_init_context	forgets the host fiber of a reused OSContext
+FS_StartOverlay	fs_start_overlay	marks the overlay active for indirect calls, then runs it
+FS_EndOverlay	fs_end_overlay	runs it, then marks the overlay inactive
+OS_IrqHandler	os_irq_handler	IRQ dispatch + OS_IrqHandler_ThreadSwitch on host fibers (lr tricks and stack switching)

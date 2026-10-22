@@ -6,7 +6,8 @@ Port nativo para Windows de **Inazuma Eleven 3: Sekai heno Chousen!! The Ogre**
 O código do jogo não é emulado: o ARM9 e as overlays viram C e são compilados para x86-64. O hardware do DS
 e o ARM7 são reimplementados no PC.
 
-> **Estado: pré-alfa.** Por enquanto só as ferramentas de extração existem. Ainda não dá para jogar.
+> **Estado: pré-alfa.** O código do jogo já é recompilado inteiro e o boot vai até o carregamento dos
+> primeiros gráficos, mas ainda não há vídeo, áudio nem controles. Ainda não dá para jogar.
 > O histórico completo está em [`docs/DIARY.md`](docs/DIARY.md).
 
 ## Objetivo
@@ -47,9 +48,9 @@ Se o seu dump tiver outro SHA-1, abra uma issue informando o código do jogo e o
 - [x] Extração da ROM: ARM9/ARM7, ITCM/DTCM, 133 overlays, NitroFS
 - [x] Identificação de dumps por SHA-1 (retail + versões modificadas) e comparação entre dumps
 - [x] Mapa de funções (ds-decomp) e projeto Ghidra com overlays; identificação do NitroSDK em andamento
-- [ ] Recompilador ARMv5TE/Thumb → C (`ntr-recomp`)
-- [ ] Runtime: memória, IRQ, timers, DMA, overlays, FS sem cartucho emulado
-- [ ] HLE do NitroSDK e do ARM7 (som, touch, RTC, backup → arquivo `.sav`)
+- [x] Recompilador ARMv5TE/Thumb → C++ (`ntr-recomp`): 16.057 funções, ARM9 + ITCM + 133 overlays
+- [x] Runtime básico: memória, IRQ, timers, DMA imediato, overlays, threads em fibers, BIOS em HLE
+- [ ] HLE do NitroSDK e do ARM7: backup → `.sav` e touch prontos; som só confirma os comandos; RTC pendente
 - [ ] Vídeo: 2D e 3D com resolução interna maior; renderer de referência fiel ao DS
 - [ ] Áudio: SDAT/SND e streams `sadl`
 - [ ] Vídeos Mobiclip (`.mods`)
@@ -61,16 +62,19 @@ Se o seu dump tiver outro SHA-1, abra uma issue informando o código do jogo e o
 
 | Pasta | Conteúdo |
 |---|---|
+| `recompiler/` | `ntr-recomp` (C++20): manifesto do dsd → C++ |
+| `runtime/` | Runtime (C++20): memória, CPU, IRQ, timers, threads, PXI/ARM7 em HLE |
+| `game/` | Executável `boej` |
 | `tools/` | Ferramentas em Python (`ntr/` lê a ROM; `extract.py` extrai; `compare_dumps.py` compara dumps; `analyze.py` roda dsd/Ghidra; `ghidra/` tem os scripts do Ghidra; `tests/` tem os testes) |
-| `config/boej/` | `dumps.json` (dumps conhecidos), `layout/<variante>.json` (endereços, overlays, hashes), `dsd/` (funções, seções e relocações do ds-decomp) e `names.tsv` (nomes identificados, com evidência). Nenhum dado do jogo |
+| `config/boej/` | `dumps.json` (dumps conhecidos), `layout/<variante>.json` (endereços, overlays, hashes), `dsd/` (funções, seções e relocações do ds-decomp), `names.tsv` (nomes identificados, com evidência) e `hle.tsv` (funções substituídas no host). Nenhum dado do jogo |
 | `docs/` | Documentação e diário de implementação |
 | `build/` | Saída local (extração, código gerado). Ignorada pelo git |
 
-Pastas previstas: `recompiler/`, `runtime/`, `game/`, `third_party/`.
+Pasta prevista: `third_party/` (melonDS, SDL3).
 
 ## Desenvolvimento
 
-Requisitos atuais: Python 3.12+ (versão do Node em `.tool-versions` só para ferramentas auxiliares).
+Requisitos: Python 3.12+, CMake 3.28+ e um compilador C++20 (clang, GCC ou MSVC/clang-cl).
 
 ```sh
 # identifica o dump pelo SHA-1, extrai para build/extract/<variante>/
@@ -108,6 +112,21 @@ Conteúdo de `build/extract/<variante>/`:
 | `autoload/01ff8000.bin`, `autoload/027e0000.bin` | ITCM e DTCM |
 | `overlays/ovNNN.bin` | Overlays descomprimidas |
 | `files/` | NitroFS (`data_iz/…`, `dwc/…`) |
+
+### Recompilar e rodar
+
+```sh
+python3 tools/extract.py retail.nds          # uma vez
+python3 tools/analyze.py dsd retail.nds      # uma vez (mapa de funções)
+python3 tools/build.py                       # manifesto -> ntr-recomp -> build/cmake-rel/game/boej
+./build/cmake-rel/game/boej retail.nds
+```
+
+`tools/build.py --trace` gera uma build com rastreamento de funções em `build/cmake`. Ao receber Ctrl+C,
+ela imprime as últimas 256 funções chamadas.
+
+Variáveis de ambiente para depuração: `NTR_LOG_IRQ`, `NTR_LOG_THREAD`, `NTR_LOG_CARD`, `NTR_LOG_SND`.
+Para o save, `NTR_SAVE` (padrão: `saves/boej.sav`).
 
 ## Documentação
 
