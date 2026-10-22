@@ -147,4 +147,25 @@ Program load_program(const std::string& manifest_path) {
     return prog;
 }
 
+bool add_discovered_entry(Module& m, uint32_t addr, bool thumb) {
+    auto& fns = m.functions;
+    const Function* enclosing = nullptr;
+    for (const auto& fn : fns) {
+        if (fn.addr == addr) return false;
+        if (!fn.alt_entry && fn.addr < addr && addr < fn.body_end) enclosing = &fn;
+    }
+    if (!enclosing) return false;
+    Function fn;
+    fn.addr = addr;
+    fn.thumb = thumb;
+    char name[32];
+    std::snprintf(name, sizeof name, "sub_%08x", addr);
+    fn.name = name;
+    fn.alt_entry = true;
+    fn.body_end = enclosing->body_end;
+    fn.size = fn.body_end - addr;
+    fns.insert(std::upper_bound(fns.begin(), fns.end(), addr, [](uint32_t a, const Function& f) { return a < f.addr; }), fn);
+    return true;
+}
+
 }  // namespace recomp

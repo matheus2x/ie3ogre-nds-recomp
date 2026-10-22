@@ -1,5 +1,6 @@
 // Host implementations of the functions listed in config/boej/hle.tsv. Each hook gets
 // the recompiled original so it can wrap it; most replace it.
+#include <cstdlib>
 #include <cstring>
 
 #include "runtime.h"
@@ -72,6 +73,8 @@ void hle_os_halt(Cpu& c, GuestFn) { wait_for_interrupt(c); }
 // CARDi_ReadRomWithCPU(unused, dst, src, len) -> len
 void hle_card_read_cpu(Cpu& c, GuestFn) {
     uint32_t dst = c.r[1], src = c.r[2], len = c.r[3];
+    static const bool log = std::getenv("NTR_LOG_CARD");
+    if (log) NTR_LOG("[card] rom read %08X -> %08X, %u bytes\n", src, dst, len);
     const auto& data = rom().data;
     for (uint32_t i = 0; i < len; i++) {
         uint32_t off = src + i;
@@ -99,6 +102,22 @@ void hle_fs_end_overlay(Cpu& c, GuestFn orig) {
     uint32_t id = rd32(c.r[0]);
     orig(c);
     overlay_set_active(id, false);
+}
+
+}  // namespace ntr
+
+namespace ntr {
+
+// --- video ---------------------------------------------------------------------------
+// The Mobiclip (.mods) decoder is a hand-written ARM blob that jumps through computed
+// addresses. Until it gets a native replacement, frames are skipped: the call returns
+// 0 bytes consumed and the movie's frame counters still run to the end.
+
+void hle_mobiclip_skip(Cpu& c, GuestFn) {
+    static bool warned = false;
+    if (!warned) NTR_LOG("[video] Mobiclip decoding is not implemented; movie frames are skipped\n");
+    warned = true;
+    c.r[0] = 0;
 }
 
 }  // namespace ntr

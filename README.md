@@ -50,10 +50,12 @@ Se o seu dump tiver outro SHA-1, abra uma issue informando o código do jogo e o
 - [x] Mapa de funções (ds-decomp) e projeto Ghidra com overlays; identificação do NitroSDK em andamento
 - [x] Recompilador ARMv5TE/Thumb → C++ (`ntr-recomp`): 16.057 funções, ARM9 + ITCM + 133 overlays
 - [x] Runtime básico: memória, IRQ, timers, DMA imediato, overlays, threads em fibers, BIOS em HLE
-- [ ] HLE do NitroSDK e do ARM7: backup → `.sav` e touch prontos; som só confirma os comandos; RTC pendente
-- [ ] Vídeo: 2D e 3D com resolução interna maior; renderer de referência fiel ao DS
+- [ ] HLE do NitroSDK e do ARM7: backup → `.sav`, touch, botões X/Y e contador de VBlank prontos; som só confirma os comandos; RTC pendente
+- [x] Janela SDL3 com as duas telas, teclado/controle/mouse e ritmo de 59,83 Hz
+- [x] Vídeo 2D: bancos de VRAM, BGs texto/afim/estendidos/bitmap, OBJs, janelas, efeitos, brilho mestre, captura
+- [ ] Vídeo 3D (GX); depois, resolução interna maior
 - [ ] Áudio: SDAT/SND e streams `sadl`
-- [ ] Vídeos Mobiclip (`.mods`)
+- [ ] Vídeos Mobiclip (`.mods`): hoje os quadros são pulados (a abertura toca em preto, só com a letra)
 - [ ] Wi-Fi/DWC desativado (o Nintendo WFC foi encerrado)
 - [ ] Seleção do dump no primeiro uso, configurações, controles remapeáveis
 - [ ] Instalador / release portátil para Windows
@@ -63,14 +65,14 @@ Se o seu dump tiver outro SHA-1, abra uma issue informando o código do jogo e o
 | Pasta | Conteúdo |
 |---|---|
 | `recompiler/` | `ntr-recomp` (C++20): manifesto do dsd → C++ |
-| `runtime/` | Runtime (C++20): memória, CPU, IRQ, timers, threads, PXI/ARM7 em HLE |
+| `runtime/` | Runtime (C++20): memória, CPU, IRQ, timers, threads, PXI/ARM7 em HLE, VRAM, 2D, janela SDL3 |
 | `game/` | Executável `boej` |
 | `tools/` | Ferramentas em Python (`ntr/` lê a ROM; `extract.py` extrai; `compare_dumps.py` compara dumps; `analyze.py` roda dsd/Ghidra; `ghidra/` tem os scripts do Ghidra; `tests/` tem os testes) |
-| `config/boej/` | `dumps.json` (dumps conhecidos), `layout/<variante>.json` (endereços, overlays, hashes), `dsd/` (funções, seções e relocações do ds-decomp), `names.tsv` (nomes identificados, com evidência) e `hle.tsv` (funções substituídas no host). Nenhum dado do jogo |
+| `config/boej/` | `dumps.json` (dumps conhecidos), `layout/<variante>.json` (endereços, overlays, hashes), `dsd/` (funções, seções e relocações do ds-decomp), `names.tsv` (nomes identificados, com evidência), `hle.tsv` (funções substituídas no host) e `code_blobs.tsv` (código que o dsd classifica como dados). Nenhum dado do jogo |
 | `docs/` | Documentação e diário de implementação |
 | `build/` | Saída local (extração, código gerado). Ignorada pelo git |
 
-Pasta prevista: `third_party/` (melonDS, SDL3).
+Pasta prevista: `third_party/` (melonDS).
 
 ## Desenvolvimento
 
@@ -115,6 +117,8 @@ Conteúdo de `build/extract/<variante>/`:
 
 ### Recompilar e rodar
 
+Requer SDL3 (`pacman -S sdl3` no Arch).
+
 ```sh
 python3 tools/extract.py retail.nds          # uma vez
 python3 tools/analyze.py dsd retail.nds      # uma vez (mapa de funções)
@@ -122,11 +126,21 @@ python3 tools/build.py                       # manifesto -> ntr-recomp -> build/
 ./build/cmake-rel/game/boej retail.nds
 ```
 
+| DS | Teclado | Controle |
+|---|---|---|
+| Direcional | setas | direcional |
+| A / B / X / Y | X / Z / S / A | botões da direita (posição do DS) |
+| L / R | Q / W | ombros |
+| Start / Select | Enter / Shift direito ou Backspace | Start / Back |
+| Tela de toque | botão esquerdo do mouse na tela de baixo | — |
+
+Tab (segurado) acelera; F12 salva a tela em `boej-<quadro>.bmp`.
+
 #### Windows (compilação cruzada a partir do WSL/Linux)
 
 Requer MinGW-w64 (`pacman -S mingw-w64-gcc` no Arch). O `ntr-recomp` continua sendo compilado e executado
-no Linux; só o jogo é compilado para Windows. O resultado é um único `boej.exe` estático, que depende apenas
-das DLLs do sistema.
+no Linux; só o jogo é compilado para Windows. O CMake baixa o pacote oficial `SDL3-devel-*-mingw`. O resultado
+é o `boej.exe` (libstdc++ estática) mais o `SDL3.dll`, que precisa ficar na mesma pasta; `--dist` copia os dois.
 
 ```sh
 python3 tools/build.py --windows                       # build/cmake-win/game/boej.exe
@@ -138,8 +152,18 @@ Coloque a ROM num disco do Windows: lida por `\\wsl$`, ela leva bem mais de 20 s
 `tools/build.py --trace` gera uma build com rastreamento de funções em `build/cmake`. Ao receber Ctrl+C,
 ela imprime as últimas 256 funções chamadas.
 
-Variáveis de ambiente para depuração: `NTR_LOG_IRQ`, `NTR_LOG_THREAD`, `NTR_LOG_CARD`, `NTR_LOG_SND`.
-Para o save, `NTR_SAVE` (padrão: `saves/boej.sav`).
+Variáveis de ambiente:
+
+- **Save:** `NTR_SAVE` (padrão: `saves/boej.sav`).
+- **Janela e ritmo:** `NTR_SCALE` (escala inicial, padrão 2); `NTR_FAST` (sem limite de 60 Hz); `NTR_HEADLESS` (sem janela e sem limite).
+- **Testes automáticos:**
+  - `NTR_INPUT` roteiriza a entrada por quadro, por exemplo `300-310:TOUCH@128,96;900-905:A+START`;
+  - `NTR_SCREENSHOT_FRAME` com `NTR_SCREENSHOT` salva um quadro em BMP;
+  - `NTR_EXIT_FRAME` encerra depois de N quadros.
+- **Depuração:**
+  - `NTR_LOG_IRQ`, `NTR_LOG_THREAD`, `NTR_LOG_CARD`, `NTR_LOG_SND`, `NTR_LOG_TP`;
+  - `NTR_PEEK=endereço:tamanho` imprime memória do jogo a cada quadro;
+  - `NTR_PROFILE=início-fim` (só na build `--trace`) conta as funções chamadas nesses quadros.
 
 ## Documentação
 

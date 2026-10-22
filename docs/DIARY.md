@@ -348,3 +348,72 @@ As tags 3 (NVRAM) e 9 (MIC) não aparecem no ARM9 estático; falta conferir nas 
 **Observação.** Um processo Windows que lê a ROM de 512 MB por `\\wsl$` leva mais de 20 s só para carregá-la.
 - Recomendação: deixar a ROM num disco do Windows.
 - Melhoria futura: mapear a ROM em memória (mmap / `CreateFileMapping`) em vez de ler o arquivo inteiro.
+
+---
+
+## 2026-10-22: Etapa 4: vídeo 2D, janela SDL3, entrada e ritmo de 60 Hz
+
+**VRAM** (`runtime/src/vram.cpp`)
+- O `VRAMCNT_A..I` coloca cada banco na área dada pelos campos MST/OFS: BG/OBJ dos motores A e B, LCDC, texturas, paletas de textura e paletas estendidas de BG/OBJ.
+- Cada área é uma "view" em grânulos de 16 KiB. As páginas da CPU em 0x06000000-0x068A3FFF são refeitas a cada escrita em `VRAMCNT`, com espelhamento por janela de 2 MiB.
+- VRAM sem banco lê 0 e ignora escritas, sem log (as 12 mil escritas "não mapeadas" da etapa 3 sumiram).
+
+**Renderizador 2D** (`runtime/src/gpu2d.cpp`): uma linha por vez, quando o LCD começa a desenhá-la.
+- **BGs:** texto (4/8 bpp, paletas estendidas), afim, estendidos (mapa de 16 bits, bitmap de 256 cores e cor direta) e bitmap grande.
+- **OBJs:** de tiles 1D/2D, bitmap, afins e de tamanho duplo, semitransparentes e janela de OBJ.
+- **Composição:** janelas 0/1/OBJ, alpha blending, clarear/escurecer, brilho mestre, modo de exibição de VRAM e captura de tela.
+- Os pontos de referência de BG2/BG3 são recarregados no VBlank e em escritas, e avançam por dmx/dmy a cada linha.
+- `POWCNT1` decide qual motor vai para a tela de cima.
+- Ainda falta: 3D (o BG0 em modo 3D fica transparente), mosaico e o modo de exibição da memória principal.
+
+**Janela e entrada** (`runtime/src/host.cpp`, SDL3)
+- As duas telas ficam empilhadas, com letterbox e escala inteira inicial 2×. O ritmo é de 59,826 Hz pelo relógio do host, com ressincronização se ficar mais de 4 quadros atrasado.
+- Entrada:
+  - teclado e controle (SDL gamepad) vão para o `KEYINPUT`;
+  - X/Y passam pelo ARM7;
+  - o mouse na tela de baixo vira toque, convertido em ADC pela mesma calibração das configurações do usuário.
+- Modo sem janela (`NTR_HEADLESS`), roteiro de entrada (`NTR_INPUT`), BMP de um quadro (`NTR_SCREENSHOT_FRAME`) e saída automática (`NTR_EXIT_FRAME`). Assim dá para testar sem interação: 600 quadros levam ~3 s.
+- Depuração: `NTR_PEEK=endereço:tamanho` imprime memória a cada quadro; `NTR_PROFILE=a-b` (build `--trace`) conta as funções chamadas numa janela de quadros.
+
+**Bugs do ARM7 em HLE** (o aviso anti-pirataria aparecia, mas não aceitava toque):
+1. `HW_BUTTON_XY_BUF` (0x027FFFA8) não é o EXTKEYIN cru, e sim o layout do `PAD_Read`: X no bit 10, Y no 11, debug no 13 (1 = solto) e tampa fechada no 15. Com o valor errado, o jogo via X+Y+DEBUG sempre apertados.
+2. O ARM7 incrementa o contador de VBlank em 0x027FFC3C (`OS_GetVBlankCount`), e ninguém fazia isso. O jogo mede o tempo de cada quadro por ele (delta em 0x0209A110). O temporizador da cena do aviso (3600 quadros, ou 30 depois do toque) nunca andava.
+- O caminho foi: o toque chega certo ao jogo (x=127, y=95) → despachante 0x0202AB80 → cena da ov005 (0x020BD63C marca o toque; o vtable+0x64 põe +0x22 = 1) → máquina de estados 0x020BD1FC, que espera o temporizador.
+
+**Tarefas cooperativas do jogo** (`runtime/src/task.cpp`)
+- O motor do jogo tem um escalonador próprio de 16 tarefas, cada uma com sua pilha (0x0206EDC0-0x0206F0B0):
+  - `Task_RunAll` retoma cada tarefa uma vez por quadro;
+  - `Task_Yield` empilha r0-r11/lr, salva o sp e troca para a pilha do escalonador;
+  - `Task_Exit` encerra a tarefa.
+- Para retomar, ele salta para o meio de `Task_Yield` (0x0206EE98), onde o código recompilado não tem entrada.
+- Virou HLE sobre fibers, como as threads do SDK:
+  - cada tarefa é uma fiber;
+  - o primeiro quadro emula o frame inicial montado por `Task_Create`;
+  - um slot reaproveitado (sp diferente do que deixamos) descarta a fiber antiga.
+- Ganhou `fiber_destroy`. Endereços: sp do escalonador 0x020B9D4C, tarefa atual 0x020B9D50, tabela de sp 0x020B9D54, entradas 0x020B9D94.
+
+**Blob de código e recompilador**
+- A ov127 (abertura) chama por ponteiro um blob em 0x02130754 que o dsd classificou como dados. Ele começa com `b 0x02131E44` e é o decodificador **Mobiclip** (os vídeos são `data_iz/movie/*.mods`).
+- O blob é assembly escrito à mão e usa:
+  - `add rX, pc, #k` para achar rotinas;
+  - `add lr, pc, #k` + `bx rX` como chamada;
+  - `add pc, rT, rB` sobre tabelas de offsets relativos, com `lr` apontando para um ponto de retorno adiante.
+- Mudanças no recompilador:
+  - `config/boej/code_blobs.tsv` declara regiões de código vistas como dados (o manifesto emite cada uma como função);
+  - passada de descoberta: alvos diretos de BL/B sem entrada que caem dentro de uma função, e endereços `pc`-relativos dentro de blobs, viram entradas alternativas, repetindo até estabilizar (5 passadas, +38 entradas);
+  - `add lr, pc` / `mov lr, pc` logo antes de `bx rM` / `mov pc, rM` que volta para a instrução seguinte vira chamada, e não salto final.
+- As tabelas de offsets com `lr` adiantado ainda não são tratadas. Por isso, por enquanto, o blob inteiro é HLE (`hle_mobiclip_skip`): devolve 0 bytes consumidos, e os contadores de quadros do jogo levam o vídeo até o fim.
+- A abertura toca em preto, só com a letra da música renderizada pelo motor 2D.
+
+**Build para Windows**
+- O CMake baixa o `SDL3-devel-3.4.18-mingw` (FetchContent) e o `--dist` copia o `SDL3.dll` junto do `.exe`.
+- A toolchain ganhou `CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY`: sem isso, o `find_package(SDL3)` achava o SDL3 do Linux.
+
+**Resultado**
+- Boot → aviso anti-pirataria (tela de baixo) → toque → abertura (vídeo pulado, letra visível) → **tela de título** (logo em cima; "はじめから" sobre o mapa-múndi embaixo) → abertura de novo, em modo demonstração.
+- Na janela, o ritmo fica em 60 fps, com ~50% de um núcleo. O `boej.exe` chega ao mesmo ponto pelo interop do WSL.
+
+**Próximos passos**
+1. Motor 3D (GX FIFO, geometria, rasterização) para o campo e as partidas. O título já usa só 2D.
+2. Decodificador Mobiclip nativo (o `libavcodec/mobiclip.c` serve de referência) no lugar do blob, com o áudio do vídeo.
+3. RTC, driver de som do ARM7 e mapeamento da ROM em memória (o carregamento por `\\wsl$` é lento).

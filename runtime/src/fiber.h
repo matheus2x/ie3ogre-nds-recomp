@@ -12,5 +12,6 @@ Fiber* fiber_init_main();
 Fiber* fiber_create(void (*entry)(void*), void* arg, size_t stack_size);
 Fiber* fiber_current();
 void fiber_switch(Fiber* to);
+void fiber_destroy(Fiber* f);  // f must not be the running fiber
 
 }  // namespace ntr

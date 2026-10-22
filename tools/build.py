@@ -65,8 +65,12 @@ def main() -> int:
 
     if args.dist:
         args.dist.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(exe, args.dist / exe.name)
-        print(f"copied to: {args.dist / exe.name}")
+        shipped = [exe]
+        if args.windows:  # SDL3.dll from the SDL3-devel-*-mingw package fetched by CMake
+            shipped += list((game_build / "_deps").glob("sdl3_mingw-src/x86_64-w64-mingw32/bin/SDL3.dll"))
+        for f in shipped:
+            shutil.copy2(f, args.dist / f.name)
+            print(f"copied to: {args.dist / f.name}")
     return 0
 
 

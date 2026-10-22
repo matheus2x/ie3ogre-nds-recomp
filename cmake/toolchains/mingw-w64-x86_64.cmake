@@ -11,6 +11,7 @@ set(CMAKE_FIND_ROOT_PATH /usr/${MINGW_PREFIX})
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)  # never pick up the host's CMake packages (e.g. SDL3)
 
 # Ship a single .exe: no libstdc++/libgcc/winpthread DLLs next to it.
 set(CMAKE_EXE_LINKER_FLAGS_INIT "-static -static-libgcc -static-libstdc++")

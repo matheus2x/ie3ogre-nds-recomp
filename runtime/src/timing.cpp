@@ -1,6 +1,8 @@
 // Emulated time: ARM9 bus cycles (33.514 MHz), the LCD scanline counter and the four
 // hardware timers. Generated code only advances time through poll() and HLE waits, so
-// these values are approximate but monotonic.
+// these values are approximate but monotonic. Line starts drive the 2D engines
+// (gpu2d.cpp), and the start of VBlank presents the frame and runs the ARM7 per-frame work.
+#include "pxi.h"
 #include "runtime.h"
 
 namespace ntr {
@@ -75,7 +77,12 @@ void advance_time(uint64_t cycles) {
         uint64_t line_start = line * kCyclesPerLine;
         uint32_t v = uint32_t(line % kLines);
         if (line_start > start) {
-            if (v == 192 && (dispstat & 0x08)) raise_irq(IRQ_VBLANK);
+            if (v < 192) gpu_render_line(v);
+            if (v == 192) {
+                gpu_vblank();
+                arm7_vblank();
+                if (dispstat & 0x08) raise_irq(IRQ_VBLANK);
+            }
             if (v == vmatch && (dispstat & 0x20)) raise_irq(IRQ_VCOUNT);
         }
         uint64_t hblank = line_start + kHDrawCycles;

@@ -385,3 +385,14 @@ main	0x02017784	NNS_FndInsertListObject	src
 main	0x020177e8	NNS_FndRemoveListObject	src
 main	0x02017848	NNS_FndGetNextListObject	src
 main	0x02017860	NNS_FndGetPrevListObject	src
+main	0x0206edc0	Task_ClearEntries	call; zeroes the 16-entry task function table at 0x020B9D94
+main	0x0206ede4	Task_Exit	call; clears the current task's saved sp and longjmps to the scheduler stack
+main	0x0206ee20	Task_SwitchToScheduler	call; saves sp in the task sp table, loads the scheduler sp, pops pc
+main	0x0206ee5c	Task_Yield	call; pushes r0-r11/lr on the task stack and switches to the scheduler
+main	0x0206eed0	Task_YieldFrames	call; Task_Yield n times
+main	0x0206eef8	Task_Trampoline	call; first code of a new task: calls its entry from the table, then Task_Exit
+main	0x0206ef20	Task_Create	call; builds the initial frame on a new stack, takes a free slot of the sp table
+main	0x0206efa0	Task_Start	call; Task_Create(Task_Trampoline, ...) and stores the entry function
+main	0x0206efc4	Task_ClearEntry	call; entry table slot = 0
+main	0x0206efd8	Task_SwitchToTask	call; saves the scheduler sp, loads the current task's sp, pops pc
+main	0x0206f014	Task_RunAll	call; per-frame scheduler: resumes each of the 16 tasks once

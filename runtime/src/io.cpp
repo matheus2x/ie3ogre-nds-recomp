@@ -1,5 +1,6 @@
 // ARM9 MMIO: a register file plus the registers whose reads or writes have effects.
-// Display, 3D and sound are not modeled yet; their registers just keep written values.
+// The 2D engines read their registers from the register file (see gpu2d.cpp); 3D and
+// sound are not modeled yet and their registers just keep written values.
 #include <cmath>
 #include <deque>
 
@@ -16,6 +17,7 @@ constexpr uint32_t REG_IPCSYNC = 0x04000180;
 constexpr uint32_t REG_IPCFIFOCNT = 0x04000184;
 constexpr uint32_t REG_IPCFIFOSEND = 0x04000188;
 constexpr uint32_t REG_IF = 0x04000214;
+constexpr uint32_t REG_VRAMCNT = 0x04000240;
 constexpr uint32_t REG_DIVCNT = 0x04000280;
 constexpr uint32_t REG_SQRTCNT = 0x040002B0;
 constexpr uint32_t REG_GXSTAT = 0x04000600;
@@ -152,7 +154,7 @@ uint32_t io_read32(uint32_t addr) {
             return timer_read_counter(i) | (reg(addr) & 0xFFFF0000);
         }
         case REG_KEYINPUT:
-            return 0x03FF | (reg(addr) & 0xFFFF0000);
+            return host_keyinput() | (reg(addr) & 0xFFFF0000);
         case REG_IPCSYNC:
             return (reg(addr) & 0x6F00) | pxi_sync_from_arm7();
         case REG_IPCFIFOCNT:
@@ -188,6 +190,8 @@ void io_write32(uint32_t addr, uint32_t value, uint32_t mask) {
     }
     set_reg(addr, (old & ~mask) | (value & mask));
     if (addr == REG_ROMCTRL && (value & mask & 0x80000000)) card_start(reg(addr));
+    if (addr >= REG_VRAMCNT && addr < REG_VRAMCNT + 12) vram_remap();
+    if ((addr & ~0x1000u) < 0x04000070) gpu_io_written(addr);
     for (int n = 0; n < 4; n++) {
         if (addr == 0x040000B8u + 12 * n && (value & mask & 0x80000000) && !(old & 0x80000000)) run_dma(n);
     }

@@ -19,6 +19,7 @@ void pxi_clear_send_fifo();
 void arm7_boot();
 void arm7_sound_init();
 void arm7_input_init();
+void arm7_vblank();  // per-frame ARM7 work: buttons and touch state in shared memory
 void arm7_card_init(const std::string& save_path);
 void pxi_reply(uint32_t tag, uint32_t data, bool err = false);
 

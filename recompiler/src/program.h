@@ -51,6 +51,10 @@ struct Program {
 // Loads the manifest and module binaries. HLE entries come from "hle" lines.
 Program load_program(const std::string& manifest_path);
 
+// Adds an alternate entry (a call target found inside a function, e.g. in a code blob).
+// Returns false when no function encloses the address.
+bool add_discovered_entry(Module& m, uint32_t addr, bool thumb);
+
 std::string symbol_for(const Module& m, const Function& f);
 
 }  // namespace recomp

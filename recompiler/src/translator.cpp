@@ -90,6 +90,24 @@ int Translator::switch_case_count(uint32_t addr, uint32_t reg) const {
     return n - 1;
 }
 
+bool Translator::is_manual_call(uint32_t addr) const {
+    auto raw = mod_.read32(addr);
+    auto prev = mod_.read32(addr - 4);
+    if (fn_.thumb || !raw || !prev || (*raw >> 28) != 0xE || (*prev >> 28) != 0xE) return false;
+    bool bx = (*raw & 0x0FFFFFF0) == 0x012FFF10 && (*raw & 0xF) != 14;
+    bool mov_pc = (*raw & 0x0FFFFFF0) == 0x01A0F000 && (*raw & 0xF) != 14;
+    if (!bx && !mov_pc) return false;
+    uint32_t lr;
+    if ((*prev & 0x0FFFF000) == 0x028FE000) {  // add lr, pc, #imm
+        lr = addr - 4 + 8 + std::rotr(*prev & 0xFF, ((*prev >> 8) & 0xF) * 2);
+    } else if (*prev == 0xE1A0E00F) {  // mov lr, pc
+        lr = addr - 4 + 8;
+    } else {
+        return false;
+    }
+    return lr == addr + 4;
+}
+
 Translator::Flow Translator::arm_flow(uint32_t addr, uint32_t raw) {
     Flow f;
     uint32_t cond = raw >> 28;
@@ -108,7 +126,7 @@ Translator::Flow Translator::arm_flow(uint32_t addr, uint32_t raw) {
         return f;
     }
     if ((raw & 0x0FFFFFF0) == 0x012FFF10) {  // BX
-        f.falls_through = !always;
+        f.falls_through = !always || is_manual_call(addr);
         return f;
     }
     bool dp = (raw & 0x0C000000) == 0 && !((raw & 0x0E000090) == 0x00000090) &&
@@ -116,6 +134,7 @@ Translator::Flow Translator::arm_flow(uint32_t addr, uint32_t raw) {
               (raw & 0x0FB0F000) != 0x0320F000 && (raw & 0x0FFFFFD0) != 0x012FFF10;
     uint32_t op = (raw >> 21) & 0xF;
     if (dp && ((raw >> 12) & 0xF) == 15 && !(op >= 8 && op <= 11)) {
+        if (is_manual_call(addr)) return f;
         // add pc, pc, rM, lsl #2  -> jump table of branches after the default slot
         if (op == 4 && ((raw >> 16) & 0xF) == 15 && !(raw & 0x02000000) && (raw & 0xFF0) == 0x100) {
             int n = switch_case_count(addr, raw & 0xF);
@@ -238,6 +257,7 @@ std::string Translator::branch_to(uint32_t target, bool thumb) {
         }
         return std::format("{{ {}(c); return; }}", symbol_for(*owner, *f));
     }
+    if (mod_.contains(target)) stats_.missing_entries.insert({mod_.name, target | (thumb ? 1 : 0)});
     return std::format("{{ call_indirect(c, {}); return; }}", hex32(target | (thumb ? 1 : 0)));
 }
 
@@ -252,6 +272,7 @@ std::string Translator::call_to(uint32_t target, bool thumb, uint32_t ret) {
         }
         return std::format("{{ {} {}(c); }}", set_lr, symbol_for(*owner, *f));
     }
+    if (mod_.contains(target)) stats_.missing_entries.insert({mod_.name, target | (thumb ? 1 : 0)});
     return std::format("{{ {} call_indirect(c, {}); }}", set_lr, hex32(target | (thumb ? 1 : 0)));
 }
 
@@ -310,6 +331,14 @@ std::string Translator::arm_data_processing(uint32_t addr, uint32_t raw) {
     }
     if (rd == 15 && !test && !s && op == 13 && (raw & 0x02000FFF) == 0x0000000E) {
         return "return;";  // mov pc, lr
+    }
+    if (rd == 15 && is_manual_call(addr)) {
+        return std::format("{{ call_indirect(c, c.r[{}]); }}", raw & 0xF);
+    }
+    if (rn == 15 && (raw & 0x02000000) && !s && (op == 2 || op == 4) && rd != 15) {
+        uint32_t imm = std::rotr(raw & 0xFF, ((raw >> 8) & 0xF) * 2);
+        uint32_t value = op == 4 ? addr + 8 + imm : addr + 8 - imm;
+        if (is_local(value)) stats_.pc_relative_refs.insert({mod_.name, value});
     }
 
     std::string carry;
@@ -523,7 +552,8 @@ std::string Translator::arm(uint32_t addr, uint32_t raw) {
         case 1:
             if ((raw & 0x0FFFFFF0) == 0x012FFF10) {  // BX
                 uint32_t rm = raw & 0xF;
-                body = rm == 14 ? "return;" : jump_indirect(std::format("c.r[{}]", rm));
+                if (is_manual_call(addr)) body = std::format("call_indirect(c, c.r[{}]);", rm);
+                else body = rm == 14 ? "return;" : jump_indirect(std::format("c.r[{}]", rm));
                 body = "{ " + body + " }";
             } else if ((raw & 0x0FFFFFF0) == 0x012FFF30) {  // BLX register
                 body = std::format("{{ uint32_t t = c.r[{}]; c.r[14] = {}; call_indirect(c, t); }}", raw & 0xF, hex32(addr + 4));

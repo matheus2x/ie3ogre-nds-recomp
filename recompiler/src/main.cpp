@@ -36,6 +36,13 @@ void write_if_changed(const fs::path& path, const std::string& text) {
     std::ofstream(path, std::ios::binary) << text;
 }
 
+bool in_code_blob(const Module& m, uint32_t addr) {
+    for (const auto& fn : m.functions) {
+        if (!fn.alt_entry && fn.name.rfind("blob_", 0) == 0 && addr > fn.addr && addr < fn.body_end) return true;
+    }
+    return false;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -49,6 +56,31 @@ int main(int argc, char** argv) {
         fs::create_directories(out);
         Stats stats;
         std::set<std::string> written;
+
+        // Direct calls into the middle of a function (mostly code blobs the function map
+        // only knows by their first instruction) become entries; translating again may
+        // reveal more of them.
+        for (int pass = 0;; pass++) {
+            Stats probe;
+            for (const auto& mod : prog.modules) {
+                for (const auto& fn : mod.functions) Translator(prog, mod, fn, probe).translate();
+            }
+            size_t added = 0;
+            for (const auto& [name, target] : probe.missing_entries) {
+                for (auto& mod : prog.modules) {
+                    if (mod.name == name && add_discovered_entry(mod, target & ~1u, target & 1)) added++;
+                }
+            }
+            // In code blobs, pc-relative addresses are how the code finds its own routines.
+            for (const auto& [name, target] : probe.pc_relative_refs) {
+                for (auto& mod : prog.modules) {
+                    if (mod.name != name || !in_code_blob(mod, target)) continue;
+                    if (add_discovered_entry(mod, target & ~1u, target & 1)) added++;
+                }
+            }
+            if (added == 0) break;
+            std::printf("pass %d: %zu entries found inside functions\n", pass + 1, added);
+        }
 
         for (const auto& mod : prog.modules) {
             size_t chunk = 0;

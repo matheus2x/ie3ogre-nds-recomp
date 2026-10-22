@@ -51,6 +51,11 @@ void fiber_switch(Fiber* to) {
     SwitchToFiber(to->handle);
 }
 
+void fiber_destroy(Fiber* f) {
+    DeleteFiber(f->handle);
+    delete f;
+}
+
 #else
 
 struct Fiber {
@@ -94,6 +99,11 @@ void fiber_switch(Fiber* to) {
     if (from == to) return;
     g_current = to;
     swapcontext(&from->ctx, &to->ctx);
+}
+
+void fiber_destroy(Fiber* f) {
+    std::free(f->stack);
+    delete f;
 }
 
 #endif

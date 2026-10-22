@@ -14,5 +14,9 @@ int main(int argc, char** argv) {
         std::fprintf(stderr, "error: cannot read %s\n", argv[1]);
         return 1;
     }
+    if (!ntr::host_init()) {
+        std::fprintf(stderr, "error: cannot open the window (set NTR_HEADLESS=1 to run without one)\n");
+        return 1;
+    }
     ntr::boot();
 }

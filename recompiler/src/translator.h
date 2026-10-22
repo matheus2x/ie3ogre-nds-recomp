@@ -17,6 +17,11 @@ struct Stats {
     uint64_t unhandled = 0;
     std::map<std::string, uint64_t> unhandled_kinds;
     std::set<std::string> hle_ids;
+    // Direct call/branch targets in the caller's module with no function entry:
+    // (module, address | thumb bit). main.cpp turns those inside a function into entries.
+    std::set<std::pair<std::string, uint32_t>> missing_entries;
+    // Code addresses formed with "add/sub rD, pc, #imm" (ARM), same encoding as above.
+    std::set<std::pair<std::string, uint32_t>> pc_relative_refs;
 };
 
 class Translator {
@@ -36,6 +41,9 @@ private:
     Flow arm_flow(uint32_t addr, uint32_t raw);
     Flow thumb_flow(uint32_t addr, uint16_t raw, uint16_t next);
     bool is_local(uint32_t target) const { return target >= fn_.addr && target < fn_.body_end; }
+    // "add lr, pc, #k" or "mov lr, pc" right before a "bx rM"/"mov pc, rM" that returns
+    // to the next instruction: a call written by hand (assembly code blobs).
+    bool is_manual_call(uint32_t addr) const;
     int switch_case_count(uint32_t addr, uint32_t reg) const;
 
     // --- emission ---

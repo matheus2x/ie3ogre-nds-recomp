@@ -35,8 +35,8 @@ void memory_init() {
     map(kDtcmBase, kDtcmBase + kDtcmSize, g_memory.dtcm);
     map(0x03000000, 0x04000000, g_memory.shared_wram);
     map(0x05000000, 0x06000000, g_memory.palette);
-    map(0x06800000, 0x06800000 + 0x00A4000, g_memory.vram);
     map(0x07000000, 0x08000000, g_memory.oam);
+    vram_remap();  // all banks start disabled
 }
 
 void guest_copy_in(uint32_t dst, const void* src, uint32_t size) {
@@ -55,14 +55,18 @@ namespace {
 
 bool is_io(uint32_t addr) { return (addr >> 24) == 0x04; }
 
+// VRAM with no bank behind it reads as zero and ignores writes; games do touch it.
+bool is_vram(uint32_t addr) { return (addr >> 24) == 0x06; }
+
 uint32_t unmapped_read(uint32_t addr) {
     if (addr >= 0x08000000 && addr < 0x0A000000) return 0xFFFFFFFF;  // empty slot-2
+    if (is_vram(addr)) return 0;
     NTR_LOG("[mem] read from unmapped %08X\n", addr);
     return 0;
 }
 
 void unmapped_write(uint32_t addr, uint32_t value) {
-    if (addr >= 0x08000000 && addr < 0x0A000000) return;
+    if ((addr >= 0x08000000 && addr < 0x0A000000) || is_vram(addr)) return;
     NTR_LOG("[mem] write %08X to unmapped %08X\n", value, addr);
 }
 

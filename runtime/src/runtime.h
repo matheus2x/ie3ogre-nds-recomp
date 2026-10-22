@@ -45,6 +45,53 @@ void guest_copy_out(void* dst, uint32_t src, uint32_t size);
 uint32_t io_read32(uint32_t addr);
 void io_write32(uint32_t addr, uint32_t value, uint32_t mask);
 
+// --- VRAM banks -----------------------------------------------------------------
+// Memory::vram holds banks A-I back to back in LCDC order. A view is one of the areas
+// the 2D/3D engines read from, split in 16 KiB granules; unmapped granules are null.
+
+enum class VramArea { ABg, BBg, AObj, BObj, Texture, TexPalette, ABgExtPal, BBgExtPal, AObjExtPal, BObjExtPal, Count };
+
+struct VramView {
+    uint8_t* granule[32] = {};
+    uint32_t size = 0;  // bytes the area spans (accesses wrap at this size)
+
+    uint8_t* ptr(uint32_t off) const {
+        off %= size;
+        uint8_t* g = granule[off >> 14];
+        return g ? g + (off & 0x3FFF) : nullptr;
+    }
+    uint8_t read8(uint32_t off) const {
+        const uint8_t* p = ptr(off);
+        return p ? *p : 0;
+    }
+    uint16_t read16(uint32_t off) const {
+        const uint8_t* p = ptr(off & ~1u);
+        return p ? uint16_t(p[0] | p[1] << 8) : 0;
+    }
+};
+
+const VramView& vram_view(VramArea area);
+void vram_remap();  // after a VRAMCNT write: rebuilds the views and the CPU pages
+uint8_t* vram_lcdc_bank(int bank);  // bank 0-3 (A-D) for display mode 2, null unless in LCDC mode
+
+// --- video ----------------------------------------------------------------------
+
+constexpr int kScreenWidth = 256;
+constexpr int kScreenHeight = 192;
+
+void gpu_init();
+void gpu_render_line(uint32_t line);  // called as the LCD starts drawing a visible line
+void gpu_vblank();                    // called as VBlank starts: presents the frame
+void gpu_io_written(uint32_t addr);   // affine reference point writes reload the latch
+
+// --- host frontend (SDL3) ---------------------------------------------------------
+
+// Top and bottom physical screens, 256x192 XRGB8888 each.
+void host_present(const uint32_t* top, const uint32_t* bottom);
+uint16_t host_keyinput();  // REG_KEYINPUT, active low
+uint16_t host_extkeys();   // ARM7 EXTKEYIN (X, Y, pen, hinge), active low
+bool host_touch(int& x, int& y);  // bottom screen pixel, true while pressed
+
 // --- time / interrupts -------------------------------------------------------
 
 uint64_t now_cycles();
@@ -77,6 +124,7 @@ Rom& rom();
 bool rom_load(const std::string& path);
 
 void trace_install();
+void trace_frame(uint64_t frame);  // NTR_PROFILE window bookkeeping
 
 // --- logging ------------------------------------------------------------------
 

@@ -53,6 +53,7 @@ bool rom_load(const std::string& path) {
     uint32_t arm9_off = u32(0x20), arm9_entry = u32(0x24), arm9_ram = u32(0x28), arm9_size = u32(0x2C);
 
     memory_init();
+    gpu_init();
     guest_copy_in(arm9_ram, r.data() + arm9_off, arm9_size);
     guest_copy_in(0x027FFE00, r.data(), 0x170);
 

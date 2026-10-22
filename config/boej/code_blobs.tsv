@@ -1,0 +1,5 @@
+# Code that the dsd function map classifies as data (position-independent modules kept in
+# .rodata and called through pointers). "tools/analyze.py manifest" emits each as one
+# function; ntr-recomp then adds the call targets found inside it as entries.
+# module	address	size	mode	name	evidence
+ov127	0x02130754	0x659c	arm	blob_ov127_02130754	starts with "b 0x02131e44"; called through a pointer at 0x0212ba54 (up to the next dsd data label)

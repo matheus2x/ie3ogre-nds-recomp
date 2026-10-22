@@ -223,7 +223,7 @@ def read_sections(path: Path) -> list[tuple[int, int, str]]:
 
 
 def cmd_manifest(args):
-    """Write build/recomp/manifest.tsv: modules, code sections, functions and labels."""
+    """Write build/recomp/manifest.tsv: modules, code sections, functions, labels and code blobs."""
     layout = json.loads((ROOT / "config" / "boej" / "layout" / "retail.json").read_text())
     extract = ROOT / "build" / "extract" / "retail"
     dsd_extract = ROOT / "build" / "dsd" / "extract"
@@ -245,6 +245,12 @@ def cmd_manifest(args):
             modules.append((name, ov["ram_address"], dsd_extract / "arm9_overlays" / f"{name}.bin",
                             symbols_file(name)))
 
+    blobs: dict[str, list[str]] = {}
+    for line in (ROOT / "config" / "boej" / "code_blobs.tsv").read_text().splitlines():
+        if line.strip() and not line.startswith("#"):
+            module, addr, size, mode, name, *_ = line.split("\t")
+            blobs.setdefault(module, []).append(f"func\t{int(addr, 16):#010x}\t{size}\t{mode}\t{name}")
+
     lines = []
     for name, base, data, symbols in modules:
         lines.append(f"module\t{name}\t{base}\t{data}")
@@ -260,6 +266,7 @@ def cmd_manifest(args):
                 lines.append(f"func\t{addr}\t{size}\t{params[0]}\t{parts[0]}")
             elif kind.startswith("kind:label("):
                 lines.append(f"entry\t{addr}\t{kind[len('kind:label('):-1]}\t{parts[0]}")
+        lines.extend(blobs.get(name, []))
     for line in (ROOT / "config" / "boej" / "hle.tsv").read_text().splitlines():
         if line.strip() and not line.startswith("#"):
             name, hle_id, *_ = line.split("\t")

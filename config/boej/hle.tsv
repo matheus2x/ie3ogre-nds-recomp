@@ -23,3 +23,7 @@ OS_InitContext	os_init_context	forgets the host fiber of a reused OSContext
 FS_StartOverlay	fs_start_overlay	marks the overlay active for indirect calls, then runs it
 FS_EndOverlay	fs_end_overlay	runs it, then marks the overlay inactive
 OS_IrqHandler	os_irq_handler	IRQ dispatch + OS_IrqHandler_ThreadSwitch on host fibers (lr tricks and stack switching)
+Task_RunAll	task_run_all	game coroutines on host fibers (they switch guest stacks and jump into the middle of Task_Yield)
+Task_Yield	task_yield	back to the scheduler fiber
+Task_Exit	task_exit	ends the task's fiber
+blob_ov127_02130754	mobiclip_skip	Mobiclip decoder blob (hand-written ARM, computed jumps): frames are not decoded yet
