@@ -46,6 +46,7 @@ Se o seu dump tiver outro SHA-1, abra uma issue informando o código do jogo e o
 
 - [x] Extração da ROM: ARM9/ARM7, ITCM/DTCM, 133 overlays, NitroFS
 - [x] Identificação de dumps por SHA-1 (retail + versões modificadas) e comparação entre dumps
+- [x] Mapa de funções (ds-decomp) e projeto Ghidra com overlays; identificação do NitroSDK em andamento
 - [ ] Recompilador ARMv5TE/Thumb → C (`ntr-recomp`)
 - [ ] Runtime: memória, IRQ, timers, DMA, overlays, FS sem cartucho emulado
 - [ ] HLE do NitroSDK e do ARM7 (som, touch, RTC, backup → arquivo `.sav`)
@@ -60,8 +61,8 @@ Se o seu dump tiver outro SHA-1, abra uma issue informando o código do jogo e o
 
 | Pasta | Conteúdo |
 |---|---|
-| `tools/` | Ferramentas em Python (`ntr/` lê a ROM; `extract.py` extrai; `compare_dumps.py` compara dumps; `tests/` tem os testes) |
-| `config/boej/` | `dumps.json` (dumps conhecidos) e `layout/<variante>.json` (endereços, overlays, hashes). Nenhum dado do jogo |
+| `tools/` | Ferramentas em Python (`ntr/` lê a ROM; `extract.py` extrai; `compare_dumps.py` compara dumps; `analyze.py` roda dsd/Ghidra; `ghidra/` tem os scripts do Ghidra; `tests/` tem os testes) |
+| `config/boej/` | `dumps.json` (dumps conhecidos), `layout/<variante>.json` (endereços, overlays, hashes), `dsd/` (funções, seções e relocações do ds-decomp) e `names.tsv` (nomes identificados, com evidência). Nenhum dado do jogo |
 | `docs/` | Documentação e diário de implementação |
 | `build/` | Saída local (extração, código gerado). Ignorada pelo git |
 
@@ -84,6 +85,19 @@ python3 -m unittest discover -s tools/tests -t tools
 ```
 
 Dumps fora de `dumps.json` são recusados. Para experimentos, use `--allow-unknown`.
+
+### Análise estática
+
+Requer [ds-decomp](https://github.com/AetiasHax/ds-decomp) v0.12.1 e Ghidra 12.1.4 com JDK 21. Os caminhos vêm de
+`DSD`, `GHIDRA_INSTALL_DIR` e `JAVA_HOME`; sem essas variáveis, os padrões ficam em `~/tools`.
+
+```sh
+python3 tools/analyze.py dsd retail.nds     # mapa de funções -> config/boej/dsd (só aceita o dump retail)
+python3 tools/analyze.py names              # aplica config/boej/names.tsv aos símbolos
+python3 tools/analyze.py ghidra             # projeto headless -> build/ghidra/boej.gpr
+python3 tools/analyze.py decompile NitroMain ov132:0x0213acc0
+python3 tools/analyze.py export ram itcm    # pseudo-C de blocos inteiros -> build/ghidra/export/
+```
 
 Conteúdo de `build/extract/<variante>/`:
 

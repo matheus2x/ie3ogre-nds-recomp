@@ -1,0 +1,8 @@
+func_ov116_02124d00 kind:function(arm,size=0x124) addr:0x02124d00
+func_ov116_02124e24 kind:function(arm,size=0x14) addr:0x02124e24
+func_ov116_02124e38 kind:function(arm,size=0x4) addr:0x02124e38
+__sinit_ov116_02124e3c kind:function(arm,size=0x54) addr:0x02124e3c
+.p__sinit_ov116_02124e3c kind:data(word) addr:0x02124e90
+data_ov116_02124ea0 kind:data(any) addr:0x02124ea0
+data_ov116_02124ec0 kind:data(any) addr:0x02124ec0
+data_ov116_02124f20 kind:data(any) addr:0x02124f20 ambiguous

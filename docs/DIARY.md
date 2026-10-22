@@ -141,3 +141,79 @@ Ele passa a ser a **referência canônica** (`retail`). O dump anterior virou a 
 1. No Ghidra, montar o mapa de memória do **retail** (ARM9 estático, ITCM, DTCM, overlays por slot) e nomear as funções do SDK.
 2. Usar o mapa de funções para confirmar que as diferenças da tradução estão só em dados.
 3. Descobrir se o som usa SDAT/SND padrão ou um driver Level-5.
+
+---
+
+## 2026-10-21: Fase 2, mapa de memória no Ghidra e identificação do SDK
+
+**Ferramentas novas**
+- **ds-decomp (`dsd`) v0.12.1**, instalado via `cargo install --git … --tag v0.12.1 --root ~/tools/ds-decomp-0.12.1`. O pipeline exige exatamente essa versão.
+  - `dsd init` encontrou 16.054 funções (15.873 ARM e 181 Thumb) no ARM9, no ITCM e nas 133 overlays.
+  - Também gerou as seções de cada módulo (`.text/.rodata/.init/.ctor/.data/.bss`) e as relocações (chamadas e literais).
+  - A config fica versionada em `config/boej/dsd/` (8,7 MB, só endereços) e é a fonte da verdade dos símbolos.
+  - As 2 assinaturas embutidas do dsd (`FS_LoadOverlay`/`FS_UnloadOverlay`) **não batem** com o SDK 5.4 deste jogo.
+- **`tools/analyze.py`** reúne os passos de análise:
+  - `dsd <retail.nds>` roda dsd extract + init. Só aceita o dump retail e não sobrescreve a config sem `--force`.
+  - `names` aplica `config/boej/names.tsv` aos `symbols.txt` do dsd. Recusa nomes duplicados e endereços sem função.
+  - `ghidra` monta o projeto headless em `build/ghidra/boej.gpr` (ARM:LE:32:v5t). O script é `tools/ghidra/ImportBoej.java`.
+  - `decompile <alvo>…` decompila funções avulsas (`tools/ghidra/Decompile.java`).
+  - `export <bloco>…` decompila blocos inteiros para `build/ghidra/export/<bloco>.c` (`tools/ghidra/ExportC.java`).
+
+**Mapa de memória no Ghidra**
+- `ram` 0x02000000: só o módulo estático, até 0x02093920.
+- `itcm` 0x01FF8000 e `dtcm` 0x027E0000.
+- Uma overlay block por overlay (`ov000`…`ov132`), cada uma no seu espaço de endereços.
+- O modo ARM/Thumb de cada função é definido antes de qualquer desmontagem; senão há conflito de contexto.
+- Resultado: 16.037 funções e 7.689 rótulos, sem falhas.
+- Limitação: chamadas de uma overlay para outra (por exemplo ov089 → 0x0210EFAC, no slot do ov016/017) aparecem como "memória inexistente", porque o Ghidra não sabe qual overlay está carregada. O `relocs.txt` do dsd indica o módulo alvo e pode alimentar essas referências depois.
+- O REA não abre projetos `.gpr`, então as consultas são feitas pelos scripts headless acima.
+
+**DS Protect no ov129.** O dsd detecta e descriptografa funções protegidas pelo DS Protect (antipirataria) no ov129. O símbolo traz `dsprot=(…)` para indicar isso.
+- O Ghidra usa a cópia descriptografada do dsd.
+- As diferenças do ov129 na tradução são 3 bytes no offset 0x6D das 4 primeiras funções protegidas (blocos de 0xA0). Isso é um **crack do DS Protect**, não tradução. No port o DS Protect vai ser neutralizado de qualquer jeito, então essa diferença não pesa.
+- O `dsd rom extract` **falha** no dump da tradução ("length-distance pair … outside of decompressed stream"). O `tools/extract.py` lida com ele normalmente.
+
+**Diferenças da tradução por seção** (com as seções do dsd). Todas as 33 overlays alteradas mudam só `.data`/`.rodata`, com duas exceções:
+- ov051 e ov065: alguns bytes caem fora das seções (padding e o byte extra no fim do ov065).
+- ov129: `.text`, que é o crack do DS Protect descrito acima.
+
+A pendência da fase 1 está resolvida: **a tradução não altera código do jogo**.
+
+**Identificação do SDK** (`config/boej/names.tsv`, 232 nomes por enquanto). A identificação foi manual, comparando o pseudo-C exportado com a estrutura dos fontes do NitroSDK, o uso de registradores e a sequência de chamadas. Cada linha registra a evidência.
+- **crt0**: `_start`, `init_cp15`, `MIi_UncompressBackward`, `do_autoload`, `_fp_init`, `__call_static_initializers`, `main` e `NitroMain` (0x02029C08).
+- **OS**: IRQ, threads, contexto, mensagens, mutex, cache, arena/heap, tick, alarm/valarm, interrupções, `OS_Init` (sequência conferida com o SDK) e reset.
+- **ITCM**: `OS_IrqHandler` (0x01FF8000), `OS_IrqHandler_ThreadSwitch` e o caminho de reset.
+- **CARD**: init, locks de recurso, comandos de ROM (0xB5/0xB7/0xB8) e `CARDi_ReadRom` (0x0201121C).
+- **FS**: overlays (`FS_LoadOverlay` 0x0200E580, `FS_StartOverlay`, `FS_EndOverlay`…). O boot carrega o **ov126** a partir da `NitroMain`.
+- **PXI**: `PXI_Init`, `PXI_SetFifoRecvCallback` e `PXI_SendWordByFifo` (0x02015B04).
+- **GX**: só o básico (`GX_Init`, DispOn/Off, modos), porque o modelo de hardware cobre o resto.
+
+**Serviços do ARM7 usados pelo jogo** (tags PXI com callback registrado ou envio, no esquema EX=0 do SDK 5):
+
+| Tag | Serviço | Função no ARM9 |
+|---|---|---|
+| 5 | RTC | `RTC_Init` |
+| 6 | Touch | `TP_Init` |
+| 7 | Som | `SNDi_InitPxi`, `SND_FlushCommand` |
+| 8 | PM (energia) | `PM_Init` |
+| 10 | Wi-Fi (WMW) | `WM_Init` |
+| 11 | Cartão/FS | `CARDi_*` |
+| 12 | Reset do OS | `OS_InitReset` |
+| 13 / 17 | Slot-2 (CTRDG / CTRDG_PHI) | `CTRDG_Init` |
+| 14 | Remoção do cartão | `CARD_InitPulledOutCallback` |
+
+As tags 3 (NVRAM) e 9 (MIC) não aparecem no ARM9 estático; falta conferir nas overlays.
+
+**Decisões para o HLE** (que vão guiar o recompilador)
+1. **Fronteira com o ARM7 = PXI.** O runtime intercepta `PXI_SendWordByFifo` por tag e responde pelos callbacks registrados. O ARM7 não é recompilado.
+2. **Threads e contexto**: `OS_SaveContext`, `OS_LoadContext`, `OS_IrqHandler_ThreadSwitch` e `OSi_RescheduleThread` não funcionam como C recompilado, porque trocam a pilha. Vão virar HLE com fibers/corrotinas no host.
+3. **Espera**: `OS_Halt`, `OS_WaitIrq`, `OS_WaitVBlankIntr` e `OSi_WaitVCount0` passam a ceder ao scheduler de frames do runtime.
+4. **ROM**: o hook fica em `CARDi_ReadRom` (cópia direta da imagem da ROM do usuário). O cartão não é emulado.
+5. **Overlays**: `FS_StartOverlay`/`FS_EndOverlay` ativam e desativam o código recompilado de cada overlay.
+6. **Cache** (`DC_*`/`IC_*`): no-op.
+
+**Próximos passos**
+1. Nomear o restante do SDK que importa para o HLE: MI (DMA/cópias), SND, TP, RTC, PM, CTRDG e a API de arquivos do FS. Depois, as funções de NitroSystem (NNS) e Mobiclip.
+2. Referências entre overlays no Ghidra, a partir do `relocs.txt`.
+3. Tabela de quais overlays ficam carregadas juntas (slot × cena), necessária para o dispatcher de chamadas indiretas.
+4. Começar o `ntr-recomp` (decoder ARMv5TE/Thumb + emissor C) usando os limites de função do dsd.

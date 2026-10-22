@@ -1,0 +1,235 @@
+# Function names for the retail ARM9 (applied on top of config/boej/dsd by "tools/analyze.py names").
+# module	address	name	evidence
+# Evidence codes: src = matches NitroSDK source structure/order; mmio = register use; call = caller/callee context.
+main	0x02000800	_start	crt0: IME=0, wait VCOUNT, cp15 init, autoload, BSS clear, jump to main
+main	0x02000a78	init_cp15	crt0 callee; programs CP15 protection regions
+main	0x0200093c	INITi_CpuClear32	crt0 callee (clear, dst, size)
+main	0x02000950	MIi_UncompressBackward	crt0 callee with ModuleParams->compressed_static_end
+main	0x020009fc	do_autoload	crt0 callee before BSS clear
+main	0x0202103c	_fp_init	crt0 callee after IRQ handler install
+main	0x02000b60	NitroStartUp	crt0 callee, empty stub
+main	0x0201dd40	__call_static_initializers	crt0 callee before main
+main	0x02000c8c	main	dsd; tail-jumps to NitroMain
+main	0x02029c08	NitroMain	main tail-jump target; game init sequence
+main	0x02000c98	OS_WaitIrq	src os_irqHandler.c; DTCM+0x3FF8 check flag, OS_SleepThread loop
+main	0x02000d0c	OS_IrqDummy	src os_irqTable.c
+main	0x02000d10	OSi_IrqCallback	src os_irqTable.c; DMA/timer callback table
+main	0x02000d98	OSi_IrqDma0	src
+main	0x02000da8	OSi_IrqDma1	src
+main	0x02000db8	OSi_IrqDma2	src
+main	0x02000dc8	OSi_IrqDma3	src
+main	0x02000dd8	OSi_IrqTimer0	src
+main	0x02000de8	OSi_IrqTimer1	src
+main	0x02000df8	OSi_IrqTimer2	src
+main	0x02000e08	OSi_IrqTimer3	src
+main	0x02000e18	OS_InitIrqTable	src os_interrupt.c; called from OS_Init
+main	0x02000e30	OS_SetIrqFunction	src; 22 IRQ sources, DMA 8-11 / timer 3-6 tables
+main	0x02000eb8	OS_GetIrqFunction	src
+main	0x02000f44	OSi_EnterDmaCallback	src; enables IE bit 8+n
+main	0x02000f8c	OSi_EnterTimerCallback	src; enables IE bit 3+n
+main	0x02000fd0	OS_SetIrqMask	mmio IME/IE
+main	0x02000ffc	OS_EnableIrqMask	mmio IME/IE |=
+main	0x0200102c	OS_DisableIrqMask	mmio IME/IE &= ~
+main	0x0200105c	OS_ResetRequestIrqMask	mmio IME/IF
+main	0x02001088	OS_SetIrqStackChecker	src; called from OS_Init; DTCM+0x3F7C
+main	0x020010cc	OSi_CommonCallback	src os_reset.c; PXI tag check 0x1000
+main	0x020010fc	OSi_SendToPxi	src os_reset.c; PXI FIFO tag 0xC
+main	0x02001128	OS_InitLock	src os_spinLock.c; called from OS_Init
+main	0x020011f8	OSi_LockByWord	src; retry loop with WaitByLoop(0x400)
+main	0x02001254	OSi_DoUnlockByWord	src
+main	0x020012d8	OSi_DoTryLockByWord	src; MI_SwapWord
+main	0x02001354	OS_LockCartridge	src; OSi_DoLockByWord with disableFiq=TRUE
+main	0x02001380	OS_UnlockCartridge	src
+main	0x020013a0	OSi_AllocateCartridgeBus	mmio EXMEMCNT &= ~0x80
+main	0x020013b8	OSi_FreeCartridgeBus	mmio EXMEMCNT |= 0x80
+main	0x020013d0	OS_LockCard	src; OS_LockByWord + card bus
+main	0x020013ec	OS_UnlockCard	src; used by CARD_UnlockRom
+main	0x02001408	OSi_AllocateCardBus	mmio EXMEMCNT &= ~0x800
+main	0x02001420	OSi_FreeCardBus	mmio EXMEMCNT |= 0x800
+main	0x02001438	OS_ReadOwnerOfLockWord	src
+main	0x02001440	OS_GetLockID	src; bitmap ids 0x40-0x7F
+main	0x02001498	OS_ReleaseLockID	src
+main	0x020014c8	OS_SPrintf	src; OS_VSNPrintf(dst, 0x7FFFFFFF, ...)
+main	0x020014f0	OS_VSPrintf	src
+main	0x02001508	OS_SNPrintf	src
+main	0x02001530	OS_VSNPrintf	src
+main	0x0200153c	OSi_GetUnusedThreadId	src os_thread.c
+main	0x02001554	OSi_InsertLinkToQueue	src
+main	0x020015cc	OSi_RemoveLinkFromQueue	src
+main	0x02001600	OSi_RemoveSpecifiedLinkFromQueue	src
+main	0x02001654	OSi_RemoveMutexLinkFromQueue	src
+main	0x02001684	OSi_InsertThreadToList	src; priority-ordered list
+main	0x020016e0	OSi_RemoveThreadFromList	src
+main	0x02001728	OSi_RescheduleThread	src
+main	0x020017ec	OS_InitThread	src
+main	0x02001938	OS_IsThreadAvailable	src
+main	0x02001948	OS_CreateThread	src
+main	0x02001a38	OS_ExitThread	src
+main	0x02001a58	OSi_ExitThread_ArgSpecified	src
+main	0x02001ab0	OSi_ExitThread	src
+main	0x02001ae8	OSi_ExitThread_Destroy	src
+main	0x02001b44	OS_DestroyThread	src
+main	0x02001bc0	OSi_CancelThreadAlarmForSleep	src
+main	0x02001bd8	OS_JoinThread	src
+main	0x02001c14	OS_IsThreadTerminated	src
+main	0x02001c28	OS_SleepThread	src
+main	0x02001c78	OS_WakeupThread	src
+main	0x02001ce0	OS_WakeupThreadDirect	src
+main	0x02001d08	OS_SelectThread	src
+main	0x02001d34	OS_RescheduleThread	src
+main	0x02001d50	OS_YieldThread	src
+main	0x02001e00	OS_SetThreadPriority	src
+main	0x02001ea8	OS_GetThreadPriority	src
+main	0x02001eb0	OS_Sleep	src; alarm-based sleep in ms
+main	0x02001f50	OSi_SleepAlarmCallback	src
+main	0x02001f70	OS_SetSwitchThreadCallback	src
+main	0x02001f98	OSi_IdleThreadProc	src; enable interrupts + halt loop
+main	0x02001fa8	OS_DisableScheduler	src
+main	0x02001fd8	OS_EnableScheduler	src
+main	0x0200200c	OS_SetThreadDestructor	src
+main	0x02002014	OS_InitContext	src os_context.c
+main	0x02002080	OS_SaveContext	src
+main	0x020020cc	OS_LoadContext	src
+main	0x02002110	OS_GetConsoleType	src os_emulator.c; 0x80000001 cache
+main	0x02002174	OS_InitMessageQueue	src os_message.c
+main	0x0200219c	OS_SendMessage	src
+main	0x02002230	OS_ReceiveMessage	src
+main	0x020022d0	OS_JamMessage	src
+main	0x0200236c	OS_ReadMessage	src
+main	0x020023e4	OS_InitMutex	src os_mutex.c
+main	0x02002408	OS_LockMutex	src
+main	0x02002468	OSi_UnlockAllMutex	src
+main	0x020024b0	OS_TryLockMutex	src
+main	0x02002664	DC_FlushAll	src os_cache.c; set/way clean+invalidate
+main	0x02002698	DC_InvalidateRange	src
+main	0x020026b4	DC_StoreRange	src
+main	0x020026d0	DC_FlushRange	src
+main	0x020026f4	DC_WaitWriteBufferEmpty	src
+main	0x02002700	IC_InvalidateAll	src
+main	0x0200270c	IC_InvalidateRange	src
+main	0x02002754	OS_Init	src os_init.c; PXI_Init, OS_InitArena, OS_InitLock, OS_InitIrqTable...
+main	0x0200279c	OS_InitArena	src os_arena.c
+main	0x020028b8	OS_InitArenaEx	src
+main	0x02002900	OS_GetArenaHi	src; 0x02FFFDC4 table
+main	0x02002914	OS_GetArenaLo	src; 0x02FFFDA0 table
+main	0x02002928	OS_GetInitArenaHi	src
+main	0x02002a08	OS_GetInitArenaLo	src
+main	0x02002aac	OS_SetArenaHi	src
+main	0x02002ac0	OS_SetArenaLo	src
+main	0x02002ad4	OS_AllocFromArenaLo	src
+main	0x02002b40	DLAddFront	src os_alloc.c
+main	0x02002b5c	DLExtract	src
+main	0x02002b84	DLInsert	src
+main	0x02002c2c	OS_AllocFromHeap	src
+main	0x02002d34	OS_FreeToHeap	src
+main	0x02002d9c	OS_SetCurrentHeap	src
+main	0x02002dcc	OS_InitAlloc	src
+main	0x02002e74	OS_CreateHeap	src
+main	0x02002fb0	OS_EnableProtectionUnit	src; CP15 control |= 1
+main	0x02002fc0	OS_DisableProtectionUnit	src
+main	0x02003108	OS_InitException	src os_exception.c; checks debugger vector in 0x02600000-0x02800000
+main	0x02003304	OSi_SetTimerReserved	src os_timer.c
+main	0x02003328	OS_InitTick	src os_tick.c; timer 0
+main	0x02003398	OS_IsTickAvailable	src
+main	0x020033a8	OSi_CountUpTick	src; timer IRQ handler
+main	0x02003410	OS_GetTick	src; 64-bit tick from TM0 + overflow count
+main	0x020034b0	OS_GetTickLo	src; TM0CNT_L
+main	0x020034c0	OSi_SetTimer	src os_alarm.c; TM1 programming
+main	0x020035b8	OS_InitAlarm	src
+main	0x020035f4	OS_IsAlarmAvailable	src
+main	0x02003604	OS_CreateAlarm	src
+main	0x02003614	OSi_InsertAlarm	src
+main	0x0200373c	OS_SetAlarm	src
+main	0x020037a8	OS_SetPeriodicAlarm	src
+main	0x02003818	OS_CancelAlarm	src
+main	0x0200389c	OSi_AlarmHandler	src
+main	0x020038ac	OSi_ArrangeTimer	src
+main	0x02003998	OS_InitVAlarm	src os_valarm.c
+main	0x02003ac4	OS_CreateVAlarm	src
+main	0x02003ad8	OS_SetVAlarm	src
+main	0x02003ba4	OSi_VAlarmHandler	src; VCOUNT-match IRQ
+main	0x02003d94	OS_EnableInterrupts	src os_system.c; CPSR I clear
+main	0x02003da8	OS_DisableInterrupts	src; CPSR I set
+main	0x02003dbc	OS_RestoreInterrupts	src
+main	0x02003dd4	OS_DisableInterrupts_IrqAndFiq	src; CPSR I|F
+main	0x02003de8	OS_RestoreInterrupts_IrqAndFiq	src
+main	0x02003e00	OS_GetCpsrIrq	src
+main	0x02003e0c	OS_GetProcMode	src
+main	0x02003e18	OSi_SpinWait	src; 4-cycle loop
+main	0x02003e40	OS_WaitVBlankIntr	src; SVC_WaitByLoop(1) + OS_WaitIrq(TRUE, VBLANK)
+main	0x02003f38	OS_GetMacAddress	src os_ownerInfo.c; 6-byte copy
+main	0x02003f54	OS_GetOwnerInfo	src
+main	0x02004190	OS_Terminate	src os_terminate_proc.c; disable interrupts + halt loop
+main	0x020041a0	OS_Halt	src; CP15 wait for interrupt
+main	0x020042a4	GX_Init	src gx.c; POWCNT1 |= 0x8000 (display swap), DISPSTAT setup
+main	0x020043ec	GX_SetVCountEqVal	mmio DISPSTAT bits 7-15
+main	0x02004414	GX_VBlankIntr	mmio DISPSTAT bit 3
+main	0x0200445c	GX_DispOff	mmio DISPCNT display mode clear
+main	0x0200449c	GX_DispOn	mmio DISPCNT
+main	0x020044e0	GX_SetGraphicsMode	mmio DISPCNT mode/bg0-3d
+main	0x02004548	GXS_SetGraphicsMode	mmio DISPCNT_SUB & ~7
+main	0x02004694	G3_LoadMtx43	src; GXFIFO command 0x17
+main	0x020046b0	G3_MultMtx43	src; GXFIFO command 0x19
+main	0x020046cc	G3_MultMtx33	src; GXFIFO command 0x1A
+main	0x020046e8	G3X_Init	src g3x.c
+main	0x02004858	G3X_ClearFifo	src; called by G3X_Init
+main	0x0200fe34	CARD_Init	src card_common.c
+main	0x0200ff28	CARD_IsAvailable	src
+main	0x0200ff38	CARD_CheckEnabled	src; terminates when CARD unavailable
+main	0x0200fffc	CARD_UnlockRom	src; OS_UnlockCard + CARDi_UnlockResource(ROM)
+main	0x02010018	CARD_LockBackup	src; CARDi_LockResource(id, BACKUP)
+main	0x02010028	CARD_UnlockBackup	src
+main	0x02010050	CARDi_LockResource	src
+main	0x020100c8	CARDi_UnlockResource	src
+main	0x020102f4	CARDi_TaskThread	src; card worker thread loop
+main	0x02010440	CARDi_ICInvalidateSmart	src; IC_InvalidateAll above threshold
+main	0x0201045c	CARDi_DCInvalidateSmart	src; DC_FlushAll above threshold
+main	0x02010c94	CARDi_SetRomOp	mmio AUXSPICNT/ROMCTRL command setup
+main	0x02010d48	CARDi_ReadRomID	src card_rom.c; command 0xB8
+main	0x02010e68	CARDi_RefreshRom	src; command 0xB5
+main	0x02010eb4	CARDi_ReadRomWithCPU	src; 0x200-byte pages via ROMDATA
+main	0x02010fd0	CARDi_OnReadPageDirect	src; card IRQ per page
+main	0x0201111c	CARDi_TryReadCardDma	src; DMA path checks
+main	0x0201121c	CARDi_ReadRom	src; ROM read entry (dma, src, dst, len, callback, arg, async). HLE hook
+main	0x0200dbf0	FS_InitFile	call; first call in FS_LoadOverlayImage on a stack FSFile
+main	0x0200dd30	FS_OpenFileFast	call; FS_LoadOverlayImage opens FSFileID from FS_GetOverlayFileID
+main	0x0200e06c	FS_GetOverlayTotalSize	src fs_overlay.c; compressed flag in bit 24
+main	0x0200e088	FS_ClearOverlayImage	src; IC/DC invalidate + BSS clear
+main	0x0200e0c4	FS_GetOverlayFileID	src
+main	0x0200e0f0	FS_LoadOverlayInfo	src
+main	0x0200e250	FS_LoadOverlayImage	src
+main	0x0200e390	FS_StartOverlay	src; decompress + run sinit. Recompiler hook: activate overlay code
+main	0x0200e480	FS_EndOverlay	src; recompiler hook: deactivate overlay code
+main	0x0200e570	FS_UnloadOverlayImage	src
+main	0x0200e580	FS_LoadOverlay	src; (FSOverlayTarget, FSOverlayID). Called from NitroMain
+main	0x0200e5d4	FS_UnloadOverlay	src
+main	0x0201598c	PXI_Init	src pxi_init.c; called first in OS_Init
+main	0x02015998	PXI_InitFifo	src pxi_fifo.c; IPCFIFOCNT setup
+main	0x02015a94	PXI_SetFifoRecvCallback	src; per-tag callback table + ready bitmap
+main	0x02015ae0	PXI_IsCallbackReady	src; (tag, proc) bitmap at +0x388
+main	0x02015b04	PXI_SendWordByFifo	src; IPCFIFOSEND = tag | err<<5 | data<<6. HLE boundary to ARM7
+main	0x02015b7c	PXIi_HandlerRecvFifoNotEmpty	src; IPCFIFORECV dispatch
+main	0x0200adc4	RTC_Init	pxi tag 5 (RTC) callback registration
+main	0x0200b544	RTCi_SendPxiCommand	pxi tag 5 send
+main	0x0200be58	SND_FlushCommand	pxi tag 7 (SOUND) send; command queue
+main	0x0200c194	SNDi_InitPxi	pxi tag 7 callback registration + ARM7 ready wait
+main	0x02015ef0	TP_Init	pxi tag 6 (TOUCHPANEL) init; calls PXI_Init
+main	0x020160e8	TP_RequestSamplingAsync	pxi tag 6 send 0x3000000
+main	0x020167cc	PM_Init	pxi tag 8 (PM) init; waits ARM7 ready
+main	0x02016dbc	PMi_SendPxiData	pxi tag 8 send loop
+main	0x02011e14	WM_Init	pxi tag 10 (WMW) callback registration
+main	0x0201183c	CTRDGi_SendtoPxi	pxi tag 13 (CTRDG) send loop
+main	0x0201191c	CTRDG_Init	pxi tag 13/17 (CTRDG, CTRDG_PHI) registration
+main	0x02011434	CARD_InitPulledOutCallback	pxi tag 14 (CARD) registration
+main	0x02011590	CARDi_SendPxi	pxi tag 14 send loop
+itcm	0x01ff8000	OS_IrqHandler	crt0 stores it at DTCM+0x3FFC; IE&IF dispatch via table
+itcm	0x01ff8058	OS_IrqHandler_ThreadSwitch	src; saves/restores thread context after IRQ
+itcm	0x01ff81b8	OSi_DoResetSystem	src os_reset.c; waits OS_GetResetParameter, reloads ROM
+itcm	0x01ff81e4	OSi_DoBoot	src; IME=0, clears memory, jumps to entry
+itcm	0x01ff82b4	OSi_CpuClear32	src
+itcm	0x01ff82c8	OSi_ReloadRomData	src
+main	0x020010bc	OS_GetResetParameter	call; polled by OSi_DoResetSystem
+main	0x020084b0	MI_Init	call; OS_Init sequence after OS_InitException
+main	0x02003fdc	OSi_InitVramExclusive	call; OS_Init sequence after OS_InitVAlarm
+main	0x02003e7c	OS_InitReset	call; OS_Init after OS_InitThread, registers PXI tag 12 (OS)
+main	0x02002728	OSi_WaitVCount0	call; last in OS_Init, spins until VCOUNT == 0

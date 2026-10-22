@@ -1,0 +1,34 @@
+func_ov115_02124d00 kind:function(arm,size=0x84) addr:0x02124d00
+func_ov115_02124d84 kind:function(arm,size=0x20) addr:0x02124d84
+func_ov115_02124da4 kind:function(arm,size=0x28) addr:0x02124da4
+func_ov115_02124dcc kind:function(arm,size=0x38) addr:0x02124dcc
+func_ov115_02124e04 kind:function(arm,size=0x74) addr:0x02124e04
+func_ov115_02124e78 kind:function(arm,size=0x648) addr:0x02124e78
+func_ov115_021254c0 kind:function(arm,size=0x68) addr:0x021254c0
+func_ov115_02125528 kind:function(arm,size=0x1a4) addr:0x02125528
+func_ov115_021256cc kind:function(arm,size=0x168) addr:0x021256cc
+func_ov115_02125834 kind:function(arm,size=0x2cc) addr:0x02125834
+func_ov115_02125b00 kind:function(arm,size=0x27c) addr:0x02125b00
+func_ov115_02125d7c kind:function(arm,size=0x34c) addr:0x02125d7c
+func_ov115_021260c8 kind:function(arm,size=0x9c) addr:0x021260c8
+func_ov115_02126164 kind:function(arm,size=0x80) addr:0x02126164
+func_ov115_021261e4 kind:function(arm,size=0xa8) addr:0x021261e4
+func_ov115_0212628c kind:function(arm,size=0x3c) addr:0x0212628c
+func_ov115_021262c8 kind:function(arm,size=0x14) addr:0x021262c8
+func_ov115_021262dc kind:function(arm,size=0x4) addr:0x021262dc
+data_ov115_021262e0 kind:data(any) addr:0x021262e0
+data_ov115_021262e4 kind:data(any) addr:0x021262e4 ambiguous
+__sinit_ov115_02126320 kind:function(arm,size=0x54) addr:0x02126320
+.p__sinit_ov115_02126320 kind:data(word) addr:0x02126374
+data_ov115_02126380 kind:data(any) addr:0x02126380
+data_ov115_02126398 kind:data(any) addr:0x02126398
+data_ov115_021263a8 kind:data(any) addr:0x021263a8
+data_ov115_021263b8 kind:data(any) addr:0x021263b8
+data_ov115_021263c8 kind:data(any) addr:0x021263c8
+data_ov115_021263d8 kind:data(any) addr:0x021263d8
+data_ov115_021263e8 kind:data(any) addr:0x021263e8
+data_ov115_021263f8 kind:data(any) addr:0x021263f8
+data_ov115_02126410 kind:data(any) addr:0x02126410 ambiguous
+data_ov115_02126430 kind:data(any) addr:0x02126430 ambiguous
+data_ov115_0212647c kind:data(any) addr:0x0212647c
+data_ov115_0212648c kind:data(any) addr:0x0212648c

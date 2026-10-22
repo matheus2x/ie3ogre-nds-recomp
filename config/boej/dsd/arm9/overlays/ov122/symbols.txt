@@ -1,0 +1,37 @@
+func_ov122_02124d00 kind:function(arm,size=0x70) addr:0x02124d00
+func_ov122_02124d70 kind:function(arm,size=0x118) addr:0x02124d70
+func_ov122_02124e88 kind:function(arm,size=0x60) addr:0x02124e88
+func_ov122_02124ee8 kind:function(arm,size=0x304) addr:0x02124ee8
+func_ov122_021251ec kind:function(arm,size=0x28) addr:0x021251ec
+func_ov122_02125214 kind:function(arm,size=0x28) addr:0x02125214
+func_ov122_0212523c kind:function(arm,size=0xdc) addr:0x0212523c
+func_ov122_02125318 kind:function(arm,size=0x3b0) addr:0x02125318
+func_ov122_021256c8 kind:function(arm,size=0x2ac) addr:0x021256c8
+func_ov122_02125974 kind:function(arm,size=0xa4) addr:0x02125974
+func_ov122_02125a18 kind:function(arm,size=0x100) addr:0x02125a18
+func_ov122_02125b18 kind:function(arm,size=0x9c) addr:0x02125b18
+func_ov122_02125bb4 kind:function(arm,size=0x108) addr:0x02125bb4
+func_ov122_02125cbc kind:function(arm,size=0x5c) addr:0x02125cbc
+func_ov122_02125d18 kind:function(arm,size=0x50) addr:0x02125d18
+func_ov122_02125d68 kind:function(arm,size=0x14) addr:0x02125d68
+func_ov122_02125d7c kind:function(arm,size=0x4) addr:0x02125d7c
+data_ov122_02125d80 kind:data(any) addr:0x02125d80
+__sinit_ov122_02125da0 kind:function(arm,size=0x54) addr:0x02125da0
+.p__sinit_ov122_02125da0 kind:data(word) addr:0x02125df4
+data_ov122_02125e00 kind:data(any) addr:0x02125e00
+data_ov122_02125e18 kind:data(any) addr:0x02125e18
+data_ov122_02125e24 kind:data(any) addr:0x02125e24
+data_ov122_02125e30 kind:data(any) addr:0x02125e30
+data_ov122_02125e40 kind:data(any) addr:0x02125e40 ambiguous
+data_ov122_02125e48 kind:data(any) addr:0x02125e48 ambiguous
+data_ov122_02125ea0 kind:data(any) addr:0x02125ea0 ambiguous
+data_ov122_02125eb4 kind:data(any) addr:0x02125eb4
+data_ov122_02125ed0 kind:data(any) addr:0x02125ed0
+data_ov122_02125edc kind:data(any) addr:0x02125edc
+data_ov122_02125ee8 kind:data(any) addr:0x02125ee8
+data_ov122_02125ef0 kind:data(any) addr:0x02125ef0
+data_ov122_02125ef8 kind:data(any) addr:0x02125ef8
+data_ov122_02125f00 kind:data(any) addr:0x02125f00
+data_ov122_02125f0c kind:data(any) addr:0x02125f0c
+data_ov122_02125f14 kind:data(any) addr:0x02125f14
+data_ov122_02125f1c kind:data(any) addr:0x02125f1c
