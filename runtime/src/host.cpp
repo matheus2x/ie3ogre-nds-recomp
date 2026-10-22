@@ -2,8 +2,13 @@
 // input and frame pacing to the DS refresh rate (59.8261 Hz).
 //
 // Keys: arrows = D-pad, X = A, Z = B, S = X, A = Y, Q = L, W = R, Enter = Start,
-// Right Shift/Backspace = Select, Tab (held) = fast forward, F12 = screenshot.
-// The left mouse button touches the bottom screen.
+// Right Shift/Backspace = Select, F12 = screenshot, F8 = state dump to the log (plus a
+// screenshot). The left mouse button touches the bottom screen.
+//
+// Testing shortcuts: Tab (held) or F2 (toggle) = fast forward; C (held) or F3 (toggle) =
+// auto A, which presses and releases A every few frames to skip through messages. On a
+// gamepad, the right trigger fast-forwards and the left trigger is auto A. The window
+// title shows which ones are on.
 //
 // Environment: NTR_HEADLESS (no window, unthrottled), NTR_FAST (unthrottled), NTR_MUTE (no
 // audio device), NTR_WAV (also write the sound output to that WAV file),
@@ -11,7 +16,8 @@
 // (save those frames, a comma-separated list, as BMPs; %d in the path is the frame), NTR_EXIT_FRAME (exit after that many frames),
 // NTR_INPUT (scripted input for tests: "first-last:KEY[+KEY...];..." with frame numbers
 // and keys A B X Y L R START SELECT UP DOWN LEFT RIGHT or TOUCH@x,y), NTR_PEEK
-// ("hexaddr:size", dumps guest memory every frame).
+// ("hexaddr:size", dumps guest memory every frame), NTR_REPLAY (replays a session
+// recording, see diag.cpp), NTR_RECORD (record the session even when headless or scripted).
 #define SDL_MAIN_HANDLED  // main() is ours; SDL_SetMainReady() is called instead
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
@@ -57,7 +63,8 @@ struct Host {
     uint16_t pad_keys = 0;
     bool touching = false;
     int touch_x = 0, touch_y = 0;
-    bool fast_forward = false;
+    bool ff_held = false, ff_toggle = false, ff_pad = false;          // fast forward
+    bool turbo_held = false, turbo_toggle = false, turbo_pad = false;  // auto A
     std::vector<ScriptedInput> script;
     uint16_t script_keys = 0;
     bool script_touch = false;
@@ -140,6 +147,27 @@ void parse_script(const std::string& text) {
     }
 }
 
+// A session recording: NTR_INPUT items one per line, "# rtc <start>" for the clock.
+void load_replay(const char* path) {
+    FILE* f = std::fopen(path, "r");
+    if (!f) {
+        NTR_LOG("[host] cannot read the recording %s\n", path);
+        return;
+    }
+    std::string items;
+    char line[256];
+    while (std::fgets(line, sizeof line, f)) {
+        std::string l = line;
+        while (!l.empty() && (l.back() == '\n' || l.back() == '\r')) l.pop_back();
+        if (l.rfind("# rtc ", 0) == 0) rtc_request_start(l.substr(6));
+        if (l.empty() || l[0] == '#') continue;
+        items += l + ";";
+    }
+    std::fclose(f);
+    parse_script(items);
+    NTR_LOG("[host] replaying %s (%zu input ranges)\n", path, g_host.script.size());
+}
+
 void apply_script() {
     g_host.script_keys = 0;
     g_host.script_touch = false;
@@ -154,7 +182,15 @@ void apply_script() {
     }
 }
 
-uint16_t pressed_keys() { return g_host.keys | g_host.pad_keys | g_host.script_keys; }
+bool fast_forward() { return g_host.ff_held || g_host.ff_toggle || g_host.ff_pad; }
+
+// Auto A: 3 frames pressed, 3 released, so the game sees a new press each time.
+uint16_t turbo_keys() {
+    bool on = g_host.turbo_held || g_host.turbo_toggle || g_host.turbo_pad;
+    return on && (g_host.frame / 3) % 2 == 0 ? 1u << 0 : 0;
+}
+
+uint16_t pressed_keys() { return g_host.keys | g_host.pad_keys | g_host.script_keys | turbo_keys(); }
 
 // Replaces %d in a screenshot path with the current frame number.
 std::string frame_path(std::string pattern) {
@@ -182,6 +218,8 @@ void quit() {
         write_wav_header(g_host.wav, g_host.wav_frames);
         std::fclose(g_host.wav);
     }
+    replay_finish(g_host.frame);
+    NTR_LOG("[host] exit at frame %llu\n", (unsigned long long)g_host.frame);
     if (!g_host.headless) SDL_Quit();
     std::exit(0);
 }
@@ -258,8 +296,17 @@ void pump_events() {
             case SDL_EVENT_KEY_DOWN:
             case SDL_EVENT_KEY_UP: {
                 bool down = ev.type == SDL_EVENT_KEY_DOWN;
-                if (ev.key.key == SDLK_TAB) g_host.fast_forward = down;
+                if (ev.key.key == SDLK_TAB) g_host.ff_held = down;
+                if (ev.key.key == SDLK_C) g_host.turbo_held = down;
+                if (down && !ev.key.repeat) {
+                    if (ev.key.key == SDLK_F2) g_host.ff_toggle = !g_host.ff_toggle;
+                    if (ev.key.key == SDLK_F3) g_host.turbo_toggle = !g_host.turbo_toggle;
+                }
                 if (ev.key.key == SDLK_F12 && down && !ev.key.repeat) {
+                    g_host.f12_frame = g_host.frame + 1;
+                }
+                if (ev.key.key == SDLK_F8 && down && !ev.key.repeat) {
+                    debug_dump("F8");
                     g_host.f12_frame = g_host.frame + 1;
                 }
                 uint16_t bit = key_bit(ev.key.key);
@@ -275,6 +322,10 @@ void pump_events() {
                 g_host.pad_keys = ev.gbutton.down ? (g_host.pad_keys | bit) : (g_host.pad_keys & ~bit);
                 break;
             }
+            case SDL_EVENT_GAMEPAD_AXIS_MOTION:
+                if (ev.gaxis.axis == SDL_GAMEPAD_AXIS_RIGHT_TRIGGER) g_host.ff_pad = ev.gaxis.value > 16000;
+                if (ev.gaxis.axis == SDL_GAMEPAD_AXIS_LEFT_TRIGGER) g_host.turbo_pad = ev.gaxis.value > 16000;
+                break;
             case SDL_EVENT_MOUSE_BUTTON_DOWN:
                 if (ev.button.button == SDL_BUTTON_LEFT) {
                     g_host.touching = to_touch(ev.button.x, ev.button.y, g_host.touch_x, g_host.touch_y);
@@ -300,7 +351,7 @@ void pump_events() {
 
 void pace() {
     uint64_t now = SDL_GetTicksNS();
-    if (!g_host.throttle || g_host.fast_forward) {
+    if (!g_host.throttle || fast_forward()) {
         g_host.deadline = now;
     } else {
         g_host.deadline += kFrameNs;
@@ -310,8 +361,10 @@ void pace() {
     g_host.fps_frames++;
     if (now - g_host.fps_start >= 1000000000ull) {
         double fps = g_host.fps_frames * 1e9 / double(now - g_host.fps_start);
-        char title[96];
-        std::snprintf(title, sizeof title, "Inazuma Eleven 3 - The Ogre (recomp) - %.1f fps", fps);
+        char title[128];
+        std::snprintf(title, sizeof title, "Inazuma Eleven 3 - The Ogre (recomp) - %.1f fps%s%s", fps,
+                      fast_forward() ? " [>> acelerado]" : "",
+                      g_host.turbo_held || g_host.turbo_toggle || g_host.turbo_pad ? " [A automatico]" : "");
         SDL_SetWindowTitle(g_host.window, title);
         g_host.fps_start = now;
         g_host.fps_frames = 0;
@@ -340,12 +393,17 @@ bool host_init() {
     g_host.exit_frame = env_u64("NTR_EXIT_FRAME");
     g_host.throttle = !std::getenv("NTR_FAST");
     if (const char* s = std::getenv("NTR_INPUT")) parse_script(s);
+    if (const char* path = std::getenv("NTR_REPLAY")) load_replay(path);
     if (const char* s = std::getenv("NTR_PEEK")) std::sscanf(s, "%x:%u", &g_host.peek_addr, &g_host.peek_size);
     if (const char* p = std::getenv("NTR_WAV")) {
         g_host.wav = std::fopen(p, "wb");
         if (g_host.wav) write_wav_header(g_host.wav, 0);
     }
-    if (std::getenv("NTR_HEADLESS")) return true;
+    bool headless = std::getenv("NTR_HEADLESS") != nullptr;
+    bool scripted = std::getenv("NTR_INPUT") || std::getenv("NTR_REPLAY");
+    if ((!headless && !scripted) || std::getenv("NTR_RECORD")) replay_enable();
+    diag_init(!headless);
+    if (headless) return true;
 
     SDL_SetMainReady();
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD)) {
@@ -371,8 +429,15 @@ bool host_init() {
     return true;
 }
 
+// What the game sees until the next frame, for the session recording.
+static void record_input() {
+    replay_record(g_host.frame, pressed_keys(), g_host.touching || g_host.script_touch, g_host.touch_x,
+                  g_host.touch_y);
+}
+
 void host_present(const uint32_t* top, const uint32_t* bottom) {
     g_host.frame++;
+    diag_frame(g_host.frame);
     trace_frame(g_host.frame);
     apply_script();
     if (g_host.peek_size) {
@@ -391,7 +456,16 @@ void host_present(const uint32_t* top, const uint32_t* bottom) {
         NTR_LOG("[host] exiting after %llu frames\n", (unsigned long long)g_host.frame);
         quit();
     }
-    if (g_host.headless) return;
+    if (g_host.headless) {
+        record_input();
+        return;
+    }
+    if (fast_forward() && g_host.frame % 4 != 0) {  // drawing every frame would slow fast forward down
+        pump_events();
+        record_input();
+        pace();
+        return;
+    }
 
     SDL_Rect upper = {0, 0, kScreenWidth, kScreenHeight};
     SDL_Rect lower = {0, kScreenHeight, kScreenWidth, kScreenHeight};
@@ -402,6 +476,7 @@ void host_present(const uint32_t* top, const uint32_t* bottom) {
     SDL_RenderTexture(g_host.renderer, g_host.texture, nullptr, nullptr);
     SDL_RenderPresent(g_host.renderer);
     pump_events();
+    record_input();
     pace();
 }
 

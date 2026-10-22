@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
+#include <set>
+#include <string>
 
 #include <ntr/registry.h>
 
@@ -130,6 +132,16 @@ void overlay_set_active(uint32_t id, bool active) {
         return;
     }
     NTR_LOG("[ovl] overlay %u was not recompiled\n", id);
+}
+
+std::string overlay_active_list() {
+    std::set<uint32_t> ids;
+    for (uint32_t v : g_active_overlay) {
+        if (v) ids.insert(v - 1);
+    }
+    std::string out;
+    for (uint32_t id : ids) out += (out.empty() ? "" : " ") + std::to_string(id);
+    return out.empty() ? "none" : out;
 }
 
 void call_address(Cpu& c, uint32_t target) {

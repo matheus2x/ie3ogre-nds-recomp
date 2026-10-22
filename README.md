@@ -55,7 +55,7 @@ Se o seu dump tiver outro SHA-1, abra uma issue informando o código do jogo e o
 - [x] Mapa de funções (ds-decomp) e projeto Ghidra com overlays; identificação do NitroSDK em andamento
 - [x] Recompilador ARMv5TE/Thumb → C++ (`ntr-recomp`): 16.057 funções, ARM9 + ITCM + 133 overlays
 - [x] Runtime básico: memória, IRQ, timers, DMA imediato, overlays, threads em fibers, BIOS em HLE
-- [ ] HLE do NitroSDK e do ARM7: backup → `.sav`, touch, botões X/Y, contador de VBlank e som prontos; RTC pendente
+- [x] HLE do NitroSDK e do ARM7: backup → `.sav`, touch, botões X/Y, contador de VBlank, som e relógio (RTC)
 - [x] Janela SDL3 com as duas telas, teclado/controle/mouse e ritmo de 59,83 Hz
 - [x] Vídeo 2D: bancos de VRAM, BGs texto/afim/estendidos/bitmap, OBJs, janelas, efeitos, brilho mestre, captura
 - [x] Vídeo 3D: geometria do GX, rasterizador por software (texturas, translucidez, toon, névoa, edge marking, sombras)
@@ -143,7 +143,30 @@ Também dá para passar o caminho de um `boej.pak` ou de um `.nds` como argument
 | Start / Select | Enter / Shift direito ou Backspace | Start / Back |
 | Tela de toque | botão esquerdo do mouse na tela de baixo | — |
 
-Tab (segurado) acelera; F12 salva a tela em `boej-<quadro>.bmp`.
+F12 salva a tela em `boej-<quadro>.bmp`.
+
+Atalhos para testar mais rápido (o título da janela mostra quais estão ligados):
+
+| Atalho | Teclado | Controle |
+|---|---|---|
+| Acelerar (sem limite de velocidade) | Tab segurado, ou F2 liga/desliga | gatilho direito |
+| A automático (aperta e solta A sem parar, para passar mensagens) | C segurado, ou F3 liga/desliga | gatilho esquerdo |
+
+Os dois juntos passam diálogos e cenas muito rápido. O A automático também confirma opções de menu, então
+convém desligá-lo antes de escolhas.
+
+#### Relatando problemas
+
+O jogo grava, ao lado do executável:
+
+| Arquivo | Conteúdo |
+|---|---|
+| `boej.log` | tudo o que aparece no terminal, com o número do quadro em cada linha, mais os arquivos que o jogo abre. Falhas e travamentos (nenhum quadro por 5 s) entram no log com o estado da máquina. |
+| `boej-replay.txt` + `boej-replay.sav` | a sessão inteira (botões e toque por quadro, a hora inicial do relógio e o save de onde ela partiu). Com eles a sessão é repetida exatamente igual: `NTR_REPLAY=boej-replay.txt NTR_SAVE=<cópia do boej-replay.sav>`. |
+
+A sessão anterior fica em `boej.old.log` e `boej-replay.old.*`, então um problema não se perde ao abrir o jogo de
+novo. Se algo der errado, aperte **F8** no momento (grava o estado no log e uma captura de tela), feche o jogo e
+envie esses arquivos.
 
 #### Windows (compilação cruzada a partir do WSL/Linux)
 
@@ -165,6 +188,7 @@ Variáveis de ambiente:
 - **Save:** `NTR_SAVE` (padrão: `saves/boej.sav`).
 - **Janela e ritmo:** `NTR_SCALE` (escala inicial, padrão 2); `NTR_FAST` (sem limite de 60 Hz); `NTR_HEADLESS` (sem janela e sem limite).
 - **Áudio:** `NTR_MUTE` (sem dispositivo de áudio); `NTR_WAV=arquivo.wav` grava a saída de som (funciona também sem janela).
+- **Relógio:** o RTC usa a hora local do PC; `NTR_RTC="2010-07-01 12:00:00"` parte de um momento fixo e avança com o tempo emulado (testes reproduzíveis).
 - **Testes automáticos:**
   - `NTR_INPUT` roteiriza a entrada por quadro, por exemplo `300-310:TOUCH@128,96;900-905:A+START`;
   - `NTR_SCREENSHOT_FRAMES` (lista separada por vírgulas) com `NTR_SCREENSHOT` (caminho; `%d` vira o número do quadro) salva quadros em BMP;

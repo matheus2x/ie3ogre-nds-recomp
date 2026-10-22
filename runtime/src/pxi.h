@@ -17,6 +17,7 @@ void pxi_clear_send_fifo();
 
 // ARM7 side.
 void arm7_boot();
+void arm7_rtc_init();
 void arm7_sound_init();
 void arm7_input_init();
 void arm7_vblank();  // per-frame ARM7 work: buttons and touch state in shared memory

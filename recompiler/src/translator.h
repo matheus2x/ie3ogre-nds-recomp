@@ -71,6 +71,7 @@ private:
     std::set<uint32_t> labels_;
     std::map<uint32_t, std::vector<uint32_t>> switches_;  // switch insn -> case targets
     uint32_t cur_addr_ = 0;                             // instruction being emitted
+    bool saves_lr_ = true;                              // some instruction stores lr (ARM)
 };
 
 std::string hex32(uint32_t v);

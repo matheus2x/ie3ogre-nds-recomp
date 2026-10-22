@@ -94,6 +94,24 @@ namespace ntr {
 // (FS_EndOverlay) changes nothing: like on hardware, the code stays callable until
 // another overlay is loaded over it, and games do call into an overlay they just ended.
 
+// Files the game opens go to the log file (not the terminal): the last ones before a
+// problem usually tell what the game was doing.
+void hle_fs_open_file(Cpu& c, GuestFn orig) {
+    char path[128] = {};
+    for (uint32_t i = 0; i + 1 < sizeof path; i++) {
+        path[i] = char(rd8(c.r[1] + i));
+        if (!path[i]) break;
+    }
+    orig(c);
+    log_detail("[fs] open %s%s\n", path, c.r[0] ? "" : " (failed)");
+}
+
+void hle_fs_open_file_fast(Cpu& c, GuestFn orig) {
+    uint32_t id = c.r[2];
+    orig(c);
+    log_detail("[fs] open file id %u%s\n", id, c.r[0] ? "" : " (failed)");
+}
+
 void hle_fs_start_overlay(Cpu& c, GuestFn orig) {
     overlay_set_active(rd32(c.r[0]), true);
     orig(c);

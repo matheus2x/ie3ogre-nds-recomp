@@ -20,6 +20,8 @@ OS_LoadContext	os_load_context	thread switch on host fibers
 CARDi_ReadRomWithCPU	card_read_cpu	copies from the user's ROM image instead of driving the card bus
 CARDi_TryReadCardDma	card_no_dma	forces the CPU path above (returns 0)
 OS_InitContext	os_init_context	forgets the host fiber of a reused OSContext
+FS_OpenFileEx	fs_open_file	logs the path to boej.log, then runs it
+FS_OpenFileFast	fs_open_file_fast	logs the file id to boej.log, then runs it
 FS_StartOverlay	fs_start_overlay	marks the overlay active for indirect calls, then runs it
 OS_IrqHandler	os_irq_handler	IRQ dispatch + OS_IrqHandler_ThreadSwitch on host fibers (lr tricks and stack switching)
 Task_RunAll	task_run_all	game coroutines on host fibers (they switch guest stacks and jump into the middle of Task_Yield)

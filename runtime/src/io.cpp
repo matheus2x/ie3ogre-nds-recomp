@@ -46,7 +46,9 @@ void card_start(uint32_t ctrl) {
             word = kChipId;
         } else if (cmd[0] == 0xB7) {
             uint32_t addr = uint32_t(cmd[1]) << 24 | cmd[2] << 16 | cmd[3] << 8 | cmd[4];
-            word = rom_read32(addr + i);
+            // A real card never returns 0000h-7FFFh in this mode: reads there give the
+            // data at 8000h-81FFh. DS Protect (ov129) checks it to tell flashcarts apart.
+            word = addr < 0x8000 ? rom_read32(0x8000 + ((addr + i) & 0x1FF)) : rom_read32(addr + i);
         }
         g_card_data.push_back(word);
     }

@@ -81,11 +81,12 @@ void pxi_register_service(uint32_t tag, PxiService service) {
 
 void arm7_boot() {
     // Services the game needs on the ARM7; each logs until it is implemented.
-    for (uint32_t tag : {5u, 6u, 7u, 8u, 10u, 11u, 12u, 13u, 14u, 17u}) {
+    for (uint32_t tag : {6u, 7u, 8u, 10u, 11u, 12u, 13u, 14u, 17u}) {
         pxi_register_service(tag, [tag](uint32_t data, bool err) {
             NTR_LOG("[pxi] ARM9 -> %s: %08X%s\n", kTagNames[tag], data, err ? " (err)" : "");
         });
     }
+    arm7_rtc_init();
     arm7_sound_init();
     arm7_input_init();
     const char* save = std::getenv("NTR_SAVE");

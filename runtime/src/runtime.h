@@ -8,6 +8,15 @@
 
 #include <ntr/guest.h>
 
+// printf-style checking; MinGW's default "printf" archetype is the old MSVCRT one.
+#ifndef NTR_PRINTF_FORMAT
+#ifdef __MINGW32__
+#define NTR_PRINTF_FORMAT __attribute__((format(gnu_printf, 1, 2)))
+#else
+#define NTR_PRINTF_FORMAT __attribute__((format(printf, 1, 2)))
+#endif
+#endif
+
 namespace ntr {
 
 // --- memory -----------------------------------------------------------------
@@ -144,6 +153,24 @@ void trace_frame(uint64_t frame);  // NTR_PROFILE window bookkeeping
 
 // --- logging ------------------------------------------------------------------
 
-#define NTR_LOG(...) std::fprintf(stderr, __VA_ARGS__)
+// Terminal and log file (diag.cpp); log_detail goes to the file only.
+void log_printf(const char* fmt, ...) NTR_PRINTF_FORMAT;
+void log_detail(const char* fmt, ...) NTR_PRINTF_FORMAT;
+#define NTR_LOG(...) ::ntr::log_printf(__VA_ARGS__)
+
+// --- diagnostics (diag.cpp) ----------------------------------------------------------
+
+void diag_init(bool windowed);  // crash handlers; the stall watchdog when windowed
+void diag_frame(uint64_t frame);  // every presented frame
+void debug_dump(const char* reason);  // display/IRQ registers, overlays and threads to the log
+std::string overlay_active_list();
+// Session recording (boej-replay.txt + boej-replay.sav next to the executable).
+void replay_enable();  // by the host, before boot; the rest are no-ops otherwise
+void replay_start(const std::string& rtc_start);
+void replay_initial_save(const std::vector<uint8_t>& data, bool existed);
+void replay_record(uint64_t frame, uint16_t keys, bool touch, int x, int y);
+void replay_finish(uint64_t frame);
+const std::string& rtc_start_text();  // "YYYY-MM-DD HH:MM:SS" the clock started from (arm7_rtc.cpp)
+void rtc_request_start(const std::string& text);  // before boot: start the clock there
 
 }  // namespace ntr

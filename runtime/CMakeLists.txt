@@ -1,9 +1,11 @@
 add_library(ntr-runtime STATIC
     src/arm7_card.cpp
     src/arm7_input.cpp
+    src/arm7_rtc.cpp
     src/arm7_sound.cpp
     src/boot.cpp
     src/cpu.cpp
+    src/diag.cpp
     src/fiber.cpp
     src/gpu2d.cpp
     src/gpu3d.cpp

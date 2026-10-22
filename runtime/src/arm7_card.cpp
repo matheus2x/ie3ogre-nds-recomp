@@ -117,7 +117,10 @@ void arm7_card_init(const std::string& save_path) {
     if (in) {
         in.read(reinterpret_cast<char*>(g_save.data()), g_save.size());
         NTR_LOG("[card] loaded save %s\n", save_path.c_str());
+    } else {
+        NTR_LOG("[card] no save at %s: new game\n", save_path.c_str());
     }
+    replay_initial_save(g_save, bool(in));
     pxi_register_service(11, on_word);
 }
 

@@ -564,3 +564,119 @@ Ou seja: o jogo não usa o sequenciador do SDK. Ele tem um mixer próprio no ARM
 - As cores conferem (conversão YCoCg do próprio jogo).
 - Custo: 3000 quadros em modo rápido passaram de 6,7 s para 8,7 s, ~0,7 ms por quadro de jogo. O orçamento é de 16,7 ms.
 - O build para Windows compila.
+
+---
+
+## 2026-10-22: Etapa 8: relógio (RTC)
+
+**Protocolo** (pela descompilação de `RTCi_SendPxiCommand` e `RTCi_CallbackFromPxi`)
+- O ARM9 manda o comando nos bits 8-14 da tag 5. O ARM7 responde `comando << 8 | resultado` (0 = sucesso). Respostas com `0x30xx` seriam a interrupção de alarme.
+- As leituras ficam em memória compartilhada (literais em 0x0200B464-0x0200B470):
+  - 0x02FFFDE8, data: ano BCD desde 2000 (bits 0-7), mês (8-12), dia (16-21), dia da semana (24-26). O SDK recalcula o dia da semana a partir da data.
+  - 0x02FFFDEC, hora: horas (0-5), minutos (8-14), segundos (16-22), em 24 horas.
+- Comandos: 0x10 data+hora, 0x11 data, 0x12 hora. O resto (status, alarmes e escritas, como o 0x27 que grava o status de alarme) é só confirmado.
+
+**Implementação** (`runtime/src/arm7_rtc.cpp`)
+- Usa a hora local do PC. Uma leitura é deixada na memória já no boot, como faz o firmware.
+- `NTR_RTC="AAAA-MM-DD HH:MM:SS"` parte de um momento fixo e avança com o tempo emulado (ciclos / 33.513.982), para testes reproduzíveis.
+- A tag 5 saiu da lista de serviços que só registram pedidos.
+
+**Quem usa o relógio:** as overlays 15 (várias chamadas a `RTC_GetDate`/`RTC_GetDateTime`), 17 e 131 (`RTC_GetTime`). Nenhuma delas pede a hora no caminho testado até a exploração livre.
+
+**Verificação**
+- Chamada temporária ao `RTC_GetDateTime` do próprio jogo (com IRQ do PXI e callback do SDK), feita de dentro do escalonador de tarefas e removida depois.
+- Hora do PC: 2026-10-22, quinta-feira (dia 4), 17:02:06.
+- Com `NTR_RTC="2010-07-01 23:59:58"`: 2010-07-02, sexta-feira, 00:00:11. A virada do dia e o dia da semana estão certos.
+- Builds Linux e Windows compilam.
+
+---
+
+## 2026-10-22: Atalhos para testar mais rápido
+
+O pedido: um atalho de avanço rápido e outro para passar as mensagens.
+
+**Atalhos** (`runtime/src/host.cpp`)
+
+| Atalho | Teclado | Controle |
+|---|---|---|
+| Acelerar | Tab segurado (já existia) ou F2 liga/desliga | gatilho direito |
+| A automático | C segurado ou F3 liga/desliga | gatilho esquerdo |
+
+- **Acelerar** tira o limite de 59,83 Hz. A janela só redesenha 1 de cada 4 quadros, para o desenho não segurar a velocidade. O jogo continua renderizando todos os quadros.
+- **A automático:** A fica 3 quadros apertado e 3 solto, então o jogo vê um novo toque a cada 6 quadros. Ele soma com o teclado, o controle e o `NTR_INPUT`. Como também confirma menus, convém desligá-lo antes de escolhas.
+- O título da janela mostra `[>> acelerado]` e `[A automatico]` quando estão ligados.
+
+**Verificação**
+- Teste temporário (removido depois) injetou F2 e F3 como eventos SDL na janela.
+- O A automático alterna certo: quadros 12-14 com A, 15-17 sem.
+- Acelerado com janela: 1500 quadros em 6,1 s, cerca de 245 fps, ~4x o normal.
+- Ao desligar no quadro 1500, volta a 60 fps.
+- Windows compila.
+
+---
+
+## 2026-10-22: Diagnóstico: log em arquivo, gravação de sessão, F8 e watchdog
+
+O relato: na parte do flashback do Endo, a tela fica toda branca e o jogo parece travar. O terminal só mostrava overlays (… 0, 127, 126, 129, 126), sem erro. O pedido: logs melhores e em arquivo.
+
+**Primeira análise**
+- O roteiro de teste para na exploração livre (quadro ~14000). Não alcança o flashback sem saber o caminho.
+- A única instrução não traduzida da ov129 (que carrega logo antes) é dado depois de um desvio sempre tomado (`__sinit`). Não é a causa.
+- A sequência do log mostra um vídeo (ov127 e a thread do player) tocando antes da ov129.
+- Sem reproduzir, a causa fica em aberto. A solução foi dar ferramentas para que uma sessão real possa ser repetida aqui.
+
+**`runtime/src/diag.cpp`**
+- **Log em arquivo:** `boej.log` ao lado do executável. `NTR_LOG_FILE` muda o caminho; vazio desliga.
+  - Cada linha leva o número do quadro.
+  - `NTR_LOG` vira `log_printf` (terminal + arquivo, com mutex e flush por linha). `log_detail` só vai para o arquivo.
+  - A sessão anterior fica em `boej.old.log`.
+  - Os erros do `main` (pak ausente, janela) também vão para o log.
+- **Arquivos abertos:** hooks em `FS_OpenFileEx` (caminho) e `FS_OpenFileFast` (id) registram cada arquivo, só no arquivo de log.
+- **Falhas:** handlers de SIGSEGV/SIGILL/SIGFPE/SIGABRT, e `SetUnhandledExceptionFilter` no Windows. Gravam o quadro e um dump de estado.
+- **Watchdog** (só com janela): uma thread nota se passam 5 s sem quadro, grava um dump e avisa quando os quadros voltam.
+- **Dump de estado** (também no F8, junto com uma captura de tela):
+  - DISPCNT, MASTER_BRIGHT, POWCNT1, BLDCNT/BLDALPHA/BLDY dos dois motores;
+  - VRAMCNT, DISP3DCNT, IME/IE/IF;
+  - overlays ativas (`overlay_active_list` em cpu.cpp);
+  - tarefa atual do jogo;
+  - threads do SDK com o estado de cada uma (OSThreadInfo em 0x01FF81AC: +4 atual, lista por +0x68, estado em +0x64).
+- **Gravação de sessão:** `boej-replay.txt` no formato do `NTR_INPUT` (um intervalo por linha, gravado assim que termina).
+  - O cabeçalho traz `# rtc <início do relógio>` e o save de partida, copiado para `boej-replay.sav`.
+  - Grava sempre que há janela e nenhuma entrada roteirizada; `NTR_RECORD` força a gravação.
+  - `NTR_REPLAY=arquivo` repete a sessão.
+  - O estado gravado no quadro F é o que o jogo vê até o quadro F+1: depois dos eventos, ou do roteiro sem janela.
+
+**Determinismo**
+- O relógio agora sempre parte de um instante fixo e avança com o tempo emulado. O início é a hora do PC no boot, ou `NTR_RTC`, ou o que veio na gravação.
+- Assim a execução depende só do início do relógio, do save e da entrada. O avanço rápido não muda nada, porque só tira o limite de ritmo.
+
+**Verificação**
+- Gravei o roteiro da história (14000 quadros) com `NTR_RECORD` e repeti pela gravação. As capturas dos quadros 9000 e 14000 ficaram **idênticas byte a byte**.
+- `boej.log` com quadros e 324 aberturas de arquivo (`/data_iz/script/eve.pkb`, `/data_iz/sound/J14.SAD`…).
+- SIGSEGV enviado a uma sessão com janela: `[fatal] … at frame 350` mais o dump completo no log.
+- Watchdog: uma pausa temporária de 7 s no quadro 200 gerou o aviso e o dump, e "frames are coming again" no 235. A pausa foi removida depois.
+- `boej.exe` numa pasta do C: grava `boej.log` e `boej-replay.txt` ao lado do executável.
+- No MinGW, o atributo de formato virou `gnu_printf` (`NTR_PRINTF_FORMAT`), por causa do `%zu`.
+
+**Próximo passo:** com o `boej-replay.txt` + `boej-replay.sav` (ou o `.old`) da sessão do flashback, repetir aqui até a tela branca e investigar com os dumps.
+
+## 2026-10-22 — Tela branca no flashback do Endo: DS Protect (antipirataria)
+
+**Reprodução.** O usuário jogou até o flashback (jogo novo, ~22000 quadros), apertou F8 na tela branca e mandou `boej.log` + `boej-replay.txt`. A repetição aqui deu a captura do quadro 21826 **idêntica byte a byte** à dele.
+- Dump: `MASTER_BRIGHT A 4010 B 4010` (as duas telas em branco total), quadros normais, nenhuma thread presa. O fade de entrada nunca começava.
+- Logo antes, a ov129 carregava. Ela é inteira DS Protect.
+
+**Como o DS Protect é chamado** (ov131 0x021490F8, ao entrar na cena):
+- Seis "portões" de 0x3C bytes (0x0212AD60…0x0212AE8C, e outros 11 iguais) põem em r12 o endereço de um bloco de parâmetros e saltam com `stmdb sp!,{r12}` … `ldmia sp!,{pc}` para 0x0212B7A8.
+- Esse despachante descriptografa a função real (0x0212B610), chama, criptografa de novo (0x0212B6D0) e volta ao chamador.
+- Cada detecção (0x0212A9C0…) soma o resultado de duas verificações. Se a soma não for múltipla de 241, chama o callback (r0) com r1 = função de penalidade da ov131 (0x02148FF8, 0x02149038, 0x02149078). As versões "Not" funcionam ao contrário.
+
+**Três problemas, achados com hooks temporários (já removidos) que registravam o retorno dos portões e as penalidades:**
+1. **Recompilador:** o `ldmia sp!,{pc}` virava `return`, então o portão voltava sem rodar nada e o jogo via o ponteiro do callback como resultado. Agora, numa função ARM que nunca guarda lr, um `ldmia sp!,{pc}` (só pc) é salto indireto. No código gerado, só os 17 portões da ov129 mudaram. A primeira versão, sem exigir "só pc", também mudava funções cujo lr é guardado por outro pedaço; foi descartada.
+2. **Detecção de flashcart** (0x0212BACC): lê o cartucho direto (comando B7 via ROMCTRL) em 0x1000/0x1200/0x1400 e compara com 0x8000/0x8200/0x8400 lidos pelo SDK. Num cartucho real, B7 abaixo de 0x8000 devolve os dados de 0x8000 + (addr & 0x1FF). O `card_start` (io.cpp) agora faz igual.
+3. **Detecção de emulador** (0x0212B824): falha com MAC zerado, ou com o MAC padrão dos emuladores 00:09:BF:00:00:31 junto com aniversário 1/1 e mensagem vazia. O boot agora grava o MAC 00:09:BF:4E:54:52 em 0x027FFCF4.
+
+**Resultado:**
+- Os seis portões passam e nenhuma penalidade é chamada.
+- O flashback segue: o fade abre, e a fala da mãe ("…守! 守ー 起きなさい!") aparece e fica esperando o A, porque a gravação acaba ali.
+- O roteiro da história continua idêntico byte a byte nos quadros 9000 e 14000.

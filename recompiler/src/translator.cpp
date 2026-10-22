@@ -237,6 +237,18 @@ void Translator::explore() {
             work.push_back(t);
         }
     }
+    // An ARM function that never stores lr cannot pop a return address: its lone
+    // "ldmia sp!, {pc}" jumps to a value it pushed itself (the DS Protect gates in ov129).
+    // Pops with more registers are left alone: their lr may be saved by another chunk.
+    if (!fn_.thumb) {
+        saves_lr_ = false;
+        for (auto [addr, len] : insns_) {
+            uint32_t raw = *mod_.read32(addr);
+            bool stm = (raw & 0x0E100000) == 0x08000000 && (raw & 0x4000);
+            bool str = (raw & 0x0C100000) == 0x04000000 && ((raw >> 12) & 0xF) == 14;
+            if (stm || str) saves_lr_ = true;
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -521,7 +533,7 @@ std::string Translator::arm_block(uint32_t addr, uint32_t raw) {
         }
         if (list & 0x8000) {
             if (s) o << " c.r[15] = pc; exception_return(c); return;";
-            else if (rn == 13) o << " (void)pc; return;";
+            else if (rn == 13 && (saves_lr_ || list != 0x8000)) o << " (void)pc; return;";
             else o << " " << jump_indirect("pc");
         }
     } else {

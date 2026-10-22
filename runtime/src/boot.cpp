@@ -57,6 +57,10 @@ void write_user_settings() {
     wr32(0x027FFC04, 0x00001FC2);
     wr16(0x027FFC10, 0x5835);
     wr16(0x027FFC40, 0x0001);  // booted from a cartridge
+    // Wi-Fi MAC address (OS_GetMacAddress). DS Protect (ov129) takes an all-zero one, or
+    // the emulators' default 00:09:BF:00:00:31, for an emulator.
+    const uint8_t mac[6] = {0x00, 0x09, 0xBF, 0x4E, 0x54, 0x52};
+    for (int i = 0; i < 6; i++) wr8(0x027FFCF4 + i, mac[i]);
     write_user_settings();
 
     trace_install();
