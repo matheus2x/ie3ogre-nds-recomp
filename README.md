@@ -55,12 +55,12 @@ Se o seu dump tiver outro SHA-1, abra uma issue informando o código do jogo e o
 - [x] Mapa de funções (ds-decomp) e projeto Ghidra com overlays; identificação do NitroSDK em andamento
 - [x] Recompilador ARMv5TE/Thumb → C++ (`ntr-recomp`): 16.057 funções, ARM9 + ITCM + 133 overlays
 - [x] Runtime básico: memória, IRQ, timers, DMA imediato, overlays, threads em fibers, BIOS em HLE
-- [ ] HLE do NitroSDK e do ARM7: backup → `.sav`, touch, botões X/Y e contador de VBlank prontos; som só confirma os comandos; RTC pendente
+- [ ] HLE do NitroSDK e do ARM7: backup → `.sav`, touch, botões X/Y, contador de VBlank e som prontos; RTC pendente
 - [x] Janela SDL3 com as duas telas, teclado/controle/mouse e ritmo de 59,83 Hz
 - [x] Vídeo 2D: bancos de VRAM, BGs texto/afim/estendidos/bitmap, OBJs, janelas, efeitos, brilho mestre, captura
 - [x] Vídeo 3D: geometria do GX, rasterizador por software (texturas, translucidez, toon, névoa, edge marking, sombras)
 - [ ] Resolução interna maior; anti-aliasing e wireframe do 3D
-- [ ] Áudio: SDAT/SND e streams `sadl`
+- [x] Áudio: comandos SND de canal/captura/alarme, 16 canais (PCM8/16, IMA-ADPCM, PSG, ruído) mixados a 32 kHz pelo SDL3 (o jogo mixa música e streams no ARM9 e não usa o sequenciador do SDK)
 - [ ] Vídeos Mobiclip (`.mods`): hoje os quadros são pulados (a abertura toca em preto, só com a letra)
 - [ ] Wi-Fi/DWC desativado (o Nintendo WFC foi encerrado)
 - [x] Dump usado só na preparação: o jogo roda a partir do `boej.pak` (mapeado em memória)
@@ -164,12 +164,13 @@ Variáveis de ambiente:
 
 - **Save:** `NTR_SAVE` (padrão: `saves/boej.sav`).
 - **Janela e ritmo:** `NTR_SCALE` (escala inicial, padrão 2); `NTR_FAST` (sem limite de 60 Hz); `NTR_HEADLESS` (sem janela e sem limite).
+- **Áudio:** `NTR_MUTE` (sem dispositivo de áudio); `NTR_WAV=arquivo.wav` grava a saída de som (funciona também sem janela).
 - **Testes automáticos:**
   - `NTR_INPUT` roteiriza a entrada por quadro, por exemplo `300-310:TOUCH@128,96;900-905:A+START`;
   - `NTR_SCREENSHOT_FRAMES` (lista separada por vírgulas) com `NTR_SCREENSHOT` (caminho; `%d` vira o número do quadro) salva quadros em BMP;
   - `NTR_EXIT_FRAME` encerra depois de N quadros.
 - **Depuração:**
-  - `NTR_LOG_IRQ`, `NTR_LOG_THREAD`, `NTR_LOG_CARD`, `NTR_LOG_SND`, `NTR_LOG_TP`, `NTR_LOG_3D` (polígonos e comandos do GX a cada 60 trocas de buffer);
+  - `NTR_LOG_IRQ`, `NTR_LOG_THREAD`, `NTR_LOG_CARD`, `NTR_DUMP_SND` (cada comando SND), `NTR_LOG_TP`, `NTR_LOG_3D` (polígonos e comandos do GX a cada 60 trocas de buffer);
   - `NTR_PEEK=endereço:tamanho` imprime memória do jogo a cada quadro;
   - `NTR_PROFILE=início-fim` (só na build `--trace`) conta as funções chamadas nesses quadros.
 

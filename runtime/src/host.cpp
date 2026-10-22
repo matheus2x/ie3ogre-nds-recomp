@@ -5,7 +5,8 @@
 // Right Shift/Backspace = Select, Tab (held) = fast forward, F12 = screenshot.
 // The left mouse button touches the bottom screen.
 //
-// Environment: NTR_HEADLESS (no window, unthrottled), NTR_FAST (unthrottled),
+// Environment: NTR_HEADLESS (no window, unthrottled), NTR_FAST (unthrottled), NTR_MUTE (no
+// audio device), NTR_WAV (also write the sound output to that WAV file),
 // NTR_SCALE (initial window scale, default 2), NTR_SCREENSHOT_FRAMES + NTR_SCREENSHOT
 // (save those frames, a comma-separated list, as BMPs; %d in the path is the frame), NTR_EXIT_FRAME (exit after that many frames),
 // NTR_INPUT (scripted input for tests: "first-last:KEY[+KEY...];..." with frame numbers
@@ -16,6 +17,7 @@
 #include <SDL3/SDL_main.h>
 
 #include <cstdio>
+#include <cstring>
 #include <cstdlib>
 #include <set>
 #include <string>
@@ -60,6 +62,10 @@ struct Host {
     uint16_t script_keys = 0;
     bool script_touch = false;
     uint32_t peek_addr = 0, peek_size = 0;
+
+    SDL_AudioStream* audio = nullptr;
+    FILE* wav = nullptr;  // NTR_WAV: the sound output, for checks without a window
+    uint32_t wav_frames = 0;
 };
 Host g_host;
 
@@ -157,9 +163,42 @@ std::string frame_path(std::string pattern) {
     return pattern;
 }
 
+void write_wav_header(FILE* f, uint32_t frames) {
+    uint8_t h[44] = {'R', 'I', 'F', 'F', 0, 0, 0, 0, 'W', 'A', 'V', 'E', 'f', 'm', 't', ' ', 16, 0, 0, 0, 1, 0, 2, 0};
+    uint32_t data = frames * 4;
+    store32(h + 4, 36 + data);
+    store32(h + 24, kSoundRate);
+    store32(h + 28, kSoundRate * 4);
+    h[32] = 4;
+    h[34] = 16;
+    std::memcpy(h + 36, "data", 4);
+    store32(h + 40, data);
+    std::fseek(f, 0, SEEK_SET);
+    std::fwrite(h, 1, sizeof h, f);
+}
+
 void quit() {
+    if (g_host.wav) {
+        write_wav_header(g_host.wav, g_host.wav_frames);
+        std::fclose(g_host.wav);
+    }
     if (!g_host.headless) SDL_Quit();
     std::exit(0);
+}
+
+void open_audio() {
+    if (std::getenv("NTR_MUTE")) return;
+    if (!SDL_InitSubSystem(SDL_INIT_AUDIO)) {
+        NTR_LOG("[host] no audio: %s\n", SDL_GetError());
+        return;
+    }
+    SDL_AudioSpec spec{SDL_AUDIO_S16, 2, kSoundRate};
+    g_host.audio = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, nullptr, nullptr);
+    if (!g_host.audio) {
+        NTR_LOG("[host] no audio: %s\n", SDL_GetError());
+        return;
+    }
+    SDL_ResumeAudioStreamDevice(g_host.audio);
 }
 
 uint16_t key_bit(SDL_Keycode key) {
@@ -302,6 +341,10 @@ bool host_init() {
     g_host.throttle = !std::getenv("NTR_FAST");
     if (const char* s = std::getenv("NTR_INPUT")) parse_script(s);
     if (const char* s = std::getenv("NTR_PEEK")) std::sscanf(s, "%x:%u", &g_host.peek_addr, &g_host.peek_size);
+    if (const char* p = std::getenv("NTR_WAV")) {
+        g_host.wav = std::fopen(p, "wb");
+        if (g_host.wav) write_wav_header(g_host.wav, 0);
+    }
     if (std::getenv("NTR_HEADLESS")) return true;
 
     SDL_SetMainReady();
@@ -323,6 +366,7 @@ bool host_init() {
                                        kScreenWidth, kScreenHeight * 2);
     SDL_SetTextureScaleMode(g_host.texture, SDL_SCALEMODE_NEAREST);
     g_host.headless = false;
+    open_audio();
     g_host.deadline = g_host.fps_start = SDL_GetTicksNS();
     return true;
 }
@@ -359,6 +403,17 @@ void host_present(const uint32_t* top, const uint32_t* bottom) {
     SDL_RenderPresent(g_host.renderer);
     pump_events();
     pace();
+}
+
+void host_audio_push(const int16_t* frames, size_t count) {
+    if (g_host.wav) {
+        std::fwrite(frames, 4, count, g_host.wav);
+        g_host.wav_frames += uint32_t(count);
+    }
+    if (!g_host.audio) return;
+    // Running ahead of real time (fast forward, NTR_FAST) would only grow the latency.
+    if (SDL_GetAudioStreamQueued(g_host.audio) > kSoundRate * 4 / 6) return;
+    SDL_PutAudioStreamData(g_host.audio, frames, int(count * 4));
 }
 
 uint16_t host_keyinput() { return uint16_t(~pressed_keys() & 0x3FF); }

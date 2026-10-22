@@ -100,6 +100,13 @@ void host_present(const uint32_t* top, const uint32_t* bottom);
 uint16_t host_keyinput();  // REG_KEYINPUT, active low
 uint16_t host_extkeys();   // ARM7 EXTKEYIN (X, Y, pen, hinge), active low
 bool host_touch(int& x, int& y);  // bottom screen pixel, true while pressed
+void host_audio_push(const int16_t* frames, size_t count);  // stereo, 32768 Hz
+
+// --- sound (arm7_sound.cpp) ------------------------------------------------------------
+
+constexpr int kSoundRate = 32768;
+void sound_advance();  // mixes up to the current emulated time, delivers SND alarms
+void sound_vblank();   // hands the frame's samples to the host
 
 // --- time / interrupts -------------------------------------------------------
 

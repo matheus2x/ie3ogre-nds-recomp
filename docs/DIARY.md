@@ -484,3 +484,43 @@ O pedido: usar a ROM só no processo inicial de cada usuário, e depois rodar se
 - `NTR_LOG_3D`: polígonos, culling, recorte e histograma de comandos a cada 60 swaps.
 - `NTR_SCREENSHOT_FRAMES`: vários quadros numa execução, com `%d` no caminho.
 - `NTR_PEEK` lê MMIO do arquivo de registradores. Ler DISPSTAT pelo caminho normal avançava o tempo e reentrava no VBlank.
+
+---
+
+## 2026-10-22: Etapa 6: som
+
+**O que o jogo usa.** Nos primeiros 12 mil quadros, o ARM9 mandou só 6 comandos SND:
+- `SHARED_WORK`;
+- `LOCK_CHANNEL 0xFFFF` (trava os 16 canais);
+- `SETUP_ALARM` (alarme 0, 0x1474 ticks ≈ 10 ms, id 2) e `START_TIMER` só desse alarme.
+
+Ou seja: o jogo não usa o sequenciador do SDK. Ele tem um mixer próprio no ARM9, ritmado por alarmes do driver de som, e esperava o primeiro alarme para começar. O HLE anterior só confirmava os comandos, então nunca começava.
+
+**Driver** (`runtime/src/arm7_sound.cpp`, reescrito)
+- Os alarmes contam em tempo emulado (1 tick = 64 ciclos do barramento). A mensagem PXI tem o formato do callback do ARM9 (`SNDi_PxiFifoCallback` → 0x0200C330): nº do alarme | id << 8. O id é conferido do lado do ARM9.
+- Os empacotamentos vêm da descompilação das funções `SND_*` do ARM9:
+  - PCM: `ch | timer<<16`, endereço, `len | shift<<22 | vol<<24`, `loopStart | pan<<16 | formato<<24 | loop<<26`, com tamanhos em palavras;
+  - PSG/ruído: `vol | shift<<8`, `pan | timer<<8`, duty;
+  - captura: destino, tamanho, flags nos bits 27-31;
+  - `CHANNEL_TIMER/VOLUME/PAN` por máscara;
+  - `START/STOP_TIMER` com máscaras de canal, captura e alarme.
+- Pegadinha: o `timer` dos comandos é o **período** (512 → 32728 Hz). O valor do registrador (0x10000 − período) é calculado no ARM7.
+- Canais: PCM8, PCM16, IMA-ADPCM (cabeçalho de 4 bytes, estado salvo no início do loop), PSG com duty de 8 passos e ruído por LFSR de 15 bits. Volume com divisor (1/2/4/16) e pan.
+- Repetição, one-shot e captura do mix. O status dos canais vai para o shared work (+8) e o finished-command tag avança a cada lista.
+- Os comandos do sequenciador (0-11) só geram um aviso, e o jogo não os usa.
+
+**Mixer e saída**
+- 32768 Hz estéreo, gerados a partir do tempo emulado (`sound_advance` no `advance_time`). As amostras saem por quadro para um `SDL_AudioStream`, que descarta o excesso quando o jogo roda acima da velocidade real.
+- `NTR_WAV` grava a saída para testes sem janela; `NTR_MUTE` desliga o dispositivo; `NTR_DUMP_SND` lista cada comando.
+
+**Como o jogo toca** (pelo dump de comandos):
+- Música e vozes: o ARM9 mixa num anel PCM16 de 1024 amostras em loop nos canais 8/9 (32728 Hz) e reabastece meio anel a cada alarme de 0x2000 ticks.
+- Áudio dos vídeos Mobiclip: blocos IMA-ADPCM one-shot nos canais 0/1. A música da abertura toca, embora a imagem ainda seja pulada.
+- Efeitos: canais disparados com milhares de `CHANNEL_TIMER/VOLUME`.
+
+**Verificação** (sem ouvir, pelo WAV):
+- 8000 quadros geram 133,7 s de áudio, o mesmo que 8000/59,83.
+- Espectrogramas mostram o jingle do aviso, a música da abertura, a do título, e música e efeitos na história.
+- A razão RMS(derivada)/RMS = 0,30 indica sinal musical, não ruído.
+- Nenhum comando sem implementação até a exploração.
+- O `boej.exe` também grava o WAV.

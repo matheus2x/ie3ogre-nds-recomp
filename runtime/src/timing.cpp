@@ -82,6 +82,7 @@ void advance_time(uint64_t cycles) {
             if (v == 192) {
                 gpu_vblank();
                 arm7_vblank();
+                sound_vblank();
                 if (dispstat & 0x08) raise_irq(IRQ_VBLANK);
             }
             if (v == vmatch && (dispstat & 0x20)) raise_irq(IRQ_VCOUNT);
@@ -91,6 +92,7 @@ void advance_time(uint64_t cycles) {
     }
     g_cycles = end;
     advance_timers(end);
+    sound_advance();
 }
 
 uint64_t cycles_to_next_line() { return kCyclesPerLine - g_cycles % kCyclesPerLine; }
