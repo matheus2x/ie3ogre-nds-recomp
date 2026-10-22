@@ -445,3 +445,42 @@ O pedido: usar a ROM só no processo inicial de cada usuário, e depois rodar se
 - Rodando de outra pasta, sem argumentos, o quadro 8000 (tela de título) saiu idêntico byte a byte ao da execução com o `.nds`.
 - O `boej.exe` no Windows, sem argumentos, faz 600 quadros em 2,2 s, contra 27,6 s antes: a ROM não é mais lida inteira por `\\wsl$`.
 - Novo teste unitário: ida e volta do pacote com uma ROM sintética.
+
+---
+
+## 2026-10-22: Etapa 5: motor 3D
+
+**Do título à história**: tocar em "はじめから" revelou dois bugs nas overlays.
+- `overlay_set_active` marcava as páginas de 4 KiB a partir da base sem alinhar. A ov032 (0x02119F00, 0x8C0 bytes) não marcava a página 0x0211A, onde fica o `__sinit`, e a chamada indireta falhava.
+- O jogo chama uma função da ov032 logo depois do `FS_EndOverlay`. No hardware o código continua na memória até outra overlay ocupar o lugar. Agora o `FS_EndOverlay` não desativa nada: cada página fica com a última overlay carregada nela.
+- Depois disso vêm o aviso sobre ferramentas de modificação de save, a tela de nome (teclado por toque) e a abertura da história. Nesse ponto, `DISPCNT` A = 0x00010F08 (BG0 em 3D) e `POWCNT1` = 0x020F (motor A na tela de baixo).
+
+**Geometria** (`runtime/src/gpu3d.cpp`)
+- FIFO empacotado (0x04000400-0x0400043F, comandos sem parâmetro executados na hora) e portas diretas (0x04000440-0x040005FF), com buffers de parâmetros separados. Misturar os dois corrompia as matrizes.
+- Pilhas de projeção, posição/vetor (31 níveis, flag de erro) e textura, com MTX_MODE 0-3. SCALE não afeta a matriz de vetor.
+- Matrizes em 20.12, aplicadas a vetores linha. A matriz de clip é pos × proj, recalculada só quando muda.
+- Vértices: VTX_16/10/XY/XZ/YZ/DIFF, COLOR, NORMAL com iluminação (4 luzes, difusa/ambiente/especular/emissão e tabela de brilho) e os modos de transformação de TEXCOORD (por texcoord, normal ou vértice).
+- Polígonos: triângulos, quads e as duas strips (a triangle strip inverte a ordem nos ímpares; a quad strip usa v0 v1 v3 v2).
+- Facing pelo produto vetorial em espaço de clip, como no melonDS. Culling pelos bits 6/7.
+- Polígonos que cruzam o plano distante são descartados, salvo pelo bit 12. Recorte Sutherland-Hodgman nos 6 planos, em seguida viewport.
+- BOX_TEST (conservador), POS_TEST, VEC_TEST, RAM_COUNT, CLIPMTX_RESULT/VECMTX_RESULT e GXSTAT (pilhas, erro, FIFO sempre vazio). A IRQ do GXSTAT dispara sempre que habilitada.
+
+**Renderização**
+- O `SWAP_BUFFERS` renderiza a lista no back buffer, que aparece no próximo VBlank. Assim, comandos enviados depois do swap já entram no quadro seguinte, como no hardware.
+- Ordem: os opacos primeiro, depois os translúcidos, ordenados por Y (ou na ordem de envio, com o bit 0).
+- Rasterização em leque de triângulos, com funções de aresta e interpolação perspectiva-correta (1/w) de cor e texcoords. Buffer Z (z/w → 24 bits) ou W.
+- Os 7 formatos de textura (incluindo 4x4 comprimido), com repeat/flip/clamp. Modulate, decal, toon/highlight e sombra (stencil por polígono de ID 0).
+- Alpha test, blending, regra de ID de translúcidos, atualização de profundidade dos translúcidos (bit 11), edge marking, névoa (tabela com interpolação, modo só-alpha) e cor/profundidade de limpeza.
+- Ainda falta: anti-aliasing, wireframe (alpha 0 não desenha), polígonos de 1 ponto e o plano traseiro em bitmap.
+- No 2D, o BG0 em modo 3D mostra o quadro 3D (rolado pelo BG0HOFS). Pixels translúcidos se misturam com a camada de baixo pelo próprio alpha. A captura de tela com fonte "só 3D" também usa o quadro 3D.
+
+**Resultado**
+- A abertura da história mostra a cidade em 3D: texturas, sprites-billboard, sombras dos personagens e a câmera em movimento, com os diálogos em 2D por cima.
+- Depois vem a exploração livre, com o personagem andando pelo direcional.
+- ~250 quadros/s sem janela na cena 3D, e a build de Windows funciona.
+- A tela de cima fica preta nessas cenas por escolha do jogo (brilho mestre do motor B = 0x8010).
+
+**Ferramentas**
+- `NTR_LOG_3D`: polígonos, culling, recorte e histograma de comandos a cada 60 swaps.
+- `NTR_SCREENSHOT_FRAMES`: vários quadros numa execução, com `%d` no caminho.
+- `NTR_PEEK` lê MMIO do arquivo de registradores. Ler DISPSTAT pelo caminho normal avançava o tempo e reentrava no VBlank.

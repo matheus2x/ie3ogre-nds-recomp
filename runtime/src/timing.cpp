@@ -78,6 +78,7 @@ void advance_time(uint64_t cycles) {
         uint32_t v = uint32_t(line % kLines);
         if (line_start > start) {
             if (v < 192) gpu_render_line(v);
+            gpu3d_irq_check();
             if (v == 192) {
                 gpu_vblank();
                 arm7_vblank();

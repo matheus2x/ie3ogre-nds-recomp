@@ -6,6 +6,7 @@ add_library(ntr-runtime STATIC
     src/cpu.cpp
     src/fiber.cpp
     src/gpu2d.cpp
+    src/gpu3d.cpp
     src/hle.cpp
     src/host.cpp
     src/io.cpp

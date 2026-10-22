@@ -3,7 +3,8 @@
 // Covers text, affine, extended (16-bit map, 256-color and direct-color bitmap) and
 // large-bitmap BGs, tiled/bitmap/affine OBJs, windows 0/1/OBJ, color special effects,
 // master brightness, VRAM display mode and display capture. Not modeled yet: the 3D
-// layer (BG0 in 3D mode stays transparent), mosaic and main-memory display mode.
+// mosaic and main-memory display mode. BG0 in 3D mode shows the 3D engine's output
+// (gpu3d.cpp), blended with the layer below by its per-pixel alpha.
 #include <algorithm>
 
 #include "runtime.h"
@@ -38,6 +39,8 @@ struct Line {
     bool obj_win[kScreenWidth];
     uint8_t win[kScreenWidth];         // layers and effects enabled by the windows
     uint16_t out[kScreenWidth];        // composed line, before master brightness
+    uint8_t alpha3d[kScreenWidth];     // BG0 in 3D mode: 3D alpha (31 = opaque)
+    bool bg0_is_3d;
 };
 Line g_line;
 
@@ -188,6 +191,20 @@ void render_affine_bg(const Engine& e, int bg, BgKind kind, uint16_t* out) {
                 break;
         }
         out[x] = color | kOpaque;
+    }
+}
+
+// BG0 in 3D mode: the 3D frame, scrolled horizontally by BG0HOFS.
+void render_3d_layer(const Engine& e, uint32_t line, Line& L) {
+    const uint16_t* color = gpu3d_line_color(line);
+    const uint8_t* alpha = gpu3d_line_alpha(line);
+    int32_t hofs = int32_t(r16(e, 0x10) << 23) >> 23;
+    for (int x = 0; x < kScreenWidth; x++) {
+        int32_t sx = x + hofs;
+        L.alpha3d[x] = 31;
+        if (sx < 0 || sx >= kScreenWidth || alpha[sx] == 0) continue;
+        L.bg[0][x] = color[sx] | kOpaque;
+        L.alpha3d[x] = alpha[sx];
     }
 }
 
@@ -380,7 +397,15 @@ void compose(const Engine& e, Line& L, const bool* bg_on) {
         }
         uint16_t out = color[0];
         bool second_ok = second & (1u << layer[1]);
-        if (layer[0] == kLayerObj && L.obj_alpha[x] && second_ok) {
+        if (layer[0] == 0 && L.bg0_is_3d && L.alpha3d[x] < 31 && second_ok) {
+            // Translucent 3D pixels blend with the layer below using their own alpha.
+            uint32_t a = L.alpha3d[x];
+            out = 0;
+            for (int s = 0; s < 15; s += 5) {
+                uint32_t c = (((color[0] >> s) & 31) * (a + 1) + ((color[1] >> s) & 31) * (31 - a)) >> 5;
+                out |= uint16_t(c << s);
+            }
+        } else if (layer[0] == kLayerObj && L.obj_alpha[x] && second_ok) {
             uint32_t a = L.obj_alpha[x] == 0xFF ? eva : L.obj_alpha[x];
             uint32_t b = L.obj_alpha[x] == 0xFF ? evb : 16 - a;
             out = blend(color[0], color[1], a, b);
@@ -482,12 +507,16 @@ void render_engine_line(Engine& e, int id, uint32_t line) {
         std::fill(std::begin(L.out), std::end(L.out), 0);
     } else {
         bool bg_on[4] = {};
+        L.bg0_is_3d = id == 0 && (dispcnt & 8);
         for (int bg = 0; bg < 4; bg++) {
             std::fill(std::begin(L.bg[bg]), std::end(L.bg[bg]), 0);
             BgKind kind = bg_kind(dispcnt, bg);
             if (!(dispcnt & (0x100u << bg)) || kind == BgKind::None) continue;
-            if (bg == 0 && id == 0 && (dispcnt & 8)) continue;  // 3D layer: not rendered yet
             bg_on[bg] = true;
+            if (bg == 0 && id == 0 && (dispcnt & 8)) {
+                render_3d_layer(e, line, L);
+                continue;
+            }
             if (kind == BgKind::Text) render_text_bg(e, bg, line, L.bg[bg]);
             else render_affine_bg(e, bg, kind, L.bg[bg]);
         }
@@ -502,7 +531,11 @@ void render_engine_line(Engine& e, int id, uint32_t line) {
     if (id == 0 && g_capturing) {
         uint16_t source_a[kScreenWidth];
         bool graphics = !(load32(memory().io.data() + 0x64) & (1u << 24));
-        for (int x = 0; x < kScreenWidth; x++) source_a[x] = graphics ? (L.out[x] | kOpaque) : 0;
+        const uint16_t* c3d = gpu3d_line_color(line);
+        const uint8_t* a3d = gpu3d_line_alpha(line);
+        for (int x = 0; x < kScreenWidth; x++) {
+            source_a[x] = graphics ? (L.out[x] | kOpaque) : (c3d[x] | (a3d[x] ? kOpaque : 0));
+        }
         capture_line(line, source_a);
     }
     output_line(e, line, L.out);
@@ -532,6 +565,7 @@ void gpu_render_line(uint32_t line) {
 
 void gpu_vblank() {
     g_capturing = false;
+    gpu3d_vblank();
     for (Engine& e : g_engines) {
         for (int idx = 0; idx < 2; idx++) {
             latch_ref(e, idx, false);

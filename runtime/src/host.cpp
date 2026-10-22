@@ -6,8 +6,8 @@
 // The left mouse button touches the bottom screen.
 //
 // Environment: NTR_HEADLESS (no window, unthrottled), NTR_FAST (unthrottled),
-// NTR_SCALE (initial window scale, default 2), NTR_SCREENSHOT_FRAME + NTR_SCREENSHOT
-// (save that frame as a BMP), NTR_EXIT_FRAME (exit after that many frames),
+// NTR_SCALE (initial window scale, default 2), NTR_SCREENSHOT_FRAMES + NTR_SCREENSHOT
+// (save those frames, a comma-separated list, as BMPs; %d in the path is the frame), NTR_EXIT_FRAME (exit after that many frames),
 // NTR_INPUT (scripted input for tests: "first-last:KEY[+KEY...];..." with frame numbers
 // and keys A B X Y L R START SELECT UP DOWN LEFT RIGHT or TOUCH@x,y), NTR_PEEK
 // ("hexaddr:size", dumps guest memory every frame).
@@ -17,6 +17,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -46,8 +47,9 @@ struct Host {
     uint64_t frame = 0;
     uint64_t deadline = 0;
     uint64_t fps_start = 0, fps_frames = 0;
-    uint64_t screenshot_frame = 0, exit_frame = 0;
-    std::string screenshot_path;
+    std::set<uint64_t> screenshot_frames;
+    std::string screenshot_path = "boej-%d.bmp";  // %d = frame number
+    uint64_t f12_frame = 0, exit_frame = 0;
 
     uint16_t keys = 0;     // pressed DS buttons: KEYINPUT bits 0-9, X = bit 10, Y = bit 11
     uint16_t pad_keys = 0;
@@ -148,6 +150,13 @@ void apply_script() {
 
 uint16_t pressed_keys() { return g_host.keys | g_host.pad_keys | g_host.script_keys; }
 
+// Replaces %d in a screenshot path with the current frame number.
+std::string frame_path(std::string pattern) {
+    size_t at = pattern.find("%d");
+    if (at != std::string::npos) pattern.replace(at, 2, std::to_string(g_host.frame));
+    return pattern;
+}
+
 void quit() {
     if (!g_host.headless) SDL_Quit();
     std::exit(0);
@@ -212,8 +221,7 @@ void pump_events() {
                 bool down = ev.type == SDL_EVENT_KEY_DOWN;
                 if (ev.key.key == SDLK_TAB) g_host.fast_forward = down;
                 if (ev.key.key == SDLK_F12 && down && !ev.key.repeat) {
-                    g_host.screenshot_frame = g_host.frame + 1;
-                    g_host.screenshot_path = "boej-" + std::to_string(g_host.frame + 1) + ".bmp";
+                    g_host.f12_frame = g_host.frame + 1;
                 }
                 uint16_t bit = key_bit(ev.key.key);
                 g_host.keys = down ? (g_host.keys | bit) : (g_host.keys & ~bit);
@@ -279,9 +287,17 @@ std::string host_base_path() {
 }
 
 bool host_init() {
-    g_host.screenshot_frame = env_u64("NTR_SCREENSHOT_FRAME");
+    for (const char* name : {"NTR_SCREENSHOT_FRAME", "NTR_SCREENSHOT_FRAMES"}) {
+        const char* list = std::getenv(name);
+        for (const char* p = list; p && *p;) {
+            char* end;
+            uint64_t f = std::strtoull(p, &end, 10);
+            if (end == p) break;
+            g_host.screenshot_frames.insert(f);
+            p = *end == ',' ? end + 1 : end;
+        }
+    }
     if (const char* p = std::getenv("NTR_SCREENSHOT")) g_host.screenshot_path = p;
-    else g_host.screenshot_path = "boej.bmp";
     g_host.exit_frame = env_u64("NTR_EXIT_FRAME");
     g_host.throttle = !std::getenv("NTR_FAST");
     if (const char* s = std::getenv("NTR_INPUT")) parse_script(s);
@@ -317,10 +333,16 @@ void host_present(const uint32_t* top, const uint32_t* bottom) {
     apply_script();
     if (g_host.peek_size) {
         NTR_LOG("[peek] frame %llu %08X:", (unsigned long long)g_host.frame, g_host.peek_addr);
-        for (uint32_t i = 0; i < g_host.peek_size; i++) NTR_LOG(" %02X", rd8(g_host.peek_addr + i));
+        for (uint32_t i = 0; i < g_host.peek_size; i++) {
+            // MMIO comes from the register file: reads with side effects would advance time.
+            uint32_t a = g_host.peek_addr + i;
+            uint8_t v = (a >> 24) == 0x04 && a - 0x04000000 < kIoSize ? memory().io[a - 0x04000000] : rd8(a);
+            NTR_LOG(" %02X", v);
+        }
         NTR_LOG("\n");
     }
-    if (g_host.frame == g_host.screenshot_frame) write_bmp(g_host.screenshot_path, top, bottom);
+    if (g_host.screenshot_frames.count(g_host.frame)) write_bmp(frame_path(g_host.screenshot_path), top, bottom);
+    if (g_host.frame == g_host.f12_frame) write_bmp(frame_path("boej-%d.bmp"), top, bottom);
     if (g_host.exit_frame && g_host.frame >= g_host.exit_frame) {
         NTR_LOG("[host] exiting after %llu frames\n", (unsigned long long)g_host.frame);
         quit();

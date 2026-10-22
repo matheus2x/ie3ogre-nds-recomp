@@ -58,7 +58,8 @@ Se o seu dump tiver outro SHA-1, abra uma issue informando o código do jogo e o
 - [ ] HLE do NitroSDK e do ARM7: backup → `.sav`, touch, botões X/Y e contador de VBlank prontos; som só confirma os comandos; RTC pendente
 - [x] Janela SDL3 com as duas telas, teclado/controle/mouse e ritmo de 59,83 Hz
 - [x] Vídeo 2D: bancos de VRAM, BGs texto/afim/estendidos/bitmap, OBJs, janelas, efeitos, brilho mestre, captura
-- [ ] Vídeo 3D (GX); depois, resolução interna maior
+- [x] Vídeo 3D: geometria do GX, rasterizador por software (texturas, translucidez, toon, névoa, edge marking, sombras)
+- [ ] Resolução interna maior; anti-aliasing e wireframe do 3D
 - [ ] Áudio: SDAT/SND e streams `sadl`
 - [ ] Vídeos Mobiclip (`.mods`): hoje os quadros são pulados (a abertura toca em preto, só com a letra)
 - [ ] Wi-Fi/DWC desativado (o Nintendo WFC foi encerrado)
@@ -71,7 +72,7 @@ Se o seu dump tiver outro SHA-1, abra uma issue informando o código do jogo e o
 | Pasta | Conteúdo |
 |---|---|
 | `recompiler/` | `ntr-recomp` (C++20): manifesto do dsd → C++ |
-| `runtime/` | Runtime (C++20): memória, CPU, IRQ, timers, threads, PXI/ARM7 em HLE, VRAM, 2D, janela SDL3 |
+| `runtime/` | Runtime (C++20): memória, CPU, IRQ, timers, threads, PXI/ARM7 em HLE, VRAM, 2D, 3D, janela SDL3 |
 | `game/` | Executável `boej` |
 | `tools/` | Ferramentas em Python (`ntr/` lê a ROM; `extract.py` extrai; `compare_dumps.py` compara dumps; `analyze.py` roda dsd/Ghidra; `ghidra/` tem os scripts do Ghidra; `tests/` tem os testes) |
 | `config/boej/` | `dumps.json` (dumps conhecidos), `layout/<variante>.json` (endereços, overlays, hashes), `dsd/` (funções, seções e relocações do ds-decomp), `names.tsv` (nomes identificados, com evidência), `hle.tsv` (funções substituídas no host) e `code_blobs.tsv` (código que o dsd classifica como dados). Nenhum dado do jogo |
@@ -165,10 +166,10 @@ Variáveis de ambiente:
 - **Janela e ritmo:** `NTR_SCALE` (escala inicial, padrão 2); `NTR_FAST` (sem limite de 60 Hz); `NTR_HEADLESS` (sem janela e sem limite).
 - **Testes automáticos:**
   - `NTR_INPUT` roteiriza a entrada por quadro, por exemplo `300-310:TOUCH@128,96;900-905:A+START`;
-  - `NTR_SCREENSHOT_FRAME` com `NTR_SCREENSHOT` salva um quadro em BMP;
+  - `NTR_SCREENSHOT_FRAMES` (lista separada por vírgulas) com `NTR_SCREENSHOT` (caminho; `%d` vira o número do quadro) salva quadros em BMP;
   - `NTR_EXIT_FRAME` encerra depois de N quadros.
 - **Depuração:**
-  - `NTR_LOG_IRQ`, `NTR_LOG_THREAD`, `NTR_LOG_CARD`, `NTR_LOG_SND`, `NTR_LOG_TP`;
+  - `NTR_LOG_IRQ`, `NTR_LOG_THREAD`, `NTR_LOG_CARD`, `NTR_LOG_SND`, `NTR_LOG_TP`, `NTR_LOG_3D` (polígonos e comandos do GX a cada 60 trocas de buffer);
   - `NTR_PEEK=endereço:tamanho` imprime memória do jogo a cada quadro;
   - `NTR_PROFILE=início-fim` (só na build `--trace`) conta as funções chamadas nesses quadros.
 

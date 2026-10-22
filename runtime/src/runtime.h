@@ -84,6 +84,15 @@ void gpu_render_line(uint32_t line);  // called as the LCD starts drawing a visi
 void gpu_vblank();                    // called as VBlank starts: presents the frame
 void gpu_io_written(uint32_t addr);   // affine reference point writes reload the latch
 
+void gpu3d_init();
+void gpu3d_write(uint32_t addr, uint32_t value);     // GX FIFO and command ports
+void gpu3d_write_gxstat(uint32_t value);
+uint32_t gpu3d_read(uint32_t addr, uint32_t stored);  // GXSTAT, RAM_COUNT, test/matrix results
+void gpu3d_vblank();                                 // shows the frame rendered at SWAP_BUFFERS
+void gpu3d_irq_check();                              // GXSTAT FIFO IRQ
+const uint16_t* gpu3d_line_color(uint32_t line);     // BGR555
+const uint8_t* gpu3d_line_alpha(uint32_t line);      // 0-31; 0 = no 3D pixel
+
 // --- host frontend (SDL3) ---------------------------------------------------------
 
 // Top and bottom physical screens, 256x192 XRGB8888 each.
@@ -113,7 +122,7 @@ void irq_resume_after_switch();
 Cpu& cpu();
 void cpu_reset(uint32_t mode);
 void call_address(Cpu& c, uint32_t target);  // lookup + call, used by call_indirect
-void overlay_set_active(uint32_t overlay_id, bool active);
+void overlay_set_active(uint32_t overlay_id, bool active);  // per 4 KiB page; the last loaded wins
 
 // --- ROM ----------------------------------------------------------------------
 

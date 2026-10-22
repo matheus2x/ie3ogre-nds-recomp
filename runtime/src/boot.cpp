@@ -42,6 +42,7 @@ void write_user_settings() {
 
     memory_init();
     gpu_init();
+    gpu3d_init();
     std::vector<uint8_t> buf(arm9_size);
     rom_read(arm9_off, buf.data(), arm9_size);
     guest_copy_in(arm9_ram, buf.data(), arm9_size);

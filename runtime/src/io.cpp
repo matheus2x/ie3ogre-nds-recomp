@@ -1,6 +1,6 @@
 // ARM9 MMIO: a register file plus the registers whose reads or writes have effects.
-// The 2D engines read their registers from the register file (see gpu2d.cpp); 3D and
-// sound are not modeled yet and their registers just keep written values.
+// The 2D and 3D engines read their registers from the register file (see gpu2d.cpp and
+// gpu3d.cpp); sound is not modeled yet and its registers just keep written values.
 #include <cmath>
 #include <deque>
 
@@ -134,6 +134,7 @@ uint32_t io_read32(uint32_t addr) {
         NTR_LOG("[io] read from unmodeled %08X\n", addr);
         return 0;
     }
+    if (addr >= 0x04000620 && addr < 0x040006A4) return gpu3d_read(addr, reg(addr));
     switch (addr) {
         case REG_DISPSTAT: {
             // Busy-waits on VCOUNT/DISPSTAT must see time pass.
@@ -158,7 +159,8 @@ uint32_t io_read32(uint32_t addr) {
         case REG_ROMCTRL:
             return card_status(reg(addr));
         case REG_GXSTAT:
-            return 0x06000000;  // FIFO empty and less than half full, geometry idle
+        case 0x04000604:
+            return gpu3d_read(addr, reg(addr));
         default:
             return reg(addr);
     }
@@ -177,6 +179,10 @@ void io_write32(uint32_t addr, uint32_t value, uint32_t mask) {
         case REG_IPCFIFOSEND:
             pxi_send_word(value);
             return;
+        case REG_GXSTAT:
+            gpu3d_write_gxstat(value & mask);
+            value &= ~0x8000u;  // the error flag is not stored
+            break;
         case REG_IPCFIFOCNT:
             if (value & mask & 0x4000) value &= ~0x4000u;  // writing 1 clears the error flag
             if (value & mask & 0x0008) pxi_clear_send_fifo();
@@ -187,6 +193,7 @@ void io_write32(uint32_t addr, uint32_t value, uint32_t mask) {
     set_reg(addr, (old & ~mask) | (value & mask));
     if (addr == REG_ROMCTRL && (value & mask & 0x80000000)) card_start(reg(addr));
     if (addr >= REG_VRAMCNT && addr < REG_VRAMCNT + 12) vram_remap();
+    if (addr >= 0x04000400 && addr < 0x04000600) gpu3d_write(addr, value & mask);
     if ((addr & ~0x1000u) < 0x04000070) gpu_io_written(addr);
     for (int n = 0; n < 4; n++) {
         if (addr == 0x040000B8u + 12 * n && (value & mask & 0x80000000) && !(old & 0x80000000)) run_dma(n);

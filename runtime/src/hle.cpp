@@ -90,17 +90,13 @@ namespace ntr {
 
 // --- overlays --------------------------------------------------------------------
 // FSOverlayInfo starts with the overlay id. The recompiled code of every overlay is
-// always present; these hooks tell the dispatcher which one occupies its slot.
+// always present; this hook tells the dispatcher which one occupies its slot. Unloading
+// (FS_EndOverlay) changes nothing: like on hardware, the code stays callable until
+// another overlay is loaded over it, and games do call into an overlay they just ended.
 
 void hle_fs_start_overlay(Cpu& c, GuestFn orig) {
     overlay_set_active(rd32(c.r[0]), true);
     orig(c);
-}
-
-void hle_fs_end_overlay(Cpu& c, GuestFn orig) {
-    uint32_t id = rd32(c.r[0]);
-    orig(c);
-    overlay_set_active(id, false);
 }
 
 }  // namespace ntr

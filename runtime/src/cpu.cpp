@@ -123,7 +123,7 @@ void overlay_set_active(uint32_t id, bool active) {
     for (uint32_t i = 0; i < kRecompModuleCount; i++) {
         const ModuleEntry& m = kRecompModules[i];
         if (overlay_id(m) != int(id)) continue;
-        for (uint32_t a = m.base; a < m.base + m.size; a += 0x1000) {
+        for (uint32_t a = m.base & ~0xFFFu; a < m.base + m.size; a += 0x1000) {  // every page it touches
             g_active_overlay[(a >> 12) & 0xFFF] = active ? id + 1 : 0;
         }
         NTR_LOG("[ovl] overlay %u %s\n", id, active ? "active" : "inactive");
