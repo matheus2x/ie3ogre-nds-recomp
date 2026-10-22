@@ -331,3 +331,20 @@ As tags 3 (NVRAM) e 9 (MIC) não aparecem no ARM9 estático; falta conferir nas 
 3. Entrada (teclas e touch) e RTC.
 4. Driver de som do ARM7 em HLE (SDAT/sequências, streams `sadl`).
 5. Teste diferencial por função contra Unicorn.
+
+---
+
+## 2026-10-22: Build para Windows com MinGW-w64 (compilação cruzada)
+
+- Pacote `mingw-w64-gcc` 16.2.0 no WSL (Arch).
+- `cmake/toolchains/mingw-w64-x86_64.cmake` linka estaticamente libstdc++, libgcc e winpthread. O `boej.exe` depende só de `KERNEL32` e das DLLs do UCRT (`api-ms-win-crt-*`), que vêm com o Windows 10 e 11.
+- `NTR_BUILD_RECOMPILER=OFF` na build cruzada. O `ntr-recomp` é uma ferramenta do host de build e sempre vem da build nativa.
+- O código gerado precisa de `-Wa,-mbig-obj` no MinGW, por causa do limite de seções do COFF.
+- Portabilidade: o `trace.cpp` usava `_exit` de `unistd.h`; agora usa `std::_Exit`.
+- `tools/build.py --windows [--dist DIR]`: compila o recompilador nativo, gera o código, faz a compilação cruzada do jogo e copia o `.exe`.
+
+**Resultado.** O `boej.exe` rodou pelo interop do WSL e chegou ao mesmo ponto da build Linux: overlays 130, 16, 126, 131 e 5, 10 threads, escritas na VRAM do motor B. Isso valida as fibers no Windows (`ConvertThreadToFiber`/`CreateFiber`/`SwitchToFiber`).
+
+**Observação.** Um processo Windows que lê a ROM de 512 MB por `\\wsl$` leva mais de 20 s só para carregá-la.
+- Recomendação: deixar a ROM num disco do Windows.
+- Melhoria futura: mapear a ROM em memória (mmap / `CreateFileMapping`) em vez de ler o arquivo inteiro.

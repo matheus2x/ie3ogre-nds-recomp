@@ -8,7 +8,11 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
 
-add_subdirectory(recompiler)
+# ntr-recomp is a build-machine tool; a cross build (e.g. MinGW) uses a native one.
+option(NTR_BUILD_RECOMPILER "Build the ntr-recomp code generator" ON)
+if(NTR_BUILD_RECOMPILER)
+    add_subdirectory(recompiler)
+endif()
 add_subdirectory(runtime)
 
 # Output of ntr-recomp (see tools/analyze.py manifest and README). The game target is

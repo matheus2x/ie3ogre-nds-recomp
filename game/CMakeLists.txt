@@ -7,6 +7,10 @@ target_include_directories(boej-generated PRIVATE "${NTR_GENERATED_DIR}")
 target_compile_options(boej-generated PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:-O1 -w -fno-strict-aliasing>
     $<$<CXX_COMPILER_ID:MSVC>:/O1 /w /bigobj>)
+if(MINGW)
+    # Generated translation units exceed the default COFF section limit.
+    target_compile_options(boej-generated PRIVATE -Wa,-mbig-obj)
+endif()
 
 option(NTR_TRACE "Record guest function entries (debugging)" OFF)
 if(NTR_TRACE)

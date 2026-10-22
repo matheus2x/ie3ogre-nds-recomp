@@ -122,6 +122,19 @@ python3 tools/build.py                       # manifesto -> ntr-recomp -> build/
 ./build/cmake-rel/game/boej retail.nds
 ```
 
+#### Windows (compilação cruzada a partir do WSL/Linux)
+
+Requer MinGW-w64 (`pacman -S mingw-w64-gcc` no Arch). O `ntr-recomp` continua sendo compilado e executado
+no Linux; só o jogo é compilado para Windows. O resultado é um único `boej.exe` estático, que depende apenas
+das DLLs do sistema.
+
+```sh
+python3 tools/build.py --windows                       # build/cmake-win/game/boej.exe
+python3 tools/build.py --windows --dist /mnt/c/Games/ie3  # e copia para C:\Games\ie3
+```
+
+Coloque a ROM num disco do Windows: lida por `\\wsl$`, ela leva bem mais de 20 s só para carregar.
+
 `tools/build.py --trace` gera uma build com rastreamento de funções em `build/cmake`. Ao receber Ctrl+C,
 ela imprime as últimas 256 funções chamadas.
 

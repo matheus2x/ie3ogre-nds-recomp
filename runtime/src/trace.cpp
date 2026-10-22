@@ -2,7 +2,6 @@
 // when the generated code is built with NTR_TRACE.
 #include <csignal>
 #include <cstdlib>
-#include <unistd.h>
 
 #include "runtime.h"
 
@@ -20,7 +19,7 @@ void dump_and_exit(int) {
     for (uint64_t i = g_count - n; i < g_count; i++) NTR_LOG("  %08X\n", g_ring[i % kRing]);
     Cpu& c = cpu();
     for (int i = 0; i < 16; i++) NTR_LOG("  r%-2d %08X%s", i, c.r[i], i % 4 == 3 ? "\n" : "");
-    _exit(4);
+    std::_Exit(4);
 }
 
 }  // namespace
