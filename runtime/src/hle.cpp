@@ -2,6 +2,7 @@
 // the recompiled original so it can wrap it; most replace it.
 #include <cstdlib>
 #include <cstring>
+#include <vector>
 
 #include "runtime.h"
 
@@ -75,11 +76,9 @@ void hle_card_read_cpu(Cpu& c, GuestFn) {
     uint32_t dst = c.r[1], src = c.r[2], len = c.r[3];
     static const bool log = std::getenv("NTR_LOG_CARD");
     if (log) NTR_LOG("[card] rom read %08X -> %08X, %u bytes\n", src, dst, len);
-    const auto& data = rom().data;
-    for (uint32_t i = 0; i < len; i++) {
-        uint32_t off = src + i;
-        wr8(dst + i, off < data.size() ? data[off] : 0xFF);
-    }
+    std::vector<uint8_t> buf(len);
+    rom_read(src, buf.data(), len);
+    guest_copy_in(dst, buf.data(), len);
     c.r[0] = len;
 }
 

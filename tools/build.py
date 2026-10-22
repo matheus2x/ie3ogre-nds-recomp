@@ -8,6 +8,9 @@
 
 Prerequisites (once per checkout): tools/extract.py on the retail dump and
 "tools/analyze.py dsd" (see README). --windows needs x86_64-w64-mingw32-g++.
+
+The game data package made by tools/extract.py (build/boej.pak) is placed next to the
+executable (and copied with --dist), so the game runs with no arguments and no dump.
 """
 
 import argparse
@@ -24,6 +27,17 @@ MINGW_TOOLCHAIN = ROOT / "cmake" / "toolchains" / "mingw-w64-x86_64.cmake"
 def run(cmd):
     print("+", " ".join(str(c) for c in cmd), flush=True)
     subprocess.run([str(c) for c in cmd], check=True)
+
+
+def place(src: Path, dst: Path):
+    """Hard link (no extra disk space), or copy across file systems."""
+    if dst.exists() and dst.stat().st_ino == src.stat().st_ino:
+        return
+    dst.unlink(missing_ok=True)
+    try:
+        os.link(src, dst)
+    except OSError:
+        shutil.copy2(src, dst)
 
 
 def main() -> int:
@@ -63,14 +77,23 @@ def main() -> int:
     run(["cmake", "--build", game_build, "--target", "boej", "-j", args.jobs])
     print(f"built: {exe}")
 
+    pak = ROOT / "build" / "boej.pak"
+    if pak.exists():
+        place(pak, exe.parent / pak.name)
+    else:
+        print("warning: build/boej.pak not found; run tools/extract.py on the retail dump to create it")
+
     if args.dist:
         args.dist.mkdir(parents=True, exist_ok=True)
-        shipped = [exe]
+        shipped = [exe] + ([pak] if pak.exists() else [])
         if args.windows:  # SDL3.dll from the SDL3-devel-*-mingw package fetched by CMake
             shipped += list((game_build / "_deps").glob("sdl3_mingw-src/x86_64-w64-mingw32/bin/SDL3.dll"))
         for f in shipped:
-            shutil.copy2(f, args.dist / f.name)
-            print(f"copied to: {args.dist / f.name}")
+            dst = args.dist / f.name
+            if dst.exists() and dst.stat().st_size == f.stat().st_size and dst.stat().st_mtime >= f.stat().st_mtime:
+                continue  # unchanged (the package is large)
+            shutil.copy2(f, dst)
+            print(f"copied to: {dst}")
     return 0
 
 

@@ -5,8 +5,12 @@
 
 namespace ntr {
 
-// Reads the whole ROM image; the game data and code are taken from it at run time.
+// Opens the cartridge image the game data is read from: the game data package made by
+// tools/extract.py (boej.pak) or a .nds dump. It stays memory-mapped while the game runs.
 bool rom_load(const std::string& path);
+
+// Directory of the running executable, with a trailing separator.
+std::string host_base_path();
 
 // Opens the window (unless NTR_HEADLESS is set). Must run on the main thread before boot().
 bool host_init();

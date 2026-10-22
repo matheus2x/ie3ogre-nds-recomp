@@ -1,7 +1,7 @@
 // Cartridge boot as the DS firmware does it: copy the ROM header and the ARM9 binary
 // (still compressed; the game's crt0 decompresses it) into RAM, set up the shared
 // work area, then jump to the ARM9 entry point.
-#include <fstream>
+#include <vector>
 
 #include "fiber.h"
 #include "pxi.h"
@@ -10,8 +10,6 @@
 namespace ntr {
 
 namespace {
-
-Rom g_rom;
 
 // Firmware user settings at 0x027FFC80 (owner info, touch calibration, language).
 void write_user_settings() {
@@ -38,24 +36,18 @@ void write_user_settings() {
 
 }  // namespace
 
-Rom& rom() { return g_rom; }
-
-bool rom_load(const std::string& path) {
-    std::ifstream in(path, std::ios::binary);
-    if (!in) return false;
-    g_rom.data.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
-    return g_rom.data.size() >= 0x200;
-}
-
 [[noreturn]] void boot() {
-    const auto& r = g_rom.data;
-    auto u32 = [&](uint32_t off) { return load32(r.data() + off); };
-    uint32_t arm9_off = u32(0x20), arm9_entry = u32(0x24), arm9_ram = u32(0x28), arm9_size = u32(0x2C);
+    uint32_t arm9_off = rom_read32(0x20), arm9_entry = rom_read32(0x24), arm9_ram = rom_read32(0x28),
+             arm9_size = rom_read32(0x2C);
 
     memory_init();
     gpu_init();
-    guest_copy_in(arm9_ram, r.data() + arm9_off, arm9_size);
-    guest_copy_in(0x027FFE00, r.data(), 0x170);
+    std::vector<uint8_t> buf(arm9_size);
+    rom_read(arm9_off, buf.data(), arm9_size);
+    guest_copy_in(arm9_ram, buf.data(), arm9_size);
+    buf.resize(0x170);
+    rom_read(0, buf.data(), 0x170);
+    guest_copy_in(0x027FFE00, buf.data(), 0x170);
 
     // Card chip IDs and boot flags the firmware leaves behind.
     wr32(0x027FF800, 0x00001FC2);

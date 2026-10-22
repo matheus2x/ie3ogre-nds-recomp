@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 """Extract a BOEJ dump into build/extract/<variant> and write its layout to config/boej/layout/<variant>.json.
 
-Usage: python3 tools/extract.py <rom.nds> [--out build/extract] [--config config/boej] [--no-files] [--allow-unknown]
+Usage: python3 tools/extract.py <rom.nds> [--out build/extract] [--config config/boej] [--no-files]
+                                [--pak build/boej.pak] [--allow-unknown]
 
 The dump is identified by SHA-1 against config/boej/dumps.json. Game data goes only to
 --out, which is gitignored. The layout file holds addresses, sizes and hashes; it
 contains no game code or assets.
+
+For the canonical (retail) dump it also writes the game data package (--pak) that the
+executable runs from, so the dump is not needed after this step. Other variants get no
+package: the executable is recompiled from the retail code.
 """
 
 import argparse
@@ -16,6 +21,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from ntr.pak import write_pak  # noqa: E402
 from ntr.rom import Rom, RomError  # noqa: E402
 
 
@@ -57,6 +63,8 @@ def main() -> int:
     ap.add_argument("--config", type=Path, default=root / "config" / "boej")
     ap.add_argument("--no-files", action="store_true", help="skip dumping the NitroFS files")
     ap.add_argument("--allow-unknown", action="store_true", help="extract dumps not listed in dumps.json")
+    ap.add_argument("--pak", type=Path, default=root / "build" / "boej.pak",
+                    help="game data package for the executable (canonical dump only)")
     args = ap.parse_args()
 
     known = json.loads((args.config / "dumps.json").read_text())
@@ -142,6 +150,12 @@ def main() -> int:
     layout_path.parent.mkdir(parents=True, exist_ok=True)
     layout_path.write_text(json.dumps(layout, indent=2) + "\n")
     print(f"layout: {layout_path}")
+
+    if variant == known["canonical"]:
+        size = write_pak(rom, layout["input_sha1"], args.pak)
+        print(f"package: {args.pak} ({size / 2**20:.0f} MiB); the executable no longer needs the dump")
+    else:
+        print(f"package: skipped ({variant} is not the {known['canonical']} dump the code is recompiled from)")
     return 0
 
 

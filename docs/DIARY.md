@@ -417,3 +417,31 @@ As tags 3 (NVRAM) e 9 (MIC) não aparecem no ARM9 estático; falta conferir nas 
 1. Motor 3D (GX FIFO, geometria, rasterização) para o campo e as partidas. O título já usa só 2D.
 2. Decodificador Mobiclip nativo (o `libavcodec/mobiclip.c` serve de referência) no lugar do blob, com o áudio do vídeo.
 3. RTC, driver de som do ARM7 e mapeamento da ROM em memória (o carregamento por `\\wsl$` é lento).
+
+---
+
+## 2026-10-22: Pacote de dados: o dump só é usado na preparação
+
+O pedido: usar a ROM só no processo inicial de cada usuário, e depois rodar sem ela.
+
+**Pacote `boej.pak`** (formato em `tools/ntr/pak.py`)
+- Guarda as regiões da ROM que o jogo pode ler, nos offsets originais:
+  - header e área segura (0-0x4000);
+  - ARM9 e ARM7;
+  - FNT, FAT e tabelas de overlay;
+  - banner e todos os arquivos do FAT.
+- Regiões a menos de 4 KiB umas das outras viram uma só. Cada região tem o offset na ROM, o tamanho e a posição no pacote, alinhada a 4 KiB. Fora das regiões, a leitura devolve 0xFF, como o espaço vazio do cartucho.
+- O cabeçalho guarda o código do jogo e o SHA-1 do dump de origem.
+- No BOEJ retail, tudo fica contíguo até 0x1BFC3DAC: uma única região de 448 MiB (a ROM tem 512 MiB).
+- O jogo lê o cartucho por offset (boot, `CARDi_ReadRomWithCPU`, comando 0xB7). Por isso, manter os offsets dispensou qualquer mudança no lado do jogo.
+- O `tools/extract.py` gera o pacote em 2 s, mas só para o dump retail: o código é recompilado dele, e a tradução de fãs muda dados dentro das overlays.
+
+**Runtime** (`runtime/src/rom.cpp`)
+- Lê o pacote ou um `.nds` por mmap (`MapViewOfFile` no Windows), no lugar de carregar o arquivo inteiro em um `std::vector`. A interface virou `rom_read`/`rom_read32`.
+- Sem argumentos, o `boej` procura o `boej.pak` na pasta do executável (`SDL_GetBasePath`) e depois na pasta atual. O erro explica como gerar o pacote.
+- O `tools/build.py` faz um hardlink do pacote ao lado do executável. No `--dist`, copia o pacote, mas só quando ele mudou.
+
+**Verificação**
+- Rodando de outra pasta, sem argumentos, o quadro 8000 (tela de título) saiu idêntico byte a byte ao da execução com o `.nds`.
+- O `boej.exe` no Windows, sem argumentos, faz 600 quadros em 2,2 s, contra 27,6 s antes: a ROM não é mais lida inteira por `\\wsl$`.
+- Novo teste unitário: ida e volta do pacote com uma ROM sintética.

@@ -40,17 +40,13 @@ void card_start(uint32_t ctrl) {
     uint32_t bytes = blocks == 0 ? 0 : blocks == 7 ? 4 : 0x100u << blocks;
     uint8_t cmd[8];
     for (int i = 0; i < 8; i++) cmd[i] = memory().io[0x1A8 + i];
-    const auto& data = rom().data;
     for (uint32_t i = 0; i < bytes; i += 4) {
         uint32_t word = 0;
         if (cmd[0] == 0xB8) {
             word = kChipId;
         } else if (cmd[0] == 0xB7) {
             uint32_t addr = uint32_t(cmd[1]) << 24 | cmd[2] << 16 | cmd[3] << 8 | cmd[4];
-            for (int k = 0; k < 4; k++) {
-                uint32_t off = addr + i + k;
-                word |= uint32_t(off < data.size() ? data[off] : 0xFF) << (8 * k);
-            }
+            word = rom_read32(addr + i);
         }
         g_card_data.push_back(word);
     }

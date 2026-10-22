@@ -6,7 +6,11 @@ Run: python3 -m unittest discover -s tools/tests -t tools
 import struct
 import unittest
 
+import tempfile
+from pathlib import Path
+
 from ntr import blz
+from ntr.pak import PakReader, rom_ranges, write_pak
 from ntr.rom import NITROCODE, Rom
 
 
@@ -68,6 +72,22 @@ class RomTest(unittest.TestCase):
         self.assertEqual(rom.files(), [("dir/a.bin", 0)])
         self.assertEqual(rom.file_data(0), b"DATA")
         self.assertEqual(rom.overlays9(), [])
+
+
+class PakTest(unittest.TestCase):
+    def test_round_trip_keeps_rom_offsets(self):
+        data = bytearray(make_rom()) + b"\xff" * 0x10000
+        rom = Rom(bytes(data))
+        self.assertEqual(rom_ranges(rom)[0][0], 0)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "test.pak"
+            write_pak(rom, "00" * 20, path)
+            pak = PakReader(path.read_bytes())
+        self.assertEqual(pak.game_code, "BOEJ")
+        self.assertEqual(pak.rom_size, len(data))
+        self.assertEqual(pak.read(0, 0x600), bytes(data[:0x600]))
+        self.assertEqual(pak.read(0x500, 4), b"DATA")
+        self.assertEqual(pak.read(0x8000, 4), b"\xff" * 4)  # outside every range
 
 
 if __name__ == "__main__":

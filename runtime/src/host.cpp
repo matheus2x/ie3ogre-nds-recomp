@@ -273,6 +273,11 @@ void pace() {
 
 }  // namespace
 
+std::string host_base_path() {
+    const char* p = SDL_GetBasePath();
+    return p ? p : "";
+}
+
 bool host_init() {
     g_host.screenshot_frame = env_u64("NTR_SCREENSHOT_FRAME");
     if (const char* p = std::getenv("NTR_SCREENSHOT")) g_host.screenshot_path = p;

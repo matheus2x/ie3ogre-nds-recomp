@@ -117,11 +117,9 @@ void overlay_set_active(uint32_t overlay_id, bool active);
 
 // --- ROM ----------------------------------------------------------------------
 
-struct Rom {
-    std::vector<uint8_t> data;
-};
-Rom& rom();
-bool rom_load(const std::string& path);
+// The cartridge image by ROM offset (rom.cpp); bytes outside it read as 0xFF.
+void rom_read(uint32_t offset, void* dst, uint32_t size);
+uint32_t rom_read32(uint32_t offset);
 
 void trace_install();
 void trace_frame(uint64_t frame);  // NTR_PROFILE window bookkeeping

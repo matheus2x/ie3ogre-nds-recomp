@@ -38,6 +38,11 @@ quando o **código** é idêntico ao do retail e só mudam dados (textos, tabela
 acima: ARM9 e ARM7 iguais, e diferenças só em strings/tabelas de 33 overlays e em 512 arquivos. Para comparar
 um dump novo com o retail, use `tools/compare_dumps.py`.
 
+**O dump só é usado na preparação.** O `tools/extract.py` gera o `build/boej.pak`, um pacote com as partes da
+ROM que o jogo lê (header, binários, tabelas e arquivos, sem o preenchimento vazio; ~448 MiB). Depois disso,
+o executável roda só com o pacote, e o `.nds` pode ficar guardado. O pacote e o executável contêm dados e código
+do jogo: são de uso pessoal e não devem ser distribuídos.
+
 A versão europeia (*Inazuma Eleven 3: Team Ogre Attacks!*) saiu só para 3DS e não é suportada. Não houve lançamento americano.
 As outras versões japonesas de IE3 (Sekai heno Chousen!! **Bomber** / **Spark**) também não são suportadas por enquanto.
 
@@ -57,7 +62,8 @@ Se o seu dump tiver outro SHA-1, abra uma issue informando o código do jogo e o
 - [ ] Áudio: SDAT/SND e streams `sadl`
 - [ ] Vídeos Mobiclip (`.mods`): hoje os quadros são pulados (a abertura toca em preto, só com a letra)
 - [ ] Wi-Fi/DWC desativado (o Nintendo WFC foi encerrado)
-- [ ] Seleção do dump no primeiro uso, configurações, controles remapeáveis
+- [x] Dump usado só na preparação: o jogo roda a partir do `boej.pak` (mapeado em memória)
+- [ ] Configurações, controles remapeáveis
 - [ ] Instalador / release portátil para Windows
 
 ## Estrutura do repositório
@@ -120,11 +126,13 @@ Conteúdo de `build/extract/<variante>/`:
 Requer SDL3 (`pacman -S sdl3` no Arch).
 
 ```sh
-python3 tools/extract.py retail.nds          # uma vez
+python3 tools/extract.py retail.nds          # uma vez: extração + build/boej.pak
 python3 tools/analyze.py dsd retail.nds      # uma vez (mapa de funções)
-python3 tools/build.py                       # manifesto -> ntr-recomp -> build/cmake-rel/game/boej
-./build/cmake-rel/game/boej retail.nds
+python3 tools/build.py                       # manifesto -> ntr-recomp -> build/cmake-rel/game/boej (+ boej.pak ao lado)
+./build/cmake-rel/game/boej                  # sem argumentos: usa o boej.pak da pasta do executável
 ```
+
+Também dá para passar o caminho de um `boej.pak` ou de um `.nds` como argumento.
 
 | DS | Teclado | Controle |
 |---|---|---|
@@ -140,14 +148,13 @@ Tab (segurado) acelera; F12 salva a tela em `boej-<quadro>.bmp`.
 
 Requer MinGW-w64 (`pacman -S mingw-w64-gcc` no Arch). O `ntr-recomp` continua sendo compilado e executado
 no Linux; só o jogo é compilado para Windows. O CMake baixa o pacote oficial `SDL3-devel-*-mingw`. O resultado
-é o `boej.exe` (libstdc++ estática) mais o `SDL3.dll`, que precisa ficar na mesma pasta; `--dist` copia os dois.
+é o `boej.exe` (libstdc++ estática) mais o `SDL3.dll`, que precisa ficar na mesma pasta. O `--dist` copia os dois
+e o `boej.pak`; o pacote só é recopiado quando muda.
 
 ```sh
 python3 tools/build.py --windows                       # build/cmake-win/game/boej.exe
 python3 tools/build.py --windows --dist /mnt/c/Games/ie3  # e copia para C:\Games\ie3
 ```
-
-Coloque a ROM num disco do Windows: lida por `\\wsl$`, ela leva bem mais de 20 s só para carregar.
 
 `tools/build.py --trace` gera uma build com rastreamento de funções em `build/cmake`. Ao receber Ctrl+C,
 ela imprime as últimas 256 funções chamadas.
