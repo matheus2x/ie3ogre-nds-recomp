@@ -450,7 +450,10 @@ void host_present(const uint32_t* top, const uint32_t* bottom) {
         }
         NTR_LOG("\n");
     }
-    if (g_host.screenshot_frames.count(g_host.frame)) write_bmp(frame_path(g_host.screenshot_path), top, bottom);
+    if (g_host.screenshot_frames.count(g_host.frame)) {  // like F8: picture plus state dump
+        write_bmp(frame_path(g_host.screenshot_path), top, bottom);
+        debug_dump("screenshot");
+    }
     if (g_host.frame == g_host.f12_frame) write_bmp(frame_path("boej-%d.bmp"), top, bottom);
     if (g_host.exit_frame && g_host.frame >= g_host.exit_frame) {
         NTR_LOG("[host] exiting after %llu frames\n", (unsigned long long)g_host.frame);

@@ -257,8 +257,11 @@ void debug_dump(const char* reason) {
             r32(0x1000), r16(0x06C), r16(0x106C), r16(0x304));
     NTR_LOG("[dump] BLDCNT A %04X B %04X  BLDALPHA A %04X B %04X  BLDY A %02X B %02X\n", r16(0x050), r16(0x1050),
             r16(0x052), r16(0x1052), io[0x054], io[0x1054]);
-    NTR_LOG("[dump] VRAMCNT %08X %08X %02X  DISP3DCNT %04X  IME %u IE %08X IF %08X\n", r32(0x240), r32(0x244),
-            io[0x249], r16(0x060), io[0x208] & 1, r32(0x210), r32(0x214));
+    NTR_LOG("[dump] VRAMCNT A-I %02X %02X %02X %02X %02X %02X %02X %02X %02X  DISP3DCNT %04X  IME %u IE %08X IF %08X\n",
+            io[0x240], io[0x241], io[0x242], io[0x243], io[0x244], io[0x245], io[0x246], io[0x248], io[0x249],
+            r16(0x060), io[0x208] & 1, r32(0x210), r32(0x214));
+    NTR_LOG("[dump] BG0-3CNT A %04X %04X %04X %04X B %04X %04X %04X %04X\n", r16(0x008), r16(0x00A), r16(0x00C),
+            r16(0x00E), r16(0x1008), r16(0x100A), r16(0x100C), r16(0x100E));
     NTR_LOG("[dump] active overlays: %s\n", overlay_active_list().c_str());
     // OSThreadInfo (pointer at 0x01FF81AC): +4 current thread, +8 list linked by +0x68;
     // thread state at +0x64 (0 waiting, 1 ready, 2 terminated).

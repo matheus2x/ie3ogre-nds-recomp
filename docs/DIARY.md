@@ -680,3 +680,42 @@ O relato: na parte do flashback do Endo, a tela fica toda branca e o jogo parece
 - Os seis portões passam e nenhuma penalidade é chamada.
 - O flashback segue: o fade abre, e a fala da mãe ("…守! 守ー 起きなさい!") aparece e fica esperando o A, porque a gravação acaba ali.
 - O roteiro da história continua idêntico byte a byte nos quadros 9000 e 14000.
+
+## 2026-10-22 — Crash ao iniciar a primeira partida (contra os Outlaws, para salvar o Toramaru)
+
+**Sintoma.** No quadro 30681, ao começar a partida, o log mostra `[cpu] unhandled at 0213A3AC: indirect call to unknown address`; lr 01FF9D30 (ITCM).
+
+**Causa.** 0x0213A3AC é `func_ov126_0213a3ac`, e a ov126 continuava carregada. A tabela de overlays ativas era por página de 4 KiB:
+- a ov126 termina em 0x0213ACC0 e a ov132 começa exatamente ali, na mesma página 0x0213A000;
+- ao carregar a ov132 (quadro 29912), a página inteira passava a ser dela, e as funções da ov126 entre 0x0213A000 e 0x0213ACBF ficavam inalcançáveis.
+
+**Correção** (cpu.cpp). A tabela agora tem um `uint16_t` por bloco de 32 bytes da RAM principal (alinhamento das overlays), 256 KiB no total.
+
+**Verificação:**
+- A repetição da sessão do usuário passa do quadro 30681 e a partida começa (placar 0×0, 15:00, campo com os jogadores).
+- O roteiro da história continua idêntico byte a byte nos quadros 9000 e 14000.
+
+## 2026-10-22 — Mapa da tela de cima não aparecia: tabela de `switch` cortada pelo recompilador
+
+**Sintoma.** Na exploração, a tela de cima ficava preta. O dump mostrou o motor B (tela de cima) com BG0 + OBJ ativos, mas a VRAM de BG do banco H zerada e a OAM do motor B toda escondida.
+
+**Investigação** (instrumentação temporária, já removida):
+- Armadilha de escrita em BG/OBJ/OAM do motor B: depois da entrada no campo (quadro ~2136), só houve limpezas e a carga dos gráficos de OBJ. O desenho do mapa nunca acontecia, e o `map2d.pkb` (arquivo 398) nunca era aberto; só o índice `map2d.pkh`.
+- Com o perfilador (`--trace`, `NTR_PROFILE`), achei o objeto do mapa (ov000, atualizado por `func_ov000_020c9110`). Ele ficava preso no estado 9: entrava com 9 e saía com 9.
+- No original, `case 9` sempre termina em estado 3. O código gerado só tinha `case 0..2`.
+
+**Causa.** `switch_case_count` (translator.cpp) só aceitava o `cmp rN, #max` logo antes do `addls pc, pc, rN, lsl #2`. Aqui havia um `mov r5, #1` no meio:
+- sem o `cmp`, o recompilador contava a tabela até a primeira entrada que não fosse `b`;
+- a entrada 3 é um `ldmia sp!, {…, pc}` (retorno), então só sobravam 3 casos, e os estados 3–9 caíam no default, que retorna.
+
+**Correção.** O `cmp` vale até 24 bytes antes do dispatch condicional, desde que as instruções no meio sejam processamento de dados sem S, incondicionais e sem escrever em rN.
+- Mudaram 10 tabelas no jogo, todas conferidas com o `cmp`: #9, #8, #8, #14, #9, #5, #5, #5, #6 e #8.
+- Algumas tinham perdido casos reais, como a do mapa. Outras tinham casos a mais (código depois da tabela), o que era inofensivo.
+
+**Resultado:**
+- O mapa da tela de cima aparece: nome da área (住宅街 / 未来ストリート), o mapa com marcadores e o objetivo ("風丸たちと合流だ！スポーツショップへ！").
+- Gravações feitas antes desta correção deixam de repetir a mesma sessão, porque agora o jogo se comporta de outro jeito.
+
+**Ferramentas que ficaram:**
+- O dump de estado agora traz os nove VRAMCNT (A–I) e BG0–3CNT dos dois motores.
+- Cada captura de `NTR_SCREENSHOT_FRAMES` também grava o dump, como no F8.

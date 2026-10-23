@@ -25,7 +25,11 @@ Bank g_banks[32];
 uint32_t bank_index(uint32_t mode) { return mode == 0x10 ? 0x1F : mode; }
 
 uint32_t g_cp15[16][16][8];
-uint32_t g_active_overlay[4096];  // overlay id + 1 per 4 KiB page of the overlay region, 0 = none
+// Overlay id + 1 per 32-byte block of main RAM (0 = none). Overlays are 32-byte aligned
+// and one can start in the same 4 KiB page where another ends (ov126 / ov132).
+constexpr uint32_t kOverlayBlockShift = 5;
+uint16_t g_active_overlay[0x400000 >> kOverlayBlockShift];
+uint32_t overlay_block(uint32_t addr) { return (addr & 0x3FFFFF) >> kOverlayBlockShift; }
 
 }  // namespace
 
@@ -125,8 +129,8 @@ void overlay_set_active(uint32_t id, bool active) {
     for (uint32_t i = 0; i < kRecompModuleCount; i++) {
         const ModuleEntry& m = kRecompModules[i];
         if (overlay_id(m) != int(id)) continue;
-        for (uint32_t a = m.base & ~0xFFFu; a < m.base + m.size; a += 0x1000) {  // every page it touches
-            g_active_overlay[(a >> 12) & 0xFFF] = active ? id + 1 : 0;
+        for (uint32_t a = m.base & ~0x1Fu; a < m.base + m.size; a += 1u << kOverlayBlockShift) {
+            g_active_overlay[overlay_block(a)] = uint16_t(active ? id + 1 : 0);
         }
         NTR_LOG("[ovl] overlay %u %s\n", id, active ? "active" : "inactive");
         return;
@@ -150,7 +154,7 @@ void call_address(Cpu& c, uint32_t target) {
         const ModuleEntry& m = kRecompModules[i];
         if (addr < m.base || addr - m.base >= m.size) continue;
         int id = overlay_id(m);
-        if (id >= 0 && g_active_overlay[(addr >> 12) & 0xFFF] != uint32_t(id) + 1) continue;
+        if (id >= 0 && g_active_overlay[overlay_block(addr)] != uint32_t(id) + 1) continue;
         if (const FuncEntry* f = find_in(m, addr)) {
             f->fn(c);
             return;

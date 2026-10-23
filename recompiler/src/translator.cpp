@@ -68,14 +68,22 @@ std::string Translator::unhandled(uint32_t addr, const std::string& what) {
 int Translator::switch_case_count(uint32_t addr, uint32_t reg) const {
     // The upper bound comes from "cmp rN, #max" that guards the dispatch: either the
     // dispatch itself is conditional on LS/LE, or the cmp is followed by "bhi/bgt default".
+    // Instructions between the cmp and a conditional dispatch must leave the flags and
+    // rN alone ("cmp r1, #9; mov r5, #1; addls pc, pc, r1, lsl #2").
     uint32_t dispatch_cond = mod_.read32(addr).value_or(0) >> 28;
+    bool flags_kept = true;
     for (uint32_t back = 4; back <= 24; back += 4) {
         auto raw = mod_.read32(addr - back);
         if (!raw) break;
         uint32_t r = *raw;
-        if ((r & 0x0FF0F000) != 0x03500000 || ((r >> 16) & 0xF) != reg) continue;
+        if ((r & 0x0FF0F000) != 0x03500000 || ((r >> 16) & 0xF) != reg) {
+            bool data_processing = (r & 0x0C000000) == 0 && (r & 0x0E000090) != 0x00000090;
+            bool plain_mov = data_processing && !(r & 0x00100000) && ((r >> 12) & 0xF) != reg && (r >> 28) == 0xE;
+            if (!plain_mov) flags_kept = false;
+            continue;
+        }
         int imm = int(std::rotr(r & 0xFF, ((r >> 8) & 0xF) * 2));
-        if (back == 4 && (dispatch_cond == 0x9 || dispatch_cond == 0xD)) return imm;
+        if (flags_kept && (dispatch_cond == 0x9 || dispatch_cond == 0xD)) return imm;
         uint32_t next = mod_.read32(addr - back + 4).value_or(0);
         uint32_t cond = next >> 28;
         if ((next & 0x0F000000) == 0x0A000000 && (cond == 0x8 || cond == 0xC)) return imm;
