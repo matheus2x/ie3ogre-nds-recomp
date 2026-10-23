@@ -59,7 +59,7 @@ Se o seu dump tiver outro SHA-1, abra uma issue informando o código do jogo e o
 - [x] Janela SDL3 com as duas telas, teclado/controle/mouse e ritmo de 59,83 Hz
 - [x] Vídeo 2D: bancos de VRAM, BGs texto/afim/estendidos/bitmap, OBJs, janelas, efeitos, brilho mestre, captura
 - [x] Vídeo 3D: geometria do GX, rasterizador por software (texturas, translucidez, toon, névoa, edge marking, sombras)
-- [ ] Resolução interna maior; anti-aliasing e wireframe do 3D
+- [x] Resolução interna maior do 3D (1× a 4×, padrão 2×); anti-aliasing e wireframe do 3D
 - [x] Áudio: comandos SND de canal/captura/alarme, 16 canais (PCM8/16, IMA-ADPCM, PSG, ruído) mixados a 32 kHz pelo SDL3 (o jogo mixa música e streams no ARM9 e não usa o sequenciador do SDK)
 - [x] Vídeos Mobiclip (`.mods`): o decodificador original (assembly escrito à mão) roda num interpretador ARM embutido
 - [x] Wi-Fi/DWC desativado (o Nintendo WFC foi encerrado): o ARM7 não oferece o serviço sem fio, então o jogo recebe "sem fio indisponível" e segue pelo próprio caminho de erro
@@ -187,6 +187,7 @@ Variáveis de ambiente:
 
 - **Save:** `NTR_SAVE` (padrão: `saves/boej.sav`).
 - **Janela e ritmo:** `NTR_SCALE` (escala inicial, padrão 2); `NTR_FAST` (sem limite de 60 Hz); `NTR_HEADLESS` (sem janela e sem limite).
+- **Resolução do 3D:** `NTR_3D_SCALE=1..4` (padrão 2 com janela, 1 sem janela). Só o 3D ganha resolução, e as camadas 2D são esticadas. O jogo e a captura de tela do DS continuam vendo a imagem nativa. As capturas (F12, F8, `NTR_SCREENSHOT_FRAMES`) saem no tamanho mostrado na janela.
 - **Áudio:** `NTR_MUTE` (sem dispositivo de áudio); `NTR_WAV=arquivo.wav` grava a saída de som (funciona também sem janela).
 - **Relógio:** o RTC usa a hora local do PC; `NTR_RTC="2010-07-01 12:00:00"` parte de um momento fixo e avança com o tempo emulado (testes reproduzíveis).
 - **Testes automáticos:**

@@ -744,3 +744,33 @@ Também há uma função do jogo em main (0x0203E004, chamada de 0x0204655C) que
 - Um teste temporário (já removido) chamou o `WM_Init` e o `WM_Initialize` do próprio jogo no quadro 300: os dois devolveram 4 na hora.
 - O roteiro da história continua idêntico byte a byte no quadro 14000.
 - Ainda não vi os menus de comunicação dentro do jogo. Eles pedem um save ou bem mais tempo de jogo; fica para o teste do usuário (a mensagem de erro do próprio jogo deve aparecer, sem travar).
+
+## 2026-10-22 — Etapa 10: resolução interna do 3D, anti-aliasing e wireframe
+
+**Resolução interna** (`NTR_3D_SCALE`, 1 a 4; padrão 2 com janela e 1 sem janela, para os testes continuarem no tamanho nativo):
+- **3D** (gpu3d.cpp): os buffers de cor, alfa e atributos agora são do tamanho 256·N × 192·N, e os vértices são multiplicados por N só na rasterização. Na troca de quadro sai também uma cópia nativa (uma amostra no centro de cada pixel nativo), que é o que o motor 2D e a captura de tela do DS leem. O jogo vê a mesma imagem 3D em qualquer escala.
+- **2D** (gpu2d.cpp): cada linha continua sendo desenhada e composta em 256 pixels.
+  - Para a janela, as linhas do motor A que mostram 3D são compostas de novo em cada sub-linha: o 3D grande, as camadas 2D esticadas e os mesmos efeitos (alfa do 3D, blending, janelas, brilho mestre). O `compose` ganhou escala e uma fonte opcional para o BG0. O BG0HOFS é multiplicado por N.
+  - As outras linhas (2D puro, motor B, tela desligada) são repetidas N×N.
+- **Host:** `host_present(top, bottom, scale)`, com textura do tamanho certo criada sob demanda. As capturas (F12, F8 e as roteirizadas) saem no tamanho da janela.
+- **Marcação de borda:** os vizinhos ficam a N pixels, para o contorno manter a espessura de 1 pixel nativo.
+
+**Anti-aliasing** (DISP3DCNT bit 4; o jogo liga, com 0x1B):
+- Cada pixel opaco guarda o que havia embaixo (cor e alfa) e a cobertura: 0,5 na borda do polígono e 1 a meio pixel para dentro. A distância é calculada só nos lados do polígono, não nas diagonais da triangulação em leque.
+- Uma passada final mistura com o que está embaixo só nas silhuetas, isto é, onde um vizinho tem outro ID de polígono ou não é pixel opaco. Sobre o fundo vazio, a cobertura vira o alfa do 3D, e a camada 2D de baixo aparece.
+- É uma aproximação, conservadora de propósito: bordas entre polígonos do mesmo modelo continuam sólidas, para não aparecerem emendas. No campo, a 1×, poucos pixels mudam.
+
+**Wireframe** (alfa 0): antes esses polígonos eram ignorados. Agora só a borda é desenhada, opaca e com 1 pixel nativo de largura.
+
+**Desempenho** (roteiro da história, 3000 quadros, sem janela): 3,2 ms/quadro a 1×, 4,0 a 2×, 5,0 a 3× e 6,5 a 4×. O orçamento é 16,7 ms.
+
+**Verificação:**
+- No campo (quadro 14000), a 2× e a 4× o cenário fica liso (calçada, meio-fio, poste, carro). Os personagens mantêm o pixel art da textura, e o ícone 2D é esticado.
+- Telas 2D (quadro 9000) saem iguais em qualquer escala.
+- A 1×, a imagem difere da versão anterior só em poucos pixels de silhueta (anti-aliasing).
+
+**Ajuste: avanço rápido mais lento com a resolução maior.** O usuário notou que o avanço rápido ficou mais lento. A janela só mostra 1 de cada 4 quadros no avanço, mas todos eram renderizados a N× e recompostos em tamanho grande.
+- Agora, durante o avanço, o 3D renderiza no tamanho nativo e a imagem grande não é montada (`host_fast_forward()`).
+- A escala muda só no `render_frame`. O quadro da frente mantém o tamanho até a troca (`g_front_scale`), então ligar ou desligar o avanço não apaga a imagem.
+- Teste com um gancho temporário (já removido) que ligava e desligava o avanço a cada 500 quadros: as capturas mudam de 512×768 para 256×384 e voltam, sem quadro em branco.
+- No avanço, o custo volta ao do modo nativo (cerca de 3,2 ms por quadro, contra 4,0 ms a 2×).

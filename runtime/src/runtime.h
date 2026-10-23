@@ -99,13 +99,22 @@ void gpu3d_write_gxstat(uint32_t value);
 uint32_t gpu3d_read(uint32_t addr, uint32_t stored);  // GXSTAT, RAM_COUNT, test/matrix results
 void gpu3d_vblank();                                 // shows the frame rendered at SWAP_BUFFERS
 void gpu3d_irq_check();                              // GXSTAT FIFO IRQ
-const uint16_t* gpu3d_line_color(uint32_t line);     // BGR555
+const uint16_t* gpu3d_line_color(uint32_t line);     // BGR555, native size
 const uint8_t* gpu3d_line_alpha(uint32_t line);      // 0-31; 0 = no 3D pixel
+// Internal resolution of the 3D engine (1 = native). The rows below are 256 * scale
+// pixels wide; there are 192 * scale of them.
+constexpr int kMax3dScale = 4;
+void gpu3d_set_scale(int scale);
+int gpu3d_scale();
+const uint16_t* gpu3d_hi_row_color(uint32_t row);
+const uint8_t* gpu3d_hi_row_alpha(uint32_t row);
 
 // --- host frontend (SDL3) ---------------------------------------------------------
 
 // Top and bottom physical screens, 256x192 XRGB8888 each.
-void host_present(const uint32_t* top, const uint32_t* bottom);
+// The two screens as the window shows them: 256 * scale by 192 * scale pixels each.
+void host_present(const uint32_t* top, const uint32_t* bottom, int scale);
+bool host_fast_forward();  // fast forward is on (fewer frames reach the window)
 uint16_t host_keyinput();  // REG_KEYINPUT, active low
 uint16_t host_extkeys();   // ARM7 EXTKEYIN (X, Y, pen, hinge), active low
 bool host_touch(int& x, int& y);  // bottom screen pixel, true while pressed

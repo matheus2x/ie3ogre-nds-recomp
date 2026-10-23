@@ -10,9 +10,13 @@
 // visible at the next VBlank (like the hardware, which renders the swapped lists during
 // the following frame). Supported: Z and W depth buffering, all seven texture formats,
 // modulate/decal/toon/highlight/shadow polygons, translucency and alpha test, polygon
-// IDs, edge marking, fog and the clear color/depth. Not modeled: anti-aliasing,
-// wireframe outlines (alpha 0 polygons are skipped), 1-dot polygon culling and the
-// clear bitmap (rear plane) mode.
+// IDs, edge marking, fog, anti-aliasing, wireframe (alpha 0) polygons and the clear
+// color/depth. Not modeled: 1-dot polygon culling and the clear bitmap (rear plane).
+//
+// Internal resolution: the engine can render at N times 256x192 (gpu3d_set_scale). The
+// 2D engine and display capture keep reading a native-size copy (one sample per native
+// pixel), so the game sees the same 3D output at any scale; only the host's picture of
+// engine A uses the large frame (gpu3d_hi_row_*).
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -702,13 +706,21 @@ void port_write(uint32_t cmd, uint32_t value) {
 
 // --- rendering engine -------------------------------------------------------------------
 
-constexpr int W = kScreenWidth, H = kScreenHeight;
+int g_wanted_scale = 1;  // gpu3d_set_scale
+int g_scale = 1;         // of the frame being rendered (native while fast-forwarding)
+int g_front_scale = 1;   // of the frame on screen
+int W = kScreenWidth, H = kScreenHeight;  // render size: native size times g_scale
 
 struct Frame {
-    uint16_t color[W * H];  // BGR555
-    uint8_t alpha[W * H];   // 0-31
+    std::vector<uint16_t> color;  // BGR555
+    std::vector<uint8_t> alpha;   // 0-31
+    void resize(size_t n) {
+        color.assign(n, 0);
+        alpha.assign(n, 0);
+    }
 };
-Frame g_front, g_back;
+Frame g_back, g_front;  // render size
+Frame g_native;         // g_front at 256x192, for the 2D engine and display capture
 
 struct Pixel {
     uint32_t depth;
@@ -716,9 +728,21 @@ struct Pixel {
     bool fog;
     bool translucent;
     bool stencil;
-    bool edge;  // opaque polygon pixel (edge marking source)
+    bool edge;            // opaque polygon pixel (edge marking source)
+    uint8_t coverage;     // anti-aliasing: 0-31 share of the pixel the top polygon covers
+    uint8_t under_alpha;  // what the top opaque pixel was drawn over (anti-aliasing)
+    uint16_t under_color;
 };
-Pixel g_attr[W * H];
+std::vector<Pixel> g_attr;
+
+// The front frame keeps its size until the next swap, so a scale change never blanks it.
+void resize_buffers() {
+    W = kScreenWidth * g_scale;
+    H = kScreenHeight * g_scale;
+    g_back.resize(size_t(W) * H);
+    g_attr.assign(size_t(W) * H, Pixel{});
+    if (g_native.color.empty()) g_native.resize(size_t(kScreenWidth) * kScreenHeight);
+}
 
 struct Texel {
     uint8_t r, g, b, a;  // 5-bit
@@ -873,26 +897,42 @@ uint32_t depth_value(const Polygon& p, float z, float w) {
 void draw_polygon(const Polygon& p) {
     uint32_t attr = p.attr;
     uint32_t poly_alpha = (attr >> 16) & 31;
-    if (poly_alpha == 0) return;  // wireframe: not modeled
+    bool wireframe = poly_alpha == 0;  // only the outline is drawn, opaque
+    if (wireframe) poly_alpha = 31;
     uint32_t mode = (attr >> 4) & 3;
     uint32_t id = (attr >> 24) & 63;
     uint32_t disp3d = io16(0x60);
     bool alpha_test = disp3d & 4;
     uint32_t alpha_ref = io16(0x340) & 31;
     bool blending = disp3d & 8;
+    bool antialias = disp3d & 0x10;
     bool depth_equal = attr & (1u << 14);
     bool update_depth = !p.translucent || (attr & (1u << 11));
     bool shadow_mask = mode == 3 && id == 0;
+    float scale = float(g_scale);
 
-    // Fan triangulation.
+    // Fan triangulation. Edge k of a triangle is the one opposite its vertex k; only the
+    // polygon's own sides (not the diagonals between fan triangles) are outline edges.
     for (int k = 1; k + 1 < p.count; k++) {
         const Vertex* v[3] = {&p.v[0], &p.v[k], &p.v[k + 1]};
-        float area = (v[1]->sx - v[0]->sx) * (v[2]->sy - v[0]->sy) - (v[2]->sx - v[0]->sx) * (v[1]->sy - v[0]->sy);
+        float sx[3], sy[3];
+        for (int i = 0; i < 3; i++) {
+            sx[i] = v[i]->sx * scale;
+            sy[i] = v[i]->sy * scale;
+        }
+        bool outer[3] = {true, k + 2 == p.count, k == 1};
+        float area = (sx[1] - sx[0]) * (sy[2] - sy[0]) - (sx[2] - sx[0]) * (sy[1] - sy[0]);
         if (std::fabs(area) < 1e-6f) continue;
-        int x0 = std::max(0, int(std::floor(std::min({v[0]->sx, v[1]->sx, v[2]->sx}))));
-        int x1 = std::min(W - 1, int(std::ceil(std::max({v[0]->sx, v[1]->sx, v[2]->sx}))));
-        int y0 = std::max(0, int(std::floor(std::min({v[0]->sy, v[1]->sy, v[2]->sy}))));
-        int y1 = std::min(H - 1, int(std::ceil(std::max({v[0]->sy, v[1]->sy, v[2]->sy}))));
+        float edge_scale[3];  // barycentric weight -> distance to that edge, in pixels
+        for (int i = 0; i < 3; i++) {
+            int a = (i + 1) % 3, c = (i + 2) % 3;
+            float len = std::hypot(sx[c] - sx[a], sy[c] - sy[a]);
+            edge_scale[i] = len > 0 ? std::fabs(area) / len : 0;
+        }
+        int x0 = std::max(0, int(std::floor(std::min({sx[0], sx[1], sx[2]}))));
+        int x1 = std::min(W - 1, int(std::ceil(std::max({sx[0], sx[1], sx[2]}))));
+        int y0 = std::max(0, int(std::floor(std::min({sy[0], sy[1], sy[2]}))));
+        int y1 = std::min(H - 1, int(std::ceil(std::max({sy[0], sy[1], sy[2]}))));
         float inv_w[3], cw[3][3], sw[3], tw[3];
         for (int i = 0; i < 3; i++) {
             inv_w[i] = 1.0f / v[i]->w;
@@ -907,9 +947,8 @@ void draw_polygon(const Polygon& p) {
                 float b[3];
                 bool inside = true;
                 for (int i = 0; i < 3; i++) {
-                    const Vertex* a = v[(i + 1) % 3];
-                    const Vertex* c = v[(i + 2) % 3];
-                    float e = (c->sx - a->sx) * (py - a->sy) - (c->sy - a->sy) * (px - a->sx);
+                    int a = (i + 1) % 3, c = (i + 2) % 3;
+                    float e = (sx[c] - sx[a]) * (py - sy[a]) - (sy[c] - sy[a]) * (px - sx[a]);
                     b[i] = e / area;
                     if (b[i] < 0) {
                         inside = false;
@@ -917,6 +956,11 @@ void draw_polygon(const Polygon& p) {
                     }
                 }
                 if (!inside) continue;
+                float edge_dist = 1e9f;  // to the nearest outline edge
+                for (int i = 0; i < 3; i++) {
+                    if (outer[i]) edge_dist = std::min(edge_dist, b[i] * edge_scale[i]);
+                }
+                if (wireframe && edge_dist >= scale) continue;
                 int at = y * W + x;
                 Pixel& pix = g_attr[at];
                 float z = b[0] * v[0]->z + b[1] * v[1]->z + b[2] * v[2]->z;
@@ -951,9 +995,16 @@ void draw_polygon(const Polygon& p) {
                         out.a = uint8_t(std::max<uint32_t>(out.a, dst_a));
                     }
                     pix.translucent = true;
+                    pix.coverage = 31;
                 } else {
                     pix.translucent = false;
                     pix.edge = true;
+                    pix.under_color = g_back.color[at];
+                    pix.under_alpha = g_back.alpha[at];
+                    // Pixel centers less than half a pixel inside an outline edge are
+                    // partly covered: 0.5 at the edge, 1 half a pixel in.
+                    float cover = antialias ? std::min(1.0f, 0.5f + edge_dist / scale) : 1.0f;
+                    pix.coverage = uint8_t(cover * 31 + 0.5f);
                 }
                 g_back.color[at] = color;
                 g_back.alpha[at] = out.a;
@@ -968,15 +1019,15 @@ void draw_polygon(const Polygon& p) {
 void post_process() {
     uint32_t disp3d = io16(0x60);
     if (disp3d & 0x20) {  // edge marking: opaque pixels next to another ID that is farther away
-        static uint16_t out[W * H];
-        std::memcpy(out, g_back.color, sizeof out);
+        std::vector<uint16_t> out = g_back.color;
         for (int y = 0; y < H; y++) {
             for (int x = 0; x < W; x++) {
                 const Pixel& p = g_attr[y * W + x];
                 if (!p.edge) continue;
+                // Neighbors one native pixel away keep the outline as thick as on hardware.
                 static const int kN[4][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
                 for (const auto& n : kN) {
-                    int nx = x + n[0], ny = y + n[1];
+                    int nx = x + n[0] * g_scale, ny = y + n[1] * g_scale;
                     if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
                     const Pixel& q = g_attr[ny * W + nx];
                     if (q.id != p.id && p.depth < q.depth) {
@@ -986,7 +1037,32 @@ void post_process() {
                 }
             }
         }
-        std::memcpy(g_back.color, out, sizeof out);
+        g_back.color = std::move(out);
+    }
+    if (disp3d & 0x10) {  // anti-aliasing: blend partly covered silhouette pixels
+        for (int y = 0; y < H; y++) {
+            for (int x = 0; x < W; x++) {
+                int at = y * W + x;
+                const Pixel& p = g_attr[at];
+                if (!p.edge || p.coverage >= 31) continue;
+                // Only where the polygon meets something else: the sides shared by
+                // polygons of one model stay solid.
+                bool silhouette = false;
+                static const int kN[4][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+                for (const auto& n : kN) {
+                    int nx = x + n[0], ny = y + n[1];
+                    if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+                    const Pixel& q = g_attr[ny * W + nx];
+                    if (q.id != p.id || !q.edge) silhouette = true;
+                }
+                if (!silhouette) continue;
+                if (p.under_alpha == 0) {
+                    g_back.alpha[at] = p.coverage;  // the 2D layers below show through
+                } else {
+                    g_back.color[at] = blend_colors(g_back.color[at], p.under_color, p.coverage);
+                }
+            }
+        }
     }
     if (disp3d & 0x80) {  // fog
         uint32_t fog_color = io32(0x358);
@@ -1026,13 +1102,19 @@ void post_process() {
 }
 
 void render_frame() {
+    // Fast forward shows few frames; rendering them at native size keeps it fast.
+    int scale = host_fast_forward() ? 1 : g_wanted_scale;
+    if (scale != g_scale || g_attr.empty()) {
+        g_scale = scale;
+        resize_buffers();
+    }
     uint32_t clear = io32(0x350);
     uint32_t clear_depth = io16(0x354) & 0x7FFF;
     uint32_t depth = clear_depth * 0x200 + ((clear_depth + 1) / 0x8000) * 0x1FF;
-    Pixel cleared{depth, uint8_t((clear >> 24) & 63), bool(clear & 0x8000), false, false, false};
-    std::fill(std::begin(g_attr), std::end(g_attr), cleared);
-    std::fill(std::begin(g_back.color), std::end(g_back.color), uint16_t(clear & 0x7FFF));
-    std::fill(std::begin(g_back.alpha), std::end(g_back.alpha), uint8_t((clear >> 16) & 31));
+    Pixel cleared{depth, uint8_t((clear >> 24) & 63), bool(clear & 0x8000), false, false, false, 31, 0, 0};
+    std::fill(g_attr.begin(), g_attr.end(), cleared);
+    std::fill(g_back.color.begin(), g_back.color.end(), uint16_t(clear & 0x7FFF));
+    std::fill(g_back.alpha.begin(), g_back.alpha.end(), uint8_t((clear >> 16) & 31));
     for (const Polygon& p : g.polys) draw_polygon(p);
     post_process();
 }
@@ -1083,7 +1165,15 @@ uint32_t gpu3d_read(uint32_t addr, uint32_t stored) {
     return stored;
 }
 
+void gpu3d_set_scale(int scale) { g_wanted_scale = std::clamp(scale, 1, kMax3dScale); }
+
+int gpu3d_scale() { return g_front_scale; }
+
 void gpu3d_init() {
+    if (g_attr.empty()) {
+        resize_buffers();
+        g_front = g_back;
+    }
     mtx_identity(g.proj);
     mtx_identity(g.pos);
     mtx_identity(g.vec);
@@ -1093,7 +1183,18 @@ void gpu3d_init() {
 void gpu3d_vblank() {
     if (!g.swap_pending) return;
     g.swap_pending = false;
-    std::memcpy(&g_front, &g_back, sizeof g_front);
+    g_front.color = g_back.color;
+    g_front.alpha = g_back.alpha;
+    g_front_scale = g_scale;
+    // One sample per native pixel, at its center.
+    int half = g_scale / 2;
+    for (int y = 0; y < kScreenHeight; y++) {
+        for (int x = 0; x < kScreenWidth; x++) {
+            size_t from = size_t(y * g_scale + half) * W + x * g_scale + half;
+            g_native.color[y * kScreenWidth + x] = g_front.color[from];
+            g_native.alpha[y * kScreenWidth + x] = g_front.alpha[from];
+        }
+    }
 }
 
 void gpu3d_irq_check() {
@@ -1102,7 +1203,13 @@ void gpu3d_irq_check() {
     if (io32(0x600) >> 30 & 3) raise_irq(1u << 21);
 }
 
-const uint16_t* gpu3d_line_color(uint32_t line) { return g_front.color + line * W; }
-const uint8_t* gpu3d_line_alpha(uint32_t line) { return g_front.alpha + line * W; }
+const uint16_t* gpu3d_line_color(uint32_t line) { return g_native.color.data() + line * kScreenWidth; }
+const uint8_t* gpu3d_line_alpha(uint32_t line) { return g_native.alpha.data() + line * kScreenWidth; }
+const uint16_t* gpu3d_hi_row_color(uint32_t row) {
+    return g_front.color.data() + size_t(row) * kScreenWidth * g_front_scale;
+}
+const uint8_t* gpu3d_hi_row_alpha(uint32_t row) {
+    return g_front.alpha.data() + size_t(row) * kScreenWidth * g_front_scale;
+}
 
 }  // namespace ntr

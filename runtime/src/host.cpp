@@ -12,8 +12,10 @@
 //
 // Environment: NTR_HEADLESS (no window, unthrottled), NTR_FAST (unthrottled), NTR_MUTE (no
 // audio device), NTR_WAV (also write the sound output to that WAV file),
-// NTR_SCALE (initial window scale, default 2), NTR_SCREENSHOT_FRAMES + NTR_SCREENSHOT
-// (save those frames, a comma-separated list, as BMPs; %d in the path is the frame), NTR_EXIT_FRAME (exit after that many frames),
+// NTR_SCALE (initial window scale, default 2), NTR_3D_SCALE (3D internal resolution,
+// 1-4; default 2 with a window, 1 without), NTR_SCREENSHOT_FRAMES + NTR_SCREENSHOT
+// (save those frames, a comma-separated list, as BMPs of what the window shows; %d in the
+// path is the frame), NTR_EXIT_FRAME (exit after that many frames),
 // NTR_INPUT (scripted input for tests: "first-last:KEY[+KEY...];..." with frame numbers
 // and keys A B X Y L R START SELECT UP DOWN LEFT RIGHT or TOUCH@x,y), NTR_PEEK
 // ("hexaddr:size", dumps guest memory every frame), NTR_REPLAY (replays a session
@@ -52,6 +54,7 @@ struct Host {
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
     SDL_Texture* texture = nullptr;
+    int texture_scale = 0;
     uint64_t frame = 0;
     uint64_t deadline = 0;
     uint64_t fps_start = 0, fps_frames = 0;
@@ -81,13 +84,14 @@ uint64_t env_u64(const char* name) {
     return v ? std::strtoull(v, nullptr, 10) : 0;
 }
 
-void write_bmp(const std::string& path, const uint32_t* top, const uint32_t* bottom) {
+void write_bmp(const std::string& path, const uint32_t* top, const uint32_t* bottom, int scale = 1) {
     FILE* f = std::fopen(path.c_str(), "wb");
     if (!f) {
         NTR_LOG("[host] cannot write %s\n", path.c_str());
         return;
     }
-    const uint32_t w = kScreenWidth, h = kScreenHeight * 2, row = w * 3, size = 54 + row * h;
+    const uint32_t screen_h = kScreenHeight * scale;
+    const uint32_t w = kScreenWidth * scale, h = screen_h * 2, row = w * 3, size = 54 + row * h;
     uint8_t hdr[54] = {'B', 'M'};
     auto put32 = [&](int at, uint32_t v) { store32(hdr + at, v); };
     put32(2, size);
@@ -100,7 +104,7 @@ void write_bmp(const std::string& path, const uint32_t* top, const uint32_t* bot
     put32(34, row * h);
     std::fwrite(hdr, 1, sizeof hdr, f);
     for (int y = int(h) - 1; y >= 0; y--) {  // bottom-up rows
-        const uint32_t* src = y < kScreenHeight ? top + y * w : bottom + (y - kScreenHeight) * w;
+        const uint32_t* src = uint32_t(y) < screen_h ? top + y * w : bottom + (y - screen_h) * w;
         for (uint32_t x = 0; x < w; x++) {
             uint8_t bgr[3] = {uint8_t(src[x]), uint8_t(src[x] >> 8), uint8_t(src[x] >> 16)};
             std::fwrite(bgr, 1, 3, f);
@@ -373,6 +377,8 @@ void pace() {
 
 }  // namespace
 
+bool host_fast_forward() { return fast_forward(); }
+
 std::string host_base_path() {
     const char* p = SDL_GetBasePath();
     return p ? p : "";
@@ -403,6 +409,8 @@ bool host_init() {
     bool scripted = std::getenv("NTR_INPUT") || std::getenv("NTR_REPLAY");
     if ((!headless && !scripted) || std::getenv("NTR_RECORD")) replay_enable();
     diag_init(!headless);
+    int scale_3d = int(env_u64("NTR_3D_SCALE"));
+    gpu3d_set_scale(scale_3d > 0 ? scale_3d : headless ? 1 : 2);
     if (headless) return true;
 
     SDL_SetMainReady();
@@ -420,9 +428,6 @@ bool host_init() {
     }
     SDL_SetRenderLogicalPresentation(g_host.renderer, kScreenWidth, kScreenHeight * 2,
                                      SDL_LOGICAL_PRESENTATION_LETTERBOX);
-    g_host.texture = SDL_CreateTexture(g_host.renderer, SDL_PIXELFORMAT_XRGB8888, SDL_TEXTUREACCESS_STREAMING,
-                                       kScreenWidth, kScreenHeight * 2);
-    SDL_SetTextureScaleMode(g_host.texture, SDL_SCALEMODE_NEAREST);
     g_host.headless = false;
     open_audio();
     g_host.deadline = g_host.fps_start = SDL_GetTicksNS();
@@ -435,7 +440,7 @@ static void record_input() {
                   g_host.touch_y);
 }
 
-void host_present(const uint32_t* top, const uint32_t* bottom) {
+void host_present(const uint32_t* top, const uint32_t* bottom, int scale) {
     g_host.frame++;
     diag_frame(g_host.frame);
     trace_frame(g_host.frame);
@@ -451,10 +456,10 @@ void host_present(const uint32_t* top, const uint32_t* bottom) {
         NTR_LOG("\n");
     }
     if (g_host.screenshot_frames.count(g_host.frame)) {  // like F8: picture plus state dump
-        write_bmp(frame_path(g_host.screenshot_path), top, bottom);
+        write_bmp(frame_path(g_host.screenshot_path), top, bottom, scale);
         debug_dump("screenshot");
     }
-    if (g_host.frame == g_host.f12_frame) write_bmp(frame_path("boej-%d.bmp"), top, bottom);
+    if (g_host.frame == g_host.f12_frame) write_bmp(frame_path("boej-%d.bmp"), top, bottom, scale);
     if (g_host.exit_frame && g_host.frame >= g_host.exit_frame) {
         NTR_LOG("[host] exiting after %llu frames\n", (unsigned long long)g_host.frame);
         quit();
@@ -470,10 +475,18 @@ void host_present(const uint32_t* top, const uint32_t* bottom) {
         return;
     }
 
-    SDL_Rect upper = {0, 0, kScreenWidth, kScreenHeight};
-    SDL_Rect lower = {0, kScreenHeight, kScreenWidth, kScreenHeight};
-    SDL_UpdateTexture(g_host.texture, &upper, top, kScreenWidth * 4);
-    SDL_UpdateTexture(g_host.texture, &lower, bottom, kScreenWidth * 4);
+    if (g_host.texture_scale != scale) {
+        if (g_host.texture) SDL_DestroyTexture(g_host.texture);
+        g_host.texture = SDL_CreateTexture(g_host.renderer, SDL_PIXELFORMAT_XRGB8888, SDL_TEXTUREACCESS_STREAMING,
+                                           kScreenWidth * scale, kScreenHeight * 2 * scale);
+        SDL_SetTextureScaleMode(g_host.texture, SDL_SCALEMODE_NEAREST);
+        g_host.texture_scale = scale;
+    }
+    int w = kScreenWidth * scale, h = kScreenHeight * scale;
+    SDL_Rect upper = {0, 0, w, h};
+    SDL_Rect lower = {0, h, w, h};
+    SDL_UpdateTexture(g_host.texture, &upper, top, w * 4);
+    SDL_UpdateTexture(g_host.texture, &lower, bottom, w * 4);
     SDL_SetRenderDrawColor(g_host.renderer, 0, 0, 0, 255);
     SDL_RenderClear(g_host.renderer);
     SDL_RenderTexture(g_host.renderer, g_host.texture, nullptr, nullptr);
