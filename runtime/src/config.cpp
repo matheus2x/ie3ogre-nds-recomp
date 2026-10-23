@@ -45,8 +45,9 @@ close_on_play = true
 ; Teclado: nomes de tecla do SDL (veja https://wiki.libsdl.org/SDL3/SDL_Keycode,
 ; sem o "SDLK_"), separados por vírgula. Deixe vazio para desligar.
 ; Botões do DS: A B X Y L R START SELECT UP DOWN LEFT RIGHT.
-; Atalhos: fast_forward (segurar) e fast_forward_toggle (avanço rápido), turbo (segurar)
-; e turbo_toggle (A automático), screenshot, debug_dump (estado no boej.log) e fullscreen.
+; Atalhos: menu (pausa, com as configurações), fast_forward (segurar) e fast_forward_toggle
+; (avanço rápido), turbo (segurar) e turbo_toggle (A automático), screenshot, debug_dump
+; (estado no boej.log) e fullscreen.
 [keyboard]
 A = X
 B = Z
@@ -60,6 +61,7 @@ UP = Up
 DOWN = Down
 LEFT = Left
 RIGHT = Right
+menu = Escape
 fast_forward = Tab
 fast_forward_toggle = F2
 turbo = C
@@ -86,6 +88,7 @@ UP = dpup, lefty-
 DOWN = dpdown, lefty+
 LEFT = dpleft, leftx-
 RIGHT = dpright, leftx+
+menu = guide
 fast_forward = righttrigger
 fast_forward_toggle =
 turbo = lefttrigger

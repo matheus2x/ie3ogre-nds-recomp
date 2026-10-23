@@ -167,6 +167,7 @@ void replay_start(const std::string& rtc_start);
 void replay_initial_save(const std::vector<uint8_t>& data, bool existed);
 void replay_record(uint64_t frame, uint16_t keys, bool touch, int x, int y);
 void replay_finish(uint64_t frame);
+void log_close();  // before handing the log files to a restarted game
 const std::string& rtc_start_text();  // "YYYY-MM-DD HH:MM:SS" the clock started from (arm7_rtc.cpp)
 void rtc_request_start(const std::string& text);  // before boot: start the clock there
 

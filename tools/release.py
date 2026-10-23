@@ -13,6 +13,7 @@ the assets the launcher's updater looks for. The zip holds one folder:
     sdk/manifest.tsv    the recompiler input with {modules}/ paths (tools/analyze.py manifest --template)
     sdk/bin/            ntr-recomp and dsd (pinned release, checked by SHA-256)
     sdk/include/ sdk/runtime/ sdk/game/   runtime and game entry sources
+    sdk/ui/ sdk/imgui/  the pause menu and Dear ImGui (with its SDL3 backends)
     sdk/sdl3/           SDL3 headers and import library (Windows)
     sdk/toolchain.txt   the llvm-mingw archive the launcher downloads (Windows)
 
@@ -153,6 +154,10 @@ def main() -> int:
     copy_tree(ROOT / "runtime" / "include" / "ntr", sdk / "include" / "ntr", ("*.h",))
     copy_tree(ROOT / "runtime" / "src", sdk / "runtime", ("*.cpp", "*.h"))
     copy_tree(ROOT / "game", sdk / "game", ("main.cpp",))
+    copy_tree(ROOT / "runtime" / "ui", sdk / "ui", ("*.cpp", "*.h"))
+    imgui = out / "_deps" / "imgui-src"
+    copy_tree(imgui, sdk / "imgui", ("imgui.cpp", "imgui_draw.cpp", "imgui_tables.cpp", "imgui_widgets.cpp", "*.h"))
+    copy_tree(imgui / "backends", sdk / "imgui", ("imgui_impl_sdl3.*", "imgui_impl_sdlrenderer3.*"))
     if platform == "windows":
         shutil.copy2(sdl / "bin" / "SDL3.dll", top)
         shutil.copytree(sdl / "include", sdk / "sdl3" / "include")

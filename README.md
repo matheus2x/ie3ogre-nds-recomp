@@ -89,6 +89,7 @@ Se o seu dump tiver outro SHA-1, abra uma issue informando o código do jogo e o
 | `runtime/` | Runtime (C++20): memória, CPU, interpretador ARM, IRQ, timers, threads, PXI/ARM7 em HLE, VRAM, 2D, 3D, som, janela SDL3 |
 | `game/` | Executável `boej` |
 | `launcher/` | `ie3-launcher` (SDL3 + Dear ImGui): prepara, configura, atualiza e abre o jogo; `LEIA-ME.txt` e `TERCEIROS.txt` da release |
+| `runtime/ui/` | `ntr-ui`: telas em Dear ImGui usadas pelo jogo (menu de pausa) e pelo launcher (painel de configurações) |
 | `tools/` | Ferramentas em Python (`ntr/` lê a ROM; `extract.py` extrai; `compare_dumps.py` compara dumps; `analyze.py` roda dsd/Ghidra; `build.py` compila para desenvolvimento; `release.py` monta a release; `ghidra/` tem os scripts do Ghidra; `tests/` tem os testes) |
 | `config/boej/` | `dumps.json` (dumps conhecidos), `layout/<variante>.json` (endereços, overlays, hashes), `dsd/` (funções, seções e relocações do ds-decomp), `names.tsv` (nomes identificados, com evidência), `hle.tsv` (funções substituídas no host) e `code_blobs.tsv` (código que o dsd classifica como dados). Nenhum dado do jogo |
 | `docs/` | Documentação e diário de implementação |
@@ -158,7 +159,9 @@ Também dá para passar o caminho de um `boej.pak` ou de um `.nds` como argument
 | Start / Select | Enter / Shift direito ou Backspace | Start / Back |
 | Tela de toque | botão esquerdo do mouse na tela de baixo | — |
 
-F12 salva a tela em `boej-<quadro>.bmp` e F11 alterna a tela cheia.
+**Esc** (ou o botão "guide" do controle) pausa o jogo e abre o menu: Continuar, Reiniciar o jogo, Sair e as mesmas
+configurações do launcher (vídeo, áudio e controles). As mudanças valem na hora, sem reiniciar, e ficam salvas no
+`boej.ini`. F12 salva a tela em `boej-<quadro>.bmp` e F11 alterna a tela cheia.
 
 Atalhos para testar mais rápido (o título da janela mostra quais estão ligados):
 
@@ -224,7 +227,7 @@ python3 tools/release.py --platform linux   # o mesmo para Linux (compilador e S
 Não precisa do dump. O pacote leva o launcher, o `SDL3.dll` e o `sdk/`:
 - `ntr-recomp` e o `dsd` v0.12.1 (que, no PC do jogador, extrai o código do dump e decifra o DS Protect da ov129);
 - o manifesto de funções com caminhos `{modules}/...` (`analyze.py manifest --template`);
-- as fontes do runtime e do `game/main.cpp`;
+- as fontes do runtime, do `game/main.cpp`, do menu de pausa (`runtime/ui`) e do Dear ImGui;
 - os headers e a biblioteca de importação do SDL3;
 - o `toolchain.txt`, com o llvm-mingw fixado por URL e SHA-256.
 

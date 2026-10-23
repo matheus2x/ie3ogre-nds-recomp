@@ -71,6 +71,7 @@ int main(int argc, char** argv) {
         std::fprintf(stderr, "usage: boej [boej.pak | rom.nds]\n");
         return 2;
     }
+    ntr::host_set_command_line(args);
     // The window comes first: the first run needs it to ask for the dump.
     if (!ntr::host_init()) {
         ntr::log_printf("error: cannot open the window (set NTR_HEADLESS=1 to run without one)\n");

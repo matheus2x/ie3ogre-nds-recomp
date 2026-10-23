@@ -2,6 +2,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include <ntr/common.h>
 
@@ -15,6 +16,9 @@ bool rom_load(const std::string& path);
 
 // Directory of the running executable, with a trailing separator.
 std::string host_base_path();
+
+// The command line, for "Reiniciar o jogo" in the pause menu (UTF-8, argv[0] first).
+void host_set_command_line(const std::vector<std::string>& args);
 
 // Opens the window (unless NTR_HEADLESS is set). Must run on the main thread before boot().
 bool host_init();

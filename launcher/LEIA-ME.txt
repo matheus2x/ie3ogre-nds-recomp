@@ -31,12 +31,14 @@ ARQUIVOS CRIADOS NESTA PASTA
 - boej.log, boej-replay.*, launcher.log   registros para relatar problemas
 - mods\               reservada para mods (em breve)
 
-CONTROLES PADRÃO (mude na aba Configurações)
+CONTROLES PADRÃO (mude no menu do jogo ou na aba Configurações do launcher)
   Direcional  setas (controle: direcional ou analógico esquerdo)
   A B X Y     X Z S A
   L R         Q W
   Start       Enter        Select   Shift direito ou Backspace
   Toque       botão esquerdo do mouse na tela de baixo
+  Esc         pausa e abre o menu (configurações valem na hora,
+              reiniciar o jogo, sair)
   F11 tela cheia, F12 captura de tela
   Tab (segurar) ou F2: acelerar      C (segurar) ou F3: A automático
   F8: se algo der errado, aperte no momento e envie o boej.log,

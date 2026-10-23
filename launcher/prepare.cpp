@@ -242,7 +242,7 @@ bool build_game(Job& job) {
     }
     NTR_LOG("[prepare] recompiled in %.1f s\n", seconds_since(start));
 
-    std::vector<std::string> common = {tc.cxx, "-std=c++20", "-I" + sdk + "include"};
+    std::vector<std::string> common = {tc.cxx, "-std=c++20", "-I" + sdk + "include", "-I" + sdk + "imgui"};
 #ifdef _WIN32
     common.push_back("-I" + sdk + "sdl3/include");
 #endif
@@ -265,6 +265,13 @@ bool build_game(Job& job) {
     for (const auto& entry : fs::directory_iterator(ntr::fs_path(sdk + "runtime"))) {
         if (entry.path().extension() != ".cpp") continue;
         add(ntr::utf8_string(entry.path()), "rt_" + ntr::utf8_string(entry.path().stem()), {"-O2", "-DNDEBUG"});
+    }
+    for (const char* dir : {"ui", "imgui"}) {  // the pause menu
+        for (const auto& entry : fs::directory_iterator(ntr::fs_path(sdk + dir))) {
+            if (entry.path().extension() != ".cpp") continue;
+            add(ntr::utf8_string(entry.path()), std::string(dir) + "_" + ntr::utf8_string(entry.path().stem()),
+                {"-O2", "-DNDEBUG"});
+        }
     }
     add(sdk + "game/main.cpp", "main", {"-O2", "-DNDEBUG"});
 

@@ -29,6 +29,7 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 
+#include <algorithm>
 #include <atomic>
 #include <cstdio>
 #include <cstring>
@@ -39,6 +40,7 @@
 #include <vector>
 
 #include <ntr/runtime.h>
+#include <ntr/ui.h>
 
 #include "runtime.h"
 
@@ -58,13 +60,15 @@ enum Action {
     kScreenshot,
     kDebugDump,
     kFullscreen,
+    kMenu,
     kActionCount
 };
 constexpr uint32_t kButtonMask = 0xFFF;
 
 const char* const kActionNames[kActionCount] = {
     "A", "B", "SELECT", "START", "RIGHT", "LEFT", "UP", "DOWN", "R", "L", "X", "Y",
-    "fast_forward", "fast_forward_toggle", "turbo", "turbo_toggle", "screenshot", "debug_dump", "fullscreen"};
+    "fast_forward", "fast_forward_toggle", "turbo", "turbo_toggle", "screenshot", "debug_dump", "fullscreen",
+    "menu"};
 
 struct KeyBinding {
     SDL_Keycode key;
@@ -116,6 +120,13 @@ struct Host {
     bool ff_held = false, ff_toggle = false;        // fast forward
     bool turbo_held = false, turbo_toggle = false;  // auto A
     bool linear_filter = false;
+    std::string config_path;
+    bool env_scale = false, env_scale_3d = false;  // NTR_SCALE / NTR_3D_SCALE win over boej.ini
+    bool fullscreen_applied = false;
+    int window_scale_applied = 0;
+    bool menu_requested = false;
+    bool ui_ready = false;
+    std::vector<std::string> args;  // for restarting
     std::vector<ScriptedInput> script;
     uint16_t script_keys = 0;
     bool script_touch = false;
@@ -320,6 +331,8 @@ int pad_button_by_name(const std::string& name) {
 
 void load_bindings() {
     const Config& c = g_host.config;
+    g_host.key_bindings.clear();
+    g_host.pad_bindings.clear();
     for (int action = 0; action < kActionCount; action++) {
         if (const Config::Entry* e = c.find("keyboard", kActionNames[action])) {
             for (const std::string& name : split_list(e->value)) {
@@ -383,6 +396,7 @@ void update_actions() {
         g_host.f12_frame = g_host.frame + 1;
     }
     if (pressed & (1u << kFullscreen)) toggle_fullscreen();
+    if (pressed & (1u << kMenu)) g_host.menu_requested = true;
 }
 
 // Window position -> bottom screen pixel; false outside the bottom screen.
@@ -393,6 +407,24 @@ bool to_touch(float wx, float wy, int& x, int& y) {
     x = int(lx);
     y = int(ly) - kScreenHeight;
     return true;
+}
+
+// A gamepad plugged in or out.
+void pad_connection(const SDL_Event& ev) {
+    if (ev.type == SDL_EVENT_GAMEPAD_ADDED) {
+        if (SDL_Gamepad* pad = SDL_OpenGamepad(ev.gdevice.which)) {
+            g_host.pads.push_back(pad);
+            NTR_LOG("[host] gamepad: %s\n", SDL_GetGamepadName(pad));
+        }
+        return;
+    }
+    for (size_t i = 0; i < g_host.pads.size(); i++) {
+        if (SDL_GetGamepadID(g_host.pads[i]) == ev.gdevice.which) {
+            SDL_CloseGamepad(g_host.pads[i]);
+            g_host.pads.erase(g_host.pads.begin() + i);
+            break;
+        }
+    }
 }
 
 void pump_events() {
@@ -415,19 +447,8 @@ void pump_events() {
                 update_actions();
                 break;
             case SDL_EVENT_GAMEPAD_ADDED:
-                if (SDL_Gamepad* pad = SDL_OpenGamepad(ev.gdevice.which)) {
-                    g_host.pads.push_back(pad);
-                    NTR_LOG("[host] gamepad: %s\n", SDL_GetGamepadName(pad));
-                }
-                break;
             case SDL_EVENT_GAMEPAD_REMOVED:
-                for (size_t i = 0; i < g_host.pads.size(); i++) {
-                    if (SDL_GetGamepadID(g_host.pads[i]) == ev.gdevice.which) {
-                        SDL_CloseGamepad(g_host.pads[i]);
-                        g_host.pads.erase(g_host.pads.begin() + i);
-                        break;
-                    }
-                }
+                pad_connection(ev);
                 update_actions();
                 break;
             case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
@@ -495,9 +516,163 @@ void pace() {
     g_host.work_start = SDL_GetTicksNS();
 }
 
+// --- settings applied while the game runs ---------------------------------------------
+
+void apply_presentation() {
+    const Config& c = g_host.config;
+    SDL_SetRenderLogicalPresentation(g_host.renderer, kScreenWidth, kScreenHeight * 2,
+                                     c.get_bool("video", "integer_scale") ? SDL_LOGICAL_PRESENTATION_INTEGER_SCALE
+                                                                          : SDL_LOGICAL_PRESENTATION_LETTERBOX);
+    g_host.linear_filter = SDL_strcasecmp(c.get("video", "filter").c_str(), "linear") == 0;
+    if (g_host.texture) {
+        SDL_SetTextureScaleMode(g_host.texture, g_host.linear_filter ? SDL_SCALEMODE_LINEAR : SDL_SCALEMODE_NEAREST);
+    }
+}
+
+// After a change in the pause menu: everything boej.ini holds takes effect at once.
+// Fullscreen and the window size only change when their own setting changed, so F11 and
+// a window resized by hand are left alone otherwise.
+void apply_settings() {
+    const Config& c = g_host.config;
+    if (g_host.audio) SDL_SetAudioStreamGain(g_host.audio, c.get_int("audio", "volume", 0, 100) / 100.0f);
+    apply_presentation();
+    bool fullscreen = c.get_bool("video", "fullscreen");
+    if (fullscreen != g_host.fullscreen_applied) {
+        SDL_SetWindowFullscreen(g_host.window, fullscreen);
+        g_host.fullscreen_applied = fullscreen;
+    }
+    int scale = c.get_int("video", "window_scale", 1, 16);
+    if (!g_host.env_scale && scale != g_host.window_scale_applied) {
+        if (!(SDL_GetWindowFlags(g_host.window) & SDL_WINDOW_FULLSCREEN)) {
+            SDL_SetWindowSize(g_host.window, kScreenWidth * scale, kScreenHeight * 2 * scale);
+        }
+        g_host.window_scale_applied = scale;
+    }
+    if (!g_host.env_scale_3d) gpu3d_set_scale(c.get_int("video", "resolution_3d", 1, 4));
+    load_bindings();
+}
+
+// --- pause menu -------------------------------------------------------------------------
+
+// "Reiniciar o jogo": the same command line in a new process, then this one exits. The
+// log and the session recording are closed first so the new game can keep them as
+// boej.old.log / boej-replay.old.*.
+void restart() {
+    std::vector<std::string> args = g_host.args;
+    if (args.empty()) {
+#ifdef _WIN32
+        args.push_back(host_base_path() + "boej.exe");
+#else
+        args.push_back(host_base_path() + "boej");
+#endif
+    }
+    std::vector<const char*> argv;
+    for (const std::string& a : args) argv.push_back(a.c_str());
+    argv.push_back(nullptr);
+    NTR_LOG("[host] restarting the game\n");
+    replay_finish(g_host.frame);
+    log_close();
+    SDL_PropertiesID props = SDL_CreateProperties();
+    SDL_SetPointerProperty(props, SDL_PROP_PROCESS_CREATE_ARGS_POINTER, argv.data());
+    SDL_SetBooleanProperty(props, SDL_PROP_PROCESS_CREATE_BACKGROUND_BOOLEAN, true);
+    SDL_Process* process = SDL_CreateProcessWithProperties(props);
+    SDL_DestroyProperties(props);
+    if (!process) {
+        NTR_LOG("[host] cannot restart: %s\n", SDL_GetError());
+        return;
+    }
+    SDL_Quit();
+    std::exit(0);
+}
+
+// The menu key or gamepad button, pressed again inside the menu.
+bool is_menu_input(const SDL_Event& ev) {
+    if (ev.type == SDL_EVENT_KEY_DOWN && !ev.key.repeat) {
+        for (const KeyBinding& b : g_host.key_bindings) {
+            if (b.action == kMenu && b.key == ev.key.key) return true;
+        }
+    }
+    if (ev.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN) {
+        for (const PadBinding& b : g_host.pad_bindings) {
+            if (b.action == kMenu && b.button == ev.gbutton.button) return true;
+        }
+    }
+    return false;
+}
+
+// The last frame, dimmed, behind the menu.
+void draw_paused_frame() {
+    SDL_Renderer* r = g_host.renderer;
+    SDL_SetRenderLogicalPresentation(r, 0, 0, SDL_LOGICAL_PRESENTATION_DISABLED);
+    SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
+    SDL_RenderClear(r);
+    int w = 0, h = 0;
+    SDL_GetRenderOutputSize(r, &w, &h);
+    if (g_host.texture && w > 0 && h > 0) {
+        float fit = std::min(float(w) / kScreenWidth, float(h) / (2 * kScreenHeight));
+        SDL_FRect dst = {(w - kScreenWidth * fit) / 2, (h - 2 * kScreenHeight * fit) / 2, kScreenWidth * fit,
+                         2 * kScreenHeight * fit};
+        SDL_RenderTexture(r, g_host.texture, nullptr, &dst);
+    }
+    SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawColor(r, 0, 0, 0, 170);
+    SDL_RenderFillRect(r, nullptr);
+}
+
+// Runs until the player resumes: the game is stopped inside host_present, so nothing
+// advances (the clock included) and the sound is paused.
+void run_menu() {
+    g_host.menu_requested = false;
+    if (!g_host.ui_ready) {
+        float scale = SDL_GetWindowDisplayScale(g_host.window);
+        ui::init(g_host.window, g_host.renderer, scale > 0 ? scale : 1);
+        g_host.ui_ready = true;
+    }
+    if (g_host.audio) SDL_PauseAudioStreamDevice(g_host.audio);
+    NTR_LOG("[host] paused at frame %llu\n", (unsigned long long)g_host.frame);
+    ui::SettingsOptions options{true, apply_settings};
+    for (bool open = true; open;) {
+        SDL_Event ev;
+        while (SDL_PollEvent(&ev)) {
+            if (ev.type == SDL_EVENT_QUIT) quit();
+            if (ev.type == SDL_EVENT_GAMEPAD_ADDED || ev.type == SDL_EVENT_GAMEPAD_REMOVED) pad_connection(ev);
+            bool capture_input = ev.type == SDL_EVENT_KEY_DOWN || ev.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN ||
+                                 ev.type == SDL_EVENT_GAMEPAD_AXIS_MOTION;
+            if (ui::capturing() && capture_input) {
+                ui::capture_event(ev);  // the input is the new binding
+                continue;
+            }
+            if (is_menu_input(ev)) {
+                open = false;
+                continue;
+            }
+            ui::process_event(ev);
+        }
+        diag_frame(g_host.frame);  // paused, not stuck: keeps the watchdog quiet
+        draw_paused_frame();
+        ui::begin_frame();
+        ui::PauseAction action = ui::pause_menu(g_host.config, g_host.config_path, options);
+        ui::end_frame(g_host.renderer);
+        SDL_RenderPresent(g_host.renderer);
+        if (action == ui::PauseAction::Resume) open = false;
+        if (action == ui::PauseAction::Restart) restart();
+        if (action == ui::PauseAction::Quit) quit();
+        SDL_Delay(16);
+    }
+    apply_presentation();
+    if (g_host.audio) SDL_ResumeAudioStreamDevice(g_host.audio);
+    // Keys pressed or released while paused went to the menu: start from what is held now.
+    g_host.keys_down.clear();
+    update_actions();
+    g_host.deadline = g_host.work_start = SDL_GetTicksNS();
+    NTR_LOG("[host] resumed\n");
+}
+
 }  // namespace
 
 bool host_fast_forward() { return fast_forward(); }
+
+void host_set_command_line(const std::vector<std::string>& args) { g_host.args = args; }
 
 std::string host_base_path() {
     const char* p = SDL_GetBasePath();
@@ -531,6 +706,9 @@ bool host_init() {
     diag_init(!headless);
     const char* config_env = std::getenv("NTR_CONFIG");
     std::string config_path = config_env ? config_env : host_base_path() + "boej.ini";
+    g_host.config_path = config_path;
+    g_host.env_scale = env_u64("NTR_SCALE") > 0;
+    g_host.env_scale_3d = env_u64("NTR_3D_SCALE") > 0;
     if (config_env || !headless) {
         if (!config_load(config_path, g_host.config) && !headless) config_write_default(config_path);
     } else {
@@ -556,15 +734,13 @@ bool host_init() {
         NTR_LOG("[host] cannot create the window: %s\n", SDL_GetError());
         return false;
     }
-    SDL_SetRenderLogicalPresentation(g_host.renderer, kScreenWidth, kScreenHeight * 2,
-                                     config.get_bool("video", "integer_scale")
-                                         ? SDL_LOGICAL_PRESENTATION_INTEGER_SCALE
-                                         : SDL_LOGICAL_PRESENTATION_LETTERBOX);
     std::string filter = config.get("video", "filter");
-    g_host.linear_filter = SDL_strcasecmp(filter.c_str(), "linear") == 0;
-    if (!g_host.linear_filter && SDL_strcasecmp(filter.c_str(), "nearest") != 0) {
+    if (SDL_strcasecmp(filter.c_str(), "linear") != 0 && SDL_strcasecmp(filter.c_str(), "nearest") != 0) {
         config.warn(*config.find("video", "filter"), "\"" + filter + "\" is not nearest or linear");
     }
+    apply_presentation();
+    g_host.fullscreen_applied = config.get_bool("video", "fullscreen");
+    g_host.window_scale_applied = scale;
     load_bindings();
     g_host.headless = false;
     open_audio();
@@ -721,6 +897,7 @@ void host_present(const uint32_t* top, const uint32_t* bottom, int scale) {
     if (fast_forward() && g_host.frame % 4 != 0) {  // drawing every frame would slow fast forward down
         pump_events();
         record_input();
+        if (g_host.menu_requested) run_menu();
         pace();
         return;
     }
@@ -743,6 +920,7 @@ void host_present(const uint32_t* top, const uint32_t* bottom, int scale) {
     SDL_RenderPresent(g_host.renderer);
     pump_events();
     record_input();
+    if (g_host.menu_requested) run_menu();
     pace();
 }
 

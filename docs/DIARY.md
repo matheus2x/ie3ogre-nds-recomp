@@ -978,3 +978,49 @@ O `log_printf` é fornecido por cada programa. O SDL3 passou a ser procurado no 
 - No fim vêm "Como instalar", a conferência do SHA-256 e o link de comparação.
 - O workflow faz checkout com `fetch-depth: 0` (histórico e tags) e publica com `--notes-file`. Rodado à mão, mostra a prévia no resumo da execução.
 - Testado com duas tags temporárias (já apagadas): achou a anterior, listou os dois commits do intervalo e gerou o link `compare/v0.0.1...v0.0.2`.
+
+## 2026-10-23 — Menu de pausa no jogo, com as configurações do launcher
+
+**O pedido:** abrir as configurações com Esc dentro do jogo, sem precisar reiniciar (ou com um botão de reiniciar no menu).
+
+**Solução: menu de pausa no próprio jogo, em vez de abrir o launcher.** Quase tudo do `boej.ini` pode valer na hora:
+- volume: ganho do `SDL_AudioStream`;
+- filtro e ampliação inteira: modo da textura e apresentação lógica;
+- tela cheia e tamanho da janela;
+- resolução do 3D: o `gpu3d_set_scale` já trocava entre quadros, por causa do avanço rápido;
+- controles: as associações são relidas.
+
+Então o menu não precisa de reinício para nada. Mesmo assim, tem "Reiniciar o jogo".
+
+**Biblioteca `ntr-ui`** (`runtime/ui/ui.cpp`, header `ntr/ui.h` sem tipos do ImGui):
+- O painel de configurações saiu do `launcher/settings.cpp` (que virou uma casca de 20 linhas). O launcher e o jogo usam o mesmo código: seções, tabela de controles, captura de tecla/botão/eixo e "Restaurar o padrão".
+- Também ficaram nela a inicialização do ImGui (fonte do sistema e escala) e o `pause_menu`.
+- Dentro do jogo o painel esconde as opções do launcher e chama `on_change` depois de cada gravação.
+- O ImGui passou a ser buscado no CMake do runtime (`ntr-ui` é ligada ao `ntr-runtime`).
+- No controle, os nomes de posição aparecem curtos (`east`), com a explicação ("botão da direita: B no Xbox, A no Nintendo") num tooltip: a janela do jogo é estreita.
+
+**No jogo** (`host.cpp`):
+- Nova ação `menu`: padrão Esc no teclado e "guide" no controle, configurável como os outros atalhos.
+- Ao apertar, o `host_present` entra no laço do menu e não volta até o jogador continuar. Nada do jogo avança, nem o relógio, e o áudio fica pausado (`SDL_PauseAudioStreamDevice`).
+- Atrás do menu aparece o último quadro, escurecido, com a apresentação lógica desligada enquanto o menu está aberto.
+- O `diag_frame` continua sendo chamado, para o watchdog não registrar um travamento.
+- Ao voltar:
+  - a apresentação é restaurada e o áudio retomado;
+  - as teclas são recalculadas a partir do que está apertado, para nenhuma ficar presa;
+  - o ritmo recomeça do instante atual.
+- `apply_settings` aplica tudo depois de cada mudança. Tela cheia e tamanho da janela só mudam quando a própria opção muda, para não desfazer o F11 nem um redimensionamento manual. `NTR_SCALE` e `NTR_3D_SCALE` continuam com prioridade.
+- **Reiniciar:** fecha a gravação da sessão e o log (`log_close`, novo), abre um processo novo com a mesma linha de comando (`host_set_command_line`, chamado pelo `main`; `SDL_CreateProcessWithProperties` em segundo plano) e sai. Assim o jogo novo guarda a sessão anterior em `boej.old.log` / `boej-replay.old.*`.
+- "Reiniciar" e "Sair" pedem confirmação ("o progresso desde o último save será perdido").
+
+**SDK da release:** passou a levar `sdk/ui/` e `sdk/imgui/` (o núcleo do ImGui mais os backends SDL3 e SDL_Renderer, já na lista de licenças). O launcher compila esses arquivos com o jogo: 180 arquivos em vez de 173. O zip do Windows foi de 8,4 para 9,2 MiB.
+
+**Verificação** (ganchos temporários, já removidos, que apertavam Esc no quadro 300 e agiam dentro do menu):
+- **Linux:**
+  - o jogo pausou no quadro 300 e o menu apareceu sobre a tela escurecida (captura conferida);
+  - mudar a resolução do 3D pelo caminho da interface gravou o `boej.ini` de teste;
+  - a captura do quadro 410 saiu em 256×384, contra 512×768 antes, ou seja, mudou sem reiniciar;
+  - Esc fechou o menu e o jogo seguiu.
+- **Reiniciar, no Linux e no Windows:** a sessão antiga terminou com "paused at frame 300" / "restarting the game" no `.old.log`, e o jogo novo começou do quadro 0 e foi até o 600.
+- **Release** (Linux, e Windows numa pasta com acento, com download novo do compilador): o launcher compilou os 180 arquivos (58 s / 47 s), e o roteiro da história com o `boej.exe` feito no Windows ficou idêntico byte a byte.
+- O roteiro da história na build de desenvolvimento continua idêntico, e os testes Python passam.
+- **Não testado:** o menu com cliques de verdade e com controle físico (navegação do ImGui pelo controle).

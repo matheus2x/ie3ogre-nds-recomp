@@ -3,8 +3,7 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include <imgui.h>
-#include <imgui_impl_sdl3.h>
-#include <imgui_impl_sdlrenderer3.h>
+#include <ntr/ui.h>
 
 #include <cstdarg>
 #include <cstdlib>
@@ -253,23 +252,6 @@ int prepare_cli(const std::string& dump) {
     return g_job.ok ? 0 : 1;
 }
 
-void load_font(float scale) {
-    ImGuiIO& io = ImGui::GetIO();
-    static const char* const kFonts[] = {
-        "C:/Windows/Fonts/segoeui.ttf",
-        "/usr/share/fonts/noto/NotoSans-Regular.ttf",
-        "/usr/share/fonts/TTF/DejaVuSans.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-    };
-    for (const char* path : kFonts) {
-        std::error_code ec;
-        if (fs::exists(path, ec) && io.Fonts->AddFontFromFileTTF(path, 18.0f * scale)) return;
-    }
-    ImFontConfig config;
-    config.SizePixels = 13.0f * scale;
-    io.Fonts->AddFontDefault(&config);
-}
-
 }  // namespace
 
 }  // namespace launcher
@@ -303,17 +285,7 @@ int main(int argc, char** argv) {
     }
     SDL_SetRenderVSync(renderer, 1);
 
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
-    io.IniFilename = nullptr;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard | ImGuiConfigFlags_NavEnableGamepad;
-    ImGui::StyleColorsDark();
-    ImGui::GetStyle().ScaleAllSizes(scale);
-    ImGui::GetStyle().FrameRounding = 4 * scale;
-    load_font(scale);
-    ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
-    ImGui_ImplSDLRenderer3_Init(renderer);
+    ntr::ui::init(window, renderer, scale);
 
     if (settings().get_bool("launcher", "check_updates")) update_check_start();
 
@@ -333,7 +305,7 @@ int main(int argc, char** argv) {
                 settings_event(ev);
                 continue;  // the key is the binding, not navigation
             }
-            ImGui_ImplSDL3_ProcessEvent(&ev);
+            ntr::ui::process_event(ev);
             if (ev.type == SDL_EVENT_QUIT) g_quit = true;
             if (ev.type == SDL_EVENT_DROP_FILE && ev.drop.data && !g_job.running) on_dump(ev.drop.data);
         }
@@ -341,9 +313,7 @@ int main(int argc, char** argv) {
             SDL_Delay(50);
             continue;
         }
-        ImGui_ImplSDLRenderer3_NewFrame();
-        ImGui_ImplSDL3_NewFrame();
-        ImGui::NewFrame();
+        ntr::ui::begin_frame();
 
         const ImGuiViewport* vp = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(vp->WorkPos);
@@ -375,11 +345,9 @@ int main(int argc, char** argv) {
         }
         ImGui::End();
 
-        ImGui::Render();
-        SDL_SetRenderScale(renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
         SDL_SetRenderDrawColor(renderer, 20, 22, 28, 255);
         SDL_RenderClear(renderer);
-        ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
+        ntr::ui::end_frame(renderer);
         if (shot && ++frames == 60) {
             if (SDL_Surface* s = SDL_RenderReadPixels(renderer, nullptr)) {
                 SDL_SaveBMP(s, shot);
@@ -393,9 +361,7 @@ int main(int argc, char** argv) {
         g_job.cancel = true;
         while (g_job.running) SDL_Delay(50);
     }
-    ImGui_ImplSDLRenderer3_Shutdown();
-    ImGui_ImplSDL3_Shutdown();
-    ImGui::DestroyContext();
+    ntr::ui::shutdown();
     SDL_Quit();
     return 0;
 }

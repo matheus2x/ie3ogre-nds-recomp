@@ -8,6 +8,26 @@ add_library(ntr-common STATIC
 target_include_directories(ntr-common PUBLIC include)
 target_compile_options(ntr-common PRIVATE $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra>)
 
+# Dear ImGui (pinned release) and the screens shared by the game's pause menu and the
+# launcher.
+include(FetchContent)
+FetchContent_Declare(imgui
+    URL https://github.com/ocornut/imgui/archive/refs/tags/v1.92.9b.tar.gz
+    DOWNLOAD_EXTRACT_TIMESTAMP ON)
+FetchContent_MakeAvailable(imgui)
+set(NTR_IMGUI_DIR ${imgui_SOURCE_DIR} CACHE INTERNAL "Dear ImGui sources (tools/release.py copies them into the SDK)")
+add_library(ntr-ui STATIC
+    ui/ui.cpp
+    ${imgui_SOURCE_DIR}/imgui.cpp
+    ${imgui_SOURCE_DIR}/imgui_draw.cpp
+    ${imgui_SOURCE_DIR}/imgui_tables.cpp
+    ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl3.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_sdlrenderer3.cpp
+)
+target_include_directories(ntr-ui PUBLIC include ${imgui_SOURCE_DIR} ${imgui_SOURCE_DIR}/backends)
+target_link_libraries(ntr-ui PUBLIC ntr-common SDL3::SDL3)
+
 add_library(ntr-runtime STATIC
     src/arm7_card.cpp
     src/arm7_input.cpp
@@ -36,4 +56,4 @@ add_library(ntr-runtime STATIC
 target_include_directories(ntr-runtime PUBLIC include)
 target_compile_options(ntr-runtime PRIVATE $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra>)
 
-target_link_libraries(ntr-runtime PUBLIC ntr-common SDL3::SDL3)
+target_link_libraries(ntr-runtime PUBLIC ntr-common ntr-ui SDL3::SDL3)

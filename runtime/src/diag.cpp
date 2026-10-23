@@ -240,6 +240,13 @@ void replay_record(uint64_t frame, uint16_t keys, bool touch, int x, int y) {
     g_input_since = frame;
 }
 
+void log_close() {
+    std::lock_guard lock(g_log_mutex);
+    if (g_log) std::fclose(g_log);
+    g_log = nullptr;
+    g_log_tried = true;  // later lines go to the terminal only
+}
+
 void replay_finish(uint64_t frame) {
     if (!g_replay) return;
     replay_flush_range(frame + 1);
