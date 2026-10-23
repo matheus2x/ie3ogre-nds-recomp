@@ -45,6 +45,7 @@ private:
     // to the next instruction: a call written by hand (assembly code blobs).
     bool is_manual_call(uint32_t addr) const;
     int switch_case_count(uint32_t addr, uint32_t reg) const;
+    int straight_line_cases(uint32_t addr, uint32_t stride) const;  // Duff's device entries
 
     // --- emission ---
     std::string arm(uint32_t addr, uint32_t raw);

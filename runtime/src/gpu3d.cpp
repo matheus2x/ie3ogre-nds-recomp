@@ -604,16 +604,21 @@ void execute(uint32_t cmd, const uint32_t* p) {
         case 0x50: {  // SWAP_BUFFERS
             g.swap_pending = true;
             for (Polygon& poly : g.polys) poly.wbuffer = p[0] & 2;
-            // Translucent polygons are drawn in submission order (manual) or by Y.
-            if (!(p[0] & 1)) {
-                std::stable_sort(g.polys.begin(), g.polys.end(), [](const Polygon& a, const Polygon& b) {
-                    if (a.translucent != b.translucent) return !a.translucent;
-                    if (!a.translucent) return false;
-                    return a.ymax != b.ymax ? a.ymax < b.ymax : a.ymin < b.ymin;
-                });
-            } else {
-                std::stable_partition(g.polys.begin(), g.polys.end(), [](const Polygon& a) { return !a.translucent; });
-            }
+            // The hardware draws opaque polygons first, sorted by their bottom screen line and
+            // then their top line; translucent ones follow, sorted the same way unless the
+            // game asks for manual order (bit 0). Ties keep the submission order. The order
+            // matters for the 2D-style menus drawn in 3D: digits drawn on a panel at the same
+            // depth only show because they end higher on screen and are drawn first.
+            bool manual = p[0] & 1;
+            auto key = [](const Polygon& a) {
+                int bottom = std::clamp(int(std::floor(a.ymax)), 0, 191), top = std::clamp(int(std::floor(a.ymin)), 0, 191);
+                return bottom << 8 | top;
+            };
+            std::stable_sort(g.polys.begin(), g.polys.end(), [&](const Polygon& a, const Polygon& b) {
+                if (a.translucent != b.translucent) return !a.translucent;
+                if (a.translucent && manual) return false;
+                return key(a) < key(b);
+            });
             static const bool log = std::getenv("NTR_LOG_3D");
             if (log && g.stat_swaps++ % 60 == 0) {
                 NTR_LOG("[3d] swap: %zu polygons drawn, %u vertices, %u culled, %u clipped away; DISP3DCNT %04X\n",

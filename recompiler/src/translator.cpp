@@ -81,16 +81,19 @@ int Translator::switch_case_count(uint32_t addr, uint32_t reg) const {
         bool pop_pc = (r & 0x0E108000) == 0x08108000;
         return (cond == 0x8 || cond == 0xC) && (branch || pop_pc);
     };
+    auto data_processing = [](uint32_t r) { return (r & 0x0C000000) == 0 && (r & 0x0E000090) != 0x00000090; };
+    auto halfword_transfer = [](uint32_t r) { return (r & 0x0E000090) == 0x00000090 && (r & 0x60); };
     auto writes_reg = [&](uint32_t r) {
-        bool data_processing = (r & 0x0C000000) == 0 && (r & 0x0E000090) != 0x00000090;
         uint32_t op = (r >> 21) & 0xF;
         bool test = op >= 8 && op <= 11;
-        bool load = (r & 0x0C100000) == 0x04100000;
-        return ((data_processing && !test) || load) && ((r >> 12) & 0xF) == reg;
+        bool load = (r & 0x0C100000) == 0x04100000 || (halfword_transfer(r) && (r & 0x00100000));
+        return ((data_processing(r) && !test) || load) && ((r >> 12) & 0xF) == reg;
     };
-    auto keeps_flags = [](uint32_t r) {
-        bool data_processing = (r & 0x0C000000) == 0 && (r & 0x0E000090) != 0x00000090;
-        return data_processing && !(r & 0x00100000) && (r >> 28) == 0xE;
+    // Instructions that never touch the flags: data processing without S, single and
+    // halfword loads/stores ("cmp r1, #14; ldrh r0, [r0]; orr ...; addls pc, ...").
+    auto keeps_flags = [&](uint32_t r) {
+        if (data_processing(r)) return !(r & 0x00100000);
+        return (r & 0x0C000000) == 0x04000000 || halfword_transfer(r);
     };
     for (uint32_t back = 4; back <= 24; back += 4) {
         auto raw = mod_.read32(addr - back);
@@ -118,6 +121,24 @@ int Translator::switch_case_count(uint32_t addr, uint32_t reg) const {
         n++;
     }
     return n - 1;
+}
+
+int Translator::straight_line_cases(uint32_t addr, uint32_t stride) const {
+    // The SDK's small copies and fills ("rsb r3, r2, #8; add pc, pc, r3, lsl #2", then
+    // eight stores and "bx lr") jump into an unrolled sequence: every stride-th
+    // instruction up to the first unconditional exit is an entry. Anything that leaves
+    // the sequence earlier means it is not one.
+    for (uint32_t a = addr + 8; a < addr + 8 + 64 * 4; a += 4) {
+        uint32_t r = mod_.read32(a).value_or(0);
+        bool bx = (r & 0x0FFFFFF0) == 0x012FFF10;
+        bool branch = (r & 0x0E000000) == 0x0A000000;
+        bool pop_pc = (r & 0x0E108000) == 0x08108000;
+        bool to_pc = (r & 0x0C00F000) == 0x0000F000 || (r & 0x0C10F000) == 0x0410F000;
+        if (!(bx || branch || pop_pc || to_pc)) continue;
+        if ((r >> 28) != 0xE || a == addr + 8) return -1;
+        return int((a - (addr + 8)) / stride);
+    }
+    return -1;
 }
 
 bool Translator::is_manual_call(uint32_t addr) const {
@@ -165,12 +186,17 @@ Translator::Flow Translator::arm_flow(uint32_t addr, uint32_t raw) {
     uint32_t op = (raw >> 21) & 0xF;
     if (dp && ((raw >> 12) & 0xF) == 15 && !(op >= 8 && op <= 11)) {
         if (is_manual_call(addr)) return f;
-        // add pc, pc, rM, lsl #2  -> jump table of branches after the default slot
-        if (op == 4 && ((raw >> 16) & 0xF) == 15 && !(raw & 0x02000000) && (raw & 0xFF0) == 0x100) {
-            int n = switch_case_count(addr, raw & 0xF);
+        // add pc, pc, rM, lsl #2  -> jump table of branches after the default slot, or
+        // add pc, pc, rM, lsl #2/#3 -> entry into straight-line code (Duff's device)
+        uint32_t shift = (raw >> 7) & 31;
+        bool lsl_imm = (raw & 0x70) == 0;
+        if (op == 4 && ((raw >> 16) & 0xF) == 15 && !(raw & 0x02000000) && lsl_imm && (shift == 2 || shift == 3)) {
+            uint32_t stride = 1u << shift;
+            int n = shift == 2 ? switch_case_count(addr, raw & 0xF) : -1;
+            if (n < 0) n = straight_line_cases(addr, stride);
             if (n >= 0) {
                 std::vector<uint32_t> targets;
-                for (int i = 0; i <= n; i++) targets.push_back(addr + 8 + 4 * i);
+                for (int i = 0; i <= n; i++) targets.push_back(addr + 8 + stride * i);
                 switches_[addr] = targets;
                 f.local_targets = targets;
             }

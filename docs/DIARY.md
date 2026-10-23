@@ -805,3 +805,23 @@ Resultado (sessão inteira, 36.000 quadros a 2×):
 - Imagens de referência (8 quadros pesados, a 1× e a 2×) **idênticas byte a byte** antes e depois. O roteiro da história continua idêntico no quadro 14000.
 
 **Diagnóstico novo:** com janela, cada segundo que tiver quadros acima de 16,7 ms (fora do avanço rápido) gera `[perf] N frames took longer than 16.7 ms in the last second (worst X ms, frame F)` no `boej.log`. Testado no WSLg a 4× com uma thread só.
+
+## 2026-10-23 — Crash ao abrir o menu de save, cópias curtas de memória e pontos invisíveis na recarga de TP
+
+O usuário jogou até depois da primeira partida, apertou F8 num ponto azul de recarga de TP (quadro 91921, a caixa "ねっけつ ___P" sem o número) e o jogo fechou ao abrir o menu para salvar (quadro 105317). A repetição bate byte a byte com a captura do F8.
+
+**Crash no menu (ov061, 0x0211A954).** Outra tabela de `switch` descartada: entre `cmp r1,#0xe` e `addls pc` havia um `ldrh r0,[r0]`. A regra só aceitava processamento de dados no meio, mas loads/stores não mexem nas flags. Agora `keeps_flags` aceita processamento de dados sem S e loads/stores de palavra e meia-palavra, e `writes_reg` também reconhece `ldrh` em rN. Isso também consertou uma tabela da ov016 (0x02106AC0, casos 0–4).
+
+**Duff's device nas cópias do SDK** (0x02007A1C, 0x02007C60, 0x02007F50): para 1 a 8 bytes, entram no meio de uma sequência desenrolada com `rsb r3,r2,#8; add pc,pc,r3,lsl #2` (ou `lsl #3`). O limite vem de outro registrador, então nenhuma regra servia, e o salto viraria crash. Agora existe `straight_line_cases`: se a tabela não é de desvios, os casos são as entradas a cada 4 ou 8 bytes até a primeira saída incondicional, e nenhuma instrução no caminho pode ser desvio. Os três viraram `switch` de 9 casos (o 8 é o `bx lr`). O único `add pc` restante está nas divisões, que rodam em HLE. Uma varredura de todas as tabelas comparou o número de casos com o `cmp` que limita cada uma; as formas `cmp; bgt; subs; addpl` batem com X − base.
+
+**Pontos invisíveis.** Investigação (ganchos temporários, já removidos):
+- A tela de baixo do campo é **toda 3D** (com o 3D desligado fica preta). A caixa é um quadrilátero texturizado, e cada dígito é um quadrilátero de 8×16 com uma tira de textura de dígitos (0x6E836450, 8×256, 16 cores).
+- No caminho foram descartadas outras causas: o `sprintf` do jogo (MSL, 0x02023C40) formata "%7d" certo; a conversão para caracteres largos (ov016 0x020F1F5C) também; a busca de glifos (`func_020182ac`) nunca falhou; as fontes têm os dígitos; nenhum DMA temporizado é usado.
+- Os dígitos tinham **a mesma profundidade** do painel (204288) e chegavam depois dele na lista, então o teste "menor que" os rejeitava.
+
+**Causa: faltava a ordenação de polígonos do hardware.** O DS desenha os opacos primeiro, ordenados pela linha de baixo e depois pela de cima, e os translúcidos depois, ordenados do mesmo jeito, exceto com o bit 0 do `SWAP_BUFFERS` (ordem manual). O port só ordenava os translúcidos e deixava os opacos na ordem de envio. Agora a chave é `(linha de baixo << 8) | linha de cima` em linhas inteiras, com `stable_sort`, para os empates manterem a ordem de envio. Os dígitos (até a linha 118) passam a ser desenhados antes do painel (até a 128), e o painel, na mesma profundidade, não os cobre.
+
+**Resultado:**
+- A caixa mostra "ねっけつ 203P".
+- O menu de save abre. Os campos (nível do time, なかま, tempo, nome, vitórias) ficam em branco porque mostram o save que já existe no slot, e nessa sessão o jogo nunca tinha salvado. Falta conferir depois de salvar de verdade.
+- O roteiro da história continua idêntico byte a byte no quadro 14000.
