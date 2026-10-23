@@ -825,3 +825,33 @@ O usuário jogou até depois da primeira partida, apertou F8 num ponto azul de r
 - A caixa mostra "ねっけつ 203P".
 - O menu de save abre. Os campos (nível do time, なかま, tempo, nome, vitórias) ficam em branco porque mostram o save que já existe no slot, e nessa sessão o jogo nunca tinha salvado. Falta conferir depois de salvar de verdade.
 - O roteiro da história continua idêntico byte a byte no quadro 14000.
+
+## 2026-10-23 — Etapa 11: configurações (`boej.ini`) e controles remapeáveis
+
+**Arquivo de configurações** (`runtime/src/config.cpp`): `boej.ini` ao lado do executável (`NTR_CONFIG` escolhe outro). É um INI simples (`[seção]`, `chave = valor`, comentários com `;` ou `#`, chaves sem diferença de maiúsculas).
+- Os padrões são o próprio texto do arquivo, embutido no executável. Ele é lido primeiro, e o arquivo do jogador por cima. Assim, um arquivo antigo ou com chaves apagadas continua recebendo o padrão no que faltar.
+- Na primeira execução com janela, o arquivo é criado com esse texto, comentado em português.
+- Valores inválidos vão para o `boej.log` com arquivo e linha (`[config] boej.ini:3: "9" is not a number from 1 to 4`), e o padrão é usado no lugar.
+- Sem janela, o arquivo só é lido com `NTR_CONFIG`, para os testes e as repetições não dependerem das configurações de quem joga. As variáveis `NTR_SCALE`, `NTR_3D_SCALE` e `NTR_MUTE` continuam com prioridade.
+
+**Opções:**
+- `[video]`: `window_scale`, `resolution_3d` (1 a 4), `fullscreen`, `filter` (`nearest`/`linear`, a escala da textura no SDL) e `integer_scale` (`SDL_LOGICAL_PRESENTATION_INTEGER_SCALE`).
+- `[audio]`: `volume` de 0 a 100 (ganho do `SDL_AudioStream`; o WAV do `NTR_WAV` não muda).
+- `[keyboard]` e `[gamepad]`: uma linha por botão do DS e por atalho (`fast_forward`, `fast_forward_toggle`, `turbo`, `turbo_toggle`, `screenshot`, `debug_dump`, `fullscreen`), com várias entradas separadas por vírgula. Vazio desliga.
+  - Teclas pelos nomes do SDL (`SDL_GetKeyFromName`).
+  - Controle: botões pela posição (`south/east/west/north`, para "east" ser o mesmo botão em qualquer controle) ou pelos nomes do SDL (`start`, `back`, `dpup`...). Eixos com direção (`lefty-`), acionados a meio curso. Por padrão, o analógico esquerdo também move o direcional (novo).
+- Atalho novo: **F11** alterna a tela cheia.
+
+**Entrada reescrita no host:** cada fonte (teclado e controles) calcula a máscara das ações seguradas, e a combinação das duas define os botões do DS e os atalhos de segurar. Os atalhos de apertar (alternar, captura, F8, tela cheia) disparam na borda de subida da máscara combinada. Isso substituiu as teclas fixas (`key_bit`/`gamepad_bit`) e os campos separados do controle (`pad_keys`, `ff_pad`, `turbo_pad`).
+- Os controles abertos ficam numa lista e são fechados quando desconectados (antes nunca eram).
+- Ao perder o foco, a janela solta todas as teclas: o key-up vai para outra janela, e antes o botão ficava preso.
+
+**Verificação:**
+- O roteiro da história, sem janela, continua idêntico byte a byte nos quadros 9000 e 14000.
+- Com janela (WSLg), sem arquivo: o `boej.ini` criado é igual ao texto embutido.
+- Arquivo com erros de propósito (`resolution_3d = 9`, `filter = blurry`, `fullscreen = talvez`, tecla e eixo inexistentes, linha sem `=`): cada um gerou o aviso com a linha certa, o 3D ficou em 2× e a janela abriu a 3× (768×1152).
+- Gancho temporário (já removido) que injetava eventos de teclado no SDL, com `A = K` e `B =`: K apertou A, Z não fez nada, ↑ apertou UP, perder o foco soltou tudo, F2 ligou o avanço e F11 ligou a tela cheia.
+- Não testado: controle físico (não há um no WSL). O caminho é o mesmo das teclas, com o estado lido por `SDL_GetGamepadButton`/`SDL_GetGamepadAxis`.
+- Build de Windows compilada sem avisos (copiada para `build/dist-win`).
+
+**Próximo passo** pelo plano: release portátil para Windows (pacote com `boej.exe`, `SDL3.dll` e um jeito de gerar o `boej.pak` sem Python, a partir do dump do jogador).

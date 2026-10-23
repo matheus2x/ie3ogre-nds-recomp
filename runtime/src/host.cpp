@@ -1,19 +1,24 @@
 // Host frontend on SDL3: one window with both screens stacked, keyboard/gamepad/mouse
 // input and frame pacing to the DS refresh rate (59.8261 Hz).
 //
-// Keys: arrows = D-pad, X = A, Z = B, S = X, A = Y, Q = L, W = R, Enter = Start,
+// Settings, key and gamepad bindings come from boej.ini (config.cpp), which also lists
+// the defaults: arrows = D-pad, X = A, Z = B, S = X, A = Y, Q = L, W = R, Enter = Start,
 // Right Shift/Backspace = Select, F12 = screenshot, F8 = state dump to the log (plus a
-// screenshot). The left mouse button touches the bottom screen.
+// screenshot), F11 = fullscreen. The left mouse button touches the bottom screen.
 //
 // Testing shortcuts: Tab (held) or F2 (toggle) = fast forward; C (held) or F3 (toggle) =
 // auto A, which presses and releases A every few frames to skip through messages. On a
 // gamepad, the right trigger fast-forwards and the left trigger is auto A. The window
 // title shows which ones are on.
 //
+// Without a window the settings file is read only if NTR_CONFIG names it, so tests do
+// not depend on the player's settings.
+//
 // Environment: NTR_HEADLESS (no window, unthrottled), NTR_FAST (unthrottled), NTR_MUTE (no
-// audio device), NTR_WAV (also write the sound output to that WAV file),
-// NTR_SCALE (initial window scale, default 2), NTR_3D_SCALE (3D internal resolution,
-// 1-4; default 2 with a window, 1 without), NTR_SCREENSHOT_FRAMES + NTR_SCREENSHOT
+// audio device), NTR_WAV (also write the sound output to that WAV file), NTR_CONFIG
+// (settings file instead of boej.ini next to the executable), NTR_SCALE (initial window
+// scale), NTR_3D_SCALE (3D internal resolution, 1-4; 1 without a window),
+// NTR_SCREENSHOT_FRAMES + NTR_SCREENSHOT
 // (save those frames, a comma-separated list, as BMPs of what the window shows; %d in the
 // path is the frame), NTR_EXIT_FRAME (exit after that many frames),
 // NTR_INPUT (scripted input for tests: "first-last:KEY[+KEY...];..." with frame numbers
@@ -41,6 +46,37 @@ namespace {
 
 constexpr uint64_t kFrameNs = 1000000000ull * 263 * 2130 / 33513982;  // 355x263 dots, 6 cycles each
 
+// What a key or gamepad input does: a DS button (KEYINPUT bits 0-9, X = bit 10, Y = bit 11)
+// or a frontend shortcut.
+enum Action {
+    kFastForward = 12,
+    kFastForwardToggle,
+    kTurbo,
+    kTurboToggle,
+    kScreenshot,
+    kDebugDump,
+    kFullscreen,
+    kActionCount
+};
+constexpr uint32_t kButtonMask = 0xFFF;
+
+const char* const kActionNames[kActionCount] = {
+    "A", "B", "SELECT", "START", "RIGHT", "LEFT", "UP", "DOWN", "R", "L", "X", "Y",
+    "fast_forward", "fast_forward_toggle", "turbo", "turbo_toggle", "screenshot", "debug_dump", "fullscreen"};
+
+struct KeyBinding {
+    SDL_Keycode key;
+    int action;
+};
+
+// A gamepad button, or an axis pushed past half way (dir = +1 or -1).
+struct PadBinding {
+    int button = SDL_GAMEPAD_BUTTON_INVALID;
+    int axis = SDL_GAMEPAD_AXIS_INVALID;
+    int dir = 0;
+    int action;
+};
+
 struct ScriptedInput {
     uint64_t first, last;
     uint16_t keys;
@@ -65,12 +101,19 @@ struct Host {
     std::string screenshot_path = "boej-%d.bmp";  // %d = frame number
     uint64_t f12_frame = 0, exit_frame = 0;
 
+    Config config;
+    std::vector<KeyBinding> key_bindings;
+    std::vector<PadBinding> pad_bindings;
+    std::set<SDL_Keycode> keys_down;
+    std::vector<SDL_Gamepad*> pads;
+    uint32_t key_actions = 0, pad_actions = 0, actions = 0;  // held, by Action bit
+
     uint16_t keys = 0;     // pressed DS buttons: KEYINPUT bits 0-9, X = bit 10, Y = bit 11
-    uint16_t pad_keys = 0;
     bool touching = false;
     int touch_x = 0, touch_y = 0;
-    bool ff_held = false, ff_toggle = false, ff_pad = false;          // fast forward
-    bool turbo_held = false, turbo_toggle = false, turbo_pad = false;  // auto A
+    bool ff_held = false, ff_toggle = false;        // fast forward
+    bool turbo_held = false, turbo_toggle = false;  // auto A
+    bool linear_filter = false;
     std::vector<ScriptedInput> script;
     uint16_t script_keys = 0;
     bool script_touch = false;
@@ -118,9 +161,8 @@ void write_bmp(const std::string& path, const uint32_t* top, const uint32_t* bot
 }
 
 uint16_t key_by_name(const std::string& name) {
-    static const char* const kNames[] = {"A", "B", "SELECT", "START", "RIGHT", "LEFT", "UP", "DOWN", "R", "L", "X", "Y"};
-    for (int i = 0; i < 12; i++) {
-        if (name == kNames[i]) return uint16_t(1u << i);
+    for (int i = 0; i < kFastForward; i++) {
+        if (name == kActionNames[i]) return uint16_t(1u << i);
     }
     NTR_LOG("[host] NTR_INPUT: unknown key %s\n", name.c_str());
     return 0;
@@ -189,15 +231,14 @@ void apply_script() {
     }
 }
 
-bool fast_forward() { return g_host.ff_held || g_host.ff_toggle || g_host.ff_pad; }
+bool fast_forward() { return g_host.ff_held || g_host.ff_toggle; }
+
+bool turbo() { return g_host.turbo_held || g_host.turbo_toggle; }
 
 // Auto A: 3 frames pressed, 3 released, so the game sees a new press each time.
-uint16_t turbo_keys() {
-    bool on = g_host.turbo_held || g_host.turbo_toggle || g_host.turbo_pad;
-    return on && (g_host.frame / 3) % 2 == 0 ? 1u << 0 : 0;
-}
+uint16_t turbo_keys() { return turbo() && (g_host.frame / 3) % 2 == 0 ? 1u << 0 : 0; }
 
-uint16_t pressed_keys() { return g_host.keys | g_host.pad_keys | g_host.script_keys | turbo_keys(); }
+uint16_t pressed_keys() { return g_host.keys | g_host.script_keys | turbo_keys(); }
 
 // Replaces %d in a screenshot path with the current frame number.
 std::string frame_path(std::string pattern) {
@@ -243,44 +284,103 @@ void open_audio() {
         NTR_LOG("[host] no audio: %s\n", SDL_GetError());
         return;
     }
+    int volume = g_host.config.get_int("audio", "volume", 0, 100);
+    SDL_SetAudioStreamGain(g_host.audio, volume / 100.0f);
     SDL_ResumeAudioStreamDevice(g_host.audio);
 }
 
-uint16_t key_bit(SDL_Keycode key) {
-    switch (key) {
-        case SDLK_X: return 1u << 0;        // A
-        case SDLK_Z: return 1u << 1;        // B
-        case SDLK_RSHIFT:
-        case SDLK_BACKSPACE: return 1u << 2;  // Select
-        case SDLK_RETURN: return 1u << 3;   // Start
-        case SDLK_RIGHT: return 1u << 4;
-        case SDLK_LEFT: return 1u << 5;
-        case SDLK_UP: return 1u << 6;
-        case SDLK_DOWN: return 1u << 7;
-        case SDLK_W: return 1u << 8;        // R
-        case SDLK_Q: return 1u << 9;        // L
-        case SDLK_S: return 1u << 10;       // X
-        case SDLK_A: return 1u << 11;       // Y
-        default: return 0;
+// "Right Shift, Backspace" -> {"Right Shift", "Backspace"}
+std::vector<std::string> split_list(const std::string& value) {
+    std::vector<std::string> items;
+    size_t pos = 0;
+    while (pos <= value.size()) {
+        size_t comma = value.find(',', pos);
+        std::string item = value.substr(pos, comma == std::string::npos ? std::string::npos : comma - pos);
+        size_t a = item.find_first_not_of(" \t"), b = item.find_last_not_of(" \t");
+        if (a != std::string::npos) items.push_back(item.substr(a, b - a + 1));
+        if (comma == std::string::npos) break;
+        pos = comma + 1;
+    }
+    return items;
+}
+
+// Positions first, so that "east" means the same button on any gamepad; then SDL's
+// mapping names ("a" = south, "b" = east, "back", "dpup"...).
+int pad_button_by_name(const std::string& name) {
+    static const std::pair<const char*, int> kPositions[] = {
+        {"south", SDL_GAMEPAD_BUTTON_SOUTH}, {"east", SDL_GAMEPAD_BUTTON_EAST},
+        {"west", SDL_GAMEPAD_BUTTON_WEST}, {"north", SDL_GAMEPAD_BUTTON_NORTH}};
+    for (const auto& [n, button] : kPositions) {
+        if (SDL_strcasecmp(name.c_str(), n) == 0) return button;
+    }
+    return SDL_GetGamepadButtonFromString(name.c_str());
+}
+
+void load_bindings() {
+    const Config& c = g_host.config;
+    for (int action = 0; action < kActionCount; action++) {
+        if (const Config::Entry* e = c.find("keyboard", kActionNames[action])) {
+            for (const std::string& name : split_list(e->value)) {
+                SDL_Keycode key = SDL_GetKeyFromName(name.c_str());
+                if (key == SDLK_UNKNOWN) c.warn(*e, "unknown key \"" + name + "\"");
+                else g_host.key_bindings.push_back({key, action});
+            }
+        }
+        if (const Config::Entry* e = c.find("gamepad", kActionNames[action])) {
+            for (std::string name : split_list(e->value)) {
+                PadBinding b;
+                b.action = action;
+                char sign = name.back();
+                if (sign == '+' || sign == '-') name.pop_back();
+                if ((b.button = pad_button_by_name(name)) == SDL_GAMEPAD_BUTTON_INVALID) {
+                    b.axis = SDL_GetGamepadAxisFromString(name.c_str());
+                    b.dir = sign == '-' ? -1 : 1;
+                }
+                if (b.button == SDL_GAMEPAD_BUTTON_INVALID && b.axis == SDL_GAMEPAD_AXIS_INVALID) {
+                    c.warn(*e, "unknown gamepad button or axis \"" + name + "\"");
+                } else {
+                    g_host.pad_bindings.push_back(b);
+                }
+            }
+        }
     }
 }
 
-uint16_t gamepad_bit(int button) {
-    switch (button) {
-        case SDL_GAMEPAD_BUTTON_EAST: return 1u << 0;
-        case SDL_GAMEPAD_BUTTON_SOUTH: return 1u << 1;
-        case SDL_GAMEPAD_BUTTON_BACK: return 1u << 2;
-        case SDL_GAMEPAD_BUTTON_START: return 1u << 3;
-        case SDL_GAMEPAD_BUTTON_DPAD_RIGHT: return 1u << 4;
-        case SDL_GAMEPAD_BUTTON_DPAD_LEFT: return 1u << 5;
-        case SDL_GAMEPAD_BUTTON_DPAD_UP: return 1u << 6;
-        case SDL_GAMEPAD_BUTTON_DPAD_DOWN: return 1u << 7;
-        case SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER: return 1u << 8;
-        case SDL_GAMEPAD_BUTTON_LEFT_SHOULDER: return 1u << 9;
-        case SDL_GAMEPAD_BUTTON_NORTH: return 1u << 10;
-        case SDL_GAMEPAD_BUTTON_WEST: return 1u << 11;
-        default: return 0;
+void toggle_fullscreen() {
+    bool on = SDL_GetWindowFlags(g_host.window) & SDL_WINDOW_FULLSCREEN;
+    SDL_SetWindowFullscreen(g_host.window, !on);
+}
+
+// Recomputes what is held from the keyboard and the gamepads, and runs the shortcuts
+// that were just pressed.
+void update_actions() {
+    g_host.key_actions = 0;
+    for (const KeyBinding& b : g_host.key_bindings) {
+        if (g_host.keys_down.count(b.key)) g_host.key_actions |= 1u << b.action;
     }
+    g_host.pad_actions = 0;
+    for (SDL_Gamepad* pad : g_host.pads) {
+        for (const PadBinding& b : g_host.pad_bindings) {
+            bool on = b.button != SDL_GAMEPAD_BUTTON_INVALID
+                          ? SDL_GetGamepadButton(pad, SDL_GamepadButton(b.button))
+                          : SDL_GetGamepadAxis(pad, SDL_GamepadAxis(b.axis)) * b.dir > 16000;
+            if (on) g_host.pad_actions |= 1u << b.action;
+        }
+    }
+    uint32_t now = g_host.key_actions | g_host.pad_actions;
+    uint32_t pressed = now & ~g_host.actions;
+    g_host.actions = now;
+    g_host.keys = uint16_t(now & kButtonMask);
+    g_host.ff_held = now & (1u << kFastForward);
+    g_host.turbo_held = now & (1u << kTurbo);
+    if (pressed & (1u << kFastForwardToggle)) g_host.ff_toggle = !g_host.ff_toggle;
+    if (pressed & (1u << kTurboToggle)) g_host.turbo_toggle = !g_host.turbo_toggle;
+    if (pressed & (1u << kScreenshot)) g_host.f12_frame = g_host.frame + 1;
+    if (pressed & (1u << kDebugDump)) {
+        debug_dump("F8");
+        g_host.f12_frame = g_host.frame + 1;
+    }
+    if (pressed & (1u << kFullscreen)) toggle_fullscreen();
 }
 
 // Window position -> bottom screen pixel; false outside the bottom screen.
@@ -301,37 +401,37 @@ void pump_events() {
                 quit();
                 break;
             case SDL_EVENT_KEY_DOWN:
-            case SDL_EVENT_KEY_UP: {
-                bool down = ev.type == SDL_EVENT_KEY_DOWN;
-                if (ev.key.key == SDLK_TAB) g_host.ff_held = down;
-                if (ev.key.key == SDLK_C) g_host.turbo_held = down;
-                if (down && !ev.key.repeat) {
-                    if (ev.key.key == SDLK_F2) g_host.ff_toggle = !g_host.ff_toggle;
-                    if (ev.key.key == SDLK_F3) g_host.turbo_toggle = !g_host.turbo_toggle;
-                }
-                if (ev.key.key == SDLK_F12 && down && !ev.key.repeat) {
-                    g_host.f12_frame = g_host.frame + 1;
-                }
-                if (ev.key.key == SDLK_F8 && down && !ev.key.repeat) {
-                    debug_dump("F8");
-                    g_host.f12_frame = g_host.frame + 1;
-                }
-                uint16_t bit = key_bit(ev.key.key);
-                g_host.keys = down ? (g_host.keys | bit) : (g_host.keys & ~bit);
+                g_host.keys_down.insert(ev.key.key);
+                update_actions();
                 break;
-            }
+            case SDL_EVENT_KEY_UP:
+                g_host.keys_down.erase(ev.key.key);
+                update_actions();
+                break;
+            case SDL_EVENT_WINDOW_FOCUS_LOST:  // the key-up events go to another window
+                g_host.keys_down.clear();
+                update_actions();
+                break;
             case SDL_EVENT_GAMEPAD_ADDED:
-                SDL_OpenGamepad(ev.gdevice.which);
+                if (SDL_Gamepad* pad = SDL_OpenGamepad(ev.gdevice.which)) {
+                    g_host.pads.push_back(pad);
+                    NTR_LOG("[host] gamepad: %s\n", SDL_GetGamepadName(pad));
+                }
+                break;
+            case SDL_EVENT_GAMEPAD_REMOVED:
+                for (size_t i = 0; i < g_host.pads.size(); i++) {
+                    if (SDL_GetGamepadID(g_host.pads[i]) == ev.gdevice.which) {
+                        SDL_CloseGamepad(g_host.pads[i]);
+                        g_host.pads.erase(g_host.pads.begin() + i);
+                        break;
+                    }
+                }
+                update_actions();
                 break;
             case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
-            case SDL_EVENT_GAMEPAD_BUTTON_UP: {
-                uint16_t bit = gamepad_bit(ev.gbutton.button);
-                g_host.pad_keys = ev.gbutton.down ? (g_host.pad_keys | bit) : (g_host.pad_keys & ~bit);
-                break;
-            }
+            case SDL_EVENT_GAMEPAD_BUTTON_UP:
             case SDL_EVENT_GAMEPAD_AXIS_MOTION:
-                if (ev.gaxis.axis == SDL_GAMEPAD_AXIS_RIGHT_TRIGGER) g_host.ff_pad = ev.gaxis.value > 16000;
-                if (ev.gaxis.axis == SDL_GAMEPAD_AXIS_LEFT_TRIGGER) g_host.turbo_pad = ev.gaxis.value > 16000;
+                update_actions();
                 break;
             case SDL_EVENT_MOUSE_BUTTON_DOWN:
                 if (ev.button.button == SDL_BUTTON_LEFT) {
@@ -378,7 +478,7 @@ void pace() {
         char title[128];
         std::snprintf(title, sizeof title, "Inazuma Eleven 3 - The Ogre (recomp) - %.1f fps%s%s", fps,
                       fast_forward() ? " [>> acelerado]" : "",
-                      g_host.turbo_held || g_host.turbo_toggle || g_host.turbo_pad ? " [A automatico]" : "");
+                      turbo() ? " [A automatico]" : "");
         SDL_SetWindowTitle(g_host.window, title);
         g_host.fps_start = now;
         g_host.fps_frames = 0;
@@ -427,8 +527,17 @@ bool host_init() {
     bool scripted = std::getenv("NTR_INPUT") || std::getenv("NTR_REPLAY");
     if ((!headless && !scripted) || std::getenv("NTR_RECORD")) replay_enable();
     diag_init(!headless);
+    const char* config_env = std::getenv("NTR_CONFIG");
+    std::string config_path = config_env ? config_env : host_base_path() + "boej.ini";
+    if (config_env || !headless) {
+        if (!config_load(config_path, g_host.config) && !headless) config_write_default(config_path);
+    } else {
+        config_load("", g_host.config);  // defaults only
+    }
+    const Config& config = g_host.config;
     int scale_3d = int(env_u64("NTR_3D_SCALE"));
-    gpu3d_set_scale(scale_3d > 0 ? scale_3d : headless ? 1 : 2);
+    if (scale_3d <= 0) scale_3d = headless && !config_env ? 1 : config.get_int("video", "resolution_3d", 1, 4);
+    gpu3d_set_scale(scale_3d);
     if (headless) return true;
 
     SDL_SetMainReady();
@@ -437,15 +546,24 @@ bool host_init() {
         return false;
     }
     int scale = int(env_u64("NTR_SCALE"));
-    if (scale <= 0) scale = 2;
+    if (scale <= 0) scale = config.get_int("video", "window_scale", 1, 16);
+    SDL_WindowFlags flags = SDL_WINDOW_RESIZABLE;
+    if (config.get_bool("video", "fullscreen")) flags |= SDL_WINDOW_FULLSCREEN;
     if (!SDL_CreateWindowAndRenderer("Inazuma Eleven 3 - The Ogre (recomp)", kScreenWidth * scale,
-                                     kScreenHeight * 2 * scale, SDL_WINDOW_RESIZABLE, &g_host.window,
-                                     &g_host.renderer)) {
+                                     kScreenHeight * 2 * scale, flags, &g_host.window, &g_host.renderer)) {
         NTR_LOG("[host] cannot create the window: %s\n", SDL_GetError());
         return false;
     }
     SDL_SetRenderLogicalPresentation(g_host.renderer, kScreenWidth, kScreenHeight * 2,
-                                     SDL_LOGICAL_PRESENTATION_LETTERBOX);
+                                     config.get_bool("video", "integer_scale")
+                                         ? SDL_LOGICAL_PRESENTATION_INTEGER_SCALE
+                                         : SDL_LOGICAL_PRESENTATION_LETTERBOX);
+    std::string filter = config.get("video", "filter");
+    g_host.linear_filter = SDL_strcasecmp(filter.c_str(), "linear") == 0;
+    if (!g_host.linear_filter && SDL_strcasecmp(filter.c_str(), "nearest") != 0) {
+        config.warn(*config.find("video", "filter"), "\"" + filter + "\" is not nearest or linear");
+    }
+    load_bindings();
     g_host.headless = false;
     open_audio();
     g_host.deadline = g_host.fps_start = SDL_GetTicksNS();
@@ -497,7 +615,7 @@ void host_present(const uint32_t* top, const uint32_t* bottom, int scale) {
         if (g_host.texture) SDL_DestroyTexture(g_host.texture);
         g_host.texture = SDL_CreateTexture(g_host.renderer, SDL_PIXELFORMAT_XRGB8888, SDL_TEXTUREACCESS_STREAMING,
                                            kScreenWidth * scale, kScreenHeight * 2 * scale);
-        SDL_SetTextureScaleMode(g_host.texture, SDL_SCALEMODE_NEAREST);
+        SDL_SetTextureScaleMode(g_host.texture, g_host.linear_filter ? SDL_SCALEMODE_LINEAR : SDL_SCALEMODE_NEAREST);
         g_host.texture_scale = scale;
     }
     int w = kScreenWidth * scale, h = kScreenHeight * scale;

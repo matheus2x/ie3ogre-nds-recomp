@@ -6,8 +6,8 @@ Port nativo para Windows de **Inazuma Eleven 3: Sekai heno Chousen!! The Ogre**
 O código do jogo não é emulado: o ARM9 e as overlays viram C e são compilados para x86-64. O hardware do DS
 e o ARM7 são reimplementados no PC.
 
-> **Estado: pré-alfa.** O código do jogo já é recompilado inteiro e o boot vai até o carregamento dos
-> primeiros gráficos, mas ainda não há vídeo, áudio nem controles. Ainda não dá para jogar.
+> **Estado: pré-alfa.** O jogo roda com vídeo 2D/3D, som, vídeos e controles, e a história já foi jogada
+> até depois da primeira partida. Ainda há bugs, e o progresso depende de correções a cada sessão de teste.
 > O histórico completo está em [`docs/DIARY.md`](docs/DIARY.md).
 
 ## Objetivo
@@ -64,7 +64,7 @@ Se o seu dump tiver outro SHA-1, abra uma issue informando o código do jogo e o
 - [x] Vídeos Mobiclip (`.mods`): o decodificador original (assembly escrito à mão) roda num interpretador ARM embutido
 - [x] Wi-Fi/DWC desativado (o Nintendo WFC foi encerrado): o ARM7 não oferece o serviço sem fio, então o jogo recebe "sem fio indisponível" e segue pelo próprio caminho de erro
 - [x] Dump usado só na preparação: o jogo roda a partir do `boej.pak` (mapeado em memória)
-- [ ] Configurações, controles remapeáveis
+- [x] Configurações (`boej.ini`): janela, tela cheia, filtro, resolução do 3D, volume e controles remapeáveis (teclado e controle)
 - [ ] Instalador / release portátil para Windows
 
 ## Estrutura do repositório
@@ -143,7 +143,7 @@ Também dá para passar o caminho de um `boej.pak` ou de um `.nds` como argument
 | Start / Select | Enter / Shift direito ou Backspace | Start / Back |
 | Tela de toque | botão esquerdo do mouse na tela de baixo | — |
 
-F12 salva a tela em `boej-<quadro>.bmp`.
+F12 salva a tela em `boej-<quadro>.bmp` e F11 alterna a tela cheia.
 
 Atalhos para testar mais rápido (o título da janela mostra quais estão ligados):
 
@@ -154,6 +154,22 @@ Atalhos para testar mais rápido (o título da janela mostra quais estão ligado
 
 Os dois juntos passam diálogos e cenas muito rápido. O A automático também confirma opções de menu, então
 convém desligá-lo antes de escolhas.
+
+#### Configurações
+
+Na primeira vez, o jogo cria o `boej.ini` ao lado do executável, com os valores padrão e comentários.
+Ele é lido ao abrir o jogo; apague-o para voltar ao padrão.
+
+| Seção | Opções |
+|---|---|
+| `[video]` | `window_scale` (tamanho inicial da janela), `resolution_3d` (1 a 4), `fullscreen`, `filter` (`nearest` ou `linear`), `integer_scale` (ampliar só em múltiplos inteiros) |
+| `[audio]` | `volume` (0 a 100) |
+| `[keyboard]` | uma linha por botão do DS (`A`, `B`, ..., `UP`, `DOWN`) e por atalho (`fast_forward`, `fast_forward_toggle`, `turbo`, `turbo_toggle`, `screenshot`, `debug_dump`, `fullscreen`), com nomes de tecla do SDL separados por vírgula, por exemplo `SELECT = Right Shift, Backspace`. Vazio desliga. |
+| `[gamepad]` | o mesmo, com botões pela posição (`south`, `east`, `west`, `north`), `start`, `back`, `leftshoulder`, `dpup` etc., e eixos com direção (`lefty-` = analógico para cima, `righttrigger`). Por padrão, o analógico esquerdo também move o direcional. |
+
+Valores inválidos aparecem no `boej.log` com o número da linha, e o padrão é usado no lugar.
+Sem janela (`NTR_HEADLESS`), o arquivo só é lido se `NTR_CONFIG` apontar para ele, para os testes não dependerem
+das configurações de quem joga.
 
 #### Relatando problemas
 
@@ -186,8 +202,9 @@ ela imprime as últimas 256 funções chamadas.
 Variáveis de ambiente:
 
 - **Save:** `NTR_SAVE` (padrão: `saves/boej.sav`).
-- **Janela e ritmo:** `NTR_SCALE` (escala inicial, padrão 2); `NTR_FAST` (sem limite de 60 Hz); `NTR_HEADLESS` (sem janela e sem limite).
-- **Resolução do 3D:** `NTR_3D_SCALE=1..4` (padrão 2 com janela, 1 sem janela). Só o 3D ganha resolução, e as camadas 2D são esticadas. O jogo e a captura de tela do DS continuam vendo a imagem nativa. As capturas (F12, F8, `NTR_SCREENSHOT_FRAMES`) saem no tamanho mostrado na janela. O 3D usa até 8 núcleos (`NTR_3D_THREADS=1` desliga), e a imagem é a mesma com qualquer número.
+- **Configurações:** `NTR_CONFIG` (outro arquivo no lugar do `boej.ini`). As variáveis abaixo têm prioridade sobre ele.
+- **Janela e ritmo:** `NTR_SCALE` (escala inicial; padrão do `boej.ini`, 2); `NTR_FAST` (sem limite de 60 Hz); `NTR_HEADLESS` (sem janela e sem limite).
+- **Resolução do 3D:** `NTR_3D_SCALE=1..4` (padrão: `resolution_3d` do `boej.ini` com janela, 2; 1 sem janela). Só o 3D ganha resolução, e as camadas 2D são esticadas. O jogo e a captura de tela do DS continuam vendo a imagem nativa. As capturas (F12, F8, `NTR_SCREENSHOT_FRAMES`) saem no tamanho mostrado na janela. O 3D usa até 8 núcleos (`NTR_3D_THREADS=1` desliga), e a imagem é a mesma com qualquer número.
 - **Áudio:** `NTR_MUTE` (sem dispositivo de áudio); `NTR_WAV=arquivo.wav` grava a saída de som (funciona também sem janela).
 - **Relógio:** o RTC usa a hora local do PC; `NTR_RTC="2010-07-01 12:00:00"` parte de um momento fixo e avança com o tempo emulado (testes reproduzíveis).
 - **Testes automáticos:**
