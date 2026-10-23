@@ -719,3 +719,28 @@ O relato: na parte do flashback do Endo, a tela fica toda branca e o jogo parece
 **Ferramentas que ficaram:**
 - O dump de estado agora traz os nove VRAMCNT (A–I) e BG0–3CNT dos dois motores.
 - Cada captura de `NTR_SCREENSHOT_FRAMES` também grava o dump, como no F8.
+
+## 2026-10-22 — Etapa 9: Wi-Fi/DWC e comunicação sem fio desativados
+
+**Onde o jogo usa o rádio.** Três overlays chamam a biblioteca WM do SDK (main, 0x02011E14 em diante):
+- ov015: DWC/Nintendo WFC (strings "NINTENDOWFC", "Wayport", "FREESPOT");
+- ov017 e ov128: provavelmente a comunicação local (código Thumb).
+
+Também há uma função do jogo em main (0x0203E004, chamada de 0x0204655C) que abre a sessão sem fio. Todas passam por `WM_Initialize` (0x020130B4).
+
+**Protocolo** (lido no código):
+- O ARM9 pega um buffer de comando de um pool (0x02096BE0, 10 × 0x100, bit 0x8000 = livre), escreve `[0]` = id da API e os argumentos, e manda o ponteiro pela FIFO com a tag 10 (WMW).
+- O ARM7 escreve o resultado no mesmo buffer (`[1]` = código de erro) e devolve o ponteiro. O callback de recepção (0x02012344) chama a função registrada para aquela API.
+
+**Problema.** O runtime registrava a tag 10 só para log. Assim o `WM_Init` achava a biblioteca do ARM7 pronta, e qualquer pedido ficaria sem resposta, com o jogo esperando para sempre.
+
+**Decisão.** Não registrar a tag 10.
+- O `WM_Init` (0x02011E14) testa `PXI_IsCallbackReady(10, ARM7)` antes de tudo e devolve 4 (`WM_ERRCODE_WM_DISABLE`). É a mesma resposta de um console cujo ARM7 não tem o sem fio. Nenhuma outra parte do jogo consulta a tag 10.
+- O `WM_Initialize` repassa esse erro, e a função do jogo em 0x0203E004 trata qualquer resultado diferente de 2 (`OPERATING`) como falha e devolve 0.
+- O DWC (ov015) inicializa pelo mesmo `WM_Initialize`, então a conexão Wi-Fi também falha logo no começo.
+- Responder com erro a cada comando, em vez disso, levaria as máquinas de estado do WM a tentar `WM_End` e repetir. O "indisponível" logo no início é mais simples e fiel.
+
+**Verificação:**
+- Um teste temporário (já removido) chamou o `WM_Init` e o `WM_Initialize` do próprio jogo no quadro 300: os dois devolveram 4 na hora.
+- O roteiro da história continua idêntico byte a byte no quadro 14000.
+- Ainda não vi os menus de comunicação dentro do jogo. Eles pedem um save ou bem mais tempo de jogo; fica para o teste do usuário (a mensagem de erro do próprio jogo deve aparecer, sem travar).

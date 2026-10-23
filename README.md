@@ -62,7 +62,7 @@ Se o seu dump tiver outro SHA-1, abra uma issue informando o código do jogo e o
 - [ ] Resolução interna maior; anti-aliasing e wireframe do 3D
 - [x] Áudio: comandos SND de canal/captura/alarme, 16 canais (PCM8/16, IMA-ADPCM, PSG, ruído) mixados a 32 kHz pelo SDL3 (o jogo mixa música e streams no ARM9 e não usa o sequenciador do SDK)
 - [x] Vídeos Mobiclip (`.mods`): o decodificador original (assembly escrito à mão) roda num interpretador ARM embutido
-- [ ] Wi-Fi/DWC desativado (o Nintendo WFC foi encerrado)
+- [x] Wi-Fi/DWC desativado (o Nintendo WFC foi encerrado): o ARM7 não oferece o serviço sem fio, então o jogo recebe "sem fio indisponível" e segue pelo próprio caminho de erro
 - [x] Dump usado só na preparação: o jogo roda a partir do `boej.pak` (mapeado em memória)
 - [ ] Configurações, controles remapeáveis
 - [ ] Instalador / release portátil para Windows

@@ -81,7 +81,11 @@ void pxi_register_service(uint32_t tag, PxiService service) {
 
 void arm7_boot() {
     // Services the game needs on the ARM7; each logs until it is implemented.
-    for (uint32_t tag : {6u, 7u, 8u, 10u, 11u, 12u, 13u, 14u, 17u}) {
+    // Wireless (WMW, tag 10) is left unregistered on purpose: Nintendo WFC is gone and
+    // there is no local radio, so WM_Init sees the ARM7 library as absent and returns
+    // WM_ERRCODE_WM_DISABLE at once. Every wireless mode (local play and Wi-Fi through
+    // DWC in ov015) then takes the game's own error path instead of waiting for replies.
+    for (uint32_t tag : {6u, 7u, 8u, 11u, 12u, 13u, 14u, 17u}) {
         pxi_register_service(tag, [tag](uint32_t data, bool err) {
             NTR_LOG("[pxi] ARM9 -> %s: %08X%s\n", kTagNames[tag], data, err ? " (err)" : "");
         });
