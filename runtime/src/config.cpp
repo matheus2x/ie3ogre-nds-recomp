@@ -20,7 +20,10 @@ const char kDefaultConfig[] = R"(; Configurações do port de Inazuma Eleven 3 -
 ; As variáveis NTR_SCALE, NTR_3D_SCALE e NTR_MUTE, quando definidas, têm prioridade.
 
 [video]
-; Tamanho inicial da janela, em múltiplos de 256x384.
+; Tela larga 16:9 (tamanho pela altura do monitor): as duas telas à esquerda e a de baixo
+; ampliada à direita. false = só as duas telas empilhadas, centralizadas, com bordas pretas.
+wide_layout = true
+; Tamanho inicial da janela, em múltiplos de 256x384 (só com wide_layout = false).
 window_scale = 2
 ; Resolução interna do 3D: 1 (nativa) a 4.
 resolution_3d = 2
@@ -28,7 +31,7 @@ resolution_3d = 2
 fullscreen = false
 ; Ampliação da imagem: nearest (pixels nítidos) ou linear (suavizada).
 filter = nearest
-; Ampliar só em múltiplos inteiros, com bordas pretas em volta.
+; Ampliar só em múltiplos inteiros, com bordas pretas em volta (só com wide_layout = false).
 integer_scale = false
 
 [audio]

@@ -273,10 +273,14 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
     bool in_game = options.in_game;
     ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.6f);  // room for the labels
     if (ImGui::CollapsingHeader("Vídeo", ImGuiTreeNodeFlags_DefaultOpen)) {
+        bool wide = config.get_bool("video", "wide_layout");
+        if (ImGui::Checkbox("Tela larga (16:9, tela de baixo ampliada)", &wide)) set("video", "wide_layout", wide ? "true" : "false");
+        ImGui::BeginDisabled(wide);  // the wide window is sized from the monitor
         int scale = config.get_int("video", "window_scale", 1, 16);
         char format[48];
         std::snprintf(format, sizeof format, "%%d× (%d×%d)", 256 * scale, 384 * scale);
         if (ImGui::SliderInt("Tamanho da janela", &scale, 1, 6, format)) set("video", "window_scale", std::to_string(scale));
+        ImGui::EndDisabled();
 
         int res = config.get_int("video", "resolution_3d", 1, 4) - 1;
         const char* kRes[] = {"1× (nativa, 256×192)", "2×", "3×", "4×"};
@@ -290,8 +294,10 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
         if (ImGui::Checkbox(in_game ? "Tela cheia" : "Abrir em tela cheia", &fullscreen)) {
             set("video", "fullscreen", fullscreen ? "true" : "false");
         }
+        ImGui::BeginDisabled(wide);
         bool integer = config.get_bool("video", "integer_scale");
         if (ImGui::Checkbox("Ampliar só em múltiplos inteiros", &integer)) set("video", "integer_scale", integer ? "true" : "false");
+        ImGui::EndDisabled();
     }
     if (ImGui::CollapsingHeader("Áudio", ImGuiTreeNodeFlags_DefaultOpen)) {
         int volume = config.get_int("audio", "volume", 0, 100);

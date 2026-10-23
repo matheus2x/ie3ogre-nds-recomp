@@ -1024,3 +1024,20 @@ Então o menu não precisa de reinício para nada. Mesmo assim, tem "Reiniciar o
 - **Release** (Linux, e Windows numa pasta com acento, com download novo do compilador): o launcher compilou os 180 arquivos (58 s / 47 s), e o roteiro da história com o `boej.exe` feito no Windows ficou idêntico byte a byte.
 - O roteiro da história na build de desenvolvimento continua idêntico, e os testes Python passam.
 - **Não testado:** o menu com cliques de verdade e com controle físico (navegação do ImGui pelo controle).
+
+## 2026-10-23 — Tela larga 16:9 (padrão)
+
+Pedido: por padrão, uma janela 16:9 dimensionada pela altura do monitor, com as duas telas do DS no terço da esquerda e uma cópia ampliada da tela de baixo no resto (como o layout "híbrido" do melonDS). O modo antigo (telas empilhadas e centralizadas, com bordas pretas) continua disponível nas configurações.
+
+- **Opção nova** `video.wide_layout` (padrão `true`). Como os padrões embutidos são lidos antes do `boej.ini`, quem já tem o arquivo também passa a ver a tela larga e pode desligar no menu ou no launcher ("Tela larga (16:9, tela de baixo ampliada)").
+- **Geometria** (`host.cpp`): tamanho lógico 2048×1152 (16:9). As telas empilhadas ficam em 3× (768×1152, 37,5% da largura) e a tela de baixo em 5× (1280×960) à direita, centralizada na vertical, com faixas pretas de 96 px em cima e embaixo. As duas escalas são inteiras e a proporção 4:3 é mantida. O print do melonDS esticava a imagem para não ter faixas; aqui preferi não distorcer.
+- **Janela:** 85% da altura útil do monitor (`SDL_GetDisplayUsableBounds`), com largura = altura × 16/9, limitada a 95% da largura útil. Num monitor de 1440p a janela ficou com 2176×1224. Nesse modo o `window_scale` e o `integer_scale` não se aplicam: a escala inteira de 2048×1152 não caberia na maioria das janelas. Os dois controles ficam desabilitados no painel. Ligar ou desligar a tela larga no menu redimensiona e centraliza a janela (fora da tela cheia).
+- **Desenho:** a função `draw_screens` é usada no quadro normal (com apresentação lógica) e no quadro escurecido atrás do menu de pausa (sem apresentação lógica, com o encaixe calculado à mão).
+- **Toque:** o `to_touch` aceita as duas cópias da tela de baixo.
+- As capturas (F12, `NTR_SCREENSHOT_FRAMES`) continuam com as telas empilhadas em 256×384×escala, para não mudar os testes.
+
+**Verificação:** com um gancho temporário (já removido), gravei o que a janela mostrava no quadro 650 nos dois modos. Na tela larga saiu 2176×1224 com o layout esperado; no modo empilhado, 512×768 como antes.
+
+**Não testado:** clique do mouse nas duas cópias da tela de baixo, alternar o modo pelo menu de pausa e o build do Windows.
+
+**Ajuste pedido em seguida:** esticar a imagem como o melonDS, sem faixas pretas. O tamanho lógico passou a 2304×1296. As telas empilhadas ocupam exatamente o terço da esquerda (768×1296) e a tela de baixo ocupa os dois terços da direita (1536×1296). A proporção não é mais a do DS: os pixels ficam 12,5% mais altos. O toque continua mapeado pelas mesmas duas áreas.

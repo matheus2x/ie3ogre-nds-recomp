@@ -1,5 +1,9 @@
-// Host frontend on SDL3: one window with both screens stacked, keyboard/gamepad/mouse
-// input and frame pacing to the DS refresh rate (59.8261 Hz).
+// Host frontend on SDL3: one window with both screens, keyboard/gamepad/mouse input and
+// frame pacing to the DS refresh rate (59.8261 Hz).
+//
+// Two layouts (video.wide_layout): wide (the default) is a 16:9 window sized from the
+// monitor's height, with both screens stacked in the left column and the bottom screen
+// enlarged on the right; otherwise the screens are stacked and centered, with black bars.
 //
 // Settings, key and gamepad bindings come from boej.ini (config.cpp), which also lists
 // the defaults: arrows = D-pad, X = A, Z = B, S = X, A = Y, Q = L, W = R, Enter = Start,
@@ -37,6 +41,7 @@
 #include <set>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #include <ntr/runtime.h>
@@ -64,6 +69,13 @@ enum Action {
     kActionCount
 };
 constexpr uint32_t kButtonMask = 0xFFF;
+
+// The wide layout in logical pixels: 16:9, both screens stacked in the left third and the
+// bottom screen in the other two thirds, stretched to the full height like melonDS's
+// hybrid layout (no black bars, so the pixels are 12.5% taller than on a DS).
+constexpr int kWideWidth = 2304, kWideHeight = 1296;
+constexpr SDL_FRect kWideStack = {0, 0, 768, 1296};
+constexpr SDL_FRect kWideBottom = {768, 0, 1536, 1296};
 
 const char* const kActionNames[kActionCount] = {
     "A", "B", "SELECT", "START", "RIGHT", "LEFT", "UP", "DOWN", "R", "L", "X", "Y",
@@ -124,6 +136,7 @@ struct Host {
     bool env_scale = false, env_scale_3d = false;  // NTR_SCALE / NTR_3D_SCALE win over boej.ini
     bool fullscreen_applied = false;
     int window_scale_applied = 0;
+    bool wide = true;  // video.wide_layout
     bool menu_requested = false;
     bool ui_ready = false;
     std::vector<std::string> args;  // for restarting
@@ -403,6 +416,16 @@ void update_actions() {
 bool to_touch(float wx, float wy, int& x, int& y) {
     float lx, ly;
     if (!SDL_RenderCoordinatesFromWindow(g_host.renderer, wx, wy, &lx, &ly)) return false;
+    if (g_host.wide) {  // either copy of the bottom screen
+        const SDL_FRect& big = kWideBottom;
+        if (lx >= big.x && lx < big.x + big.w && ly >= big.y && ly < big.y + big.h) {
+            x = int((lx - big.x) * kScreenWidth / big.w);
+            y = int((ly - big.y) * kScreenHeight / big.h);
+            return true;
+        }
+        lx = lx * kScreenWidth / kWideStack.w;
+        ly = ly * 2 * kScreenHeight / kWideStack.h;
+    }
     if (lx < 0 || lx >= kScreenWidth || ly < kScreenHeight || ly >= 2 * kScreenHeight) return false;
     x = int(lx);
     y = int(ly) - kScreenHeight;
@@ -518,11 +541,58 @@ void pace() {
 
 // --- settings applied while the game runs ---------------------------------------------
 
+// The logical size of the layout; the window shows it letterboxed.
+void layout_size(int& w, int& h) {
+    w = g_host.wide ? kWideWidth : kScreenWidth;
+    h = g_host.wide ? kWideHeight : kScreenHeight * 2;
+}
+
+// Draws the frame texture with the layout's logical rectangle at (x, y) scaled by s.
+void draw_screens(float x, float y, float s) {
+    SDL_Renderer* r = g_host.renderer;
+    if (!g_host.wide) {
+        SDL_FRect dst = {x, y, kScreenWidth * s, 2 * kScreenHeight * s};
+        SDL_RenderTexture(r, g_host.texture, nullptr, &dst);
+        return;
+    }
+    float tw = 0, th = 0;
+    SDL_GetTextureSize(g_host.texture, &tw, &th);
+    SDL_FRect lower = {0, th / 2, tw, th / 2};
+    for (auto [src, rect] : {std::pair<const SDL_FRect*, SDL_FRect>{nullptr, kWideStack}, {&lower, kWideBottom}}) {
+        SDL_FRect dst = {x + rect.x * s, y + rect.y * s, rect.w * s, rect.h * s};
+        SDL_RenderTexture(r, g_host.texture, src, &dst);
+    }
+}
+
+// A window size for the layout: wide is 16:9 at most 85% of the monitor's usable
+// height; stacked is window_scale times 256x384.
+void default_window_size(int scale, int& w, int& h) {
+    if (!g_host.wide) {
+        w = kScreenWidth * scale;
+        h = kScreenHeight * 2 * scale;
+        return;
+    }
+    SDL_Rect usable = {0, 0, 1280, 800};
+    SDL_DisplayID display = g_host.window ? SDL_GetDisplayForWindow(g_host.window) : SDL_GetPrimaryDisplay();
+    if (!SDL_GetDisplayUsableBounds(display, &usable)) NTR_LOG("[host] no display bounds: %s\n", SDL_GetError());
+    h = std::max(usable.h * 85 / 100, kScreenHeight * 2);
+    w = h * 16 / 9;
+    if (w > usable.w * 95 / 100) {
+        w = std::max(usable.w * 95 / 100, kScreenWidth * 2);
+        h = w * 9 / 16;
+    }
+}
+
 void apply_presentation() {
     const Config& c = g_host.config;
-    SDL_SetRenderLogicalPresentation(g_host.renderer, kScreenWidth, kScreenHeight * 2,
-                                     c.get_bool("video", "integer_scale") ? SDL_LOGICAL_PRESENTATION_INTEGER_SCALE
-                                                                          : SDL_LOGICAL_PRESENTATION_LETTERBOX);
+    g_host.wide = c.get_bool("video", "wide_layout");
+    int w, h;
+    layout_size(w, h);
+    // Integer scaling of the 2304x1296 wide layout would not fit most windows.
+    bool integer = c.get_bool("video", "integer_scale") && !g_host.wide;
+    SDL_SetRenderLogicalPresentation(g_host.renderer, w, h,
+                                     integer ? SDL_LOGICAL_PRESENTATION_INTEGER_SCALE
+                                             : SDL_LOGICAL_PRESENTATION_LETTERBOX);
     g_host.linear_filter = SDL_strcasecmp(c.get("video", "filter").c_str(), "linear") == 0;
     if (g_host.texture) {
         SDL_SetTextureScaleMode(g_host.texture, g_host.linear_filter ? SDL_SCALEMODE_LINEAR : SDL_SCALEMODE_NEAREST);
@@ -535,6 +605,7 @@ void apply_presentation() {
 void apply_settings() {
     const Config& c = g_host.config;
     if (g_host.audio) SDL_SetAudioStreamGain(g_host.audio, c.get_int("audio", "volume", 0, 100) / 100.0f);
+    bool was_wide = g_host.wide;
     apply_presentation();
     bool fullscreen = c.get_bool("video", "fullscreen");
     if (fullscreen != g_host.fullscreen_applied) {
@@ -542,12 +613,14 @@ void apply_settings() {
         g_host.fullscreen_applied = fullscreen;
     }
     int scale = c.get_int("video", "window_scale", 1, 16);
-    if (!g_host.env_scale && scale != g_host.window_scale_applied) {
-        if (!(SDL_GetWindowFlags(g_host.window) & SDL_WINDOW_FULLSCREEN)) {
-            SDL_SetWindowSize(g_host.window, kScreenWidth * scale, kScreenHeight * 2 * scale);
-        }
-        g_host.window_scale_applied = scale;
+    bool resize = g_host.wide != was_wide || (!g_host.wide && !g_host.env_scale && scale != g_host.window_scale_applied);
+    if (resize && !(SDL_GetWindowFlags(g_host.window) & SDL_WINDOW_FULLSCREEN)) {
+        int w, h;
+        default_window_size(g_host.env_scale ? int(env_u64("NTR_SCALE")) : scale, w, h);
+        SDL_SetWindowSize(g_host.window, w, h);
+        SDL_SetWindowPosition(g_host.window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
     }
+    if (!g_host.env_scale) g_host.window_scale_applied = scale;
     if (!g_host.env_scale_3d) gpu3d_set_scale(c.get_int("video", "resolution_3d", 1, 4));
     load_bindings();
 }
@@ -609,10 +682,10 @@ void draw_paused_frame() {
     int w = 0, h = 0;
     SDL_GetRenderOutputSize(r, &w, &h);
     if (g_host.texture && w > 0 && h > 0) {
-        float fit = std::min(float(w) / kScreenWidth, float(h) / (2 * kScreenHeight));
-        SDL_FRect dst = {(w - kScreenWidth * fit) / 2, (h - 2 * kScreenHeight * fit) / 2, kScreenWidth * fit,
-                         2 * kScreenHeight * fit};
-        SDL_RenderTexture(r, g_host.texture, nullptr, &dst);
+        int lw, lh;
+        layout_size(lw, lh);
+        float fit = std::min(float(w) / lw, float(h) / lh);
+        draw_screens((w - lw * fit) / 2, (h - lh * fit) / 2, fit);
     }
     SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
     SDL_SetRenderDrawColor(r, 0, 0, 0, 170);
@@ -729,8 +802,11 @@ bool host_init() {
     if (scale <= 0) scale = config.get_int("video", "window_scale", 1, 16);
     SDL_WindowFlags flags = SDL_WINDOW_RESIZABLE;
     if (config.get_bool("video", "fullscreen")) flags |= SDL_WINDOW_FULLSCREEN;
-    if (!SDL_CreateWindowAndRenderer("Inazuma Eleven 3 - The Ogre (recomp)", kScreenWidth * scale,
-                                     kScreenHeight * 2 * scale, flags, &g_host.window, &g_host.renderer)) {
+    g_host.wide = config.get_bool("video", "wide_layout");
+    int win_w, win_h;
+    default_window_size(scale, win_w, win_h);
+    if (!SDL_CreateWindowAndRenderer("Inazuma Eleven 3 - The Ogre (recomp)", win_w, win_h, flags, &g_host.window,
+                                     &g_host.renderer)) {
         NTR_LOG("[host] cannot create the window: %s\n", SDL_GetError());
         return false;
     }
@@ -916,7 +992,7 @@ void host_present(const uint32_t* top, const uint32_t* bottom, int scale) {
     SDL_UpdateTexture(g_host.texture, &lower, bottom, w * 4);
     SDL_SetRenderDrawColor(g_host.renderer, 0, 0, 0, 255);
     SDL_RenderClear(g_host.renderer);
-    SDL_RenderTexture(g_host.renderer, g_host.texture, nullptr, nullptr);
+    draw_screens(0, 0, 1);
     SDL_RenderPresent(g_host.renderer);
     pump_events();
     record_input();

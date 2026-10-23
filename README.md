@@ -180,7 +180,7 @@ Ele é lido ao abrir o jogo; apague-o para voltar ao padrão.
 
 | Seção | Opções |
 |---|---|
-| `[video]` | `window_scale` (tamanho inicial da janela), `resolution_3d` (1 a 4), `fullscreen`, `filter` (`nearest` ou `linear`), `integer_scale` (ampliar só em múltiplos inteiros) |
+| `[video]` | `wide_layout` (padrão `true`: janela 16:9 pela altura do monitor, as duas telas à esquerda e a de baixo ampliada à direita; `false` = telas empilhadas e centralizadas), `window_scale` (tamanho inicial da janela, só sem `wide_layout`), `resolution_3d` (1 a 4), `fullscreen`, `filter` (`nearest` ou `linear`), `integer_scale` (ampliar só em múltiplos inteiros, só sem `wide_layout`) |
 | `[audio]` | `volume` (0 a 100) |
 | `[keyboard]` | uma linha por botão do DS (`A`, `B`, ..., `UP`, `DOWN`) e por atalho (`fast_forward`, `fast_forward_toggle`, `turbo`, `turbo_toggle`, `screenshot`, `debug_dump`, `fullscreen`), com nomes de tecla do SDL separados por vírgula, por exemplo `SELECT = Right Shift, Backspace`. Vazio desliga. |
 | `[gamepad]` | o mesmo, com botões pela posição (`south`, `east`, `west`, `north`), `start`, `back`, `leftshoulder`, `dpup` etc., e eixos com direção (`lefty-` = analógico para cima, `righttrigger`). Por padrão, o analógico esquerdo também move o direcional. |
