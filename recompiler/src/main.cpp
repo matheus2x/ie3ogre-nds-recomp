@@ -16,6 +16,11 @@
 #include <sstream>
 #include <string>
 
+#ifdef _WIN32
+#include <windows.h>
+#include <shellapi.h>
+#endif
+
 #include "program.h"
 #include "translator.h"
 
@@ -43,16 +48,36 @@ bool in_code_blob(const Module& m, uint32_t addr) {
     return false;
 }
 
+// UTF-8 arguments (on Windows argv is in the ANSI code page).
+std::vector<std::string> arguments(int argc, char** argv) {
+#ifdef _WIN32
+    (void)argv;
+    std::vector<std::string> args;
+    LPWSTR* wargv = CommandLineToArgvW(GetCommandLineW(), &argc);
+    for (int i = 0; wargv && i < argc; i++) {
+        int len = WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1, nullptr, 0, nullptr, nullptr);
+        std::string arg(len > 0 ? len - 1 : 0, '\0');
+        WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1, arg.data(), len, nullptr, nullptr);
+        args.push_back(arg);
+    }
+    LocalFree(wargv);
+    return args;
+#else
+    return std::vector<std::string>(argv, argv + argc);
+#endif
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
-    if (argc != 3) {
-        std::fprintf(stderr, "usage: %s <manifest.tsv> <output dir>\n", argv[0]);
+    std::vector<std::string> args = arguments(argc, argv);
+    if (args.size() != 3) {
+        std::fprintf(stderr, "usage: ntr-recomp <manifest.tsv> <output dir>\n");
         return 2;
     }
     try {
-        Program prog = load_program(argv[1]);
-        fs::path out = argv[2];
+        Program prog = load_program(args[1]);
+        fs::path out = std::u8string(args[2].begin(), args[2].end());
         fs::create_directories(out);
         Stats stats;
         std::set<std::string> written;

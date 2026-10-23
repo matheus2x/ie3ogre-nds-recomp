@@ -1,0 +1,23 @@
+Componentes de terceiros
+========================
+
+Distribuídos com o launcher:
+
+- SDL3 (SDL3.dll, sdk/sdl3/) - zlib License
+  Copyright (C) 1997-2026 Sam Lantinga. https://libsdl.org
+
+- Dear ImGui (dentro do ie3-launcher) - MIT License
+  Copyright (c) 2014-2026 Omar Cornut. https://github.com/ocornut/imgui
+
+- ds-decomp / dsd (sdk/bin/dsd) - MIT License
+  Copyright (c) 2025 Aetias. https://github.com/AetiasHax/ds-decomp
+  Usado no PC do jogador para extrair o ARM9 e as overlays do dump, incluindo a
+  decifração das funções do DS Protect (crédito a taxicat1).
+
+Baixado pelo launcher no primeiro uso (não incluído no pacote):
+
+- llvm-mingw (toolchain/) - Apache License 2.0 with LLVM Exceptions e outras
+  licenças permissivas (mingw-w64, libc++). https://github.com/mstorsjo/llvm-mingw
+  O arquivo é conferido pelo SHA-256 fixado em sdk/toolchain.txt.
+
+Os textos das licenças estão na pasta licenses/.

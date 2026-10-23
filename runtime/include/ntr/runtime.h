@@ -3,14 +3,7 @@
 
 #include <string>
 
-// printf-style checking; MinGW's default "printf" archetype is the old MSVCRT one.
-#ifndef NTR_PRINTF_FORMAT
-#ifdef __MINGW32__
-#define NTR_PRINTF_FORMAT __attribute__((format(gnu_printf, 1, 2)))
-#else
-#define NTR_PRINTF_FORMAT __attribute__((format(printf, 1, 2)))
-#endif
-#endif
+#include <ntr/common.h>
 
 namespace ntr {
 
@@ -18,14 +11,18 @@ namespace ntr {
 // tools/extract.py (boej.pak) or a .nds dump. It stays memory-mapped while the game runs.
 bool rom_load(const std::string& path);
 
-// Prints to the terminal and to the log file (boej.log next to the executable).
-void log_printf(const char* fmt, ...) NTR_PRINTF_FORMAT;
+// log_printf (ntr/common.h) prints to the terminal and to boej.log next to the executable.
 
 // Directory of the running executable, with a trailing separator.
 std::string host_base_path();
 
 // Opens the window (unless NTR_HEADLESS is set). Must run on the main thread before boot().
 bool host_init();
+
+// With a window: makes the game data package at `pak_path`, asking for the dump with a
+// file dialog when `nds_path` is empty and showing the progress. False if there is no
+// window, the player gives up, or the dump given in `nds_path` cannot be used.
+bool host_first_run(const std::string& nds_path, const std::string& pak_path);
 
 // Boots the cartridge like the DS firmware and runs the game. Does not return.
 [[noreturn]] void boot();

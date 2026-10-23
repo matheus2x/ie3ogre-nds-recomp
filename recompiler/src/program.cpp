@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
@@ -20,12 +21,16 @@ std::vector<std::string> split_tabs(const std::string& line) {
     return out;
 }
 
+// Paths in the manifest and on the command line are UTF-8 (on Windows a std::string path
+// would be read in the ANSI code page).
+std::filesystem::path utf8_path(const std::string& s) { return std::u8string(s.begin(), s.end()); }
+
 uint32_t parse_u32(const std::string& s) {
     return static_cast<uint32_t>(std::stoul(s, nullptr, 0));
 }
 
 std::vector<uint8_t> read_file(const std::string& path) {
-    std::ifstream in(path, std::ios::binary);
+    std::ifstream in(utf8_path(path), std::ios::binary);
     if (!in) {
         throw std::runtime_error("cannot open " + path);
     }
@@ -84,7 +89,7 @@ std::string symbol_for(const Module& m, const Function& f) {
 }
 
 Program load_program(const std::string& manifest_path) {
-    std::ifstream in(manifest_path);
+    std::ifstream in(utf8_path(manifest_path));
     if (!in) {
         throw std::runtime_error("cannot open " + manifest_path);
     }

@@ -3,6 +3,7 @@
 
   python3 tools/analyze.py dsd <retail.nds>     # dsd extract + init -> config/boej/dsd (function map)
   python3 tools/analyze.py manifest [ov126 ...]  # recompiler input -> build/recomp/manifest.tsv
+  python3 tools/analyze.py manifest --template OUT  # same, with {modules}/... paths (launcher SDK)
   python3 tools/analyze.py names                # apply config/boej/names.tsv to the dsd symbols
   python3 tools/analyze.py ghidra               # headless Ghidra project -> build/ghidra/boej.gpr
   python3 tools/analyze.py decompile 0x02000c8c ov132:0x0213acc0 FS_LoadOverlay   # -> stdout
@@ -223,27 +224,37 @@ def read_sections(path: Path) -> list[tuple[int, int, str]]:
 
 
 def cmd_manifest(args):
-    """Write build/recomp/manifest.tsv: modules, code sections, functions, labels and code blobs."""
+    """Write build/recomp/manifest.tsv: modules, code sections, functions, labels and code blobs.
+
+    With --template, module paths are where the launcher keeps what "dsd rom extract"
+    writes ({modules}/arm9/arm9.bin, ...), and no game data is read: the template ships
+    in the launcher's SDK and the launcher fills in {modules} on the player's PC.
+    """
     layout = json.loads((ROOT / "config" / "boej" / "layout" / "retail.json").read_text())
-    extract = ROOT / "build" / "extract" / "retail"
-    dsd_extract = ROOT / "build" / "dsd" / "extract"
+    arm9 = layout["arm9"]
     out = ROOT / "build" / "recomp"
     out.mkdir(parents=True, exist_ok=True)
-    arm9 = layout["arm9"]
-
-    static = out / "arm9_static.bin"
-    size = int(arm9["autoload_start"], 16) - int(arm9["ram_address"], 16)
-    static.write_bytes((extract / "arm9.bin").read_bytes()[:size])
-    modules = [("main", arm9["ram_address"], static, symbols_file("main"))]
+    if args.template:
+        mod = "{modules}"
+        paths = {"main": f"{mod}/arm9/arm9.bin", "itcm": f"{mod}/arm9/itcm.bin", "dtcm": f"{mod}/arm9/dtcm.bin"}
+        overlay_dir = f"{mod}/arm9_overlays"
+    else:
+        extract = ROOT / "build" / "extract" / "retail"
+        static = out / "arm9_static.bin"
+        size = int(arm9["autoload_start"], 16) - int(arm9["ram_address"], 16)
+        static.write_bytes((extract / "arm9.bin").read_bytes()[:size])
+        paths = {"main": static}
+        for name, auto in (("itcm", arm9["autoloads"][0]), ("dtcm", arm9["autoloads"][1])):
+            paths[name] = extract / "autoload" / f"{auto['ram_address'][2:]}.bin"
+        overlay_dir = ROOT / "build" / "dsd" / "extract" / "arm9_overlays"
+    modules = [("main", arm9["ram_address"], paths["main"], symbols_file("main"))]
     for name, auto in (("itcm", arm9["autoloads"][0]), ("dtcm", arm9["autoloads"][1])):
-        base = auto["ram_address"]
-        modules.append((name, base, extract / "autoload" / f"{base[2:]}.bin", symbols_file(name)))
+        modules.append((name, auto["ram_address"], paths[name], symbols_file(name)))
     wanted = set(args.overlays) if args.overlays else None
     for ov in layout["overlays"]:
         name = f"ov{ov['id']:03d}"
         if wanted is None or name in wanted:
-            modules.append((name, ov["ram_address"], dsd_extract / "arm9_overlays" / f"{name}.bin",
-                            symbols_file(name)))
+            modules.append((name, ov["ram_address"], f"{overlay_dir}/{name}.bin", symbols_file(name)))
 
     blobs: dict[str, list[str]] = {}
     for line in (ROOT / "config" / "boej" / "code_blobs.tsv").read_text().splitlines():
@@ -271,7 +282,7 @@ def cmd_manifest(args):
         if line.strip() and not line.startswith("#"):
             name, hle_id, *_ = line.split("\t")
             lines.append(f"hle\t{name}\t{hle_id}")
-    manifest = out / "manifest.tsv"
+    manifest = args.template or out / "manifest.tsv"
     manifest.write_text("\n".join(lines) + "\n")
     print(f"manifest: {manifest} ({len(modules)} modules)")
 
@@ -285,6 +296,7 @@ def main():
     p.set_defaults(func=cmd_dsd)
     p = sub.add_parser("manifest", help="write build/recomp/manifest.tsv for ntr-recomp")
     p.add_argument("overlays", nargs="*", help="overlay names to include (default: all)")
+    p.add_argument("--template", type=Path, help="write a {modules}/... template here instead (no dump needed)")
     p.set_defaults(func=cmd_manifest)
     p = sub.add_parser("names", help="apply config/boej/names.tsv to the dsd symbols")
     p.set_defaults(func=cmd_names)

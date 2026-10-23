@@ -73,7 +73,7 @@ void keep_previous(const fs::path& path) {
 
 fs::path next_to_exe(const char* name) {
     std::string base = host_base_path();
-    return fs::path(base.empty() ? "." : base) / name;
+    return fs_path(base.empty() ? "." : base) / name;
 }
 
 FILE* log_file() {
@@ -83,7 +83,7 @@ FILE* log_file() {
     if (env && !*env) return nullptr;
     fs::path path = env ? fs::path(env) : next_to_exe("boej.log");
     keep_previous(path);
-    g_log = std::fopen(path.string().c_str(), "w");
+    g_log = open_file(path, "w");
     return g_log;
 }
 
@@ -212,7 +212,7 @@ void replay_start(const std::string& rtc_start) {
     fs::path txt = next_to_exe("boej-replay.txt"), sav = next_to_exe("boej-replay.sav");
     keep_previous(txt);
     keep_previous(sav);
-    g_replay = std::fopen(txt.string().c_str(), "w");
+    g_replay = open_file(txt, "w");
     if (!g_replay) return;
     std::fprintf(g_replay,
                  "# Session recording (input per frame, NTR_INPUT syntax).\n"

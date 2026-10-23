@@ -3,20 +3,13 @@
 
 #include <cstdint>
 #include <cstdio>
+#include <filesystem>
 #include <map>
 #include <string>
 #include <vector>
 
+#include <ntr/common.h>
 #include <ntr/guest.h>
-
-// printf-style checking; MinGW's default "printf" archetype is the old MSVCRT one.
-#ifndef NTR_PRINTF_FORMAT
-#ifdef __MINGW32__
-#define NTR_PRINTF_FORMAT __attribute__((format(gnu_printf, 1, 2)))
-#else
-#define NTR_PRINTF_FORMAT __attribute__((format(printf, 1, 2)))
-#endif
-#endif
 
 namespace ntr {
 
@@ -41,10 +34,6 @@ struct Memory {
 
 Memory& memory();
 void memory_init();
-
-// Raw little-endian accessors into host buffers.
-inline uint32_t load32(const uint8_t* p) { return p[0] | p[1] << 8 | p[2] << 16 | uint32_t(p[3]) << 24; }
-inline void store32(uint8_t* p, uint32_t v) { p[0] = uint8_t(v); p[1] = uint8_t(v >> 8); p[2] = uint8_t(v >> 16); p[3] = uint8_t(v >> 24); }
 
 // Guest block copies used by HLE code.
 void guest_copy_in(uint32_t dst, const void* src, uint32_t size);
@@ -164,30 +153,7 @@ void trace_frame(uint64_t frame);  // NTR_PROFILE window bookkeeping
 // --- logging ------------------------------------------------------------------
 
 // Terminal and log file (diag.cpp); log_detail goes to the file only.
-void log_printf(const char* fmt, ...) NTR_PRINTF_FORMAT;
 void log_detail(const char* fmt, ...) NTR_PRINTF_FORMAT;
-#define NTR_LOG(...) ::ntr::log_printf(__VA_ARGS__)
-
-// --- settings (config.cpp) ------------------------------------------------------------
-
-// boej.ini, over the built-in defaults; keys are case-insensitive.
-struct Config {
-    struct Entry {
-        std::string value;
-        int line = 0;  // in the user's file; 0 = built-in default
-    };
-    std::string path;
-    std::map<std::string, Entry> entries;  // "section.key"
-
-    const Entry* find(const std::string& section, const std::string& key) const;
-    std::string get(const std::string& section, const std::string& key) const;
-    // Invalid values are logged and replaced by the default.
-    int get_int(const std::string& section, const std::string& key, int min, int max) const;
-    bool get_bool(const std::string& section, const std::string& key) const;
-    void warn(const Entry& e, const std::string& message) const;  // "[config] file:line: ..."
-};
-bool config_load(const std::string& path, Config& out);  // false (defaults only) if the file is missing
-bool config_write_default(const std::string& path);
 
 // --- diagnostics (diag.cpp) ----------------------------------------------------------
 

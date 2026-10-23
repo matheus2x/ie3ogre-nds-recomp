@@ -855,3 +855,126 @@ O usuário jogou até depois da primeira partida, apertou F8 num ponto azul de r
 - Build de Windows compilada sem avisos (copiada para `build/dist-win`).
 
 **Próximo passo** pelo plano: release portátil para Windows (pacote com `boej.exe`, `SDL3.dll` e um jeito de gerar o `boej.pak` sem Python, a partir do dump do jogador).
+
+## 2026-10-23 — Etapa 12: pacote portátil para Windows; o executável prepara o `boej.pak` sozinho
+
+**Primeira execução sem Python** (`runtime/src/setup.cpp`, `host_first_run` em host.cpp):
+- Sem `boej.pak`, o jogo, com janela, mostra uma mensagem ("Escolher o dump..." / "Sair") e abre o diálogo de arquivo do sistema (`SDL_ShowOpenFileDialog`, filtro `.nds`).
+- Um `.nds` passado na linha de comando, que é o que acontece ao arrastá-lo para cima do `boej.exe`, faz o mesmo sem perguntar. Se o pacote já existe, um `.nds` na linha de comando roda direto, como antes (uso de desenvolvimento).
+- O dump é conferido por SHA-1 (implementação própria; conferida com o `sha1sum` num arquivo de tamanho não múltiplo de 64). Só o retail gera pacote:
+  - a tradução de fãs recebe "versão modificada que ainda não é suportada";
+  - um arquivo qualquer recebe o SHA-1 encontrado e o esperado.
+- O pacote é gravado ao lado do executável, por um `.tmp` renomeado no fim, no mesmo formato do `tools/ntr/pak.py` (mesmas faixas, fusão e alinhamento).
+- O trabalho roda numa thread. A janela continua respondendo e mostra uma barra de progresso, com texto pela fonte de depuração do SDL (só ASCII). A metade inicial é o hash, a outra a gravação.
+- Em erro, o diálogo volta a aparecer. Fechar a janela sai.
+- A tabela de dumps conhecidos fica no C++. Um teste novo confere que ela bate com o `config/boej/dumps.json`.
+- Para isso, a janela agora abre antes da ROM (`host_init` vem primeiro no `main`).
+
+**Correções que a versão portátil pedia:**
+- **Save ao lado do executável.** O padrão era `saves/boej.sav` relativo à pasta atual. Abrindo por um atalho, ou arrastando o dump para o executável, a pasta atual pode ser outra, e o save "sumiria". Agora é `<pasta do executável>/saves/boej.sav`. Um save que só exista em `saves/` da pasta atual, onde as versões anteriores gravavam, é copiado uma vez, e o original fica onde está.
+- **Caminhos com acentos no Windows.** Com `std::string`, o `fopen`/`fs::path` interpretam o caminho na página de código ANSI. Então log, gravação da sessão, configurações, capturas e save falhariam numa pasta como `C:\Users\João`.
+  - Agora há `fs_path`/`utf8_string`/`open_file` (UTF-8 → `_wfopen` no Windows), usados em todos esses lugares.
+  - Os argumentos vêm de `CommandLineToArgvW`, convertidos para UTF-8.
+- **Console:** aberto pelo Explorer, o console pertence só ao `boej.exe` (`GetConsoleProcessList` == 1) e é escondido (`FreeConsole`). De um terminal, a saída continua nele, e `NTR_CONSOLE=1` mantém o console.
+
+**Build:** `tools/build.py --windows --zip` gera `build/ie3ogre-recomp-win64.zip` (14 MiB), com `boej.exe`, `SDL3.dll` e `LEIA-ME.txt` (`game/LEIA-ME.txt`: primeira vez, arquivos criados, controles). Ele não leva o `boej.pak`. O executável tem código do jogo recompilado, então o zip continua sendo de uso pessoal.
+
+**Verificação:**
+- Linux, executável copiado para uma pasta vazia, com o dump retail como argumento: o `boej.pak` gerado ficou **idêntico byte a byte** ao do `tools/extract.py`, e o jogo rodou 600 quadros a partir dele.
+- Na segunda execução, sem argumentos, a partir de outra pasta atual com um `saves/boej.sav`: o save foi copiado para a pasta do executável e carregado.
+- Erros (gancho temporário, já removido, chamando `pak_create` direto): tradução de fãs, arquivo aleatório de 1 MB e arquivo inexistente deram as mensagens certas, e nenhum `.tmp` ficou para trás.
+- **Windows** (`boej.exe` do zip, via interop do WSL), numa pasta `%TEMP%\Jogo ção` com o dump `dump ção.nds`:
+  - o pacote saiu idêntico byte a byte;
+  - log, `boej.ini` e gravação da sessão foram criados na pasta com acento;
+  - preparação + 300 quadros em 8 s;
+  - a segunda execução, sem argumentos e sem o dump, abriu pelo pacote;
+  - pasta apagada depois.
+- O roteiro da história, sem janela, continua idêntico byte a byte nos quadros 9000 e 14000. Testes Python: 10, todos passando.
+- **Não testado:** o caminho da mensagem e do diálogo de arquivo, que precisa de clique. Fica para o usuário conferir no Windows, abrindo o `boej.exe` numa pasta sem `boej.pak`.
+
+## 2026-10-23 — Etapa 13: launcher e releases sem nada do jogo (formato do gen1recomp)
+
+**O pedido.** Releases parecidas com as do [gen1recomp](https://github.com/bryanthaboi/gen1recomp):
+- um pacote por plataforma, com o `sha256sums.txt`;
+- nenhum dado do jogo no pacote;
+- um launcher que pede a ROM uma vez, confere o SHA-1, prepara tudo e depois só abre o jogo;
+- atualizações dentro do app.
+
+A diferença: lá o motor é Lua escrito à mão, mas aqui o `boej.exe` *é* o código do jogo recompilado. As decisões do usuário:
+1. o launcher recompila e compila **no PC do jogador**, e a release não leva nenhum código do jogo;
+2. os dados ficam ao lado do executável;
+3. a primeira versão tem configurações na interface, checagem de atualizações, release pelo CI e um espaço reservado para mods.
+
+**Viabilidade, medida antes de escrever o launcher:**
+- **Extração sem Python:** o `dsd rom extract` (v0.12.1, MIT, binário oficial para Windows) dá o ARM9, a ITCM/DTCM e as overlays já descomprimidas. A ov129 sai com as funções do DS Protect decifradas, a única overlay que precisa disso. Recompilando a partir dessa extração, o código gerado ficou **idêntico** ao atual. A única diferença nos módulos é o campo de tamanho comprimido nos module params, que o dsd zera e não é código.
+- **Compilador do jogador:** llvm-mingw 20260922 (clang + libc++, Apache 2.0). O código gerado (918 mil linhas) compila sem nenhum aviso: 342 s de CPU, ou 27 s com 16 threads. O `boej.exe` resultante (28 MB, depende só do `SDL3.dll`) deu a mesma imagem da build GCC no Windows, com a mesma velocidade.
+
+**Biblioteca `ntr-common`** (usada pelo jogo e pelo launcher), com o header `ntr/common.h`:
+- `files.cpp`: o `map_file` e os auxiliares UTF-8 saíram do `rom.cpp`;
+- `config.cpp`: ganhou `Config::set` e `config_save`, que regrava o texto padrão com os valores atuais e mantém comentários e ordem;
+- `hash.cpp`: SHA-1 e SHA-256 novo;
+- `setup.cpp`: `find_dump`, `sha1_file`, `dump_problem` e `pak_create`.
+
+O `log_printf` é fornecido por cada programa. O SDL3 passou a ser procurado no CMake da raiz.
+
+**Launcher** (`launcher/`, SDL3 + Dear ImGui v1.92.9b), com quatro abas:
+- **Jogar:**
+  - Sem `boej.pak`, pede o dump por um diálogo ou por arrastar para a janela. Depois faz, numa thread:
+    1. `pak_create` (SHA-1 + pacote);
+    2. `dsd rom extract`, guardando só `arm9/` e `arm9_overlays/` em `cache/modules/` (3,5 MB). O resto da extração é apagado;
+    3. o llvm-mingw, baixado uma vez com o `curl.exe` do System32, conferido pelo SHA-256 do `sdk/toolchain.txt` e extraído com o `tar.exe` sem os alvos armv7/i686/aarch64 (525 MB instalado);
+    4. o manifesto com `{modules}` trocado pelo caminho local, e o `ntr-recomp`;
+    5. a compilação de 173 arquivos com todos os núcleos (código gerado primeiro);
+    6. a ligação por arquivo de resposta (com `/`, porque o clang lê `\` como escape).
+  - Barra de progresso, detalhes e "Cancelar". O `cache/build.stamp` guarda a versão do SDK e o compilador: depois de uma atualização o launcher pede "Preparar o jogo" de novo, sem o dump.
+- **Configurações:** vídeo, áudio, a seção nova `[launcher]` (`check_updates`, `close_on_play`) e a tabela de controles. "Mudar" e "+" capturam a próxima tecla, ou o próximo botão ou eixo do controle; "x" desliga. Cada mudança grava o `boej.ini`.
+- **Mods:** espaço reservado. Lista a pasta `mods/` e tem um botão para abri-la.
+- **Atualizações:**
+  - consulta `api.github.com/repos/matheus2x/ie3ogre-nds-recomp/releases/latest`;
+  - baixa o `ie3ogre-recomp-<versão>-<plataforma>.zip` e o `sha256sums.txt`;
+  - confere o SHA-256 e instala por cima, renomeando cada item antigo para `.old` (no Windows dá para renomear o exe em uso). Os `.old` são apagados na abertura seguinte.
+  - Os dados do jogador não são tocados.
+- **Processos sem console:** a função própria `run_process` (`CreateProcessW` com `CREATE_NO_WINDOW` no Windows, `posix_spawn` no Linux) captura a saída e devolve o código de saída. O `SDL_CreateProcess` em segundo plano perderia o código de saída.
+- **Linha de comando:** `--prepare [dump]` e `--update` (o mesmo caminho da interface, sem janela). Para testes: `IE3_UPDATE_API`, `IE3_LAUNCHER_TAB` e `IE3_LAUNCHER_SHOT`.
+
+**Release** (`tools/release.py`, `VERSION` = 0.1.0):
+- O zip tem uma pasta `ie3ogre-recomp/` com:
+  - o launcher, o `SDL3.dll`, `LEIA-ME.txt`, `TERCEIROS.txt` e `licenses/` (SDL3, ImGui e dsd, já que o MIT exige o texto da licença);
+  - o `sdk/`: `ntr-recomp`, `dsd`, o manifesto com `{modules}`, as fontes do runtime e do `main.cpp`, os headers e a biblioteca de importação do SDL3, e o `toolchain.txt`.
+- **8,4 MiB** para Windows. Não leva nenhum byte do jogo: o manifesto só tem endereços, tamanhos e nomes.
+- O `analyze.py manifest --template` gera o manifesto sem o dump. O corpo é idêntico ao normal.
+- O launcher e o `ntr-recomp` são compilados com o mesmo llvm-mingw (toolchain novo `cmake/toolchains/llvm-mingw-x86_64.cmake`, baixado e conferido em `build/tools/`). O `--zip` da etapa anterior saiu do `build.py`, porque levava o código do jogo.
+- **CI** (`.github/workflows/release.yml`): numa tag `vX.Y.Z` que bate com o `VERSION`, roda os testes e o `release.py`, depois publica o zip e o `sha256sums.txt` com `gh release create`. Rodado à mão, só guarda o pacote como artefato.
+
+**Bugs achados nos testes:**
+- O `ntr-recomp` abria arquivos com `std::string` e falhava na pasta `IE3 Teste ção` no Windows. Agora usa caminhos UTF-8 e argumentos de `CommandLineToArgvW`.
+- O toolchain do llvm-mingw não chegava aos projetos de teste do `try_compile`. Passou porque aqui a variável de ambiente estava definida, e falharia no CI; resolvido com `CMAKE_TRY_COMPILE_PLATFORM_VARIABLES`.
+
+**Verificação:**
+- **Linux** (release Linux descompactada numa pasta vazia, `--prepare` com o dump retail):
+  - dump → pacote → dsd → recompilação (4,5 s) → compilação (47 s) → `boej` em 56 s;
+  - o roteiro da história com esse `boej` ficou **idêntico byte a byte** nos quadros 9000 e 14000;
+  - um segundo `--prepare` não refaz nada.
+- **Windows** (release Windows, via interop do WSL, numa pasta com acento e um dump chamado `meu dump ção.nds`):
+  - baixou o llvm-mingw real (182 MB), conferiu, instalou, recompilou (7 s) e compilou (35 s);
+  - o roteiro da história com o `boej.exe` feito no Windows também ficou **idêntico byte a byte**.
+- **Atualização** (release falsa 0.2.0 por `file://`):
+  - baixou, conferiu, instalou e criou os `.old`, que sumiram na abertura seguinte;
+  - em seguida o `--prepare` recompilou sem o dump;
+  - com o `sha256sums.txt` adulterado, recusou com "Nada foi alterado", e o launcher e a versão continuaram os mesmos.
+- **Interface:** capturas das abas no Linux (fonte padrão do ImGui) e no Windows (Segoe UI, escala 150%) mostram os acentos e o layout certos.
+- **CI simulado:** numa cópia limpa só com os arquivos versionados, os testes passaram e o `release.py` baixou as ferramentas e gerou um pacote com os mesmos 134 arquivos.
+- A build de desenvolvimento, a build GCC de Windows e o roteiro da história continuam iguais.
+- **Pendências:**
+  - o repositório é privado, então a API responde 404 e a aba mostra "não foi possível consultar". Isso funciona quando houver releases públicas;
+  - o diálogo de arquivo e a captura de controle precisam de teste com clique e com um controle de verdade;
+  - o workflow do CI ainda não rodou no GitHub.
+
+**Notas de release automáticas** (`tools/changelog.py`):
+- O workflow usava o `--generate-notes` do GitHub, que lista *pull requests*. Como os commits vão direto para a `main`, a release sairia só com o link de comparação.
+- Agora o texto vem das mensagens de commit entre a tag `vX.Y.Z` anterior (`git describe --tags --match 'v[0-9]*'`) e a nova:
+  - cada commit vira uma seção, com o título e o corpo já em tópicos, sem as linhas `Co-Authored-By`;
+  - na primeira release, sem tag anterior, só os títulos.
+- No fim vêm "Como instalar", a conferência do SHA-256 e o link de comparação.
+- O workflow faz checkout com `fetch-depth: 0` (histórico e tags) e publica com `--notes-file`. Rodado à mão, mostra a prévia no resumo da execução.
+- Testado com duas tags temporárias (já apagadas): achou a anterior, listou os dois commits do intervalo e gerou o link `compare/v0.0.1...v0.0.2`.

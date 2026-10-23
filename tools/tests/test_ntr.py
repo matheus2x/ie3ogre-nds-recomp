@@ -90,5 +90,19 @@ class PakTest(unittest.TestCase):
         self.assertEqual(pak.read(0x8000, 4), b"\xff" * 4)  # outside every range
 
 
+
+class KnownDumpsTest(unittest.TestCase):
+    def test_runtime_table_matches_catalog(self):
+        """The executable identifies dumps on its own (runtime/src/setup.cpp)."""
+        import json
+        import re
+        root = Path(__file__).resolve().parents[2]
+        catalog = json.loads((root / "config" / "boej" / "dumps.json").read_text())
+        table = re.findall(r'\{"([0-9a-f]{40})", "([\w-]+)", (true|false)\}',
+                           (root / "runtime" / "src" / "setup.cpp").read_text())
+        expected = [(d["sha1"], d["variant"], "true" if d["variant"] == catalog["canonical"] else "false")
+                    for d in catalog["dumps"]]
+        self.assertEqual(sorted(table), sorted(expected))
+
 if __name__ == "__main__":
     unittest.main()

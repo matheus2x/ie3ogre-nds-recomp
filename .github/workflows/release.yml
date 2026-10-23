@@ -1,0 +1,57 @@
+# Release: on a vX.Y.Z tag, builds the Windows package (launcher + SDK, no game data or
+# code; see tools/release.py) and publishes it with sha256sums.txt, the two assets the
+# launcher's updater looks for. The release text comes from the commit messages since the
+# previous tag (tools/changelog.py). Run by hand (workflow_dispatch), it only uploads the
+# package as a workflow artifact and shows the notes preview in the run summary.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # the whole history and tags, for the release notes
+
+      - name: Check that the tag matches VERSION
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          if [ "v$(cat VERSION)" != "$GITHUB_REF_NAME" ]; then
+            echo "VERSION says $(cat VERSION), the tag is $GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+
+      - name: Unit tests
+        run: python3 -m unittest discover -s tools/tests -t tools
+
+      - name: Build the package
+        run: python3 tools/release.py --platform windows
+
+      - name: Release notes
+        run: |
+          python3 tools/changelog.py "${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'HEAD' }}" > build/release/notes.md
+          cat build/release/notes.md >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ie3ogre-recomp-windows
+          path: |
+            build/release/*.zip
+            build/release/sha256sums.txt
+            build/release/notes.md
+
+      - name: Publish the release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" build/release/*.zip build/release/sha256sums.txt \
+            --title "$GITHUB_REF_NAME" --notes-file build/release/notes.md

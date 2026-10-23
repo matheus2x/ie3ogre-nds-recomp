@@ -1,18 +1,9 @@
 // The cartridge image, read by ROM offset: either a .nds dump or the game data package
 // (boej.pak) that tools/extract.py makes from one (format in tools/ntr/pak.py). Both are
-// memory-mapped, so opening is instant whatever the size.
+// memory-mapped (files.cpp), so opening is instant whatever the size.
 #include <algorithm>
 #include <cstring>
 #include <vector>
-
-#ifdef _WIN32
-#include <windows.h>
-#else
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#endif
 
 #include "runtime.h"
 
@@ -31,42 +22,6 @@ struct Image {
     std::vector<Range> ranges;  // sorted by rom_offset
 };
 Image g_image;
-
-const uint8_t* map_file(const std::string& path, uint64_t& size) {
-#ifdef _WIN32
-    int wlen = MultiByteToWideChar(CP_UTF8, 0, path.c_str(), -1, nullptr, 0);
-    std::wstring wpath(wlen, L'\0');
-    MultiByteToWideChar(CP_UTF8, 0, path.c_str(), -1, wpath.data(), wlen);
-    HANDLE file = CreateFileW(wpath.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING,
-                              FILE_ATTRIBUTE_NORMAL, nullptr);
-    if (file == INVALID_HANDLE_VALUE) return nullptr;
-    LARGE_INTEGER li;
-    if (!GetFileSizeEx(file, &li) || li.QuadPart == 0) {
-        CloseHandle(file);
-        return nullptr;
-    }
-    HANDLE mapping = CreateFileMappingW(file, nullptr, PAGE_READONLY, 0, 0, nullptr);
-    CloseHandle(file);
-    if (!mapping) return nullptr;
-    void* p = MapViewOfFile(mapping, FILE_MAP_READ, 0, 0, 0);
-    CloseHandle(mapping);  // the view keeps the mapping alive
-    size = uint64_t(li.QuadPart);
-    return static_cast<const uint8_t*>(p);
-#else
-    int fd = open(path.c_str(), O_RDONLY);
-    if (fd < 0) return nullptr;
-    struct stat st;
-    if (fstat(fd, &st) != 0 || st.st_size == 0) {
-        close(fd);
-        return nullptr;
-    }
-    void* p = mmap(nullptr, size_t(st.st_size), PROT_READ, MAP_PRIVATE, fd, 0);
-    close(fd);
-    if (p == MAP_FAILED) return nullptr;
-    size = uint64_t(st.st_size);
-    return static_cast<const uint8_t*>(p);
-#endif
-}
 
 uint32_t u32(const uint8_t* p) { return load32(p); }
 uint64_t u64(const uint8_t* p) { return u32(p) | uint64_t(u32(p + 4)) << 32; }

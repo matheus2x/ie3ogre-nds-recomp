@@ -9,9 +9,7 @@
 #include <fstream>
 #include <sstream>
 
-#include <ntr/runtime.h>
-
-#include "runtime.h"
+#include <ntr/common.h>
 
 namespace ntr {
 
@@ -36,6 +34,13 @@ integer_scale = false
 [audio]
 ; Volume de 0 a 100 (0 = sem som).
 volume = 100
+
+; Opções do launcher (o jogo ignora esta seção).
+[launcher]
+; Procurar uma versão nova ao abrir o launcher.
+check_updates = true
+; Fechar o launcher quando o jogo abrir.
+close_on_play = true
 
 ; Teclado: nomes de tecla do SDL (veja https://wiki.libsdl.org/SDL3/SDL_Keycode,
 ; sem o "SDLK_"), separados por vírgula. Deixe vazio para desligar.
@@ -140,7 +145,7 @@ const Config& defaults() {
 bool config_load(const std::string& path, Config& out) {
     out = defaults();
     out.path = path;
-    std::ifstream file(path);
+    std::ifstream file(fs_path(path));
     if (!file) return false;
     parse(file, true, out);
     NTR_LOG("[config] settings from %s\n", path.c_str());
@@ -148,7 +153,7 @@ bool config_load(const std::string& path, Config& out) {
 }
 
 bool config_write_default(const std::string& path) {
-    FILE* f = std::fopen(path.c_str(), "wb");
+    FILE* f = open_file(fs_path(path), "wb");
     if (!f) return false;
     std::fwrite(kDefaultConfig, 1, sizeof kDefaultConfig - 1, f);
     std::fclose(f);
@@ -184,6 +189,34 @@ bool Config::get_bool(const std::string& section, const std::string& key) const 
     if (v == "true" || v == "1" || v == "yes" || v == "sim") return true;
     if (v != "false" && v != "0" && v != "no" && v != "nao" && v != "não") warn(*e, "\"" + e->value + "\" is not true or false");
     return false;
+}
+
+void Config::set(const std::string& section, const std::string& key, const std::string& value) {
+    Entry& e = entries[lower(section) + "." + lower(key)];
+    e.value = value;
+    if (!e.line) e.line = -1;  // changed by the launcher: no longer the default
+}
+
+bool config_save(const std::string& path, const Config& config) {
+    std::istringstream defaults(kDefaultConfig);
+    std::string out, line, section;
+    while (std::getline(defaults, line)) {
+        std::string t = trim(line);
+        size_t eq = t.find('=');
+        if (!t.empty() && t[0] == '[' && t.back() == ']') {
+            section = lower(trim(t.substr(1, t.size() - 2)));
+        } else if (!t.empty() && t[0] != ';' && t[0] != '#' && eq != std::string::npos) {
+            std::string key = trim(t.substr(0, eq));
+            std::string value = config.get(section, key);
+            line = key + " =" + (value.empty() ? "" : " " + value);
+        }
+        out += line + "\n";
+    }
+    FILE* f = open_file(fs_path(path), "wb");
+    if (!f) return false;
+    bool ok = std::fwrite(out.data(), 1, out.size(), f) == out.size();
+    ok = std::fclose(f) == 0 && ok;
+    return ok;
 }
 
 void Config::warn(const Entry& e, const std::string& message) const {

@@ -9,6 +9,8 @@
 #include <fstream>
 #include <vector>
 
+#include <ntr/runtime.h>
+
 #include "pxi.h"
 #include "runtime.h"
 
@@ -112,13 +114,28 @@ void on_word(uint32_t data, bool) {
 }  // namespace
 
 void arm7_card_init(const std::string& save_path) {
-    g_save_path = save_path;
-    std::ifstream in(save_path, std::ios::binary);
+    if (save_path.empty()) {
+        // saves/boej.sav next to the executable. Older builds used the current directory;
+        // a save found only there is copied over once.
+        std::string base = host_base_path();
+        g_save_path = fs_path(base.empty() ? "." : base) / "saves" / "boej.sav";
+        std::filesystem::path old = std::filesystem::path("saves") / "boej.sav";
+        std::error_code ec;
+        if (!std::filesystem::exists(g_save_path, ec) && std::filesystem::exists(old, ec)) {
+            std::filesystem::create_directories(g_save_path.parent_path(), ec);
+            std::filesystem::copy_file(old, g_save_path, ec);
+            NTR_LOG("[card] copied the save from %s\n", utf8_string(std::filesystem::absolute(old, ec)).c_str());
+        }
+    } else {
+        g_save_path = fs_path(save_path);
+    }
+    std::string shown = utf8_string(g_save_path);
+    std::ifstream in(g_save_path, std::ios::binary);
     if (in) {
         in.read(reinterpret_cast<char*>(g_save.data()), g_save.size());
-        NTR_LOG("[card] loaded save %s\n", save_path.c_str());
+        NTR_LOG("[card] loaded save %s\n", shown.c_str());
     } else {
-        NTR_LOG("[card] no save at %s: new game\n", save_path.c_str());
+        NTR_LOG("[card] no save at %s: new game\n", shown.c_str());
     }
     replay_initial_save(g_save, bool(in));
     pxi_register_service(11, on_word);

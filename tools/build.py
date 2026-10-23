@@ -11,6 +11,8 @@ Prerequisites (once per checkout): tools/extract.py on the retail dump and
 
 The game data package made by tools/extract.py (build/boej.pak) is placed next to the
 executable (and copied with --dist), so the game runs with no arguments and no dump.
+
+Releases for players (the launcher, without game code) come from tools/release.py.
 """
 
 import argparse
@@ -83,11 +85,11 @@ def main() -> int:
     else:
         print("warning: build/boej.pak not found; run tools/extract.py on the retail dump to create it")
 
+    # SDL3.dll from the SDL3-devel-*-mingw package fetched by CMake
+    sdl_dll = list((game_build / "_deps").glob("sdl3_mingw-src/x86_64-w64-mingw32/bin/SDL3.dll")) if args.windows else []
     if args.dist:
         args.dist.mkdir(parents=True, exist_ok=True)
-        shipped = [exe] + ([pak] if pak.exists() else [])
-        if args.windows:  # SDL3.dll from the SDL3-devel-*-mingw package fetched by CMake
-            shipped += list((game_build / "_deps").glob("sdl3_mingw-src/x86_64-w64-mingw32/bin/SDL3.dll"))
+        shipped = [exe] + ([pak] if pak.exists() else []) + sdl_dll
         for f in shipped:
             dst = args.dist / f.name
             if dst.exists() and dst.stat().st_size == f.stat().st_size and dst.stat().st_mtime >= f.stat().st_mtime:

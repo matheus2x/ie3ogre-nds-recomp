@@ -19,3 +19,6 @@ endif()
 
 add_executable(boej main.cpp)
 target_link_libraries(boej PRIVATE ntr-runtime boej-generated)
+if(WIN32)
+    target_link_libraries(boej PRIVATE shell32)  # CommandLineToArgvW
+endif()

@@ -94,7 +94,7 @@ void arm7_boot() {
     arm7_sound_init();
     arm7_input_init();
     const char* save = std::getenv("NTR_SAVE");
-    arm7_card_init(save ? save : "saves/boej.sav");
+    arm7_card_init(save ? save : "");
 }
 
 }  // namespace ntr

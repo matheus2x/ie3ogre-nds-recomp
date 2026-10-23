@@ -10,16 +10,26 @@ e o ARM7 são reimplementados no PC.
 > até depois da primeira partida. Ainda há bugs, e o progresso depende de correções a cada sessão de teste.
 > O histórico completo está em [`docs/DIARY.md`](docs/DIARY.md).
 
-## Objetivo
+## Como jogar (releases)
 
-Releases **plug and play** para Windows:
+As releases seguem o formato do [gen1recomp](https://github.com/bryanthaboi/gen1recomp): um pacote por plataforma
+com um **launcher**, sem nenhum dado e nenhum código do jogo, mais o `sha256sums.txt` para conferir o download.
 
-1. Baixe a release e descompacte.
-2. Abra o executável e selecione o **seu** dump (ou arraste o `.nds` para a janela).
-3. O programa identifica o dump pelo SHA-1 (retail ou uma versão modificada conhecida), extrai e prepara
-   os dados localmente e inicia o jogo.
+1. Baixe o `ie3ogre-recomp-<versão>-windows.zip` da [última release](../../releases/latest) e descompacte numa
+   pasta em que dê para gravar.
+2. Abra o `ie3-launcher.exe` e escolha o dump do **seu** cartucho (ou arraste o `.nds` para a janela).
+3. O launcher confere o SHA-1, cria o `boej.pak` (dados do jogo), extrai o código do dump, baixa uma vez o
+   compilador [llvm-mingw](https://github.com/mstorsjo/llvm-mingw) (~190 MB, conferido por SHA-256), recompila
+   e compila o `boej.exe` **no seu PC**. Leva cerca de 1 minuto num processador de 16 núcleos, alguns minutos
+   em máquinas menores. Depois é só clicar em **Jogar**.
 
-Nenhuma release distribui dados, código ou assets do jogo.
+O launcher também tem as abas **Configurações** (vídeo, áudio e controles, remapeados apertando a tecla ou o
+botão), **Mods** (reservada; por enquanto só lista a pasta `mods/`) e **Atualizações** (baixa a release nova,
+confere com o `sha256sums.txt` e recompila o jogo sem pedir o dump; saves e configurações ficam como estão).
+Por enquanto só o dump retail é aceito.
+
+Nenhuma release distribui dados, código ou assets do jogo: o código recompilado e o `boej.pak` só existem no PC de
+quem tem o dump.
 
 ## Você precisa da sua própria cópia do jogo
 
@@ -38,10 +48,12 @@ quando o **código** é idêntico ao do retail e só mudam dados (textos, tabela
 acima: ARM9 e ARM7 iguais, e diferenças só em strings/tabelas de 33 overlays e em 512 arquivos. Para comparar
 um dump novo com o retail, use `tools/compare_dumps.py`.
 
-**O dump só é usado na preparação.** O `tools/extract.py` gera o `build/boej.pak`, um pacote com as partes da
-ROM que o jogo lê (header, binários, tabelas e arquivos, sem o preenchimento vazio; ~448 MiB). Depois disso,
-o executável roda só com o pacote, e o `.nds` pode ficar guardado. O pacote e o executável contêm dados e código
-do jogo: são de uso pessoal e não devem ser distribuídos.
+**O dump só é usado na preparação.** O `boej.pak` é um pacote com as partes da ROM que o jogo lê (header,
+binários, tabelas e arquivos, sem o preenchimento vazio; ~448 MiB). Sem ele, o executável pede o dump na
+primeira vez, confere o SHA-1 e cria o pacote na própria pasta (o launcher faz o mesmo). O `tools/extract.py` gera
+o mesmo pacote, byte a byte, em `build/boej.pak`. Depois disso, o executável roda só com o pacote, e o `.nds` pode
+ficar guardado. O pacote e o executável contêm dados e código do jogo: são de uso pessoal e não devem ser
+distribuídos.
 
 A versão europeia (*Inazuma Eleven 3: Team Ogre Attacks!*) saiu só para 3DS e não é suportada. Não houve lançamento americano.
 As outras versões japonesas de IE3 (Sekai heno Chousen!! **Bomber** / **Spark**) também não são suportadas por enquanto.
@@ -65,7 +77,9 @@ Se o seu dump tiver outro SHA-1, abra uma issue informando o código do jogo e o
 - [x] Wi-Fi/DWC desativado (o Nintendo WFC foi encerrado): o ARM7 não oferece o serviço sem fio, então o jogo recebe "sem fio indisponível" e segue pelo próprio caminho de erro
 - [x] Dump usado só na preparação: o jogo roda a partir do `boej.pak` (mapeado em memória)
 - [x] Configurações (`boej.ini`): janela, tela cheia, filtro, resolução do 3D, volume e controles remapeáveis (teclado e controle)
-- [ ] Instalador / release portátil para Windows
+- [x] O jogo prepara o `boej.pak` sozinho a partir do dump, sem Python
+- [x] Launcher e releases sem nada do jogo (estilo gen1recomp): recompilação e compilação no PC do jogador, configurações na interface, atualizações por GitHub Releases com `sha256sums.txt`, release pelo CI ao criar uma tag
+- [ ] Mods: adicionar e remover pela aba Mods do launcher
 
 ## Estrutura do repositório
 
@@ -74,7 +88,8 @@ Se o seu dump tiver outro SHA-1, abra uma issue informando o código do jogo e o
 | `recompiler/` | `ntr-recomp` (C++20): manifesto do dsd → C++ |
 | `runtime/` | Runtime (C++20): memória, CPU, interpretador ARM, IRQ, timers, threads, PXI/ARM7 em HLE, VRAM, 2D, 3D, som, janela SDL3 |
 | `game/` | Executável `boej` |
-| `tools/` | Ferramentas em Python (`ntr/` lê a ROM; `extract.py` extrai; `compare_dumps.py` compara dumps; `analyze.py` roda dsd/Ghidra; `ghidra/` tem os scripts do Ghidra; `tests/` tem os testes) |
+| `launcher/` | `ie3-launcher` (SDL3 + Dear ImGui): prepara, configura, atualiza e abre o jogo; `LEIA-ME.txt` e `TERCEIROS.txt` da release |
+| `tools/` | Ferramentas em Python (`ntr/` lê a ROM; `extract.py` extrai; `compare_dumps.py` compara dumps; `analyze.py` roda dsd/Ghidra; `build.py` compila para desenvolvimento; `release.py` monta a release; `ghidra/` tem os scripts do Ghidra; `tests/` tem os testes) |
 | `config/boej/` | `dumps.json` (dumps conhecidos), `layout/<variante>.json` (endereços, overlays, hashes), `dsd/` (funções, seções e relocações do ds-decomp), `names.tsv` (nomes identificados, com evidência), `hle.tsv` (funções substituídas no host) e `code_blobs.tsv` (código que o dsd classifica como dados). Nenhum dado do jogo |
 | `docs/` | Documentação e diário de implementação |
 | `build/` | Saída local (extração, código gerado). Ignorada pelo git |
@@ -196,12 +211,40 @@ python3 tools/build.py --windows                       # build/cmake-win/game/bo
 python3 tools/build.py --windows --dist /mnt/c/Games/ie3  # e copia para C:\Games\ie3
 ```
 
+Aberto pelo Explorer, o `boej.exe` esconde a janela de console (tudo vai para o `boej.log`); aberto de um
+terminal, a saída continua nele, e `NTR_CONSOLE=1` mantém o console.
+
+#### Release (launcher + SDK)
+
+```sh
+python3 tools/release.py                    # build/release/ie3ogre-recomp-<VERSION>-windows.zip + sha256sums.txt
+python3 tools/release.py --platform linux   # o mesmo para Linux (compilador e SDL3 do sistema)
+```
+
+Não precisa do dump. O pacote leva o launcher, o `SDL3.dll` e o `sdk/`:
+- `ntr-recomp` e o `dsd` v0.12.1 (que, no PC do jogador, extrai o código do dump e decifra o DS Protect da ov129);
+- o manifesto de funções com caminhos `{modules}/...` (`analyze.py manifest --template`);
+- as fontes do runtime e do `game/main.cpp`;
+- os headers e a biblioteca de importação do SDL3;
+- o `toolchain.txt`, com o llvm-mingw fixado por URL e SHA-256.
+
+O launcher e o `ntr-recomp` são compilados com o mesmo llvm-mingw (`cmake/toolchains/llvm-mingw-x86_64.cmake`),
+baixado uma vez para `build/tools/`. O CI (`.github/workflows/release.yml`) roda isso ao receber uma tag `vX.Y.Z`,
+que precisa bater com o arquivo `VERSION`, e publica o zip e o `sha256sums.txt` na release. O texto da release sai
+das mensagens de commit desde a tag anterior (`tools/changelog.py`; título de cada commit como seção, corpo em
+tópicos), seguido de como instalar e conferir o download. Para ver antes de criar a tag:
+`python3 tools/changelog.py HEAD`.
+
+O launcher aceita `--prepare [dump.nds]` (prepara sem janela) e `--update` (procura, baixa e instala a versão
+nova) na linha de comando. Para testes: `IE3_UPDATE_API` troca a URL da API de releases (aceita `file://`),
+`IE3_LAUNCHER_TAB=0..3` abre uma aba e `IE3_LAUNCHER_SHOT=arquivo.bmp` salva a janela e fecha.
+
 `tools/build.py --trace` gera uma build com rastreamento de funções em `build/cmake`. Ao receber Ctrl+C,
 ela imprime as últimas 256 funções chamadas.
 
 Variáveis de ambiente:
 
-- **Save:** `NTR_SAVE` (padrão: `saves/boej.sav`).
+- **Save:** `NTR_SAVE` (padrão: `saves/boej.sav` na pasta do executável; um save que só exista em `saves/` da pasta atual, onde as versões anteriores gravavam, é copiado na primeira vez).
 - **Configurações:** `NTR_CONFIG` (outro arquivo no lugar do `boej.ini`). As variáveis abaixo têm prioridade sobre ele.
 - **Janela e ritmo:** `NTR_SCALE` (escala inicial; padrão do `boej.ini`, 2); `NTR_FAST` (sem limite de 60 Hz); `NTR_HEADLESS` (sem janela e sem limite).
 - **Resolução do 3D:** `NTR_3D_SCALE=1..4` (padrão: `resolution_3d` do `boej.ini` com janela, 2; 1 sem janela). Só o 3D ganha resolução, e as camadas 2D são esticadas. O jogo e a captura de tela do DS continuam vendo a imagem nativa. As capturas (F12, F8, `NTR_SCREENSHOT_FRAMES`) saem no tamanho mostrado na janela. O 3D usa até 8 núcleos (`NTR_3D_THREADS=1` desliga), e a imagem é a mesma com qualquer número.

@@ -29,11 +29,13 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 
+#include <atomic>
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
 #include <set>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include <ntr/runtime.h>
@@ -131,7 +133,7 @@ uint64_t env_u64(const char* name) {
 }
 
 void write_bmp(const std::string& path, const uint32_t* top, const uint32_t* bottom, int scale = 1) {
-    FILE* f = std::fopen(path.c_str(), "wb");
+    FILE* f = open_file(fs_path(path), "wb");
     if (!f) {
         NTR_LOG("[host] cannot write %s\n", path.c_str());
         return;
@@ -568,6 +570,118 @@ bool host_init() {
     open_audio();
     g_host.deadline = g_host.fps_start = SDL_GetTicksNS();
     return true;
+}
+
+namespace {
+
+// --- first run: preparing boej.pak ------------------------------------------------------
+
+[[noreturn]] void quit_setup() {
+    NTR_LOG("[setup] closed by the player\n");
+    SDL_Quit();
+    std::exit(0);
+}
+
+// The setup screen; SDL's debug font has ASCII only. progress < 0 = no bar.
+void draw_setup(const std::vector<const char*>& lines, double progress) {
+    SDL_Renderer* r = g_host.renderer;
+    SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
+    SDL_RenderClear(r);
+    SDL_SetRenderDrawColor(r, 255, 255, 255, 255);
+    float y = 150;
+    for (const char* line : lines) {
+        SDL_RenderDebugText(r, (kScreenWidth - 8.0f * float(std::strlen(line))) / 2, y, line);
+        y += 14;
+    }
+    if (progress >= 0) {
+        SDL_FRect frame = {28, y + 10, 200, 12};
+        SDL_RenderRect(r, &frame);
+        SDL_FRect bar = {30, y + 12, float(196 * std::min(progress, 1.0)), 8};
+        SDL_SetRenderDrawColor(r, 80, 160, 255, 255);
+        SDL_RenderFillRect(r, &bar);
+    }
+    SDL_RenderPresent(r);
+}
+
+// Keeps the window responsive until `done`.
+void wait_setup(const std::atomic<bool>& done, const std::vector<const char*>& lines,
+                const std::atomic<double>* progress) {
+    while (!done) {
+        SDL_Event ev;
+        while (SDL_PollEvent(&ev)) {
+            if (ev.type == SDL_EVENT_QUIT) quit_setup();
+        }
+        draw_setup(lines, progress ? progress->load() : -1);
+        SDL_Delay(16);
+    }
+}
+
+void setup_message(SDL_MessageBoxFlags flags, const std::string& text) {
+    SDL_ShowSimpleMessageBox(flags, "Inazuma Eleven 3 - The Ogre (recomp)", text.c_str(), g_host.window);
+}
+
+// Asks for the dump: a message, then the file dialog. False if the player gives up.
+bool choose_dump(std::string& path) {
+    const SDL_MessageBoxButtonData buttons[] = {
+        {SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 1, "Escolher o dump..."},
+        {SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 0, "Sair"},
+    };
+    const SDL_MessageBoxData box = {
+        SDL_MESSAGEBOX_INFORMATION, g_host.window, "Inazuma Eleven 3 - The Ogre (recomp)",
+        "Para jogar, escolha o dump do seu cartucho de Inazuma Eleven 3 - Sekai heno Chousen!! "
+        "The Ogre (arquivo .nds, código BOEJ).\n\n"
+        "Ele é usado só agora, para criar o boej.pak (cerca de 450 MB) na pasta do jogo. "
+        "Depois disso, o jogo não precisa mais do dump.",
+        2, buttons, nullptr};
+    int choice = 0;
+    if (!SDL_ShowMessageBox(&box, &choice) || choice != 1) return false;
+
+    struct Dialog {
+        std::atomic<bool> done{false};
+        std::string path, error;
+    } dialog;
+    static const SDL_DialogFileFilter kFilters[] = {{"Dump de Nintendo DS (*.nds)", "nds"}, {"Todos os arquivos", "*"}};
+    SDL_ShowOpenFileDialog(
+        [](void* user, const char* const* files, int) {
+            auto* d = static_cast<Dialog*>(user);
+            if (!files) d->error = SDL_GetError();
+            else if (files[0]) d->path = files[0];
+            d->done = true;
+        },
+        &dialog, g_host.window, kFilters, 2, nullptr, false);
+    wait_setup(dialog.done, {"Primeira execucao", "", "Escolha o dump do jogo (.nds)", "na janela que abriu."}, nullptr);
+    if (!dialog.error.empty()) {
+        NTR_LOG("[setup] no file dialog: %s\n", dialog.error.c_str());
+        setup_message(SDL_MESSAGEBOX_ERROR,
+                      "Não foi possível abrir a janela de escolha de arquivo (" + dialog.error + ").\n\n"
+                      "Arraste o arquivo .nds para cima do executável do jogo.");
+        return false;
+    }
+    path = dialog.path;
+    return !path.empty();
+}
+
+}  // namespace
+
+bool host_first_run(const std::string& nds_path, const std::string& pak_path) {
+    if (g_host.headless) return false;
+    for (;;) {
+        std::string dump = nds_path;
+        if (dump.empty() && !choose_dump(dump)) return false;
+        std::atomic<bool> done{false};
+        std::atomic<double> progress{0};
+        std::string error;
+        bool ok = false;
+        std::thread worker([&] {
+            ok = pak_create(dump, pak_path, error, [&](double p) { progress = p; });
+            done = true;
+        });
+        wait_setup(done, {"Preparando os dados do jogo", "(so na primeira vez)"}, &progress);
+        worker.join();
+        if (ok) return true;
+        setup_message(SDL_MESSAGEBOX_ERROR, error);
+        if (!nds_path.empty()) return false;
+    }
 }
 
 // What the game sees until the next frame, for the session recording.

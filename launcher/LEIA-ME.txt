@@ -1,0 +1,43 @@
+Inazuma Eleven 3 - Sekai heno Chousen!! The Ogre (port nativo por recompilação)
+==============================================================================
+
+Este pacote NÃO contém o jogo: nem dados, nem código. O launcher prepara tudo
+no seu computador a partir do dump do SEU cartucho.
+
+PRIMEIRA VEZ
+1. Descompacte esta pasta num lugar em que dê para gravar (Documentos, por
+   exemplo; evite "Arquivos de Programas").
+2. Abra o ie3-launcher.exe e escolha o dump (.nds, código BOEJ, sem
+   modificações), ou arraste o arquivo para a janela do launcher.
+3. O launcher:
+   - confere o dump pelo SHA-1;
+   - cria o boej.pak (os dados do jogo, ~450 MB) nesta pasta;
+   - baixa o compilador llvm-mingw (~190 MB, só na primeira vez);
+   - recompila o código do jogo e compila o boej.exe (alguns minutos,
+     dependendo do processador).
+   Depois disso, o dump não é mais necessário. É só clicar em "Jogar".
+
+ATUALIZAÇÕES
+A aba "Atualizações" baixa a versão nova e confere com o sha256sums.txt da
+release. O jogo é compilado de novo automaticamente, sem pedir o dump.
+Seus saves e configurações não são mexidos.
+
+ARQUIVOS CRIADOS NESTA PASTA
+- boej.exe, boej.pak  o jogo, preparado a partir do seu dump (uso pessoal:
+                      não distribua)
+- cache\, toolchain\  código extraído do dump e o compilador
+- saves\boej.sav      o save
+- boej.ini            configurações (também editáveis no launcher)
+- boej.log, boej-replay.*, launcher.log   registros para relatar problemas
+- mods\               reservada para mods (em breve)
+
+CONTROLES PADRÃO (mude na aba Configurações)
+  Direcional  setas (controle: direcional ou analógico esquerdo)
+  A B X Y     X Z S A
+  L R         Q W
+  Start       Enter        Select   Shift direito ou Backspace
+  Toque       botão esquerdo do mouse na tela de baixo
+  F11 tela cheia, F12 captura de tela
+  Tab (segurar) ou F2: acelerar      C (segurar) ou F3: A automático
+  F8: se algo der errado, aperte no momento e envie o boej.log,
+      boej-replay.txt e boej-replay.sav
