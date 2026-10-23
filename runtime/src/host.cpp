@@ -703,7 +703,9 @@ void run_menu() {
     }
     if (g_host.audio) SDL_PauseAudioStreamDevice(g_host.audio);
     NTR_LOG("[host] paused at frame %llu\n", (unsigned long long)g_host.frame);
-    ui::SettingsOptions options{true, apply_settings};
+    ui::SettingsOptions options;
+    options.in_game = true;
+    options.on_change = apply_settings;
     for (bool open = true; open;) {
         SDL_Event ev;
         while (SDL_PollEvent(&ev)) {

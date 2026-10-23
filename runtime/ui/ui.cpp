@@ -6,6 +6,8 @@
 #include <imgui_impl_sdl3.h>
 #include <imgui_impl_sdlrenderer3.h>
 
+#include <algorithm>
+#include <cfloat>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
@@ -40,7 +42,7 @@ const ActionInfo kShortcuts[] = {
     {"turbo", "A automático (segurar)"},
     {"turbo_toggle", "A automático (liga/desliga)"},
     {"screenshot", "Captura de tela"},
-    {"debug_dump", "Registrar problema (F8)"},
+    {"debug_dump", "Registrar problema"},
     {"fullscreen", "Tela cheia"},
 };
 
@@ -56,7 +58,7 @@ struct Capture {
 Capture g_capture;
 
 void save() {
-    g_status = config_save(g_path, *g_config) ? "Salvo em boej.ini." : "Não foi possível gravar o boej.ini.";
+    g_status = config_save(g_path, *g_config) ? "Salvo no boej.ini." : "Não foi possível gravar o boej.ini.";
     if (g_options.on_change) g_options.on_change();
 }
 
@@ -121,54 +123,166 @@ std::string describe_pad(const std::string& value) {
     return out;
 }
 
-void binding_cell(const ActionInfo& action, bool gamepad) {
+// The current text size times `factor`, before the global scale (PushFont applies it).
+void push_font_size(float factor) {
+    ImGui::PushFont(nullptr, ImGui::GetStyle().FontSizeBase * factor);
+}
+
+// Palette shared by the panel's accents.
+const ImVec4 kAccent(0.20f, 0.52f, 0.90f, 1);
+const ImVec4 kAccentHover(0.28f, 0.60f, 0.96f, 1);
+const ImVec4 kAccentActive(0.15f, 0.44f, 0.80f, 1);
+
+void push_accent() {
+    ImGui::PushStyleColor(ImGuiCol_Button, kAccent);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, kAccentHover);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, kAccentActive);
+}
+
+void pop_accent() { ImGui::PopStyleColor(3); }
+
+// "Right Shift, Backspace" -> "Right Shift  /  Backspace".
+std::string pretty_list(const std::string& value) {
+    std::string out;
+    for (const std::string& item : split(value)) out += (out.empty() ? "" : "  /  ") + item;
+    return out;
+}
+
+// The page being shown; kept between frames and between the launcher's tabs.
+enum class Page { Video, Audio, Buttons, Shortcuts, Launcher };
+Page g_page = Page::Video;
+bool g_gamepad_view = false;  // the controls pages show the keyboard or the gamepad bindings
+
+// A settings row: the label (and a short hint under it) on the left, the widget on the
+// right, filling its column. Rows live in a two-column table opened by begin_rows; in a
+// narrow window (the stacked layout's) the widget goes under the label instead.
+bool g_narrow = false;
+
+bool begin_rows(const char* id) {
+    g_narrow = ImGui::GetContentRegionAvail().x < ImGui::GetFontSize() * 22;
+    if (!ImGui::BeginTable(id, g_narrow ? 1 : 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_PadOuterX)) return false;
+    ImGui::TableSetupColumn("label", ImGuiTableColumnFlags_WidthStretch, 0.42f);
+    if (!g_narrow) ImGui::TableSetupColumn("widget", ImGuiTableColumnFlags_WidthStretch, 0.58f);
+    return true;
+}
+
+void row(const char* label, const char* hint = nullptr) {
+    ImGui::TableNextRow();
+    ImGui::TableNextColumn();
+    if (!g_narrow) ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted(label);
+    if (hint) {
+        ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+        ImGui::TextWrapped("%s", hint);
+        ImGui::PopStyleColor();
+    }
+    if (!g_narrow) ImGui::TableNextColumn();
+    ImGui::SetNextItemWidth(-FLT_MIN);
+}
+
+void end_rows() {
+    ImGui::EndTable();
+}
+
+void checkbox_row(const char* label, const char* hint, const char* section, const char* key) {
+    row(label, hint);
+    bool value = g_config->get_bool(section, key);
+    ImGui::PushID(key);
+    if (ImGui::Checkbox(value ? "Ligado" : "Desligado", &value)) set(section, key, value ? "true" : "false");
+    ImGui::PopID();
+}
+
+void page_title(const char* title, const char* subtitle) {
+    push_font_size(1.6f);
+    ImGui::TextUnformatted(title);
+    ImGui::PopFont();
+    if (subtitle) ImGui::TextDisabled("%s", subtitle);
+    ImGui::Spacing();
+    ImGui::Spacing();
+}
+
+// Two buttons acting as one switch; true when `value` changed.
+bool segmented(const char* a, const char* b, bool& value) {
+    bool changed = false;
+    float w = ImGui::GetFontSize() * 7;
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(2, ImGui::GetStyle().ItemSpacing.y));
+    for (int i = 0; i < 2; i++) {
+        bool on = value == (i == 1);
+        if (on) push_accent();
+        if (ImGui::Button(i ? b : a, ImVec2(w, 0)) && !on) {
+            value = i == 1;
+            changed = true;
+        }
+        if (on) pop_accent();
+        if (i == 0) ImGui::SameLine();
+    }
+    ImGui::PopStyleVar();
+    return changed;
+}
+
+// One binding: a button showing what is bound; clicking it waits for the new input.
+void binding_button(const ActionInfo& action, bool gamepad) {
     const char* section = gamepad ? "gamepad" : "keyboard";
     std::string value = g_config->get(section, action.key);
+    std::string text = value.empty() ? "(nenhuma)" : pretty_list(value);
     ImGui::PushID(section);
     ImGui::PushID(action.key);
-    if (ImGui::SmallButton("Mudar")) g_capture = {true, gamepad, false, action.key, action.label};
-    ImGui::SameLine();
-    if (ImGui::SmallButton("+")) g_capture = {true, gamepad, true, action.key, action.label};
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Adicionar outra tecla ou botão");
-    ImGui::SameLine();
-    if (ImGui::SmallButton("x")) set(section, action.key, "");
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Desligar");
-    ImGui::SameLine();
-    ImGui::TextWrapped("%s", value.empty() ? "(nenhum)" : value.c_str());
-    if (gamepad && ImGui::IsItemHovered()) {
-        std::string about = describe_pad(value);
-        if (!about.empty()) ImGui::SetTooltip("%s", about.c_str());
+    ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0, 0.5f));
+    if (value.empty()) ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+    if (ImGui::Button(text.c_str(), ImVec2(-FLT_MIN, 0))) g_capture = {true, gamepad, false, action.key, action.label};
+    if (value.empty()) ImGui::PopStyleColor();
+    ImGui::PopStyleVar();
+    if (ImGui::IsItemHovered()) {
+        std::string about = gamepad ? describe_pad(value) : "";
+        ImGui::SetTooltip("%s", about.empty() ? "Clique para trocar" : (about + "\n\nClique para trocar").c_str());
     }
     ImGui::PopID();
     ImGui::PopID();
 }
 
-void bindings_table(const char* id, const ActionInfo* actions, size_t count) {
-    if (!ImGui::BeginTable(id, 3, ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingStretchProp)) return;
-    ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, ImGui::GetFontSize() * 7.5f);
-    ImGui::TableSetupColumn("Teclado");
-    ImGui::TableSetupColumn("Controle");
-    ImGui::TableHeadersRow();
-    for (size_t i = 0; i < count; i++) {
-        ImGui::TableNextRow();
-        ImGui::TableNextColumn();
+void bindings_page(const char* id, const ActionInfo* actions, size_t count) {
+    segmented("Teclado", "Controle", g_gamepad_view);
+    const char* hint = "Clique numa ação para trocar.";
+    float right_edge = ImGui::GetCursorScreenPos().x + ImGui::GetContentRegionAvail().x;
+    if (ImGui::GetItemRectMax().x + ImGui::GetStyle().ItemSpacing.x + ImGui::CalcTextSize(hint).x <= right_edge) {
+        ImGui::SameLine();
         ImGui::AlignTextToFramePadding();
-        ImGui::TextUnformatted(actions[i].label);
-        ImGui::TableNextColumn();
-        binding_cell(actions[i], false);
-        ImGui::TableNextColumn();
-        binding_cell(actions[i], true);
     }
-    ImGui::EndTable();
+    ImGui::TextDisabled("%s", hint);
+    ImGui::Spacing();
+    if (!begin_rows(id)) return;
+    for (size_t i = 0; i < count; i++) {
+        row(actions[i].label);
+        binding_button(actions[i], g_gamepad_view);
+    }
+    end_rows();
 }
 
 void capture_popup() {
     if (g_capture.active && !ImGui::IsPopupOpen("Capturar")) ImGui::OpenPopup("Capturar");
     ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-    if (ImGui::BeginPopupModal("Capturar", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
-        ImGui::Text("%s: %s", g_capture.label.c_str(),
-                    g_capture.gamepad ? "aperte um botão ou mova um eixo do controle" : "aperte uma tecla");
-        ImGui::TextDisabled("Esc cancela");
+    ImGui::SetNextWindowSizeConstraints(ImVec2(ImGui::GetFontSize() * 20, 0), ImVec2(FLT_MAX, FLT_MAX));
+    if (ImGui::BeginPopupModal("Capturar", nullptr,
+                               ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar)) {
+        const char* section = g_capture.gamepad ? "gamepad" : "keyboard";
+        std::string current = g_config ? g_config->get(section, g_capture.key) : "";
+        ImGui::TextDisabled("%s  ·  %s", g_capture.gamepad ? "Controle" : "Teclado", g_capture.label.c_str());
+        ImGui::Spacing();
+        push_font_size(1.25f);
+        ImGui::TextUnformatted(g_capture.gamepad ? "Aperte um botão ou mova um eixo" : "Aperte uma tecla");
+        ImGui::PopFont();
+        ImGui::Spacing();
+        ImGui::TextDisabled("Atual: %s", current.empty() ? "(nenhuma)" : pretty_list(current).c_str());
+        ImGui::Checkbox("Manter as atuais e adicionar esta", &g_capture.append);
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        if (ImGui::Button("Remover todas")) {
+            g_capture.active = false;
+            set(section, g_capture.key.c_str(), "");
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancelar (Esc)")) g_capture.active = false;
         if (!g_capture.active) ImGui::CloseCurrentPopup();
         ImGui::EndPopup();
     }
@@ -218,8 +332,38 @@ void init(SDL_Window* window, SDL_Renderer* renderer, float scale) {
     io.IniFilename = nullptr;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard | ImGuiConfigFlags_NavEnableGamepad;
     ImGui::StyleColorsDark();
-    ImGui::GetStyle().ScaleAllSizes(scale);
-    ImGui::GetStyle().FrameRounding = 4 * scale;
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.WindowPadding = ImVec2(14, 14);
+    style.FramePadding = ImVec2(10, 6);
+    style.ItemSpacing = ImVec2(10, 8);
+    style.CellPadding = ImVec2(8, 6);
+    style.ScrollbarSize = 12;
+    style.WindowRounding = style.PopupRounding = 8;
+    style.ChildRounding = style.FrameRounding = style.TabRounding = 6;
+    style.GrabRounding = style.ScrollbarRounding = 4;
+    style.WindowBorderSize = 0;
+    style.PopupBorderSize = 1;
+    ImVec4* c = style.Colors;
+    c[ImGuiCol_WindowBg] = ImVec4(0.09f, 0.10f, 0.12f, 1);
+    c[ImGuiCol_PopupBg] = ImVec4(0.12f, 0.13f, 0.16f, 1);
+    c[ImGuiCol_FrameBg] = ImVec4(1, 1, 1, 0.06f);
+    c[ImGuiCol_FrameBgHovered] = ImVec4(1, 1, 1, 0.10f);
+    c[ImGuiCol_FrameBgActive] = ImVec4(1, 1, 1, 0.14f);
+    c[ImGuiCol_Button] = ImVec4(1, 1, 1, 0.07f);
+    c[ImGuiCol_ButtonHovered] = ImVec4(1, 1, 1, 0.13f);
+    c[ImGuiCol_ButtonActive] = ImVec4(1, 1, 1, 0.18f);
+    c[ImGuiCol_Header] = ImVec4(kAccent.x, kAccent.y, kAccent.z, 0.55f);
+    c[ImGuiCol_HeaderHovered] = ImVec4(1, 1, 1, 0.08f);
+    c[ImGuiCol_HeaderActive] = ImVec4(kAccent.x, kAccent.y, kAccent.z, 0.70f);
+    c[ImGuiCol_CheckMark] = c[ImGuiCol_SliderGrab] = kAccentHover;
+    c[ImGuiCol_SliderGrabActive] = kAccent;
+    c[ImGuiCol_Tab] = ImVec4(1, 1, 1, 0.04f);
+    c[ImGuiCol_TabHovered] = ImVec4(1, 1, 1, 0.12f);
+    c[ImGuiCol_TabSelected] = kAccentActive;
+    c[ImGuiCol_TabSelectedOverline] = kAccentHover;
+    c[ImGuiCol_Separator] = ImVec4(1, 1, 1, 0.08f);
+    c[ImGuiCol_ModalWindowDimBg] = ImVec4(0, 0, 0, 0.55f);
+    style.ScaleAllSizes(scale);
     load_font(scale);
     ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
     ImGui_ImplSDLRenderer3_Init(renderer);
@@ -271,84 +415,148 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
     g_path = path;
     g_options = options;
     bool in_game = options.in_game;
-    ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.6f);  // room for the labels
-    if (ImGui::CollapsingHeader("Vídeo", ImGuiTreeNodeFlags_DefaultOpen)) {
-        bool wide = config.get_bool("video", "wide_layout");
-        if (ImGui::Checkbox("Tela larga (16:9, tela de baixo ampliada)", &wide)) set("video", "wide_layout", wide ? "true" : "false");
-        ImGui::BeginDisabled(wide);  // the wide window is sized from the monitor
-        int scale = config.get_int("video", "window_scale", 1, 16);
-        char format[48];
-        std::snprintf(format, sizeof format, "%%d× (%d×%d)", 256 * scale, 384 * scale);
-        if (ImGui::SliderInt("Tamanho da janela", &scale, 1, 6, format)) set("video", "window_scale", std::to_string(scale));
-        ImGui::EndDisabled();
+    if (in_game && g_page == Page::Launcher) g_page = Page::Video;
+    const ImGuiStyle& style = ImGui::GetStyle();
 
-        int res = config.get_int("video", "resolution_3d", 1, 4) - 1;
-        const char* kRes[] = {"1× (nativa, 256×192)", "2×", "3×", "4×"};
-        if (ImGui::Combo("Resolução do 3D", &res, kRes, 4)) set("video", "resolution_3d", std::to_string(res + 1));
+    // Left: the sections (plus the caller's own items, e.g. the pause menu's actions).
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(1, 1, 1, 0.035f));
+    float nav_width = std::min(ImGui::GetFontSize() * 11, ImGui::GetContentRegionAvail().x * 0.36f);
+    ImGui::BeginChild("nav", ImVec2(nav_width, 0), ImGuiChildFlags_NavFlattened | ImGuiChildFlags_AlwaysUseWindowPadding);
+    ImGui::PopStyleColor();
+    if (options.nav_top) options.nav_top();
+    ImGui::TextDisabled("CONFIGURAÇÕES");
+    struct Entry {
+        Page page;
+        const char* label;
+    };
+    const Entry kPages[] = {{Page::Video, "Vídeo"}, {Page::Audio, "Áudio"}, {Page::Buttons, "Controles"},
+                            {Page::Shortcuts, "Atalhos"}, {Page::Launcher, "Launcher"}};
+    ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0, 0.5f));
+    for (const Entry& e : kPages) {
+        if (in_game && e.page == Page::Launcher) continue;
+        if (ImGui::Selectable(e.label, g_page == e.page, 0, ImVec2(0, ImGui::GetFrameHeight()))) g_page = e.page;
+    }
+    ImGui::PopStyleVar();
+    if (options.nav_bottom) {
+        float h = options.nav_bottom_height * ImGui::GetFrameHeightWithSpacing();
+        ImGui::SetCursorPosY(std::max(ImGui::GetCursorPosY(), ImGui::GetContentRegionMax().y - h));
+        options.nav_bottom();
+    }
+    ImGui::EndChild();
+    ImGui::SameLine(0, style.ItemSpacing.x * 2);
 
-        int filter = SDL_strcasecmp(config.get("video", "filter").c_str(), "linear") == 0;
-        const char* kFilters[] = {"Nítido (nearest)", "Suavizado (linear)"};
-        if (ImGui::Combo("Ampliação", &filter, kFilters, 2)) set("video", "filter", filter ? "linear" : "nearest");
-
-        bool fullscreen = config.get_bool("video", "fullscreen");
-        if (ImGui::Checkbox(in_game ? "Tela cheia" : "Abrir em tela cheia", &fullscreen)) {
-            set("video", "fullscreen", fullscreen ? "true" : "false");
+    // Right: the page, with the footer (restore defaults, save status) under it.
+    ImGui::BeginGroup();
+    float footer = ImGui::GetFrameHeightWithSpacing() + style.ItemSpacing.y;
+    ImGui::BeginChild("page", ImVec2(0, -footer), ImGuiChildFlags_NavFlattened);
+    switch (g_page) {
+        case Page::Video: {
+            page_title("Vídeo", nullptr);
+            if (!begin_rows("video")) break;
+            bool wide = config.get_bool("video", "wide_layout");
+            row("Layout", wide ? "As duas telas à esquerda e a de baixo ampliada ao lado."
+                               : "As duas telas uma sobre a outra, como no DS.");
+            int layout = wide ? 0 : 1;
+            const char* kLayouts[] = {"Tela larga (16:9)", "Telas empilhadas"};
+            if (ImGui::Combo("##layout", &layout, kLayouts, 2)) set("video", "wide_layout", layout == 0 ? "true" : "false");
+            if (!wide) {
+                row("Tamanho da janela");
+                int scale = config.get_int("video", "window_scale", 1, 16);
+                char format[48];
+                std::snprintf(format, sizeof format, "%%d× (%d×%d)", 256 * scale, 384 * scale);
+                if (ImGui::SliderInt("##scale", &scale, 1, 6, format)) set("video", "window_scale", std::to_string(scale));
+                checkbox_row("Só múltiplos inteiros", "Pixels todos do mesmo tamanho; pode sobrar borda preta.", "video",
+                             "integer_scale");
+            }
+            checkbox_row(in_game ? "Tela cheia" : "Abrir em tela cheia", "O atalho de tela cheia também alterna.", "video", "fullscreen");
+            row("Resolução do 3D", "Mais alta fica mais nítida e pesa mais.");
+            int res = config.get_int("video", "resolution_3d", 1, 4) - 1;
+            const char* kRes[] = {"1× (nativa)", "2×", "3×", "4×"};
+            if (ImGui::Combo("##res3d", &res, kRes, 4)) set("video", "resolution_3d", std::to_string(res + 1));
+            row("Filtro de ampliação");
+            int filter = SDL_strcasecmp(config.get("video", "filter").c_str(), "linear") == 0;
+            const char* kFilters[] = {"Nítido (pixels)", "Suavizado"};
+            if (ImGui::Combo("##filter", &filter, kFilters, 2)) set("video", "filter", filter ? "linear" : "nearest");
+            end_rows();
+            break;
         }
-        ImGui::BeginDisabled(wide);
-        bool integer = config.get_bool("video", "integer_scale");
-        if (ImGui::Checkbox("Ampliar só em múltiplos inteiros", &integer)) set("video", "integer_scale", integer ? "true" : "false");
-        ImGui::EndDisabled();
+        case Page::Audio: {
+            page_title("Áudio", nullptr);
+            if (!begin_rows("audio")) break;
+            row("Volume");
+            int volume = config.get_int("audio", "volume", 0, 100);
+            if (ImGui::SliderInt("##volume", &volume, 0, 100, "%d%%")) set("audio", "volume", std::to_string(volume));
+            end_rows();
+            break;
+        }
+        case Page::Buttons:
+            page_title("Controles", "Os botões do DS.");
+            bindings_page("buttons", kButtons, std::size(kButtons));
+            break;
+        case Page::Shortcuts:
+            page_title("Atalhos", "Funções extras do port.");
+            bindings_page("shortcuts", kShortcuts, std::size(kShortcuts));
+            break;
+        case Page::Launcher:
+            page_title("Launcher", nullptr);
+            if (!begin_rows("launcher")) break;
+            checkbox_row("Procurar atualizações ao abrir", nullptr, "launcher", "check_updates");
+            checkbox_row("Fechar o launcher ao abrir o jogo", nullptr, "launcher", "close_on_play");
+            end_rows();
+            break;
     }
-    if (ImGui::CollapsingHeader("Áudio", ImGuiTreeNodeFlags_DefaultOpen)) {
-        int volume = config.get_int("audio", "volume", 0, 100);
-        if (ImGui::SliderInt("Volume", &volume, 0, 100, "%d%%")) set("audio", "volume", std::to_string(volume));
-    }
-    if (ImGui::CollapsingHeader("Controles", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::TextWrapped("\"Mudar\" troca pela próxima tecla ou botão que você apertar; \"+\" adiciona mais um; \"x\" desliga.");
-        bindings_table("buttons", kButtons, std::size(kButtons));
-        ImGui::Spacing();
-        ImGui::TextUnformatted("Atalhos");
-        bindings_table("shortcuts", kShortcuts, std::size(kShortcuts));
-    }
-    if (!in_game && ImGui::CollapsingHeader("Launcher")) {
-        bool check = config.get_bool("launcher", "check_updates");
-        if (ImGui::Checkbox("Procurar atualizações ao abrir", &check)) set("launcher", "check_updates", check ? "true" : "false");
-        bool close = config.get_bool("launcher", "close_on_play");
-        if (ImGui::Checkbox("Fechar o launcher quando o jogo abrir", &close)) set("launcher", "close_on_play", close ? "true" : "false");
-    }
-    ImGui::PopItemWidth();
+    ImGui::EndChild();
     ImGui::Separator();
     if (ImGui::Button("Restaurar o padrão")) ImGui::OpenPopup("Restaurar");
     if (confirm("Restaurar", "Voltar todas as configurações e controles ao padrão?", "Restaurar")) {
         config_load("", config);
         save();
     }
+    const char* status = g_status.empty() ? "Tudo é salvo na hora." : g_status.c_str();
     ImGui::SameLine();
-    ImGui::TextDisabled("%s", g_status.c_str());
+    if (ImGui::CalcTextSize(status).x <= ImGui::GetContentRegionAvail().x) {  // left out when it does not fit
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextDisabled("%s", status);
+    }
+    ImGui::EndGroup();
     capture_popup();
 }
 
 PauseAction pause_menu(Config& config, const std::string& path, const SettingsOptions& options) {
     PauseAction action = PauseAction::None;
     const ImGuiViewport* vp = ImGui::GetMainViewport();
+    // The menu takes about three quarters of the window's height: in a big window the text
+    // grows with it (from the next frame on), instead of a small box in the middle.
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.FontScaleMain = std::clamp(vp->WorkSize.y * 0.75f / 36 / style.FontSizeBase, 1.0f, 3.0f);
+    float em = ImGui::GetFontSize();
+    ImVec2 size(std::min(vp->WorkSize.x * 0.92f, em * 52), std::min(vp->WorkSize.y * 0.92f, em * 36));
     ImGui::SetNextWindowPos(vp->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-    ImGui::SetNextWindowSize(ImVec2(vp->WorkSize.x * 0.92f, vp->WorkSize.y * 0.92f), ImGuiCond_Always);
-    ImGui::Begin("Jogo pausado", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
-                                              ImGuiWindowFlags_NoSavedSettings);
-    if (ImGui::Button("Continuar")) action = PauseAction::Resume;
-    ImGui::SameLine();
-    if (ImGui::Button("Reiniciar o jogo")) ImGui::OpenPopup("Reiniciar");
-    ImGui::SameLine();
-    if (ImGui::Button("Sair do jogo")) ImGui::OpenPopup("Sair");
-    if (confirm("Reiniciar", "Voltar à tela de título? O progresso desde o último save será perdido.", "Reiniciar")) {
-        action = PauseAction::Restart;
-    }
-    if (confirm("Sair", "Fechar o jogo? O progresso desde o último save será perdido.", "Sair")) action = PauseAction::Quit;
-    ImGui::TextDisabled("As mudanças valem na hora e ficam salvas no boej.ini.");
-    ImGui::Separator();
-    ImGui::BeginChild("settings");
-    settings_panel(config, path, options);
-    ImGui::EndChild();
+    ImGui::SetNextWindowSize(size, ImGuiCond_Always);
+    ImGui::Begin("Jogo pausado", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings);
+
+    SettingsOptions menu = options;
+    menu.nav_top = [&] {
+        push_font_size(1.5f);
+        ImGui::TextUnformatted("Pausado");
+        ImGui::PopFont();
+        ImGui::Spacing();
+        push_accent();
+        if (ImGui::Button("Continuar", ImVec2(-FLT_MIN, ImGui::GetFrameHeight() * 1.3f))) action = PauseAction::Resume;
+        pop_accent();
+        ImGui::Spacing();
+        ImGui::Spacing();
+    };
+    menu.nav_bottom_height = 2;
+    menu.nav_bottom = [&] {
+        if (ImGui::Button("Reiniciar", ImVec2(-FLT_MIN, 0))) ImGui::OpenPopup("Reiniciar");
+        if (ImGui::Button("Sair do jogo", ImVec2(-FLT_MIN, 0))) ImGui::OpenPopup("Sair");
+        if (confirm("Reiniciar", "Voltar à tela de título? O progresso desde o último save será perdido.", "Reiniciar")) {
+            action = PauseAction::Restart;
+        }
+        if (confirm("Sair", "Fechar o jogo? O progresso desde o último save será perdido.", "Sair")) action = PauseAction::Quit;
+    };
+    settings_panel(config, path, menu);
     ImGui::End();
     return action;
 }

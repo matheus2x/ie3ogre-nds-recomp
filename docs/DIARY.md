@@ -1041,3 +1041,26 @@ Pedido: por padrão, uma janela 16:9 dimensionada pela altura do monitor, com as
 **Não testado:** clique do mouse nas duas cópias da tela de baixo, alternar o modo pelo menu de pausa e o build do Windows.
 
 **Ajuste pedido em seguida:** esticar a imagem como o melonDS, sem faixas pretas. O tamanho lógico passou a 2304×1296. As telas empilhadas ocupam exatamente o terço da esquerda (768×1296) e a tela de baixo ocupa os dois terços da direita (1536×1296). A proporção não é mais a do DS: os pixels ficam 12,5% mais altos. O toque continua mapeado pelas mesmas duas áreas.
+
+## 2026-10-23 — Configurações mais limpas (launcher e menu de pausa)
+
+Pedido: deixar as configurações menos poluídas e mais fáceis de alterar, tanto no launcher quanto no menu do Esc. As duas telas usam o mesmo painel (`runtime/ui/ui.cpp`), então a mudança vale para as duas.
+
+- **Uma seção por vez:** no lugar dos cabeçalhos recolhíveis empilhados, há uma lista lateral (Vídeo, Áudio, Controles, Atalhos e, só no launcher, Launcher), e a seção escolhida aparece ao lado. A seção escolhida continua a mesma entre aberturas do menu.
+- **Linhas rótulo → controle:** cada opção tem o nome à esquerda (com uma dica curta em cinza embaixo, quando ajuda) e o controle à direita, ocupando a coluna. Numa janela estreita (menos de 22 "em", como no modo empilhado de 512 px), o controle vai para baixo do rótulo.
+- **Vídeo:** a caixa "Tela larga" virou um seletor "Layout" (Tela larga 16:9 / Telas empilhadas). Tamanho da janela e "Só múltiplos inteiros" só aparecem no modo empilhado, porque não valem na tela larga (antes ficavam desabilitados na tela).
+- **Controles e atalhos:** cada ação tem um único botão que mostra o que está atribuído ("Right Shift / Backspace"). Antes eram três botõezinhos (Mudar, +, x) por célula. Um seletor Teclado | Controle no topo mostra uma coluna por vez. Ao clicar, a janela de captura mostra a atribuição atual, a opção "Manter as atuais e adicionar esta" (o antigo "+") e os botões "Remover todas" (o antigo "x") e "Cancelar (Esc)".
+- **Menu de pausa:** sem barra de título. A lista lateral começa com "Pausado" e um botão "Continuar" em destaque, e termina com "Reiniciar" e "Sair do jogo" presos no fim (ambos ainda pedem confirmação). O tamanho é limitado a 52×36 "em", e a fonte cresce com a janela (`style.FontScaleMain`, entre 1× e 3×) para o menu ocupar uns 3/4 da altura. Antes, na janela 16:9 grande, o texto ficava minúsculo.
+- **Estilo:** espaçamentos maiores, cantos arredondados, cores neutras e um azul de destaque (botões principais, item selecionado, marcações). Isso vale também para as outras abas do launcher.
+- O rodapé tem "Restaurar o padrão" e o aviso "Tudo é salvo na hora." (ou "Salvo no boej.ini." depois de uma mudança), que some quando não cabe.
+- `SettingsOptions` ganhou `nav_top` / `nav_bottom` / `nav_bottom_height`, por onde o menu de pausa põe as suas ações na lista lateral. O `host.cpp` agora preenche as opções campo a campo, para não gerar `-Wmissing-field-initializers`.
+
+**Verificação** (capturas com `IE3_LAUNCHER_SHOT` e com ganchos temporários no jogo, já removidos, que abriam o menu no quadro 300 e a janela de captura de tecla):
+- Launcher em 820×640: as seções Vídeo, Controles e Atalhos estão legíveis, sem cortes.
+- Menu de pausa na tela larga (2176×1224) e no modo empilhado (512×768): a fonte foi escalada na tela larga, e no modo empilhado as linhas ficam uma embaixo da outra.
+- A janela de captura aparece sobre a seção Controles.
+- O build não gera avisos, e os testes Python passam.
+
+**Não testado:** cliques e navegação por controle de verdade (trocar uma tecla de fato, a caixa "adicionar", "Remover todas") e o build do Windows.
+
+**Pasta de teste do Windows** (`C:\Games\ie3-teste\ie3ogre-recomp`): atualizada com a release 0.1.2 gerada a partir deste código. Troquei o `sdk/`, o launcher e o `SDL3.dll` e mantive o `boej.ini`, o `boej.pak`, o `cache/` e o `toolchain/`. O `ie3-launcher.exe --prepare` recompilou o jogo no Windows (180 arquivos em 37 s; `build.stamp` 0.1.2).

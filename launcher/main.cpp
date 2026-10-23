@@ -326,9 +326,7 @@ int main(int argc, char** argv) {
                 ImGui::EndTabItem();
             }
             if (ImGui::BeginTabItem("Configurações", nullptr, flags(1))) {
-                ImGui::BeginChild("settings");
                 settings_ui();
-                ImGui::EndChild();
                 ImGui::EndTabItem();
             }
             if (ImGui::BeginTabItem("Mods", nullptr, flags(2))) {

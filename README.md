@@ -159,8 +159,8 @@ Também dá para passar o caminho de um `boej.pak` ou de um `.nds` como argument
 | Start / Select | Enter / Shift direito ou Backspace | Start / Back |
 | Tela de toque | botão esquerdo do mouse na tela de baixo | — |
 
-**Esc** (ou o botão "guide" do controle) pausa o jogo e abre o menu: Continuar, Reiniciar o jogo, Sair e as mesmas
-configurações do launcher (vídeo, áudio e controles). As mudanças valem na hora, sem reiniciar, e ficam salvas no
+**Esc** (ou o botão "guide" do controle) pausa o jogo e abre o menu: Continuar, Reiniciar, Sair e as mesmas
+configurações do launcher (vídeo, áudio, controles e atalhos, uma seção por vez). As mudanças valem na hora, sem reiniciar, e ficam salvas no
 `boej.ini`. F12 salva a tela em `boej-<quadro>.bmp` e F11 alterna a tela cheia.
 
 Atalhos para testar mais rápido (o título da janela mostra quais estão ligados):

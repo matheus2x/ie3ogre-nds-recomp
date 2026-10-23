@@ -21,9 +21,15 @@ void end_frame(SDL_Renderer* renderer);  // draws the UI over what is already re
 struct SettingsOptions {
     bool in_game = false;              // the pause menu: no launcher-only options
     std::function<void()> on_change;   // after each change is saved
+    // Extra items in the side list: above the sections, and pinned to its bottom
+    // (nav_bottom_height rows tall).
+    std::function<void()> nav_top;
+    std::function<void()> nav_bottom;
+    float nav_bottom_height = 0;
 };
 
-// The settings sections (video, audio, controls...). Every change is saved to `path` at
+// The settings: a side list of sections (video, audio, controls...) and the chosen one
+// beside it, filling the space left in the current window. Every change is saved to `path` at
 // once and then reported through on_change.
 void settings_panel(Config& config, const std::string& path, const SettingsOptions& options);
 // Waiting for a key or gamepad input to bind: those events go to capture_event instead.
