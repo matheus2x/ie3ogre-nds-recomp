@@ -58,6 +58,9 @@ struct Host {
     uint64_t frame = 0;
     uint64_t deadline = 0;
     uint64_t fps_start = 0, fps_frames = 0;
+    // Frames whose work (emulation, rendering, presenting) took longer than a DS frame.
+    uint64_t work_start = 0, worst_ns = 0, worst_frame = 0;
+    uint32_t slow_frames = 0;
     std::set<uint64_t> screenshot_frames;
     std::string screenshot_path = "boej-%d.bmp";  // %d = frame number
     uint64_t f12_frame = 0, exit_frame = 0;
@@ -355,6 +358,13 @@ void pump_events() {
 
 void pace() {
     uint64_t now = SDL_GetTicksNS();
+    if (g_host.work_start && g_host.throttle && !fast_forward() && now - g_host.work_start > kFrameNs) {
+        g_host.slow_frames++;
+        if (now - g_host.work_start > g_host.worst_ns) {
+            g_host.worst_ns = now - g_host.work_start;
+            g_host.worst_frame = g_host.frame;
+        }
+    }
     if (!g_host.throttle || fast_forward()) {
         g_host.deadline = now;
     } else {
@@ -372,7 +382,15 @@ void pace() {
         SDL_SetWindowTitle(g_host.window, title);
         g_host.fps_start = now;
         g_host.fps_frames = 0;
+        // Late frames make the sound run dry (a stutter); the log says where it happened.
+        if (g_host.slow_frames) {
+            NTR_LOG("[perf] %u frames took longer than 16.7 ms in the last second (worst %.1f ms, frame %llu)\n",
+                    g_host.slow_frames, g_host.worst_ns / 1e6, (unsigned long long)g_host.worst_frame);
+            g_host.slow_frames = 0;
+            g_host.worst_ns = 0;
+        }
     }
+    g_host.work_start = SDL_GetTicksNS();
 }
 
 }  // namespace

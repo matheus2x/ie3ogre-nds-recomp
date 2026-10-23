@@ -19,9 +19,13 @@
 // engine A uses the large frame (gpu3d_hi_row_*).
 #include <algorithm>
 #include <cmath>
+#include <condition_variable>
 #include <cstring>
 #include <cstdlib>
+#include <functional>
 #include <map>
+#include <mutex>
+#include <thread>
 #include <vector>
 
 #include "runtime.h"
@@ -748,9 +752,13 @@ struct Texel {
     uint8_t r, g, b, a;  // 5-bit
 };
 
-uint16_t tex16(uint32_t off) { return vram_view(VramArea::Texture).read16(off); }
-uint8_t tex8(uint32_t off) { return vram_view(VramArea::Texture).read8(off); }
-uint16_t pal16(uint32_t off) { return vram_view(VramArea::TexPalette).read16(off); }
+// Looked up once per frame: the views do not change while a frame renders.
+const VramView* g_tex_view = nullptr;
+const VramView* g_pal_view = nullptr;
+
+uint16_t tex16(uint32_t off) { return g_tex_view->read16(off); }
+uint8_t tex8(uint32_t off) { return g_tex_view->read8(off); }
+uint16_t pal16(uint32_t off) { return g_pal_view->read16(off); }
 
 Texel make_texel(uint16_t c, uint8_t a) { return {uint8_t(c & 31), uint8_t((c >> 5) & 31), uint8_t((c >> 10) & 31), a}; }
 
@@ -838,10 +846,9 @@ Texel sample(const Polygon& p, float fs, float ft) {
 inline uint32_t to6(uint32_t c5) { return c5 ? c5 * 2 + 1 : 0; }
 
 // Combines vertex color and texel; returns 5-bit components and alpha.
-Texel shade(const Polygon& p, const float* vcol, float s, float t, uint32_t poly_alpha) {
+Texel shade(const Polygon& p, const float* vcol, float s, float t, uint32_t poly_alpha, uint32_t disp3d) {
     uint32_t mode = (p.attr >> 4) & 3;
     uint32_t vr = uint32_t(vcol[0]), vg = uint32_t(vcol[1]), vb = uint32_t(vcol[2]);
-    uint32_t disp3d = io16(0x60);
     bool textured = ((p.tex >> 26) & 7) != 0 && (disp3d & 1);
     if (mode == 2) {  // toon / highlight: the vertex red component indexes the table
         uint16_t toon = io16(0x380 + (std::min(vr, 31u)) * 2);
@@ -894,7 +901,9 @@ uint32_t depth_value(const Polygon& p, float z, float w) {
     return uint32_t(std::clamp(d, 0.0f, float(0xFFFFFF)));
 }
 
-void draw_polygon(const Polygon& p) {
+// Draws the rows y with y % bands == band (bands render in parallel; each one draws every
+// polygon in list order, so the result does not depend on how many there are).
+void draw_polygon(const Polygon& p, int band, int bands) {
     uint32_t attr = p.attr;
     uint32_t poly_alpha = (attr >> 16) & 31;
     bool wireframe = poly_alpha == 0;  // only the outline is drawn, opaque
@@ -940,9 +949,25 @@ void draw_polygon(const Polygon& p) {
             sw[i] = v[i]->s * inv_w[i];
             tw[i] = v[i]->t * inv_w[i];
         }
-        for (int y = y0; y <= y1; y++) {
+        int first_row = y0 + ((band - y0 % bands) % bands + bands) % bands;
+        for (int y = first_row; y <= y1; y += bands) {
             float py = y + 0.5f;
-            for (int x = x0; x <= x1; x++) {
+            // Span of pixel centers inside all three edges, widened by a pixel on each side:
+            // the exact test below still decides every pixel.
+            double lo = x0, hi = x1 + 1;
+            for (int i = 0; i < 3; i++) {
+                int a = (i + 1) % 3, c = (i + 2) % 3;
+                // e(px) = k - d * px must have the sign of area.
+                double d = double(sy[c] - sy[a]) * (area > 0 ? 1 : -1);
+                double k = (double(sx[c] - sx[a]) * (py - sy[a]) + double(sy[c] - sy[a]) * sx[a]) * (area > 0 ? 1 : -1);
+                if (d > 0) hi = std::min(hi, k / d);
+                else if (d < 0) lo = std::max(lo, k / d);
+                else if (k < 0) lo = hi + 1;
+            }
+            if (lo > hi + 1) continue;
+            int xa = std::max(x0, int(std::floor(lo - 0.5)) - 1);
+            int xb = std::min(x1, int(std::ceil(hi - 0.5)) + 1);
+            for (int x = xa; x <= xb; x++) {
                 float px = x + 0.5f;
                 float b[3];
                 bool inside = true;
@@ -982,7 +1007,7 @@ void draw_polygon(const Polygon& p) {
                 for (int c = 0; c < 3; c++) col[c] = (b[0] * cw[0][c] + b[1] * cw[1][c] + b[2] * cw[2][c]) * w;
                 float s = (b[0] * sw[0] + b[1] * sw[1] + b[2] * sw[2]) * w;
                 float t = (b[0] * tw[0] + b[1] * tw[1] + b[2] * tw[2]) * w;
-                Texel out = shade(p, col, s, t, poly_alpha);
+                Texel out = shade(p, col, s, t, poly_alpha, disp3d);
                 if (out.a == 0) continue;
                 if (alpha_test && out.a <= alpha_ref) continue;
                 uint16_t color = pack(out);
@@ -1016,31 +1041,35 @@ void draw_polygon(const Polygon& p) {
     }
 }
 
-void post_process() {
+// Edge marking, anti-aliasing and fog for the rows of one band. Each pass changes only
+// the pixel it looks at and reads the attribute buffer, so rows are independent.
+void post_process(int band, int bands) {
     uint32_t disp3d = io16(0x60);
-    if (disp3d & 0x20) {  // edge marking: opaque pixels next to another ID that is farther away
-        std::vector<uint16_t> out = g_back.color;
-        for (int y = 0; y < H; y++) {
+    static const int kN[4][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+    uint32_t fog_color = io32(0x358);
+    uint32_t fog_alpha = (fog_color >> 16) & 31;
+    uint32_t offset = io16(0x35C) & 0x7FFF;
+    uint32_t shift = (disp3d >> 8) & 15;
+    bool alpha_only = disp3d & 0x40;
+    const uint8_t* fog_table = memory().io.data() + 0x360;
+    for (int y = band; y < H; y += bands) {
+        if (disp3d & 0x20) {  // edge marking: opaque pixels next to another ID that is farther away
             for (int x = 0; x < W; x++) {
                 const Pixel& p = g_attr[y * W + x];
                 if (!p.edge) continue;
                 // Neighbors one native pixel away keep the outline as thick as on hardware.
-                static const int kN[4][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
                 for (const auto& n : kN) {
                     int nx = x + n[0] * g_scale, ny = y + n[1] * g_scale;
                     if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
                     const Pixel& q = g_attr[ny * W + nx];
                     if (q.id != p.id && p.depth < q.depth) {
-                        out[y * W + x] = io16(0x330 + (p.id >> 3) * 2) & 0x7FFF;
+                        g_back.color[y * W + x] = io16(0x330 + (p.id >> 3) * 2) & 0x7FFF;
                         break;
                     }
                 }
             }
         }
-        g_back.color = std::move(out);
-    }
-    if (disp3d & 0x10) {  // anti-aliasing: blend partly covered silhouette pixels
-        for (int y = 0; y < H; y++) {
+        if (disp3d & 0x10) {  // anti-aliasing: blend partly covered silhouette pixels
             for (int x = 0; x < W; x++) {
                 int at = y * W + x;
                 const Pixel& p = g_attr[at];
@@ -1048,7 +1077,6 @@ void post_process() {
                 // Only where the polygon meets something else: the sides shared by
                 // polygons of one model stay solid.
                 bool silhouette = false;
-                static const int kN[4][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
                 for (const auto& n : kN) {
                     int nx = x + n[0], ny = y + n[1];
                     if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
@@ -1063,42 +1091,99 @@ void post_process() {
                 }
             }
         }
-    }
-    if (disp3d & 0x80) {  // fog
-        uint32_t fog_color = io32(0x358);
-        uint32_t fog_alpha = (fog_color >> 16) & 31;
-        uint32_t offset = io16(0x35C) & 0x7FFF;
-        uint32_t shift = (disp3d >> 8) & 15;
-        bool alpha_only = disp3d & 0x40;
-        for (int i = 0; i < W * H; i++) {
-            const Pixel& p = g_attr[i];
-            if (!p.fog) continue;
-            uint32_t d = p.depth >> 9;
-            uint32_t density;
-            if (d < offset) {
-                density = memory().io[0x360] & 0x7F;
-            } else {
-                uint32_t pos = (d - offset) << shift;
-                uint32_t idx = pos >> 10, frac = pos & 0x3FF;
-                if (idx >= 31) {
-                    density = memory().io[0x360 + 31] & 0x7F;
+        if (disp3d & 0x80) {  // fog
+            for (int i = y * W; i < (y + 1) * W; i++) {
+                const Pixel& p = g_attr[i];
+                if (!p.fog) continue;
+                uint32_t d = p.depth >> 9;
+                uint32_t density;
+                if (d < offset) {
+                    density = fog_table[0] & 0x7F;
                 } else {
-                    uint32_t a = memory().io[0x360 + idx] & 0x7F, b = memory().io[0x360 + idx + 1] & 0x7F;
-                    density = (a * (0x400 - frac) + b * frac) >> 10;
+                    uint32_t pos = (d - offset) << shift;
+                    uint32_t idx = pos >> 10, frac = pos & 0x3FF;
+                    if (idx >= 31) {
+                        density = fog_table[31] & 0x7F;
+                    } else {
+                        uint32_t a = fog_table[idx] & 0x7F, b = fog_table[idx + 1] & 0x7F;
+                        density = (a * (0x400 - frac) + b * frac) >> 10;
+                    }
                 }
-            }
-            if (density == 127) density = 128;
-            if (!alpha_only) {
-                uint16_t c = g_back.color[i], out = 0;
-                for (int sh = 0; sh < 15; sh += 5) {
-                    uint32_t pc = (c >> sh) & 31, fc = (fog_color >> sh) & 31;
-                    out |= uint16_t(((fc * density + pc * (128 - density)) >> 7) << sh);
+                if (density == 127) density = 128;
+                if (!alpha_only) {
+                    uint16_t c = g_back.color[i], out = 0;
+                    for (int sh = 0; sh < 15; sh += 5) {
+                        uint32_t pc = (c >> sh) & 31, fc = (fog_color >> sh) & 31;
+                        out |= uint16_t(((fc * density + pc * (128 - density)) >> 7) << sh);
+                    }
+                    g_back.color[i] = out;
                 }
-                g_back.color[i] = out;
+                g_back.alpha[i] = uint8_t((fog_alpha * density + g_back.alpha[i] * (128 - density)) >> 7);
             }
-            g_back.alpha[i] = uint8_t((fog_alpha * density + g_back.alpha[i] * (128 - density)) >> 7);
         }
     }
+}
+
+// Worker threads for the rendering bands. run(f) calls f(band) for every band, the
+// calling thread doing band 0, and returns when all are done.
+class BandPool {
+public:
+    explicit BandPool(int bands) : bands_(bands) {
+        // Detached and never destroyed: the pool lives until the process exits.
+        for (int i = 1; i < bands_; i++) std::thread([this, i] { work(i); }).detach();
+    }
+    int bands() const { return bands_; }
+    template <class F>
+    void run(F f) {
+        if (bands_ == 1) {
+            f(0);
+            return;
+        }
+        {
+            std::lock_guard lock(mutex_);
+            job_ = f;
+            pending_ = bands_ - 1;
+            generation_++;
+        }
+        start_.notify_all();
+        f(0);
+        std::unique_lock lock(mutex_);
+        done_.wait(lock, [this] { return pending_ == 0; });
+    }
+
+private:
+    void work(int band) {
+        uint64_t seen = 0;
+        for (;;) {
+            std::function<void(int)> job;
+            {
+                std::unique_lock lock(mutex_);
+                start_.wait(lock, [&] { return generation_ != seen; });
+                seen = generation_;
+                job = job_;
+            }
+            job(band);
+            std::lock_guard lock(mutex_);
+            if (--pending_ == 0) done_.notify_one();
+        }
+    }
+
+    int bands_;
+    std::mutex mutex_;
+    std::condition_variable start_, done_;
+    std::function<void(int)> job_;
+    uint64_t generation_ = 0;
+    int pending_ = 0;
+};
+
+// NTR_3D_THREADS overrides the thread count (1 = render on the emulation thread only).
+BandPool& band_pool() {
+    static BandPool* pool = new BandPool([] {
+        int n = int(std::thread::hardware_concurrency());
+        if (const char* env = std::getenv("NTR_3D_THREADS")) n = std::atoi(env);
+        return std::clamp(n, 1, 8);
+    }());
+    return *pool;
 }
 
 void render_frame() {
@@ -1115,8 +1200,14 @@ void render_frame() {
     std::fill(g_attr.begin(), g_attr.end(), cleared);
     std::fill(g_back.color.begin(), g_back.color.end(), uint16_t(clear & 0x7FFF));
     std::fill(g_back.alpha.begin(), g_back.alpha.end(), uint8_t((clear >> 16) & 31));
-    for (const Polygon& p : g.polys) draw_polygon(p);
-    post_process();
+    g_tex_view = &vram_view(VramArea::Texture);
+    g_pal_view = &vram_view(VramArea::TexPalette);
+    BandPool& pool = band_pool();
+    pool.run([&](int band) {
+        for (const Polygon& p : g.polys) draw_polygon(p, band, pool.bands());
+    });
+    // Edge marking and anti-aliasing look at neighboring rows: all bands must be done.
+    pool.run([&](int band) { post_process(band, pool.bands()); });
 }
 
 }  // namespace

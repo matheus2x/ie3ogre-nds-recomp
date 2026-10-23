@@ -65,7 +65,7 @@ struct VramView {
     uint32_t size = 0;  // bytes the area spans (accesses wrap at this size)
 
     uint8_t* ptr(uint32_t off) const {
-        off %= size;
+        if (off >= size) off %= size;  // the division is rare; this runs per texel
         uint8_t* g = granule[off >> 14];
         return g ? g + (off & 0x3FFF) : nullptr;
     }

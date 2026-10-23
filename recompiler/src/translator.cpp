@@ -67,26 +67,48 @@ std::string Translator::unhandled(uint32_t addr, const std::string& what) {
 
 int Translator::switch_case_count(uint32_t addr, uint32_t reg) const {
     // The upper bound comes from "cmp rN, #max" that guards the dispatch: either the
-    // dispatch itself is conditional on LS/LE, or the cmp is followed by "bhi/bgt default".
-    // Instructions between the cmp and a conditional dispatch must leave the flags and
-    // rN alone ("cmp r1, #9; mov r5, #1; addls pc, pc, r1, lsl #2").
+    // dispatch itself is conditional on LS/LE, or an exit on HI/GT follows the cmp
+    // ("bhi default", or a return: "cmp r0, #10; ldmhi sp!, {..., pc}; add pc, ...").
+    // The flags must survive from the cmp to whichever instruction tests them, and
+    // nothing before the dispatch may write rN ("cmp r1, #9; mov r5, #1; addls pc, ...").
+    // Signed tables have a second cmp for the lower bound ("cmp r1, #9; bgt default;
+    // cmp r1, #0; addge pc, ...").
     uint32_t dispatch_cond = mod_.read32(addr).value_or(0) >> 28;
-    bool flags_kept = true;
+    auto is_cmp = [&](uint32_t r) { return (r & 0x0FF0F000) == 0x03500000 && ((r >> 16) & 0xF) == reg; };
+    auto is_exit_hi = [](uint32_t r) {
+        uint32_t cond = r >> 28;
+        bool branch = (r & 0x0F000000) == 0x0A000000;
+        bool pop_pc = (r & 0x0E108000) == 0x08108000;
+        return (cond == 0x8 || cond == 0xC) && (branch || pop_pc);
+    };
+    auto writes_reg = [&](uint32_t r) {
+        bool data_processing = (r & 0x0C000000) == 0 && (r & 0x0E000090) != 0x00000090;
+        uint32_t op = (r >> 21) & 0xF;
+        bool test = op >= 8 && op <= 11;
+        bool load = (r & 0x0C100000) == 0x04100000;
+        return ((data_processing && !test) || load) && ((r >> 12) & 0xF) == reg;
+    };
+    auto keeps_flags = [](uint32_t r) {
+        bool data_processing = (r & 0x0C000000) == 0 && (r & 0x0E000090) != 0x00000090;
+        return data_processing && !(r & 0x00100000) && (r >> 28) == 0xE;
+    };
     for (uint32_t back = 4; back <= 24; back += 4) {
         auto raw = mod_.read32(addr - back);
         if (!raw) break;
-        uint32_t r = *raw;
-        if ((r & 0x0FF0F000) != 0x03500000 || ((r >> 16) & 0xF) != reg) {
-            bool data_processing = (r & 0x0C000000) == 0 && (r & 0x0E000090) != 0x00000090;
-            bool plain_mov = data_processing && !(r & 0x00100000) && ((r >> 12) & 0xF) != reg && (r >> 28) == 0xE;
-            if (!plain_mov) flags_kept = false;
-            continue;
+        if (!is_cmp(*raw)) continue;
+        bool flags_intact = true, guarded = false, valid = true;
+        for (uint32_t a = addr - back + 4; a < addr; a += 4) {
+            uint32_t r = mod_.read32(a).value_or(0);
+            if (is_exit_hi(r)) {
+                guarded = guarded || flags_intact;
+                continue;
+            }
+            if (writes_reg(r)) valid = false;
+            if (!keeps_flags(r)) flags_intact = false;
         }
-        int imm = int(std::rotr(r & 0xFF, ((r >> 8) & 0xF) * 2));
-        if (flags_kept && (dispatch_cond == 0x9 || dispatch_cond == 0xD)) return imm;
-        uint32_t next = mod_.read32(addr - back + 4).value_or(0);
-        uint32_t cond = next >> 28;
-        if ((next & 0x0F000000) == 0x0A000000 && (cond == 0x8 || cond == 0xC)) return imm;
+        if (valid && (guarded || (flags_intact && (dispatch_cond == 0x9 || dispatch_cond == 0xD)))) {
+            return int(std::rotr(*raw & 0xFF, ((*raw >> 8) & 0xF) * 2));
+        }
     }
     // Otherwise count the branch table itself (unconditional B entries after the default).
     int n = 0;
@@ -158,7 +180,7 @@ Translator::Flow Translator::arm_flow(uint32_t addr, uint32_t raw) {
     }
     if ((raw & 0x0C100000) == 0x04100000 && ((raw >> 12) & 0xF) == 15) {  // LDR pc
         // ldr pc, [pc, rM, lsl #2]  -> table of absolute addresses after the default slot
-        if ((raw & 0x0FFF0FF0) == 0x079FF100) {
+        if ((raw & 0x0FFFFFF0) == 0x079FF100) {
             int n = switch_case_count(addr, raw & 0xF);
             if (n >= 0) {
                 std::vector<uint32_t> targets;

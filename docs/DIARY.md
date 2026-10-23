@@ -774,3 +774,34 @@ Também há uma função do jogo em main (0x0203E004, chamada de 0x0204655C) que
 - A escala muda só no `render_frame`. O quadro da frente mantém o tamanho até a troca (`g_front_scale`), então ligar ou desligar o avanço não apaga a imagem.
 - Teste com um gancho temporário (já removido) que ligava e desligava o avanço a cada 500 quadros: as capturas mudam de 512×768 para 256×384 e voltam, sem quadro em branco.
 - No avanço, o custo volta ao do modo nativo (cerca de 3,2 ms por quadro, contra 4,0 ms a 2×).
+
+## 2026-10-22 — Crash na tela de vitória, FPS baixo e som engasgando em cenas 3D pesadas
+
+O usuário jogou do começo até a luta contra os que importunavam o Toramaru, apertou F8 nos pontos em que o som engasgava (quadros 16691, 20252 e 34869) e mandou o log e a gravação. A repetição bate byte a byte com as três capturas do F8.
+
+**Crash no quadro 35591** (tela バトル勝利, ov083): `indirect call to unknown address` em 0x0211AD48.
+- Era outra forma de `switch`: `cmp r0,#0xa; ldmiahi sp!,{…,pc}; mov r4,r8; add pc,pc,r0,lsl #2`. O limite vem de um retorno condicional (não de um `bhi`), o despacho é incondicional, e as primeiras entradas da tabela também são retornos. Sem o limite, o recompilador não reconheceu a tabela, e o caso 8 virou chamada para um endereço no meio da função.
+- `switch_case_count` reescrito: para cada `cmp rN,#max` candidato, olha para a frente até o despacho. Ele vale se o despacho for LS/LE com as flags intactas, ou se houver uma saída HI/GT (desvio ou `ldm` com pc) logo depois dele com as flags intactas. Nada no caminho pode escrever em rN.
+- A forma com sinal (`cmp r1,#9; bgt; cmp r1,#0; addge pc`) continua funcionando: a primeira versão parava no `cmp #0` e encolhia 4 tabelas; foi corrigida antes de seguir. No código gerado, só a tabela da ov083 mudou (casos 0–10).
+- O teste de `ldr pc,[pc,rN,lsl #2]` usava a máscara `0x0FFF0FF0`, que nunca casava com `0x079FF100` (o compilador avisava). Agora é `0x0FFFFFF0`. O jogo não usa essa instrução, então nada mudou.
+- Agora a tela de vitória mostra os pontos, os "level up" e o item (赤いコイン).
+
+**FPS baixo e som engasgando.** Medição por quadro na repetição (sem janela, a 2×): média de 12,3 ms, 14.031 quadros acima de 16,7 ms e picos de 53 ms perto das marcas (mapa 3D do capítulo, flashback com imagens grandes translúcidas, supertécnica Dragon Crash). Com o `perf`, 78% do tempo estava no rasterizador (`draw_polygon` 49%, `sample` 29%) e 13% na recomposição a 2×. Quando um quadro passa de 16,7 ms o jogo atrasa e o buffer de som esvazia: o engasgo vinha daí.
+
+Otimizações, mantendo a imagem idêntica:
+- **Faixa por linha:** cada triângulo calcula, em cada linha, o intervalo de x onde os centros podem estar dentro (alargado em 1 pixel de cada lado). O teste exato por pixel continua o mesmo, por isso o resultado não muda.
+- **Estado por quadro:** as views de textura e paleta são buscadas uma vez por quadro (antes, uma chamada por texel), o DISP3DCNT é lido uma vez por polígono e não mais por pixel, e `VramView::ptr` só divide quando o offset passa do tamanho.
+- **Faixas em paralelo:** um pool de até 8 threads (`NTR_3D_THREADS`). A thread k desenha as linhas y com y % N == k, passando por todos os polígonos na ordem da lista, então a imagem é a mesma com qualquer N. O pós-processamento (marcação de borda, AA, névoa) roda numa segunda passada, depois que todas as faixas terminam, porque lê as linhas vizinhas. Ele agora escreve no lugar, já que lê só o buffer de atributos.
+- O pool nunca é destruído e as threads ficam desanexadas: com o pool estático, a saída do programa travava ao destruí-lo com as threads esperando.
+
+Resultado (sessão inteira, 36.000 quadros a 2×):
+
+| | antes | 1 thread | multi-thread |
+|---|---|---|---|
+| média por quadro | 12,3 ms | 10,6 ms | 6,5 ms |
+| quadros acima de 16,7 ms | 14.031 | 7.807 | 6 |
+| perto das marcas (média / pico) | 23 / 53 ms | 19 / 42 ms | 7,7 / 14 ms |
+
+- Imagens de referência (8 quadros pesados, a 1× e a 2×) **idênticas byte a byte** antes e depois. O roteiro da história continua idêntico no quadro 14000.
+
+**Diagnóstico novo:** com janela, cada segundo que tiver quadros acima de 16,7 ms (fora do avanço rápido) gera `[perf] N frames took longer than 16.7 ms in the last second (worst X ms, frame F)` no `boej.log`. Testado no WSLg a 4× com uma thread só.

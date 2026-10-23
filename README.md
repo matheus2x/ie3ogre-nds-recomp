@@ -161,7 +161,7 @@ O jogo grava, ao lado do executável:
 
 | Arquivo | Conteúdo |
 |---|---|
-| `boej.log` | tudo o que aparece no terminal, com o número do quadro em cada linha, mais os arquivos que o jogo abre. Falhas e travamentos (nenhum quadro por 5 s) entram no log com o estado da máquina. |
+| `boej.log` | tudo o que aparece no terminal, com o número do quadro em cada linha, mais os arquivos que o jogo abre. Falhas e travamentos (nenhum quadro por 5 s) entram no log com o estado da máquina, e cada segundo com quadros acima de 16,7 ms (queda de FPS, som engasgando) gera uma linha `[perf]`. |
 | `boej-replay.txt` + `boej-replay.sav` | a sessão inteira (botões e toque por quadro, a hora inicial do relógio e o save de onde ela partiu). Com eles a sessão é repetida exatamente igual: `NTR_REPLAY=boej-replay.txt NTR_SAVE=<cópia do boej-replay.sav>`. |
 
 A sessão anterior fica em `boej.old.log` e `boej-replay.old.*`, então um problema não se perde ao abrir o jogo de
@@ -187,7 +187,7 @@ Variáveis de ambiente:
 
 - **Save:** `NTR_SAVE` (padrão: `saves/boej.sav`).
 - **Janela e ritmo:** `NTR_SCALE` (escala inicial, padrão 2); `NTR_FAST` (sem limite de 60 Hz); `NTR_HEADLESS` (sem janela e sem limite).
-- **Resolução do 3D:** `NTR_3D_SCALE=1..4` (padrão 2 com janela, 1 sem janela). Só o 3D ganha resolução, e as camadas 2D são esticadas. O jogo e a captura de tela do DS continuam vendo a imagem nativa. As capturas (F12, F8, `NTR_SCREENSHOT_FRAMES`) saem no tamanho mostrado na janela.
+- **Resolução do 3D:** `NTR_3D_SCALE=1..4` (padrão 2 com janela, 1 sem janela). Só o 3D ganha resolução, e as camadas 2D são esticadas. O jogo e a captura de tela do DS continuam vendo a imagem nativa. As capturas (F12, F8, `NTR_SCREENSHOT_FRAMES`) saem no tamanho mostrado na janela. O 3D usa até 8 núcleos (`NTR_3D_THREADS=1` desliga), e a imagem é a mesma com qualquer número.
 - **Áudio:** `NTR_MUTE` (sem dispositivo de áudio); `NTR_WAV=arquivo.wav` grava a saída de som (funciona também sem janela).
 - **Relógio:** o RTC usa a hora local do PC; `NTR_RTC="2010-07-01 12:00:00"` parte de um momento fixo e avança com o tempo emulado (testes reproduzíveis).
 - **Testes automáticos:**
