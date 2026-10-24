@@ -469,10 +469,21 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
                              "integer_scale");
             }
             checkbox_row(in_game ? "Tela cheia" : "Abrir em tela cheia", "O atalho de tela cheia também alterna.", "video", "fullscreen");
-            row("Resolução do 3D", "Mais alta fica mais nítida e pesa mais.");
-            int res = config.get_int("video", "resolution_3d", 1, 4) - 1;
-            const char* kRes[] = {"1× (nativa)", "2×", "3×", "4×"};
-            if (ImGui::Combo("##res3d", &res, kRes, 4)) set("video", "resolution_3d", std::to_string(res + 1));
+            row("Resolução do 3D",
+                "Mais alta fica mais nítida e pesa mais. Acima de 4× precisa de um processador com vários núcleos.");
+            int res = config.get_int("video", "resolution_3d", 1, 10);
+            auto res_label = [](int n) {
+                char label[32];
+                if (n == 1) std::snprintf(label, sizeof label, "1× (nativa)");
+                else std::snprintf(label, sizeof label, "%d× (%d×%d)", n, 256 * n, 192 * n);
+                return std::string(label);
+            };
+            if (ImGui::BeginCombo("##res3d", res_label(res).c_str())) {
+                for (int n = 1; n <= 10; n++) {
+                    if (ImGui::Selectable(res_label(n).c_str(), n == res)) set("video", "resolution_3d", std::to_string(n));
+                }
+                ImGui::EndCombo();
+            }
             row("Filtro de ampliação");
             int filter = SDL_strcasecmp(config.get("video", "filter").c_str(), "linear") == 0;
             const char* kFilters[] = {"Nítido (pixels)", "Suavizado"};

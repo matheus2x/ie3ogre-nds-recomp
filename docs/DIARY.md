@@ -1064,3 +1064,59 @@ Pedido: deixar as configurações menos poluídas e mais fáceis de alterar, tan
 **Não testado:** cliques e navegação por controle de verdade (trocar uma tecla de fato, a caixa "adicionar", "Remover todas") e o build do Windows.
 
 **Pasta de teste do Windows** (`C:\Games\ie3-teste\ie3ogre-recomp`): atualizada com a release 0.1.2 gerada a partir deste código. Troquei o `sdk/`, o launcher e o `SDL3.dll` e mantive o `boej.ini`, o `boej.pak`, o `cache/` e o `toolchain/`. O `ie3-launcher.exe --prepare` recompilou o jogo no Windows (180 arquivos em 37 s; `build.stamp` 0.1.2).
+
+## 2026-10-23 — Resolução do 3D: 4× sem travar e opções até 10×
+
+Pedido: a 4× o FPS caía abaixo de 60 e o som engasgava. O usuário também pediu resoluções maiores, até 10× como no melonDS. Decisão (perguntada ao usuário): continuar com o renderizador em software, otimizar e abrir 1× a 10×. O melonDS só passa de 1× com o renderizador OpenGL.
+
+**Medição antes** (roteiro da história, 14000 quadros, sem janela, Release): 3,0 ms/quadro a 1× e 10,2 ms a 4×. Com o `perf` a 4×, a thread principal ficava 100% ocupada e as threads de rasterização só ~10%. A recomposição 2D em alta resolução (`compose` 25%, `output_hi` 16%, `render_engine_line` 6%) rodava inteira na thread principal, uns 8 dos 10 ms. O som engasga porque cada quadro acima de 16,7 ms esvazia a fila.
+
+**Mudanças:**
+- **Imagem grande do motor 2D no VBlank, em paralelo** (gpu2d.cpp):
+  - Cada linha do motor A com 3D guarda as duas camadas 2D mais altas de cada pixel nativo, sem o BG0 (`HiLine`/`HiPixel`), com uma chave de ordem (prioridade×6, OBJ antes dos BGs). Guarda também os registradores de efeito, o brilho mestre e o BG0HOFS da linha.
+  - No VBlank, antes de o próximo quadro 3D ser trocado, cada pixel grande só encaixa o 3D entre essas duas camadas e aplica os mesmos efeitos. As 192 linhas são compostas no pool de threads.
+  - O `compose` nativo foi dividido em `top_layers` + `finish_pixel`, usados pelos dois caminhos.
+- **Pool compartilhado:** o `BandPool` saiu do gpu3d.cpp para `pool.h`/`pool.cpp`. O limite subiu de 8 para 16 threads (`NTR_3D_THREADS` continua valendo).
+- **Uma escala por tela** (`host_present(top, top_scale, bottom, bottom_scale)`): uma tela sem 3D no quadro vai no tamanho nativo e a GPU amplia. Antes, o motor B era repetido N×N e enviado inteiro todo quadro. São duas texturas, e o `draw_screens` desenha cada uma no seu retângulo. As capturas (F12, `NTR_SCREENSHOT_FRAMES`) continuam no tamanho da resolução do 3D; a tela menor é ampliada repetindo pixels.
+- **3D** (gpu3d.cpp):
+  - Cada banda limpa as linhas que desenha (antes a limpeza era feita na thread principal). A partir de 4× a limpeza usa escrita não temporal (`_mm_stream_si128`).
+  - Na troca de quadro, `std::swap` dos buffers em vez de copiar.
+  - Cache de texturas a partir de 2×: cada (tex, pal) usado no quadro é decodificado uma vez, em paralelo, e o `sample` só faz o wrap e lê do vetor. O `sample` antigo virou `fetch` + wrap, e o cache usa o próprio `fetch`.
+  - Os atributos agora ficam em planos: profundidade (`uint32_t`), flags (`uint16_t`: ID, borda, AA, névoa, translúcido, stencil) e o plano do AA (cor e alfa de baixo, cobertura). O plano do AA só é lido onde a flag de AA está ligada, então nunca é limpo. O pós-processamento varre só as flags.
+  - A tabela de toon é lida uma vez por quadro (antes, duas chamadas a `memory()` por pixel).
+- **Até 10×:** `kMax3dScale = 10`. O `resolution_3d` vai de 1 a 10. No painel (menu e launcher) a lista mostra o tamanho ("4× (1024×768)") e avisa que acima de 4× é preciso um processador com vários núcleos.
+- **Folga no som:** quando a fila do SDL tem menos de um quadro de som (secou), entram 2 quadros de silêncio antes do próximo envio. Assim um quadro atrasado isolado não vira um engasgo atrás do outro. A latência sobe cerca de 33 ms só depois de um atraso.
+- **Diagnóstico:** sem janela, ao sair, o log traz `[perf] N frames: X ms on average, worst Y ms (frame F), Z longer than 16.7 ms`.
+
+**Resultado** (mesmo roteiro, sem janela; esta máquina tem 16 threads lógicas):
+
+| escala | antes (média) | depois (média) | pior quadro | quadros > 16,7 ms |
+|---|---|---|---|---|
+| 1× | 3,0 ms | 3,1 ms | 15,9 ms | 0 |
+| 4× | 10,2 ms | 4,4 ms | 19,3 ms | 2 |
+| 4× (8 threads) | — | 4,7 ms | 19,9 ms | 3 |
+| 6× (8 threads) | — | 6,2 ms | 31 ms | 1713 |
+| 8× (8 threads) | — | 8,5 ms | 45 ms | 2614 |
+| 10× | — | 10,0 ms | 63 ms | 2617 |
+| 10× (8 threads) | — | 11,7 ms | 90 ms | 2615 |
+
+- A 4× ficou folgado. De 6× para cima, o campo (quadros ~10500–14000) passa de 16,7 ms.
+- Nas escalas altas o custo é o trabalho por pixel do `draw_polygon` + `sample`, espalhado entre interpolação, divisões e sombreamento (perfil por linha do fonte, compilando o gpu3d.cpp com `-g`). Os quadros pesados têm poucos polígonos (100–370), mas grandes e sobrepostos.
+- A 10× são ~50 ms de CPU por quadro. Ir além disso pede um rasterizador SIMD ou um renderizador na GPU.
+- A separação em planos e a escrita não temporal economizaram só ~3% de CPU a 10×: as amostras do `perf` nas limpezas exageravam o peso delas. O cache de texturas economiza ~5% de CPU a 2× e a 10×.
+
+**Verificação:**
+- 25 capturas **idênticas byte a byte** às do binário anterior:
+  - roteiro da história nos quadros 3000, 6000, 9000, 12000 e 14000, a 1×, 2× e 4×;
+  - sessão do bug3 (`build/debug/bug3`) nos quadros 16691, 20252, 25000, 30000 e 34869, a 1× e 4×.
+- Testes Python: 10, todos passando. O `boej.exe` (MinGW) compila sem avisos.
+- Com janela (WSLg, tela larga, 4×, roteiro até o quadro 12500, nada mais rodando): 16 segundos com algum quadro acima de 16,7 ms, 1 ou 2 por segundo, e o pior com 17,8 ms. Um teste anterior, rodando junto com builds e outras execuções, teve 30 por segundo no campo: era concorrência pela CPU.
+- Desenho das duas texturas conferido com um gancho temporário (`SDL_RenderReadPixels` no quadro 11861, já removido). Na tela larga, a tela de cima vai nativa e ampliada, e a de baixo (3D) vai a 4× nos dois lugares. No modo empilhado, sai 512×768 certo.
+
+**Não testado:** no Windows de verdade (desempenho e o envio das texturas pelo D3D), o som com engasgo de verdade (os testes rodaram mudos) e as escalas 5×–10× com janela.
+
+**Pasta de teste do Windows** (`C:\Games\ie3-teste\ie3ogre-recomp`): atualizada com uma release 0.1.3 gerada deste código (ainda não é a 0.1.3 publicada).
+- Troquei o `sdk/`, `licenses/`, o launcher, o `SDL3.dll` e os textos. Mantive `boej.ini`, `saves/`, `boej.pak`, `cache/` e `toolchain/`. Apaguei o `build.stamp` para forçar a recompilação.
+- A primeira tentativa do `--prepare` falhou: o libc++ do llvm-mingw instancia o destrutor de `std::vector<HiLine>` na definição de `g_engines`, onde o `HiLine` ainda era só declarado (o GCC aceitava). As structs `Effects`/`HiPixel`/`HiLine` foram para antes do `Engine`.
+- Na segunda tentativa, `boej.exe` recompilado em 43 s, sem avisos.
+- Teste do `boej.exe` sem janela, pelo interop (roteiro da história até o quadro 12000, a 4×): 4,83 ms de média, pior quadro de 18,4 ms, 3 acima de 16,7 ms.

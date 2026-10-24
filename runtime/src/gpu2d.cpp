@@ -8,11 +8,15 @@
 //
 // With the 3D engine above native resolution, each line is still rendered and composed
 // at 256 pixels (that is what display capture and the game see), and the host gets a
-// larger picture: lines of engine A that show 3D are composed again for every sub-row,
-// with the large 3D frame and the 2D layers stretched; everything else is repeated.
+// larger picture of engine A: lines that show 3D are composed again for every sub-row,
+// with the large 3D frame and the 2D layers stretched; its other lines are repeated.
+// While a line is drawn, the top two 2D layers of each pixel are recorded (HiLine); the
+// large picture is composed from them at VBlank, in parallel. A screen without 3D goes
+// to the host at native size.
 #include <algorithm>
 #include <vector>
 
+#include "pool.h"
 #include "runtime.h"
 
 namespace ntr {
@@ -22,6 +26,32 @@ namespace {
 constexpr uint16_t kOpaque = 0x8000;
 constexpr int kLayerObj = 4, kLayerBackdrop = 5;
 
+// Color special effects registers of one line.
+struct Effects {
+    uint32_t effect, first, second, eva, evb, evy;
+};
+
+// A line of engine A composed again at the 3D scale: everything but BG0 is fixed per
+// native pixel, so it is kept as the top two of the other layers, with their order keys
+// (priority * 6 + 0 for OBJ, 1 + n for BGn; the backdrop is last).
+struct HiPixel {
+    uint16_t color[2];
+    uint8_t layer[2];
+    uint8_t key[2];
+    uint8_t mask;       // window
+    uint8_t obj_alpha;
+};
+struct HiLine {
+    bool composed;  // BG0 shows the 3D frame on this line; otherwise the native line is repeated
+    bool bg0_on;
+    uint8_t bg0_key;
+    uint16_t bright;  // MASTER_BRIGHT
+    int32_t hofs;     // BG0HOFS
+    Effects fx;
+    HiPixel px[kScreenWidth];
+};
+constexpr uint8_t kKeyBackdrop = 0xFF;
+
 struct Engine {
     uint32_t io;    // register block offset in Memory::io
     uint32_t pal;   // BG palette offset in Memory::palette (OBJ palette follows at +0x200)
@@ -29,12 +59,14 @@ struct Engine {
     VramArea bg, obj, bg_ext, obj_ext;
     int32_t ref_x[2], ref_y[2];  // internal affine reference points of BG2/BG3 (20.8)
     uint32_t fb[kScreenWidth * kScreenHeight];
-    std::vector<uint32_t> hi;  // fb at the 3D scale, for the host
+    std::vector<uint32_t> hi;      // fb at the 3D scale, for the host
+    std::vector<HiLine> hi_lines;  // one per line, while the 3D scale is above 1
+    bool hi_frame = false;         // a line of this frame shows 3D (hi_lines)
 };
 
 Engine g_engines[2] = {
-    {0x0000, 0x000, 0x000, VramArea::ABg, VramArea::AObj, VramArea::ABgExtPal, VramArea::AObjExtPal, {}, {}, {}, {}},
-    {0x1000, 0x400, 0x400, VramArea::BBg, VramArea::BObj, VramArea::BBgExtPal, VramArea::BObjExtPal, {}, {}, {}, {}},
+    {0x0000, 0x000, 0x000, VramArea::ABg, VramArea::AObj, VramArea::ABgExtPal, VramArea::AObjExtPal, {}, {}, {}, {}, {}, false},
+    {0x1000, 0x400, 0x400, VramArea::BBg, VramArea::BObj, VramArea::BBgExtPal, VramArea::BObjExtPal, {}, {}, {}, {}, {}, false},
 };
 
 // Per-line layer buffers. Colors are BGR555 with kOpaque set; 0 is transparent.
@@ -48,10 +80,6 @@ struct Line {
     uint16_t out[kScreenWidth];        // composed line, before master brightness
     uint8_t alpha3d[kScreenWidth];     // BG0 in 3D mode: 3D alpha (31 = opaque)
     bool bg0_is_3d;
-    // One sub-row at the 3D scale.
-    uint16_t bg0_hi[kScreenWidth * kMax3dScale];
-    uint8_t alpha3d_hi[kScreenWidth * kMax3dScale];
-    uint16_t out_hi[kScreenWidth * kMax3dScale];
 };
 Line g_line;
 
@@ -380,58 +408,81 @@ uint16_t darken(uint16_t a, uint32_t evy) {
     return out;
 }
 
-// Composes `width` pixels into `out`. With scale > 1 the 2D layers are stretched and
-// BG0 comes from bg0/alpha3d (a 3D sub-row at that scale).
-void compose(const Engine& e, Line& L, const bool* bg_on, int scale, const uint16_t* bg0, const uint8_t* alpha3d,
-             uint16_t* out_line) {
+Effects effects(const Engine& e) {
     uint16_t bldcnt = r16(e, 0x50), bldalpha = r16(e, 0x52);
-    uint32_t effect = (bldcnt >> 6) & 3, first = bldcnt & 0x3F, second = (bldcnt >> 8) & 0x3F;
-    uint32_t eva = std::min(bldalpha & 0x1Fu, 16u), evb = std::min((bldalpha >> 8) & 0x1Fu, 16u);
-    uint32_t evy = std::min(r16(e, 0x54) & 0x1Fu, 16u);
+    return {uint32_t(bldcnt >> 6) & 3,
+            bldcnt & 0x3Fu,
+            uint32_t(bldcnt >> 8) & 0x3F,
+            std::min(bldalpha & 0x1Fu, 16u),
+            std::min((bldalpha >> 8) & 0x1Fu, 16u),
+            std::min(r16(e, 0x54) & 0x1Fu, 16u)};
+}
+
+// The top two layers at native pixel x, without BG0 when skip_bg0 is set.
+void top_layers(const Line& L, const bool* bg_on, const uint8_t* bg_prio, uint16_t backdrop, int x, bool skip_bg0,
+                uint16_t* color, int* layer, uint8_t* key) {
+    uint8_t mask = L.win[x];
+    color[0] = color[1] = backdrop;
+    layer[0] = layer[1] = kLayerBackdrop;
+    key[0] = key[1] = kKeyBackdrop;
+    int found = 0;
+    for (int p = 0; p < 4 && found < 2; p++) {
+        if ((L.obj[x] & kOpaque) && L.obj_prio[x] == p && (mask & 0x10)) {
+            color[found] = L.obj[x] & 0x7FFF;
+            key[found] = uint8_t(p * 6);
+            layer[found++] = kLayerObj;
+        }
+        for (int bg = skip_bg0 ? 1 : 0; bg < 4 && found < 2; bg++) {
+            uint16_t c = L.bg[bg][x];
+            if (bg_on[bg] && bg_prio[bg] == p && (c & kOpaque) && (mask & (1u << bg))) {
+                color[found] = c & 0x7FFF;
+                key[found] = uint8_t(p * 6 + 1 + bg);
+                layer[found++] = bg;
+            }
+        }
+    }
+}
+
+// Special effects on the top two layers of a pixel.
+uint16_t finish_pixel(const Effects& fx, const uint16_t* color, const int* layer, uint8_t mask, bool bg0_is_3d,
+                      uint32_t a3d, uint8_t obj_alpha) {
+    uint16_t out = color[0];
+    bool second_ok = fx.second & (1u << layer[1]);
+    if (layer[0] == 0 && bg0_is_3d && a3d < 31 && second_ok) {
+        // Translucent 3D pixels blend with the layer below using their own alpha.
+        uint32_t a = a3d;
+        out = 0;
+        for (int s = 0; s < 15; s += 5) {
+            uint32_t c = (((color[0] >> s) & 31) * (a + 1) + ((color[1] >> s) & 31) * (31 - a)) >> 5;
+            out |= uint16_t(c << s);
+        }
+    } else if (layer[0] == kLayerObj && obj_alpha && second_ok) {
+        uint32_t a = obj_alpha == 0xFF ? fx.eva : obj_alpha;
+        uint32_t b = obj_alpha == 0xFF ? fx.evb : 16 - a;
+        out = blend(color[0], color[1], a, b);
+    } else if ((mask & 0x20) && (fx.first & (1u << layer[0]))) {
+        if (fx.effect == 1 && second_ok) out = blend(color[0], color[1], fx.eva, fx.evb);
+        else if (fx.effect == 2) out = brighten(color[0], fx.evy);
+        else if (fx.effect == 3) out = darken(color[0], fx.evy);
+    }
+    return out;
+}
+
+void bg_priorities(const Engine& e, uint8_t* bg_prio) {
+    for (int bg = 0; bg < 4; bg++) bg_prio[bg] = r16(e, 0x08 + 2 * bg) & 3;
+}
+
+void compose(const Engine& e, Line& L, const bool* bg_on, uint16_t* out_line) {
+    Effects fx = effects(e);
     uint16_t backdrop = pal16(e.pal) & 0x7FFF;
     uint8_t bg_prio[4];
-    for (int bg = 0; bg < 4; bg++) bg_prio[bg] = r16(e, 0x08 + 2 * bg) & 3;
-
-    for (int xo = 0; xo < kScreenWidth * scale; xo++) {
-        int x = xo / scale;
-        uint8_t mask = L.win[x];
-        uint16_t color[2] = {backdrop, backdrop};
-        int layer[2] = {kLayerBackdrop, kLayerBackdrop};
-        int found = 0;
-        for (int p = 0; p < 4 && found < 2; p++) {
-            if ((L.obj[x] & kOpaque) && L.obj_prio[x] == p && (mask & 0x10)) {
-                color[found] = L.obj[x] & 0x7FFF;
-                layer[found++] = kLayerObj;
-            }
-            for (int bg = 0; bg < 4 && found < 2; bg++) {
-                uint16_t c = bg == 0 && bg0 ? bg0[xo] : L.bg[bg][x];
-                if (bg_on[bg] && bg_prio[bg] == p && (c & kOpaque) && (mask & (1u << bg))) {
-                    color[found] = c & 0x7FFF;
-                    layer[found++] = bg;
-                }
-            }
-        }
-        uint16_t out = color[0];
-        bool second_ok = second & (1u << layer[1]);
-        uint32_t a3d = alpha3d ? alpha3d[xo] : L.alpha3d[x];
-        if (layer[0] == 0 && L.bg0_is_3d && a3d < 31 && second_ok) {
-            // Translucent 3D pixels blend with the layer below using their own alpha.
-            uint32_t a = a3d;
-            out = 0;
-            for (int s = 0; s < 15; s += 5) {
-                uint32_t c = (((color[0] >> s) & 31) * (a + 1) + ((color[1] >> s) & 31) * (31 - a)) >> 5;
-                out |= uint16_t(c << s);
-            }
-        } else if (layer[0] == kLayerObj && L.obj_alpha[x] && second_ok) {
-            uint32_t a = L.obj_alpha[x] == 0xFF ? eva : L.obj_alpha[x];
-            uint32_t b = L.obj_alpha[x] == 0xFF ? evb : 16 - a;
-            out = blend(color[0], color[1], a, b);
-        } else if ((mask & 0x20) && (first & (1u << layer[0]))) {
-            if (effect == 1 && second_ok) out = blend(color[0], color[1], eva, evb);
-            else if (effect == 2) out = brighten(color[0], evy);
-            else if (effect == 3) out = darken(color[0], evy);
-        }
-        out_line[xo] = out;
+    bg_priorities(e, bg_prio);
+    for (int x = 0; x < kScreenWidth; x++) {
+        uint16_t color[2];
+        int layer[2];
+        uint8_t key[2];
+        top_layers(L, bg_on, bg_prio, backdrop, x, false, color, layer, key);
+        out_line[x] = finish_pixel(fx, color, layer, L.win[x], L.bg0_is_3d, L.alpha3d[x], L.obj_alpha[x]);
     }
 }
 
@@ -487,8 +538,7 @@ uint32_t to_rgb(uint16_t c) {
 }
 
 // Master brightness, then 24-bit color.
-void output_pixels(const Engine& e, const uint16_t* colors, int count, uint32_t* dst) {
-    uint16_t bright = r16(e, 0x6C);
+void output_pixels(uint16_t bright, const uint16_t* colors, int count, uint32_t* dst) {
     uint32_t factor = std::min(bright & 0x1Fu, 16u), mode = bright >> 14;
     for (int x = 0; x < count; x++) {
         uint16_t c = colors[x] & 0x7FFF;
@@ -499,36 +549,76 @@ void output_pixels(const Engine& e, const uint16_t* colors, int count, uint32_t*
 }
 
 void output_line(Engine& e, uint32_t line, const uint16_t* colors) {
-    output_pixels(e, colors, kScreenWidth, e.fb + line * kScreenWidth);
+    output_pixels(r16(e, 0x6C), colors, kScreenWidth, e.fb + line * kScreenWidth);
 }
 
-// The host's picture of this line: engine A's 3D lines composed again at the 3D scale,
-// any other line repeated.
-void output_hi(Engine& e, uint32_t line, Line& L, const bool* bg_on, bool composed) {
-    int scale = gpu3d_scale();
-    size_t width = size_t(kScreenWidth) * scale;
-    if (e.hi.size() != width * kScreenHeight * scale) e.hi.assign(width * kScreenHeight * scale, 0);
-    uint32_t* rows = e.hi.data() + line * scale * width;
-    if (composed && L.bg0_is_3d && bg_on[0]) {
-        int32_t hofs = (int32_t(r16(e, 0x10) << 23) >> 23) * scale;
+// What the large picture needs from this line (see HiLine).
+void record_hi(Engine& e, uint32_t line, const Line& L, const bool* bg_on, bool composed) {
+    if (e.hi_lines.size() != kScreenHeight) e.hi_lines.resize(kScreenHeight);
+    HiLine& h = e.hi_lines[line];
+    h.composed = composed && L.bg0_is_3d && bg_on[0];
+    if (!h.composed) return;
+    e.hi_frame = true;
+    uint8_t bg_prio[4];
+    bg_priorities(e, bg_prio);
+    uint16_t backdrop = pal16(e.pal) & 0x7FFF;
+    h.bg0_on = bg_on[0];
+    h.bg0_key = uint8_t(bg_prio[0] * 6 + 1);
+    h.bright = r16(e, 0x6C);
+    h.hofs = int32_t(r16(e, 0x10) << 23) >> 23;
+    h.fx = effects(e);
+    for (int x = 0; x < kScreenWidth; x++) {
+        HiPixel& p = h.px[x];
+        int layer[2];
+        top_layers(L, bg_on, bg_prio, backdrop, x, true, p.color, layer, p.key);
+        p.layer[0] = uint8_t(layer[0]);
+        p.layer[1] = uint8_t(layer[1]);
+        p.mask = L.win[x];
+        p.obj_alpha = L.obj_alpha[x];
+    }
+}
+
+// The rows of one line in the large picture: the 3D sub-rows put between the recorded
+// layers, or the native line repeated.
+void compose_hi_line(Engine& e, uint32_t line, int scale) {
+    int width = kScreenWidth * scale;
+    uint32_t* rows = e.hi.data() + size_t(line) * scale * width;
+    const HiLine& h = e.hi_lines[line];
+    if (!h.composed) {
+        const uint32_t* src = e.fb + line * kScreenWidth;
         for (int r = 0; r < scale; r++) {
-            const uint16_t* color = gpu3d_hi_row_color(line * scale + r);
-            const uint8_t* alpha = gpu3d_hi_row_alpha(line * scale + r);
-            for (int x = 0; x < int(width); x++) {
-                int32_t sx = x + hofs;
-                bool shown = sx >= 0 && sx < int(width) && alpha[sx] != 0;
-                L.bg0_hi[x] = shown ? color[sx] | kOpaque : 0;
-                L.alpha3d_hi[x] = shown ? alpha[sx] : 31;
-            }
-            compose(e, L, bg_on, scale, L.bg0_hi, L.alpha3d_hi, L.out_hi);
-            output_pixels(e, L.out_hi, int(width), rows + r * width);
+            uint32_t* dst = rows + size_t(r) * width;
+            for (int x = 0; x < width; x++) dst[x] = src[x / scale];
         }
         return;
     }
-    const uint32_t* src = e.fb + line * kScreenWidth;
+    int32_t hofs = h.hofs * scale;
+    uint16_t out[kScreenWidth * kMax3dScale];
     for (int r = 0; r < scale; r++) {
-        uint32_t* dst = rows + r * width;
-        for (size_t x = 0; x < width; x++) dst[x] = src[x / scale];
+        const uint16_t* color3d = gpu3d_hi_row_color(line * scale + r);
+        const uint8_t* alpha3d = gpu3d_hi_row_alpha(line * scale + r);
+        for (int xo = 0; xo < width; xo++) {
+            const HiPixel& p = h.px[xo / scale];
+            uint16_t color[2] = {p.color[0], p.color[1]};
+            int layer[2] = {p.layer[0], p.layer[1]};
+            int32_t sx = xo + hofs;
+            bool shown = sx >= 0 && sx < width && alpha3d[sx] != 0;
+            uint32_t a3d = shown ? alpha3d[sx] : 31;
+            if (shown && h.bg0_on && (p.mask & 1)) {
+                uint16_t c = color3d[sx] & 0x7FFF;
+                if (h.bg0_key < p.key[0]) {
+                    color[1] = color[0];
+                    layer[1] = layer[0];
+                    color[0] = c;
+                    layer[0] = 0;
+                } else if (h.bg0_key < p.key[1]) {
+                    color[1] = c;
+                    layer[1] = 0;
+                }
+            }
+            out[xo] = finish_pixel(h.fx, color, layer, p.mask, true, a3d, p.obj_alpha);
+        }
+        output_pixels(h.bright, out, width, rows + size_t(r) * width);
     }
 }
 
@@ -544,7 +634,7 @@ void render_engine_line(Engine& e, int id, uint32_t line) {
     if (!powered) {
         std::fill(std::begin(L.out), std::end(L.out), 0);
         output_line(e, line, L.out);
-        if (gpu3d_scale() > 1) output_hi(e, line, L, bg_on, false);
+        if (gpu3d_scale() > 1) record_hi(e, line, L, bg_on, false);
         return;
     }
     if (display == 0 || (dispcnt & 0x80)) {  // display off / forced blank: white
@@ -579,7 +669,7 @@ void render_engine_line(Engine& e, int id, uint32_t line) {
         std::fill(std::begin(L.obj_win), std::end(L.obj_win), false);
         if (dispcnt & 0x1000) render_objs(e, line, L);
         compute_windows(e, line, L);
-        compose(e, L, bg_on, 1, nullptr, nullptr, L.out);
+        compose(e, L, bg_on, L.out);
     }
 
     if (id == 0 && g_capturing) {
@@ -593,7 +683,7 @@ void render_engine_line(Engine& e, int id, uint32_t line) {
         capture_line(line, source_a);
     }
     output_line(e, line, L.out);
-    if (gpu3d_scale() > 1) output_hi(e, line, L, bg_on, composed);
+    if (gpu3d_scale() > 1) record_hi(e, line, L, bg_on, composed);
 
     // BG2/BG3 reference points advance by (dmx, dmy) every line.
     for (int idx = 0; idx < 2; idx++) {
@@ -620,6 +710,20 @@ void gpu_render_line(uint32_t line) {
 
 void gpu_vblank() {
     g_capturing = false;
+    // The large picture reads the 3D frame these lines showed, before the next one is swapped in.
+    int scale = gpu3d_scale();
+    for (Engine& e : g_engines) {
+        if (!e.hi_frame || scale == 1) {
+            e.hi_frame = false;
+            continue;
+        }
+        size_t size = size_t(kScreenWidth) * kScreenHeight * scale * scale;
+        if (e.hi.size() != size) e.hi.assign(size, 0);
+        BandPool& pool = band_pool();
+        pool.run([&](int band) {
+            for (int line = band; line < kScreenHeight; line += pool.bands()) compose_hi_line(e, line, scale);
+        });
+    }
     gpu3d_vblank();
     for (Engine& e : g_engines) {
         for (int idx = 0; idx < 2; idx++) {
@@ -633,10 +737,10 @@ void gpu_vblank() {
     const Engine& b = g_engines[1];
     const Engine& top = a_on_top ? a : b;
     const Engine& bottom = a_on_top ? b : a;
-    int scale = gpu3d_scale();
-    bool hi = scale > 1 && !top.hi.empty() && !bottom.hi.empty();
-    if (hi) host_present(top.hi.data(), bottom.hi.data(), scale);
-    else host_present(top.fb, bottom.fb, 1);
+    auto picture = [&](const Engine& e) { return e.hi_frame ? e.hi.data() : e.fb; };
+    auto picture_scale = [&](const Engine& e) { return e.hi_frame ? scale : 1; };
+    host_present(picture(top), picture_scale(top), picture(bottom), picture_scale(bottom));
+    for (Engine& e : g_engines) e.hi_frame = false;
 }
 
 void gpu_io_written(uint32_t addr) {

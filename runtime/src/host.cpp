@@ -21,7 +21,7 @@
 // Environment: NTR_HEADLESS (no window, unthrottled), NTR_FAST (unthrottled), NTR_MUTE (no
 // audio device), NTR_WAV (also write the sound output to that WAV file), NTR_CONFIG
 // (settings file instead of boej.ini next to the executable), NTR_SCALE (initial window
-// scale), NTR_3D_SCALE (3D internal resolution, 1-4; 1 without a window),
+// scale), NTR_3D_SCALE (3D internal resolution, 1-10; 1 without a window),
 // NTR_SCREENSHOT_FRAMES + NTR_SCREENSHOT
 // (save those frames, a comma-separated list, as BMPs of what the window shows; %d in the
 // path is the frame), NTR_EXIT_FRAME (exit after that many frames),
@@ -107,14 +107,16 @@ struct Host {
     bool throttle = true;
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
-    SDL_Texture* texture = nullptr;
-    int texture_scale = 0;
+    SDL_Texture* textures[2] = {};  // top and bottom screen
+    int texture_scales[2] = {};
     uint64_t frame = 0;
     uint64_t deadline = 0;
     uint64_t fps_start = 0, fps_frames = 0;
     // Frames whose work (emulation, rendering, presenting) took longer than a DS frame.
     uint64_t work_start = 0, worst_ns = 0, worst_frame = 0;
     uint32_t slow_frames = 0;
+    // Without a window: frame times for the whole run, logged at exit (benchmarks).
+    uint64_t run_last = 0, run_ns = 0, run_frames = 0, run_worst_ns = 0, run_worst_frame = 0, run_slow = 0;
     std::set<uint64_t> screenshot_frames;
     std::string screenshot_path = "boej-%d.bmp";  // %d = frame number
     uint64_t f12_frame = 0, exit_frame = 0;
@@ -156,7 +158,10 @@ uint64_t env_u64(const char* name) {
     return v ? std::strtoull(v, nullptr, 10) : 0;
 }
 
-void write_bmp(const std::string& path, const uint32_t* top, const uint32_t* bottom, int scale = 1) {
+// Both screens at `scale`; a screen given at a smaller scale (top_scale, bottom_scale) is
+// enlarged by repeating its pixels.
+void write_bmp(const std::string& path, const uint32_t* top, int top_scale, const uint32_t* bottom, int bottom_scale,
+               int scale) {
     FILE* f = open_file(fs_path(path), "wb");
     if (!f) {
         NTR_LOG("[host] cannot write %s\n", path.c_str());
@@ -176,9 +181,13 @@ void write_bmp(const std::string& path, const uint32_t* top, const uint32_t* bot
     put32(34, row * h);
     std::fwrite(hdr, 1, sizeof hdr, f);
     for (int y = int(h) - 1; y >= 0; y--) {  // bottom-up rows
-        const uint32_t* src = uint32_t(y) < screen_h ? top + y * w : bottom + (y - screen_h) * w;
+        bool upper = uint32_t(y) < screen_h;
+        int from = upper ? top_scale : bottom_scale;
+        uint32_t sy = (upper ? y : y - screen_h) * from / scale;
+        const uint32_t* src = (upper ? top : bottom) + sy * kScreenWidth * from;
         for (uint32_t x = 0; x < w; x++) {
-            uint8_t bgr[3] = {uint8_t(src[x]), uint8_t(src[x] >> 8), uint8_t(src[x] >> 16)};
+            uint32_t c = src[x * from / scale];
+            uint8_t bgr[3] = {uint8_t(c), uint8_t(c >> 8), uint8_t(c >> 16)};
             std::fwrite(bgr, 1, 3, f);
         }
     }
@@ -288,6 +297,12 @@ void write_wav_header(FILE* f, uint32_t frames) {
 }
 
 void quit() {
+    if (g_host.headless && g_host.run_frames) {
+        NTR_LOG("[perf] %llu frames: %.2f ms on average, worst %.1f ms (frame %llu), %llu longer than 16.7 ms\n",
+                (unsigned long long)g_host.run_frames, g_host.run_ns / 1e6 / g_host.run_frames,
+                g_host.run_worst_ns / 1e6, (unsigned long long)g_host.run_worst_frame,
+                (unsigned long long)g_host.run_slow);
+    }
     if (g_host.wav) {
         write_wav_header(g_host.wav, g_host.wav_frames);
         std::fclose(g_host.wav);
@@ -547,21 +562,21 @@ void layout_size(int& w, int& h) {
     h = g_host.wide ? kWideHeight : kScreenHeight * 2;
 }
 
-// Draws the frame texture with the layout's logical rectangle at (x, y) scaled by s.
+// Draws the screen textures with the layout's logical rectangle at (x, y) scaled by s.
 void draw_screens(float x, float y, float s) {
-    SDL_Renderer* r = g_host.renderer;
+    auto draw = [&](int screen, const SDL_FRect& rect) {
+        SDL_FRect dst = {x + rect.x * s, y + rect.y * s, rect.w * s, rect.h * s};
+        SDL_RenderTexture(g_host.renderer, g_host.textures[screen], nullptr, &dst);
+    };
     if (!g_host.wide) {
-        SDL_FRect dst = {x, y, kScreenWidth * s, 2 * kScreenHeight * s};
-        SDL_RenderTexture(r, g_host.texture, nullptr, &dst);
+        draw(0, {0, 0, kScreenWidth, kScreenHeight});
+        draw(1, {0, kScreenHeight, kScreenWidth, kScreenHeight});
         return;
     }
-    float tw = 0, th = 0;
-    SDL_GetTextureSize(g_host.texture, &tw, &th);
-    SDL_FRect lower = {0, th / 2, tw, th / 2};
-    for (auto [src, rect] : {std::pair<const SDL_FRect*, SDL_FRect>{nullptr, kWideStack}, {&lower, kWideBottom}}) {
-        SDL_FRect dst = {x + rect.x * s, y + rect.y * s, rect.w * s, rect.h * s};
-        SDL_RenderTexture(r, g_host.texture, src, &dst);
-    }
+    const SDL_FRect& stack = kWideStack;
+    draw(0, {stack.x, stack.y, stack.w, stack.h / 2});
+    draw(1, {stack.x, stack.y + stack.h / 2, stack.w, stack.h / 2});
+    draw(1, kWideBottom);
 }
 
 // A window size for the layout: wide is 16:9 at most 85% of the monitor's usable
@@ -594,8 +609,8 @@ void apply_presentation() {
                                      integer ? SDL_LOGICAL_PRESENTATION_INTEGER_SCALE
                                              : SDL_LOGICAL_PRESENTATION_LETTERBOX);
     g_host.linear_filter = SDL_strcasecmp(c.get("video", "filter").c_str(), "linear") == 0;
-    if (g_host.texture) {
-        SDL_SetTextureScaleMode(g_host.texture, g_host.linear_filter ? SDL_SCALEMODE_LINEAR : SDL_SCALEMODE_NEAREST);
+    for (SDL_Texture* t : g_host.textures) {
+        if (t) SDL_SetTextureScaleMode(t, g_host.linear_filter ? SDL_SCALEMODE_LINEAR : SDL_SCALEMODE_NEAREST);
     }
 }
 
@@ -621,7 +636,7 @@ void apply_settings() {
         SDL_SetWindowPosition(g_host.window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
     }
     if (!g_host.env_scale) g_host.window_scale_applied = scale;
-    if (!g_host.env_scale_3d) gpu3d_set_scale(c.get_int("video", "resolution_3d", 1, 4));
+    if (!g_host.env_scale_3d) gpu3d_set_scale(c.get_int("video", "resolution_3d", 1, kMax3dScale));
     load_bindings();
 }
 
@@ -681,7 +696,7 @@ void draw_paused_frame() {
     SDL_RenderClear(r);
     int w = 0, h = 0;
     SDL_GetRenderOutputSize(r, &w, &h);
-    if (g_host.texture && w > 0 && h > 0) {
+    if (g_host.textures[0] && w > 0 && h > 0) {
         int lw, lh;
         layout_size(lw, lh);
         float fit = std::min(float(w) / lw, float(h) / lh);
@@ -791,7 +806,7 @@ bool host_init() {
     }
     const Config& config = g_host.config;
     int scale_3d = int(env_u64("NTR_3D_SCALE"));
-    if (scale_3d <= 0) scale_3d = headless && !config_env ? 1 : config.get_int("video", "resolution_3d", 1, 4);
+    if (scale_3d <= 0) scale_3d = headless && !config_env ? 1 : config.get_int("video", "resolution_3d", 1, kMax3dScale);
     gpu3d_set_scale(scale_3d);
     if (headless) return true;
 
@@ -944,7 +959,7 @@ static void record_input() {
                   g_host.touch_y);
 }
 
-void host_present(const uint32_t* top, const uint32_t* bottom, int scale) {
+void host_present(const uint32_t* top, int top_scale, const uint32_t* bottom, int bottom_scale) {
     g_host.frame++;
     diag_frame(g_host.frame);
     trace_frame(g_host.frame);
@@ -959,16 +974,32 @@ void host_present(const uint32_t* top, const uint32_t* bottom, int scale) {
         }
         NTR_LOG("\n");
     }
+    // Captures are as large as the 3D resolution, whatever each screen shows.
+    int bmp_scale = std::max({top_scale, bottom_scale, gpu3d_scale()});
     if (g_host.screenshot_frames.count(g_host.frame)) {  // like F8: picture plus state dump
-        write_bmp(frame_path(g_host.screenshot_path), top, bottom, scale);
+        write_bmp(frame_path(g_host.screenshot_path), top, top_scale, bottom, bottom_scale, bmp_scale);
         debug_dump("screenshot");
     }
-    if (g_host.frame == g_host.f12_frame) write_bmp(frame_path("boej-%d.bmp"), top, bottom, scale);
+    if (g_host.frame == g_host.f12_frame) {
+        write_bmp(frame_path("boej-%d.bmp"), top, top_scale, bottom, bottom_scale, bmp_scale);
+    }
     if (g_host.exit_frame && g_host.frame >= g_host.exit_frame) {
         NTR_LOG("[host] exiting after %llu frames\n", (unsigned long long)g_host.frame);
         quit();
     }
     if (g_host.headless) {
+        uint64_t now = SDL_GetTicksNS();
+        if (g_host.run_last) {
+            uint64_t ns = now - g_host.run_last;
+            g_host.run_ns += ns;
+            g_host.run_frames++;
+            if (ns > kFrameNs) g_host.run_slow++;
+            if (ns > g_host.run_worst_ns) {
+                g_host.run_worst_ns = ns;
+                g_host.run_worst_frame = g_host.frame;
+            }
+        }
+        g_host.run_last = now;
         record_input();
         return;
     }
@@ -980,18 +1011,19 @@ void host_present(const uint32_t* top, const uint32_t* bottom, int scale) {
         return;
     }
 
-    if (g_host.texture_scale != scale) {
-        if (g_host.texture) SDL_DestroyTexture(g_host.texture);
-        g_host.texture = SDL_CreateTexture(g_host.renderer, SDL_PIXELFORMAT_XRGB8888, SDL_TEXTUREACCESS_STREAMING,
-                                           kScreenWidth * scale, kScreenHeight * 2 * scale);
-        SDL_SetTextureScaleMode(g_host.texture, g_host.linear_filter ? SDL_SCALEMODE_LINEAR : SDL_SCALEMODE_NEAREST);
-        g_host.texture_scale = scale;
+    const uint32_t* pictures[2] = {top, bottom};
+    int scales[2] = {top_scale, bottom_scale};
+    for (int i = 0; i < 2; i++) {
+        SDL_Texture*& t = g_host.textures[i];
+        if (g_host.texture_scales[i] != scales[i]) {
+            if (t) SDL_DestroyTexture(t);
+            t = SDL_CreateTexture(g_host.renderer, SDL_PIXELFORMAT_XRGB8888, SDL_TEXTUREACCESS_STREAMING,
+                                  kScreenWidth * scales[i], kScreenHeight * scales[i]);
+            SDL_SetTextureScaleMode(t, g_host.linear_filter ? SDL_SCALEMODE_LINEAR : SDL_SCALEMODE_NEAREST);
+            g_host.texture_scales[i] = scales[i];
+        }
+        SDL_UpdateTexture(t, nullptr, pictures[i], kScreenWidth * scales[i] * 4);
     }
-    int w = kScreenWidth * scale, h = kScreenHeight * scale;
-    SDL_Rect upper = {0, 0, w, h};
-    SDL_Rect lower = {0, h, w, h};
-    SDL_UpdateTexture(g_host.texture, &upper, top, w * 4);
-    SDL_UpdateTexture(g_host.texture, &lower, bottom, w * 4);
     SDL_SetRenderDrawColor(g_host.renderer, 0, 0, 0, 255);
     SDL_RenderClear(g_host.renderer);
     draw_screens(0, 0, 1);
@@ -1009,7 +1041,15 @@ void host_audio_push(const int16_t* frames, size_t count) {
     }
     if (!g_host.audio) return;
     // Running ahead of real time (fast forward, NTR_FAST) would only grow the latency.
-    if (SDL_GetAudioStreamQueued(g_host.audio) > kSoundRate * 4 / 6) return;
+    int queued = SDL_GetAudioStreamQueued(g_host.audio);
+    if (queued > kSoundRate * 4 / 6) return;
+    // Pushed once per frame: a late frame lets the queue run dry, and the sound would keep
+    // stopping at every small delay after that. Two frames of silence ahead of the next
+    // push give it room again (about 33 ms more latency).
+    if (queued < int(count) * 4 && !fast_forward()) {
+        static const std::vector<int16_t> silence(kSoundRate / 30 * 2);
+        SDL_PutAudioStreamData(g_host.audio, silence.data(), int(silence.size() * 2));
+    }
     SDL_PutAudioStreamData(g_host.audio, frames, int(count * 4));
 }
 

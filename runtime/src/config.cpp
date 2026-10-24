@@ -25,7 +25,8 @@ const char kDefaultConfig[] = R"(; Configurações do port de Inazuma Eleven 3 -
 wide_layout = true
 ; Tamanho inicial da janela, em múltiplos de 256x384 (só com wide_layout = false).
 window_scale = 2
-; Resolução interna do 3D: 1 (nativa) a 4.
+; Resolução interna do 3D: 1 (nativa) a 10. Acima de 4 precisa de um processador com
+; vários núcleos.
 resolution_3d = 2
 ; Abrir em tela cheia (o atalho "fullscreen" alterna).
 fullscreen = false

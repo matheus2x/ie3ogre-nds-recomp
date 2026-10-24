@@ -45,6 +45,7 @@ add_library(ntr-runtime STATIC
     src/io.cpp
     src/irq.cpp
     src/memory.cpp
+    src/pool.cpp
     src/pxi.cpp
     src/rom.cpp
     src/task.cpp

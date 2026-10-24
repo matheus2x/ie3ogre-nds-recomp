@@ -19,15 +19,17 @@
 // engine A uses the large frame (gpu3d_hi_row_*).
 #include <algorithm>
 #include <cmath>
-#include <condition_variable>
 #include <cstring>
 #include <cstdlib>
-#include <functional>
+#include <cstdint>
 #include <map>
-#include <mutex>
-#include <thread>
+#include <unordered_map>
 #include <vector>
+#if defined(__SSE2__)
+#include <emmintrin.h>
+#endif
 
+#include "pool.h"
 #include "runtime.h"
 
 namespace ntr {
@@ -85,6 +87,7 @@ struct Polygon {
     bool translucent = false;
     bool wbuffer = false;
     float ymin = 0, ymax = 0;
+    const struct Texel* texels = nullptr;  // the decoded texture, while it renders (texture cache)
 };
 
 struct Light {
@@ -731,25 +734,38 @@ struct Frame {
 Frame g_back, g_front;  // render size
 Frame g_native;         // g_front at 256x192, for the 2D engine and display capture
 
-struct Pixel {
-    uint32_t depth;
-    uint8_t id;
-    bool fog;
-    bool translucent;
-    bool stencil;
-    bool edge;            // opaque polygon pixel (edge marking source)
-    uint8_t coverage;     // anti-aliasing: 0-31 share of the pixel the top polygon covers
-    uint8_t under_alpha;  // what the top opaque pixel was drawn over (anti-aliasing)
-    uint16_t under_color;
+// Pixel attributes, in planes: above native size the buffers are larger than the caches,
+// and the clear and the post-processing passes are bound by memory traffic. The passes
+// scan only the flags; the anti-aliasing plane is read only where kAntialias is set, so it
+// is never cleared.
+enum : uint16_t {
+    kIdMask = 63,
+    kEdge = 1 << 6,          // opaque polygon pixel (edge marking source)
+    kAntialias = 1 << 7,     // opaque pixel the top polygon covers only partly
+    kFog = 1 << 8,
+    kTranslucent = 1 << 9,
+    kStencil = 1 << 10,
 };
-std::vector<Pixel> g_attr;
+struct Coverage {
+    uint16_t under_color;  // what the top opaque pixel was drawn over
+    uint8_t under_alpha;
+    uint8_t coverage;  // 0-31 share of the pixel the top polygon covers
+};
+std::vector<uint32_t> g_depth;
+std::vector<uint16_t> g_flags;
+std::vector<Coverage> g_coverage;
 
 // The front frame keeps its size until the next swap, so a scale change never blanks it.
+// The back frame may have another size after a swap (the buffers trade places).
 void resize_buffers() {
     W = kScreenWidth * g_scale;
     H = kScreenHeight * g_scale;
-    g_back.resize(size_t(W) * H);
-    g_attr.assign(size_t(W) * H, Pixel{});
+    if (g_back.color.size() != size_t(W) * H) g_back.resize(size_t(W) * H);
+    if (g_depth.size() != size_t(W) * H) {
+        g_depth.assign(size_t(W) * H, 0);
+        g_flags.assign(size_t(W) * H, 0);
+        g_coverage.assign(size_t(W) * H, Coverage{});
+    }
     if (g_native.color.empty()) g_native.resize(size_t(kScreenWidth) * kScreenHeight);
 }
 
@@ -760,6 +776,7 @@ struct Texel {
 // Looked up once per frame: the views do not change while a frame renders.
 const VramView* g_tex_view = nullptr;
 const VramView* g_pal_view = nullptr;
+uint16_t g_toon[32];  // TOON_TABLE
 
 uint16_t tex16(uint32_t off) { return g_tex_view->read16(off); }
 uint8_t tex8(uint32_t off) { return g_tex_view->read8(off); }
@@ -767,25 +784,13 @@ uint16_t pal16(uint32_t off) { return g_pal_view->read16(off); }
 
 Texel make_texel(uint16_t c, uint8_t a) { return {uint8_t(c & 31), uint8_t((c >> 5) & 31), uint8_t((c >> 10) & 31), a}; }
 
-Texel sample(const Polygon& p, float fs, float ft) {
-    uint32_t tex = p.tex;
+// The texel at (s, t), inside the texture.
+Texel fetch(uint32_t tex, uint32_t pal, int32_t s, int32_t t) {
     uint32_t format = (tex >> 26) & 7;
-    int32_t w = 8 << ((tex >> 20) & 7), h = 8 << ((tex >> 23) & 7);
-    int32_t s = int32_t(std::floor(fs)), t = int32_t(std::floor(ft));
-    auto wrap = [](int32_t v, int32_t size, bool repeat, bool flip) {
-        if (!repeat) return std::clamp(v, 0, size - 1);
-        if (flip) {
-            int32_t period = v & (size * 2 - 1);
-            return period >= size ? size * 2 - 1 - period : period;
-        }
-        return v & (size - 1);
-    };
-    s = wrap(s, w, tex & (1u << 16), tex & (1u << 18));
-    t = wrap(t, h, tex & (1u << 17), tex & (1u << 19));
+    int32_t w = 8 << ((tex >> 20) & 7);
     uint32_t base = (tex & 0xFFFF) << 3;
     uint32_t idx = uint32_t(t * w + s);
     bool zero_transparent = tex & (1u << 29);
-    uint32_t pal = p.pal;
     switch (format) {
         case 1: {  // A3I5
             uint8_t v = tex8(base + idx);
@@ -848,6 +853,64 @@ Texel sample(const Polygon& p, float fs, float ft) {
     }
 }
 
+Texel sample(const Polygon& p, float fs, float ft) {
+    uint32_t tex = p.tex;
+    int32_t w = 8 << ((tex >> 20) & 7), h = 8 << ((tex >> 23) & 7);
+    int32_t s = int32_t(std::floor(fs)), t = int32_t(std::floor(ft));
+    auto wrap = [](int32_t v, int32_t size, bool repeat, bool flip) {
+        if (!repeat) return std::clamp(v, 0, size - 1);
+        if (flip) {
+            int32_t period = v & (size * 2 - 1);
+            return period >= size ? size * 2 - 1 - period : period;
+        }
+        return v & (size - 1);
+    };
+    s = wrap(s, w, tex & (1u << 16), tex & (1u << 18));
+    t = wrap(t, h, tex & (1u << 17), tex & (1u << 19));
+    if (p.texels) return p.texels[t * w + s];
+    return fetch(tex, p.pal, s, t);
+}
+
+// Texture cache: above native resolution each texel is sampled many times, so every
+// texture the frame uses is decoded once (in parallel) before the polygons are drawn.
+// Keyed by the parameters that decide the texels (not the wrap/flip bits).
+constexpr int kTextureCacheScale = 2;
+std::unordered_map<uint64_t, std::vector<Texel>> g_textures;
+
+void decode_textures(BandPool& pool) {
+    struct Job {
+        uint32_t tex, pal;
+        Texel* out;
+    };
+    std::vector<Job> jobs;
+    std::unordered_map<uint64_t, std::vector<Texel>> used;
+    for (Polygon& p : g.polys) {
+        p.texels = nullptr;
+        uint32_t format = (p.tex >> 26) & 7;
+        if (format == 0) continue;
+        uint64_t key = uint64_t(p.tex & 0x3FF0FFFF) << 32 | (format == 7 ? 0 : p.pal);
+        auto it = used.find(key);
+        if (it == used.end()) {
+            auto old = g_textures.find(key);  // reuses the allocation of the last frame
+            std::vector<Texel> texels = old != g_textures.end() ? std::move(old->second) : std::vector<Texel>();
+            texels.resize(size_t(8 << ((p.tex >> 20) & 7)) * (8 << ((p.tex >> 23) & 7)));
+            it = used.emplace(key, std::move(texels)).first;
+            jobs.push_back({p.tex, p.pal, it->second.data()});
+        }
+        p.texels = it->second.data();
+    }
+    g_textures = std::move(used);
+    pool.run([&](int band) {
+        for (size_t i = band; i < jobs.size(); i += pool.bands()) {
+            const Job& j = jobs[i];
+            int32_t w = 8 << ((j.tex >> 20) & 7), h = 8 << ((j.tex >> 23) & 7);
+            for (int32_t t = 0; t < h; t++) {
+                for (int32_t s = 0; s < w; s++) j.out[t * w + s] = fetch(j.tex, j.pal, s, t);
+            }
+        }
+    });
+}
+
 inline uint32_t to6(uint32_t c5) { return c5 ? c5 * 2 + 1 : 0; }
 
 // Combines vertex color and texel; returns 5-bit components and alpha.
@@ -856,7 +919,7 @@ Texel shade(const Polygon& p, const float* vcol, float s, float t, uint32_t poly
     uint32_t vr = uint32_t(vcol[0]), vg = uint32_t(vcol[1]), vb = uint32_t(vcol[2]);
     bool textured = ((p.tex >> 26) & 7) != 0 && (disp3d & 1);
     if (mode == 2) {  // toon / highlight: the vertex red component indexes the table
-        uint16_t toon = io16(0x380 + (std::min(vr, 31u)) * 2);
+        uint16_t toon = g_toon[std::min(vr, 31u)];
         if (disp3d & 2) {  // highlight: shade comes from the table, added after modulation
             Texel base{uint8_t(vr), uint8_t(vr), uint8_t(vr), uint8_t(poly_alpha)};
             Texel tx = textured ? sample(p, s, t) : Texel{31, 31, 31, 31};
@@ -992,21 +1055,22 @@ void draw_polygon(const Polygon& p, int band, int bands) {
                 }
                 if (wireframe && edge_dist >= scale) continue;
                 int at = y * W + x;
-                Pixel& pix = g_attr[at];
+                uint32_t& pix_depth = g_depth[at];
+                uint16_t& flags = g_flags[at];
                 float z = b[0] * v[0]->z + b[1] * v[1]->z + b[2] * v[2]->z;
                 float iw = b[0] * inv_w[0] + b[1] * inv_w[1] + b[2] * inv_w[2];
                 float w = 1.0f / iw;
                 uint32_t depth = depth_value(p, z, w);
-                bool pass = depth_equal ? (depth >= pix.depth ? depth - pix.depth : pix.depth - depth) <= 0x200
-                                        : depth < pix.depth;
+                bool pass = depth_equal ? (depth >= pix_depth ? depth - pix_depth : pix_depth - depth) <= 0x200
+                                        : depth < pix_depth;
                 if (shadow_mask) {  // shadow volume: mark where the depth test fails
-                    if (!pass) pix.stencil = true;
+                    if (!pass) flags |= kStencil;
                     continue;
                 }
                 if (!pass) continue;
                 if (mode == 3) {  // shadow polygon: only where the mask was set
-                    if (!pix.stencil || pix.id == id) continue;
-                    pix.stencil = false;
+                    if (!(flags & kStencil) || (flags & kIdMask) == id) continue;
+                    flags &= ~kStencil;
                 }
                 float col[3];
                 for (int c = 0; c < 3; c++) col[c] = (b[0] * cw[0][c] + b[1] * cw[1][c] + b[2] * cw[2][c]) * w;
@@ -1018,29 +1082,25 @@ void draw_polygon(const Polygon& p, int band, int bands) {
                 uint16_t color = pack(out);
                 if (out.a < 31) {
                     // A translucent polygon does not draw over its own ID twice.
-                    if (pix.translucent && pix.id == id) continue;
+                    if ((flags & kTranslucent) && (flags & kIdMask) == id) continue;
                     uint8_t dst_a = g_back.alpha[at];
                     if (blending && dst_a > 0) {
                         color = blend_colors(color, g_back.color[at], out.a);
                         out.a = uint8_t(std::max<uint32_t>(out.a, dst_a));
                     }
-                    pix.translucent = true;
-                    pix.coverage = 31;
+                    flags = (flags | kTranslucent) & ~kAntialias;  // fully covered
                 } else {
-                    pix.translucent = false;
-                    pix.edge = true;
-                    pix.under_color = g_back.color[at];
-                    pix.under_alpha = g_back.alpha[at];
                     // Pixel centers less than half a pixel inside an outline edge are
                     // partly covered: 0.5 at the edge, 1 half a pixel in.
                     float cover = antialias ? std::min(1.0f, 0.5f + edge_dist / scale) : 1.0f;
-                    pix.coverage = uint8_t(cover * 31 + 0.5f);
+                    uint8_t coverage = uint8_t(cover * 31 + 0.5f);
+                    flags = (flags & ~(kTranslucent | kAntialias)) | kEdge | (coverage < 31 ? kAntialias : 0);
+                    g_coverage[at] = {g_back.color[at], g_back.alpha[at], coverage};
                 }
                 g_back.color[at] = color;
                 g_back.alpha[at] = out.a;
-                if (update_depth) pix.depth = depth;
-                pix.id = uint8_t(id);
-                pix.fog = attr & (1u << 15);
+                if (update_depth) pix_depth = depth;
+                flags = (flags & ~(kIdMask | kFog)) | id | ((attr >> 15) & 1 ? kFog : 0);
             }
         }
     }
@@ -1060,15 +1120,16 @@ void post_process(int band, int bands) {
     for (int y = band; y < H; y += bands) {
         if (disp3d & 0x20) {  // edge marking: opaque pixels next to another ID that is farther away
             for (int x = 0; x < W; x++) {
-                const Pixel& p = g_attr[y * W + x];
-                if (!p.edge) continue;
+                int at = y * W + x;
+                uint16_t p = g_flags[at];
+                if (!(p & kEdge)) continue;
                 // Neighbors one native pixel away keep the outline as thick as on hardware.
                 for (const auto& n : kN) {
                     int nx = x + n[0] * g_scale, ny = y + n[1] * g_scale;
                     if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
-                    const Pixel& q = g_attr[ny * W + nx];
-                    if (q.id != p.id && p.depth < q.depth) {
-                        g_back.color[y * W + x] = io16(0x330 + (p.id >> 3) * 2) & 0x7FFF;
+                    int q = ny * W + nx;
+                    if ((g_flags[q] & kIdMask) != (p & kIdMask) && g_depth[at] < g_depth[q]) {
+                        g_back.color[at] = io16(0x330 + ((p & kIdMask) >> 3) * 2) & 0x7FFF;
                         break;
                     }
                 }
@@ -1077,30 +1138,30 @@ void post_process(int band, int bands) {
         if (disp3d & 0x10) {  // anti-aliasing: blend partly covered silhouette pixels
             for (int x = 0; x < W; x++) {
                 int at = y * W + x;
-                const Pixel& p = g_attr[at];
-                if (!p.edge || p.coverage >= 31) continue;
+                uint16_t p = g_flags[at];
+                if (!(p & kAntialias)) continue;
                 // Only where the polygon meets something else: the sides shared by
                 // polygons of one model stay solid.
                 bool silhouette = false;
                 for (const auto& n : kN) {
                     int nx = x + n[0], ny = y + n[1];
                     if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
-                    const Pixel& q = g_attr[ny * W + nx];
-                    if (q.id != p.id || !q.edge) silhouette = true;
+                    uint16_t q = g_flags[ny * W + nx];
+                    if ((q & kIdMask) != (p & kIdMask) || !(q & kEdge)) silhouette = true;
                 }
                 if (!silhouette) continue;
-                if (p.under_alpha == 0) {
-                    g_back.alpha[at] = p.coverage;  // the 2D layers below show through
+                const Coverage& c = g_coverage[at];
+                if (c.under_alpha == 0) {
+                    g_back.alpha[at] = c.coverage;  // the 2D layers below show through
                 } else {
-                    g_back.color[at] = blend_colors(g_back.color[at], p.under_color, p.coverage);
+                    g_back.color[at] = blend_colors(g_back.color[at], c.under_color, c.coverage);
                 }
             }
         }
         if (disp3d & 0x80) {  // fog
             for (int i = y * W; i < (y + 1) * W; i++) {
-                const Pixel& p = g_attr[i];
-                if (!p.fog) continue;
-                uint32_t d = p.depth >> 9;
+                if (!(g_flags[i] & kFog)) continue;
+                uint32_t d = g_depth[i] >> 9;
                 uint32_t density;
                 if (d < offset) {
                     density = fog_table[0] & 0x7F;
@@ -1129,86 +1190,60 @@ void post_process(int band, int bands) {
     }
 }
 
-// Worker threads for the rendering bands. run(f) calls f(band) for every band, the
-// calling thread doing band 0, and returns when all are done.
-class BandPool {
-public:
-    explicit BandPool(int bands) : bands_(bands) {
-        // Detached and never destroyed: the pool lives until the process exits.
-        for (int i = 1; i < bands_; i++) std::thread([this, i] { work(i); }).detach();
-    }
-    int bands() const { return bands_; }
-    template <class F>
-    void run(F f) {
-        if (bands_ == 1) {
-            f(0);
-            return;
-        }
-        {
-            std::lock_guard lock(mutex_);
-            job_ = f;
-            pending_ = bands_ - 1;
-            generation_++;
-        }
-        start_.notify_all();
-        f(0);
-        std::unique_lock lock(mutex_);
-        done_.wait(lock, [this] { return pending_ == 0; });
-    }
+// Large buffers are cleared with streaming stores: a normal store first reads the line
+// it changes, and these lines would come from memory only to be overwritten.
+constexpr int kStreamClearScale = 4;
 
-private:
-    void work(int band) {
-        uint64_t seen = 0;
-        for (;;) {
-            std::function<void(int)> job;
-            {
-                std::unique_lock lock(mutex_);
-                start_.wait(lock, [&] { return generation_ != seen; });
-                seen = generation_;
-                job = job_;
-            }
-            job(band);
-            std::lock_guard lock(mutex_);
-            if (--pending_ == 0) done_.notify_one();
-        }
+template <class T>
+void clear_row(T* p, T value) {
+#if defined(__SSE2__)
+    // Rows are 256 * scale elements, a multiple of 16 bytes.
+    if (g_scale >= kStreamClearScale && (uintptr_t(p) & 15) == 0) {
+        alignas(16) T pattern[16 / sizeof(T)];
+        std::fill(std::begin(pattern), std::end(pattern), value);
+        __m128i v = _mm_load_si128(reinterpret_cast<const __m128i*>(pattern));
+        auto* out = reinterpret_cast<__m128i*>(p);
+        for (size_t i = 0; i < size_t(W) * sizeof(T) / 16; i++) _mm_stream_si128(out + i, v);
+        return;
     }
+#endif
+    std::fill_n(p, W, value);
+}
 
-    int bands_;
-    std::mutex mutex_;
-    std::condition_variable start_, done_;
-    std::function<void(int)> job_;
-    uint64_t generation_ = 0;
-    int pending_ = 0;
-};
-
-// NTR_3D_THREADS overrides the thread count (1 = render on the emulation thread only).
-BandPool& band_pool() {
-    static BandPool* pool = new BandPool([] {
-        int n = int(std::thread::hardware_concurrency());
-        if (const char* env = std::getenv("NTR_3D_THREADS")) n = std::atoi(env);
-        return std::clamp(n, 1, 8);
-    }());
-    return *pool;
+// Streaming stores are weakly ordered: they must be visible before other threads read the rows.
+void stream_fence() {
+#if defined(__SSE2__)
+    _mm_sfence();
+#endif
 }
 
 void render_frame() {
     // Fast forward shows few frames; rendering them at native size keeps it fast.
-    int scale = host_fast_forward() ? 1 : g_wanted_scale;
-    if (scale != g_scale || g_attr.empty()) {
-        g_scale = scale;
-        resize_buffers();
-    }
+    g_scale = host_fast_forward() ? 1 : g_wanted_scale;
+    resize_buffers();
     uint32_t clear = io32(0x350);
     uint32_t clear_depth = io16(0x354) & 0x7FFF;
     uint32_t depth = clear_depth * 0x200 + ((clear_depth + 1) / 0x8000) * 0x1FF;
-    Pixel cleared{depth, uint8_t((clear >> 24) & 63), bool(clear & 0x8000), false, false, false, 31, 0, 0};
-    std::fill(g_attr.begin(), g_attr.end(), cleared);
-    std::fill(g_back.color.begin(), g_back.color.end(), uint16_t(clear & 0x7FFF));
-    std::fill(g_back.alpha.begin(), g_back.alpha.end(), uint8_t((clear >> 16) & 31));
+    uint16_t flags = uint16_t((clear >> 24) & 63) | (clear & 0x8000 ? kFog : 0);
     g_tex_view = &vram_view(VramArea::Texture);
     g_pal_view = &vram_view(VramArea::TexPalette);
+    for (int i = 0; i < 32; i++) g_toon[i] = io16(0x380 + i * 2);
     BandPool& pool = band_pool();
+    if (g_scale >= kTextureCacheScale) {
+        decode_textures(pool);
+    } else {
+        for (Polygon& p : g.polys) p.texels = nullptr;
+    }
     pool.run([&](int band) {
+        // Each band clears the rows it draws.
+        for (int y = band; y < H; y += pool.bands()) {
+            size_t row = size_t(y) * W;
+            clear_row(g_depth.data() + row, depth);
+            clear_row(g_flags.data() + row, flags);
+            clear_row(g_back.color.data() + row, uint16_t(clear & 0x7FFF));
+            clear_row(g_back.alpha.data() + row, uint8_t((clear >> 16) & 31));
+        }
+        stream_fence();
         for (const Polygon& p : g.polys) draw_polygon(p, band, pool.bands());
     });
     // Edge marking and anti-aliasing look at neighboring rows: all bands must be done.
@@ -1266,7 +1301,7 @@ void gpu3d_set_scale(int scale) { g_wanted_scale = std::clamp(scale, 1, kMax3dSc
 int gpu3d_scale() { return g_front_scale; }
 
 void gpu3d_init() {
-    if (g_attr.empty()) {
+    if (g_depth.empty()) {
         resize_buffers();
         g_front = g_back;
     }
@@ -1279,8 +1314,7 @@ void gpu3d_init() {
 void gpu3d_vblank() {
     if (!g.swap_pending) return;
     g.swap_pending = false;
-    g_front.color = g_back.color;
-    g_front.alpha = g_back.alpha;
+    std::swap(g_front, g_back);  // the next frame clears and redraws all of the back buffer
     g_front_scale = g_scale;
     // One sample per native pixel, at its center.
     int half = g_scale / 2;
