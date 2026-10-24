@@ -1623,3 +1623,14 @@ com o `CyberLifePlus.zip` 1.3 ligado (troca o antigo e mantém a ordem dos ligad
 (troca a 1.3) e da 1.2 (entra desligada, a 1.4 continua). Com a 1.10 posta à mão, a aba Mods (captura) a liga no
 lugar da 1.4, que fica desligada. Não testado: adicionar pelo botão e arrastar na janela (o mesmo código do
 `--install-mod`, aplicado na listagem seguinte).
+
+## 2026-10-24 — Release: o mod aparece só com o nome do arquivo
+
+- Problema: na release 0.1.10, o mod aparecia como "mod-CyberLifePlus-1.3.zip — mod CyberLifePlus (tradução
+  PT-BR), versão 1.3.zip". O `release.py` passava um rótulo (`caminho#rótulo` no `assets.txt`) ao
+  `gh release create`, e a página mostra o rótulo no lugar do nome. Com a versão já no nome do arquivo, o rótulo
+  sobrava.
+- Correção: o `assets.txt` lista só os caminhos, e a página mostra `mod-CyberLifePlus-1.3.zip`. Ajustados o
+  comentário do `release.yml`, `docs/MODS.md` e `docs/DESENVOLVIMENTO.md`.
+- Verificação: `tools/release.py` gera o `assets.txt` sem rótulos. O asset da release 0.1.10 já publicada precisa
+  ser renomeado à parte, porque o `gh` daqui está sem login.

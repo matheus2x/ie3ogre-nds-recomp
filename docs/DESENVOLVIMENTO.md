@@ -140,9 +140,8 @@ Não precisa do dump. O pacote leva o launcher, o `SDL3.dll` e o `sdk/`:
 - o `toolchain.txt`, com o llvm-mingw fixado por URL e SHA-256.
 
 Cada mod oficial (`mods/<nome>/` com `mod.ini`) vira `build/release/mod-<nome>-<version>.zip` (`version` do
-`mod.ini`) e entra no `sha256sums.txt`. Na página da release, o `.zip` aparece com o rótulo
-"`mod-<nome>-<version>.zip` — mod <nome do mod.ini>, versão <version>" (`build/release/assets.txt`, lido pelo
-CI), e as notas listam os mods oficiais com a versão. A release é recusada se um mod oficial tiver um arquivo
+`mod.ini`) e entra no `sha256sums.txt`. Na página da release, o `.zip` aparece com esse nome, sem rótulo
+(`build/release/assets.txt`, lido pelo CI), e as notas listam os mods oficiais com a versão. A release é recusada se um mod oficial tiver um arquivo
 inteiro do jogo em vez de um patch `.bps`, ou se ele mudou desde a tag anterior e o `version` do `mod.ini` não.
 
 O launcher e o `ntr-recomp` são compilados com o mesmo llvm-mingw (`cmake/toolchains/llvm-mingw-x86_64.cmake`),

@@ -167,8 +167,8 @@ A pasta [`mods/`](../mods/) do repositório tem os mods mantidos pelo projeto, u
 sai na release como `mod-<nome>-<version>.zip` (`tools/release.py`). O nome do arquivo muda a cada versão, mas o
 launcher reconhece o mesmo mod pelo `name` do `mod.ini`: adicionado pelo launcher, o novo apaga a cópia antiga da
 pasta `mods` e fica no lugar dela na lista (ligado, se ela estava); colocado à mão, uma versão mais nova fica no
-lugar da antiga, que continua na pasta, desligada. A versão é o `version` do `mod.ini`: aparece no rótulo do `.zip` na página da
-release, na seção "Mods oficiais" das notas (com "atualizado nesta versão" quando o mod mudou) e, no launcher, na
+lugar da antiga, que continua na pasta, desligada. A versão é o `version` do `mod.ini`: aparece no nome do
+`.zip`, na seção "Mods oficiais" das notas (com "atualizado nesta versão" quando o mod mudou) e, no launcher, na
 lista e nos detalhes da aba Mods. A release é recusada se um mod oficial tiver um arquivo inteiro do jogo ou se
 tiver mudado desde a release anterior sem um `version` novo.
 

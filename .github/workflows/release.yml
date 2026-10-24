@@ -53,6 +53,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mapfile -t assets < build/release/assets.txt  # "path#label" for the mods
+          mapfile -t assets < build/release/assets.txt
           gh release create "$GITHUB_REF_NAME" "${assets[@]}" \
             --title "$GITHUB_REF_NAME" --notes-file build/release/notes.md

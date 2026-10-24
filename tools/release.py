@@ -150,9 +150,9 @@ def check_version(folder: Path, version: str):
         sys.exit(f"error: {rel} changed since {since} but mod.ini still says version = {version}")
 
 
-def official_mods(release: Path) -> list[tuple[Path, str]]:
-    """mods/<name>/ -> (mod-<name>-<version>.zip, its label on the release page), as tools/mod.py pack makes
-    it. Whole game files are refused: an official mod carries only patches (docs/MODS.md)."""
+def official_mods(release: Path) -> list[Path]:
+    """mods/<name>/ -> mod-<name>-<version>.zip, as tools/mod.py pack makes it (shown with that
+    name on the release page). Whole game files are refused: an official mod carries only patches (docs/MODS.md)."""
     out = []
     for folder in sorted((ROOT / "mods").iterdir()) if (ROOT / "mods").is_dir() else []:
         if not (folder / "mod.ini").is_file():
@@ -170,7 +170,7 @@ def official_mods(release: Path) -> list[tuple[Path, str]]:
         zip_path = release / f"mod-{folder.name}-{version}.zip"
         zip_path.unlink(missing_ok=True)
         mod.pack(folder, zip_path)
-        out.append((zip_path, f"{zip_path.name} — mod {info.get('name') or folder.name}, versão {version}"))
+        out.append(zip_path)
     return out
 
 
@@ -231,14 +231,14 @@ def main() -> int:
                 info.compress_type = zipfile.ZIP_DEFLATED
                 z.writestr(info, f.read_bytes())
     mods = official_mods(release)
-    zips = [zip_path] + [z for z, _ in mods]
+    zips = [zip_path] + mods
     sums = release / "sha256sums.txt"
     names = {z.name for z in zips}
     lines = [line for line in (sums.read_text().splitlines() if sums.exists() else []) if line.split()[-1] not in names]
     lines += [f"{sha256(z)}  {z.name}" for z in zips]
     sums.write_text("\n".join(sorted(lines, key=lambda l: l.split()[-1])) + "\n")
-    # What the release workflow uploads: "path#label" (the label is what the page shows).
-    assets = [str(zip_path)] + [f"{z}#{label}" for z, label in mods] + [str(sums)]
+    # What the release workflow uploads, shown on the page with the file names.
+    assets = [str(z) for z in zips] + [str(sums)]
     (release / "assets.txt").write_text("\n".join(assets) + "\n", encoding="utf-8")
     for z in zips:
         print(f"release: {z} ({z.stat().st_size / 2**20:.1f} MiB)")
