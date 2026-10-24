@@ -149,13 +149,20 @@ int main(int argc, char** argv) {
                 reg << "    {" << hex32(fn.addr) << ", " << (fn.thumb ? 1 : 0) << ", &" << symbol_for(mod, fn) << "},\n";
             }
             reg << "};\n";
+            reg << "const uint32_t kCode_" << mod.name << "[] = {";
+            size_t n = 0;
+            for (auto [start, end] : mod.code_ranges()) {
+                reg << (n++ % 6 ? " " : "\n    ") << hex32(start) << ", " << hex32(end) << ",";
+            }
+            reg << "\n};\n";
         }
         reg << "}  // namespace\n\nconst ntr::ModuleEntry ntr::kRecompModules[] = {\n";
         size_t count = 0;
         for (const auto& mod : prog.modules) {
             if (mod.functions.empty()) continue;
             reg << "    {\"" << mod.name << "\", " << hex32(mod.base) << ", " << hex32(uint32_t(mod.data.size()))
-                << ", kFuncs_" << mod.name << ", " << mod.functions.size() << "},\n";
+                << ", kFuncs_" << mod.name << ", " << mod.functions.size() << ", kCode_" << mod.name << ", "
+                << mod.code_ranges().size() << "},\n";
             count++;
         }
         reg << "};\nconst uint32_t ntr::kRecompModuleCount = " << count << ";\n";

@@ -1,6 +1,7 @@
 // boej: runs the recompiled Inazuma Eleven 3 (BOEJ).
 //
 // Usage: boej [boej.pak | rom.nds]
+//        boej --check-mods   what the folders in mods/ would do (for the launcher)
 //
 // The game data comes from boej.pak, looked up next to the executable, then in the
 // current directory. On the first run there is none: the game asks for the player's
@@ -67,6 +68,10 @@ int main(int argc, char** argv) {
     if (GetConsoleProcessList(processes, 2) == 1 && !std::getenv("NTR_CONSOLE")) FreeConsole();
 #endif
     std::vector<std::string> args = arguments(argc, argv);
+    if (args.size() == 2 && args[1] == "--check-mods") {
+        std::string pak = find_pak();
+        return ntr::mods_check(pak.empty() ? ntr::host_base_path() + "boej.pak" : pak);
+    }
     if (args.size() > 2) {
         std::fprintf(stderr, "usage: boej [boej.pak | rom.nds]\n");
         return 2;
@@ -93,5 +98,6 @@ int main(int argc, char** argv) {
         ntr::log_printf("error: cannot read %s\n", path.c_str());
         return 1;
     }
+    ntr::mods_apply();
     ntr::boot();
 }

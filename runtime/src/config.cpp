@@ -47,6 +47,12 @@ volume = 100
 ; fica no máximo que ele conseguir.
 fast_forward_speed = 4
 
+; Mods da pasta mods/ que estão ligados: os nomes das pastas e dos .zip, separados por vírgula.
+; Quando dois mods mudam o mesmo arquivo, vale o que vem depois. A aba Mods do launcher
+; cuida desta lista.
+[mods]
+enabled =
+
 ; Opções do launcher (o jogo ignora esta seção).
 [launcher]
 ; Procurar uma versão nova ao abrir o launcher.
@@ -175,6 +181,23 @@ bool config_load(const std::string& path, Config& out) {
     if (!file) return false;
     parse(file, true, out);
     NTR_LOG("[config] settings from %s\n", path.c_str());
+    return true;
+}
+
+bool ini_parse(const std::string& text, const std::string& name, Config& out) {
+    out = Config();
+    out.path = name;
+    std::istringstream in(text);
+    parse(in, true, out);
+    return true;
+}
+
+bool ini_load(const std::string& path, Config& out) {
+    out = Config();
+    out.path = path;
+    std::ifstream file(fs_path(path));
+    if (!file) return false;
+    parse(file, true, out);
     return true;
 }
 

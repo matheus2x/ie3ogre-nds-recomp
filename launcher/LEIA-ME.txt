@@ -22,6 +22,14 @@ A aba "Atualizações" baixa a versão nova e confere com o sha256sums.txt da
 release. O jogo é compilado de novo automaticamente, sem pedir o dump.
 Seus saves e configurações não são mexidos.
 
+MODS
+Cada mod é uma pasta ou um .zip. Para adicionar, coloque o mod na pasta
+"mods", ao lado do boej.exe (ou arraste-o para a janela do launcher). Depois,
+na aba "Mods", ligue, desligue e ordene os mods. A aba também cria um mod a
+partir de um dump modificado (uma tradução, por exemplo), desde que o código
+dele seja o do jogo original. As mudanças valem na próxima vez que o jogo
+abrir. Como fazer um mod: veja docs/MODS.md no repositório do projeto.
+
 ARQUIVOS CRIADOS NESTA PASTA
 - boej.exe, boej.pak  o jogo, preparado a partir do seu dump (uso pessoal:
                       não distribua)
@@ -30,7 +38,7 @@ ARQUIVOS CRIADOS NESTA PASTA
 - savestates\         os savestates (slots 1 a 5)
 - boej.ini            configurações (também editáveis no launcher)
 - boej.log, boej-replay.*, launcher.log   registros para relatar problemas
-- mods\               reservada para mods (em breve)
+- mods\               os mods (uma pasta ou um .zip por mod)
 
 CONTROLES PADRÃO (mude no menu do jogo ou na aba Configurações do launcher)
   Direcional  setas (controle: direcional ou analógico esquerdo)

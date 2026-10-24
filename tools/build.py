@@ -7,7 +7,7 @@
   python3 tools/build.py --windows --dist /mnt/c/Games/ie3   # ...and copy boej.exe there
 
 Prerequisites (once per checkout): tools/extract.py on the retail dump and
-"tools/analyze.py dsd" (see README). --windows needs x86_64-w64-mingw32-g++.
+"tools/analyze.py dsd" (see docs/DESENVOLVIMENTO.md). --windows needs x86_64-w64-mingw32-g++.
 
 The game data package made by tools/extract.py (build/boej.pak) is placed next to the
 executable (and copied with --dist), so the game runs with no arguments and no dump.

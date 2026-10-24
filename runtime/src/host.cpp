@@ -844,6 +844,8 @@ void run_menu() {
 
 bool host_fast_forward() { return fast_forward(); }
 
+const Config& host_config() { return g_host.config; }
+
 void host_set_command_line(const std::vector<std::string>& args) { g_host.args = args; }
 
 std::string host_base_path() {

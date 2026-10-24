@@ -175,6 +175,8 @@ void watchdog() {
 
 }  // namespace
 
+void log_disable_file() { g_log_tried = true; }
+
 void log_printf(const char* fmt, ...) {
     va_list ap;
     va_start(ap, fmt);

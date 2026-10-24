@@ -1166,3 +1166,92 @@ Pedido: a 4× o FPS caía abaixo de 60 e o som engasgava. O usuário também ped
 - Launcher e menu de pausa: combo "Telas pequenas" (À esquerda / À direita) logo abaixo de "Layout", só no modo tela larga. Vale na hora, pelo `apply_presentation()`.
 - README atualizado. `build/cmake-rel` compila sem avisos.
 - **Testado** com janela (WSLg, ajuste temporário lendo a imagem do renderer no quadro 600): com `right`, a tela de baixo ampliada fica à esquerda e as duas pequenas à direita; com `left`, igual a antes. Um clique em (50, 50) da janela vira toque com `right` e não com `left` (cai na tela de cima). **Não testado:** trocar pelo menu de pausa com o jogo rodando e o build do Windows.
+
+## 2026-10-23 — Mods: troca de arquivos e dados das overlays, aba Mods e tools/mod.py
+
+Pedido: a próxima etapa para facilitar a criação de mods. Os mods planejados pelo usuário são tradução, troca de sprites, upscaling e um gerenciador de técnicas (estilo Mini Hack). Esta etapa monta a base comum a todos: o jogo ler arquivos de mods sem mexer no `boej.pak`, o launcher gerenciar os mods e ferramentas para quem os cria. Formato e fluxo em [`docs/MODS.md`](MODS.md).
+
+**Análise.**
+- Todo acesso do jogo ao cartucho passa por `rom_read` (o `CARDi_ReadRomWithCPU` é HLE). Então dá para trocar arquivos do lado do host, sem tocar no código recompilado.
+- A tradução de fãs (BAHAMUT) muda 512 arquivos e 33 overlays. Com os símbolos do ds-decomp, **nenhuma** diferença das overlays cai dentro de uma função, exceto na ov129 (DS Protect, cifrada na ROM). São só strings e tabelas.
+- O tradutor embute em C as constantes dos literal pools (`ldr rX, [pc, #imm]` vira `c.r[X] = 0x...`). Por isso um mod que mude bytes de código ou de pools não teria efeito (ou teria meio efeito). É preciso conferir isso.
+- A tradução encolhe o `ram_size` de 25 overlays na tabela de overlays e aumenta em 1 byte o da ov065. As overlays retail descomprimidas têm exatamente o `ram_size`.
+
+**Runtime.**
+- `ntr/nitro.h` + `nitro.cpp` (no `ntr-common`, compartilhado com o launcher): o `RomImage` (antes dentro do `rom.cpp`; .nds ou pacote, mapeado em memória), a FNT/FAT (`nitro_files`), a tabela de overlays (`nitro_overlays`, `nitro_overlay_image`) e o BLZ em C++.
+- `rom.cpp`: camada de substituições (`rom_override`) por cima da imagem, aplicada em cada `rom_read`.
+- `mods.cpp`:
+  - lê `[mods] enabled` do `boej.ini` (ou `NTR_MODS`) e, de cada pasta, o `mod.ini`, `files/<caminho do NitroFS>` e `overlays/ovNNN.bin`;
+  - os arquivos do mod ficam mapeados e são colocados em endereços da ROM depois do fim da imagem. Cópias da FAT e da tabela de overlays apontam para eles (overlay marcada como não comprimida e com `ram_size` = máximo entre o original e o do mod). O tamanho dos arquivos pode mudar;
+  - uma overlay menor é completada com os bytes originais. A ov129 é recusada;
+  - mod com erro fica de fora inteiro; caminho desconhecido vira aviso; quando dois mods trocam o mesmo arquivo, vale o que vem depois (com aviso). Tudo vai para o `boej.log` (`[mods]`).
+- `boej --check-mods`: a mesma checagem para todas as pastas de `mods/`, em linhas separadas por tab, para o launcher. Não grava `boej.log` (`log_disable_file`).
+- Savestates: a identidade inclui `mods_fingerprint()` (pastas, caminhos, tamanhos e datas dos arquivos, conteúdo das overlays). A mensagem virou "De outra versão do jogo ou com outros mods".
+- `boej.ini`: seção nova `[mods]` com `enabled =`.
+
+**Recompilador.** O `Module` marca cada byte lido durante a tradução (`baked`: instruções, literais e tabelas). O `registry.cpp` ganhou, por módulo, `kCode_<módulo>`: as faixas [início, fim) da união dos corpos das funções com esses bytes (`ModuleEntry::code`). O jogo compara a overlay do mod com a original nessas faixas e recusa o mod se algum byte mudou, informando o endereço. Na tradução, todas as 32 overlays (sem a 129) passam.
+
+**Launcher (aba Mods, `launcher/mods.cpp`).**
+- Lista as pastas de `mods/` com nome, versão, autor e descrição do `mod.ini`. Cada mod tem caixa para ligar, setas para a ordem e o estado (ok / avisos / com erro), que vem do `boej --check-mods` rodado em segundo plano.
+- Detalhes do mod selecionado: erros, avisos, quantos arquivos e overlays ele troca, abrir a pasta e remover (com confirmação).
+- **Instalar mod (.zip)** (botão ou arrastando o `.zip` para a janela), com `tar` no Windows e `unzip` no Linux, como na atualização. O `mod.ini` pode estar na raiz do zip ou numa pasta única; reinstalar atualiza a pasta.
+- **Criar de um dump modificado:** compara o `.nds` com o `boej.pak` (arquivos pela FNT, overlays descomprimidas com o BLZ em C++) e cria a pasta do mod. Recusa se o ARM9 for diferente. Nome da pasta sem o número da lista de releases ("5421 - ") e sem cortar caracteres UTF-8.
+- Linha de comando: `--install-mod <zip>` e `--mod-from-dump <nds>`. Teste: `IE3_LAUNCHER_MOD=<pasta>` seleciona um mod.
+- `settings_set` grava o `boej.ini` (a lista `enabled`).
+
+**`tools/mod.py`:** `new`, `unpack` (arquivos originais e overlays, do `boej.pak` ou do `.nds`), `from-dump`, `check` (com os tamanhos de função do ds-decomp) e `pack` (zip). Testes em `tools/tests/test_mod.py` (ROM sintética).
+
+**Correção de build:** desde os savestates, o `boej.exe` não ligava com o MinGW (GCC) do `tools/build.py --windows`: o `ld` do GNU não aceita `--large-address-aware` em imagens de 64 bits, que já têm a flag. Agora a opção só vai para o Clang (llvm-mingw, que é o usado no PC do jogador).
+
+**Verificação:**
+- `tools/mod.py from-dump boej.pak <dump BAHAMUT>` gerou o mod com 512 arquivos e 32 overlays. O launcher (`--mod-from-dump`) gerou **os mesmos arquivos byte a byte** (só o `mod.ini` difere), o que confere o BLZ e a leitura da FNT em C++.
+- Roteiro da história (sem janela), quadros 1500, 3000, 6000, 9000 e 14000: retail + mod de tradução deu imagens **idênticas byte a byte** às do dump traduzido rodado direto. Em relação ao retail sem mod, 4 dos 5 quadros diferem (o texto). No Windows (`boej.exe` do MinGW, pelo interop), os quadros 3000 e 9000 também ficaram idênticos.
+- Mod de teste com um byte de código mudado na ov022 e um arquivo inexistente: erro "muda o código do jogo em 0x02119F10" e aviso do caminho, no jogo e na aba Mods (captura da janela conferida).
+- Instalação de `.zip` no Linux e no Windows (pasta com acento no nome). Testes Python: 14, todos passando. Linux e Windows compilam sem avisos.
+- Observação: na tradução BAHAMUT, nesse ponto da história, o texto das cenas aparece com "?" no lugar dos kanji (a fonte foi trocada). É igual no dump traduzido, então é da tradução e não do mod.
+
+**Não testado:** cliques de verdade na aba Mods (ligar, setas, remover, diálogos de arquivo), o launcher do Windows com janela e o build pelo llvm-mingw no PC do jogador.
+
+**Próximos passos** (em `docs/MODS.md`): patches por arquivo (mods sem dados do jogo), formatos documentados com conversores (texto, fonte, imagem, tabelas), pacotes de texturas por hash para o upscaling e um editor de técnicas que gere um mod.
+
+## 2026-10-24 — README enxuto
+
+- Pedido: README mais curto, só com o essencial, e considerando só o dump retail (a tradução de fãs sai da tabela; depois o código vai aceitar só o retail como base).
+- README (297 → 111 linhas): o que é, estado, como jogar, dump suportado (só o retail), controles e atalhos, mods, como relatar problemas, funcionalidades resumidas, build mínimo, referências, contribuição e aviso legal.
+- O que saiu foi para `docs/DESENVOLVIMENTO.md`: estrutura do repositório, análise com dsd/Ghidra, extração, configurações do `boej.ini`, arquivos de diagnóstico, build para Windows, release/CI e variáveis de ambiente. Acrescentei os comandos de mods do launcher e do jogo e o `NTR_MODS`, e corrigi valores que estavam velhos (`resolution_3d` e `NTR_3D_SCALE` vão até 10; o 3D usa até 16 threads).
+- `docs/MODS.md` não cita mais a tabela de dumps do README. `tools/build.py` aponta para o novo documento.
+- Ainda não mudou: o `config/boej/dumps.json`, o `setup.cpp` e o `compare_dumps.py` continuam conhecendo a tradução de fãs.
+
+## 2026-10-24 — Mods em pasta ou .zip, direto na pasta mods/
+
+- Pedido: cada mod é uma pasta **ou um .zip** dentro de `mods/`, ao lado do `.exe`; é ali que o jogador coloca os mods e de onde o launcher os lê.
+- Antes, só pastas eram lidas, e o botão "Instalar" extraía o `.zip` com `tar`/`unzip`.
+- **`ModPackage`** (`ntr/package.h` + `package.cpp`, no `ntr-common`):
+  - trata pasta e zip do mesmo jeito: lista os arquivos a partir da raiz do mod;
+  - num zip, a raiz é o topo ou a única pasta de cima (o que o `tools/mod.py pack` e o "Compactar" do Windows geram);
+  - leitor de zip próprio, sem dependência nova: diretório central, entradas guardadas ou Deflate, CRC-32. Zip com senha e zip64 são recusados com mensagem;
+  - inflate próprio no estilo do "puff" do zlib.
+- **Jogo** (`mods.cpp`):
+  - os nomes em `[mods] enabled` são o da pasta ou o do arquivo (`Tradução.zip`);
+  - arquivos de pasta e entradas sem compressão ficam mapeados;
+  - os comprimidos entram por `rom_override_lazy` (novo no `rom.cpp`): são descomprimidos uma única vez, por uma thread em segundo plano que começa ao abrir o jogo, ou na hora, se o jogo pedir um antes dela (`std::call_once`);
+  - um arquivo danificado é lido como zeros, com erro no log;
+  - `--check-mods` lista pastas e `.zip`, e descomprime tudo para conferir o CRC;
+  - arquivos ao lado do `mod.ini` (leia-me, imagem) são ignorados; fora de `files/` e `overlays/`, geram aviso.
+- **Desempenho:** a primeira versão descomprimia só na hora da leitura. O `pcm.pkb` da tradução (31 MB) gerou um quadro de 225 ms. Com a thread em segundo plano, o pior quadro voltou a 14 ms. A tradução inteira (77 MB descomprimidos) leva menos de 1 s, e um mod em zip ocupa RAM com o que descomprime.
+- **Robustez:** um nome em `[mods] enabled` que não seja UTF-8 (um `boej.ini` salvo em ANSI) fazia o `std::filesystem` lançar exceção e derrubava o jogo. Agora o mod recebe um erro e o jogo abre sem ele. O `NTR_MODS` é lido com `SDL_getenv` (UTF-8 também no Windows).
+- **Launcher:**
+  - a lista mostra pastas e `.zip` de `mods/` e se atualiza sozinha (a cada ~1,5 s confere a pasta);
+  - "Adicionar mod (.zip)", arrastar um `.zip` ou uma pasta para a janela e `--install-mod` apenas **copiam** para `mods/` (antes, extraíam), conferindo antes o `mod.ini`;
+  - o `mod.ini` é lido de dentro do zip, e a lista mostra o nome do arquivo ao lado do nome do mod (dois mods podem ter o mesmo nome);
+  - para um zip: "Mostrar na pasta mods", e "Remover" apaga o arquivo.
+- `tools/mod.py check` aceita `.zip`. `ini_parse` novo em `config.cpp`. Docs: README, `docs/MODS.md`, `docs/DESENVOLVIMENTO.md`, `LEIA-ME.txt` e o comentário do `boej.ini`.
+
+**Verificação:**
+- Linux, roteiro da história, tradução como `.zip` (Deflate, mod dentro de uma pasta no zip): imagens **idênticas byte a byte** às do dump traduzido nos quadros 1500, 3000, 6000, 9000 e 14000.
+- Windows (`boej.exe` do MinGW, pelo interop), `Tradução.zip` com acento no nome: quadros 3000 e 9000 idênticos.
+- `--check-mods` com pasta, zip, zip corrompido ("não é um .zip válido") e zip sem `mod.ini` ("falta o mod.ini").
+- `--install-mod` com pasta, com zip, com o zip que já está em `mods/` e com zip sem `mod.ini` (recusado). Captura da aba Mods conferida.
+- Testes Python: 15, todos passando. Linux e Windows compilam sem avisos.
+
+**Não testado:** cliques e arrastar de verdade no launcher, e o launcher do Windows com janela.

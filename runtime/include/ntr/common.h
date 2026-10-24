@@ -59,6 +59,9 @@ struct Config {
     void warn(const Entry& e, const std::string& message) const;  // "[config] file:line: ..."
 };
 bool config_load(const std::string& path, Config& out);  // false (defaults only) if the file is missing
+// Any other INI file (a mod's mod.ini), without the defaults.
+bool ini_load(const std::string& path, Config& out);
+bool ini_parse(const std::string& text, const std::string& name, Config& out);  // `name` for messages
 bool config_write_default(const std::string& path);
 // Writes the defaults file with this config's values in place of the defaults (comments
 // and order kept).

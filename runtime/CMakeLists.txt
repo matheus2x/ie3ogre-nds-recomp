@@ -3,6 +3,8 @@ add_library(ntr-common STATIC
     src/config.cpp
     src/files.cpp
     src/hash.cpp
+    src/nitro.cpp
+    src/package.cpp
     src/setup.cpp
 )
 target_include_directories(ntr-common PUBLIC include)
@@ -45,6 +47,7 @@ add_library(ntr-runtime STATIC
     src/io.cpp
     src/irq.cpp
     src/memory.cpp
+    src/mods.cpp
     src/pool.cpp
     src/pxi.cpp
     src/rom.cpp

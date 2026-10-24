@@ -1,10 +1,11 @@
-// ie3-launcher: first-run preparation, settings, mods (to come) and updates.
+// ie3-launcher: first-run preparation, settings, mods and updates.
 // See launcher.h for the folder layout.
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include <imgui.h>
 #include <ntr/ui.h>
 
+#include <cctype>
 #include <cstdarg>
 #include <cstdlib>
 #include <cstdio>
@@ -232,24 +233,6 @@ void play_tab(SDL_Window* window) {
     }
 }
 
-void mods_tab() {
-    ImGui::TextWrapped("Em breve: adicionar e remover mods (traduções, texturas, ajustes).");
-    ImGui::Spacing();
-    ImGui::TextWrapped("Os mods vão ficar na pasta mods/, ao lado do launcher. Por enquanto, o launcher só lista o que estiver lá.");
-    ImGui::Spacing();
-    std::error_code ec;
-    int count = 0;
-    if (ImGui::BeginChild("mods", ImVec2(0, 160), ImGuiChildFlags_Borders)) {
-        for (const auto& entry : fs::directory_iterator(ntr::fs_path(paths().mods()), ec)) {
-            ImGui::BulletText("%s", ntr::utf8_string(entry.path().filename()).c_str());
-            count++;
-        }
-        if (!count) ImGui::TextDisabled("(nenhum mod)");
-    }
-    ImGui::EndChild();
-    if (ImGui::Button("Abrir a pasta mods")) open_folder(paths().mods());
-}
-
 // ie3-launcher --prepare [dump.nds]: the same preparation without a window (for tests,
 // or for players who prefer a terminal). Progress goes to the terminal and launcher.log.
 int prepare_cli(const std::string& dump) {
@@ -285,6 +268,10 @@ int main(int argc, char** argv) {
         NTR_LOG("[launcher] %s in %s (sdk %s)\n", LAUNCHER_VERSION, paths().root.c_str(), sdk_version().c_str());
         return prepare_cli(argc >= 3 ? argv[2] : "");
     }
+    if (argc == 3 && (std::string(argv[1]) == "--install-mod" || std::string(argv[1]) == "--mod-from-dump")) {
+        settings_load();
+        return mods_cli(argv[1], argv[2]);
+    }
     if (argc >= 2 && std::string(argv[1]) == "--update") {
         update_cleanup();
         return update_cli();
@@ -313,8 +300,8 @@ int main(int argc, char** argv) {
 
     if (settings().get_bool("launcher", "check_updates")) update_check_start();
 
-    // Tests: IE3_LAUNCHER_TAB opens that tab (0-3) and IE3_LAUNCHER_SHOT saves the window
-    // as a BMP after a second, then quits.
+    // Tests: IE3_LAUNCHER_TAB opens that tab (0-3), IE3_LAUNCHER_MOD selects that mod folder
+    // in the Mods tab and IE3_LAUNCHER_SHOT saves the window as a BMP after a second, then quits.
     const char* shot = std::getenv("IE3_LAUNCHER_SHOT");
     const char* tab_env = std::getenv("IE3_LAUNCHER_TAB");
     int select_tab = tab_env ? std::atoi(tab_env) : -1;
@@ -332,7 +319,18 @@ int main(int argc, char** argv) {
             }
             ntr::ui::process_event(ev);
             if (ev.type == SDL_EVENT_QUIT) g_quit = true;
-            if (ev.type == SDL_EVENT_DROP_FILE && ev.drop.data && !g_job.running) on_dump(ev.drop.data);
+            if (ev.type == SDL_EVENT_DROP_FILE && ev.drop.data) {
+                std::string path = ev.drop.data;
+                std::string ext = ntr::utf8_string(ntr::fs_path(path).extension());
+                for (char& c : ext) c = char(std::tolower(uint8_t(c)));
+                std::error_code ec;
+                if (ext == ".zip" || fs::is_directory(ntr::fs_path(path), ec)) {
+                    mods_drop(path);
+                    select_tab = 2;
+                } else if (!g_job.running) {
+                    on_dump(path);
+                }
+            }
             if (ev.type == g_game_exited_event) game_exited(window);
         }
         if (g_hidden) continue;
@@ -357,7 +355,7 @@ int main(int argc, char** argv) {
                 ImGui::EndTabItem();
             }
             if (ImGui::BeginTabItem("Mods", nullptr, flags(2))) {
-                mods_tab();
+                mods_tab(window);
                 ImGui::EndTabItem();
             }
             if (ImGui::BeginTabItem(update_available() ? "Atualizações (nova!)###updates" : "Atualizações###updates",

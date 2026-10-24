@@ -23,7 +23,8 @@ target_link_libraries(boej PRIVATE ntr-runtime boej-generated)
 # executable included (runtime/src/savestate.cpp): it must load at the same address in
 # every run. Keep in sync with launcher/prepare.cpp.
 if(MINGW)
-    target_link_options(boej PRIVATE -Wl,--disable-dynamicbase -Wl,--large-address-aware)
+    # GNU ld only takes --large-address-aware for 32-bit images (64-bit ones have it anyway).
+    target_link_options(boej PRIVATE -Wl,--disable-dynamicbase $<$<CXX_COMPILER_ID:Clang>:-Wl,--large-address-aware>)
 elseif(UNIX AND NOT APPLE)
     target_link_options(boej PRIVATE -no-pie)
 endif()

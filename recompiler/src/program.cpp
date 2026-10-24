@@ -39,10 +39,35 @@ std::vector<uint8_t> read_file(const std::string& path) {
 
 }  // namespace
 
+void Module::mark_baked(uint32_t addr, uint32_t n) const {
+    if (baked.size() != data.size()) baked.assign(data.size(), 0);
+    for (uint32_t i = 0; i < n; i++) baked[addr - base + i] = 1;
+}
+
+std::vector<std::pair<uint32_t, uint32_t>> Module::code_ranges() const {
+    std::vector<uint8_t> code = baked;
+    code.resize(data.size(), 0);
+    for (const auto& fn : functions) {
+        uint32_t end = std::max(fn.addr + fn.size, fn.body_end);
+        for (uint32_t a = fn.addr; a < end && contains(a); a++) code[a - base] = 1;
+    }
+    std::vector<std::pair<uint32_t, uint32_t>> out;
+    for (uint32_t i = 0; i < code.size(); i++) {
+        if (!code[i]) continue;
+        if (!out.empty() && out.back().second == base + i) {
+            out.back().second++;
+        } else {
+            out.push_back({base + i, base + i + 1});
+        }
+    }
+    return out;
+}
+
 std::optional<uint32_t> Module::read32(uint32_t addr) const {
     if (!contains(addr) || !contains(addr + 3)) {
         return std::nullopt;
     }
+    mark_baked(addr, 4);
     const uint8_t* p = data.data() + (addr - base);
     return uint32_t(p[0]) | uint32_t(p[1]) << 8 | uint32_t(p[2]) << 16 | uint32_t(p[3]) << 24;
 }
@@ -51,6 +76,7 @@ std::optional<uint16_t> Module::read16(uint32_t addr) const {
     if (!contains(addr) || !contains(addr + 1)) {
         return std::nullopt;
     }
+    mark_baked(addr, 2);
     const uint8_t* p = data.data() + (addr - base);
     return uint16_t(p[0] | p[1] << 8);
 }

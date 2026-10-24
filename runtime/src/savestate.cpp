@@ -5,7 +5,8 @@
 // host stacks of the fibers that run the game's threads and tasks. So a savestate also
 // holds those stacks (fiber.cpp), and loading puts them back at the same addresses. That
 // only works with the same executable at the same address: the file records an identity
-// of the build (and of where its code and stacks are) and is refused by any other build.
+// of the build (and of where its code and stacks are, and of the mods in use) and is
+// refused by any other build.
 //
 // Saving and loading happen on the main fiber, with every game fiber suspended: the host
 // asks for it (savestate_request_*), the next poll() of the running fiber hands control
@@ -73,6 +74,7 @@ uint64_t identity() {
     }
     f.add(fiber_region());
     f.add(sizeof(Cpu));
+    f.add(mods_fingerprint());  // the game has read files that come from the mods
     return f.h;
 }
 
@@ -247,7 +249,7 @@ std::string savestate_describe(int slot) {
     switch (read_file(slot, saved_at, nullptr)) {
         case Check::Missing: return "";
         case Check::Invalid: return "Arquivo danificado";
-        case Check::OtherBuild: return "De outra versão do jogo";
+        case Check::OtherBuild: return "De outra versão do jogo ou com outros mods";
         case Check::Ok: break;
     }
     std::time_t t = std::time_t(saved_at);

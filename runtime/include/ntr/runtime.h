@@ -12,6 +12,13 @@ namespace ntr {
 // tools/extract.py (boej.pak) or a .nds dump. It stays memory-mapped while the game runs.
 bool rom_load(const std::string& path);
 
+// Lays the mods turned on in boej.ini over the image (after rom_load, before boot).
+void mods_apply();
+
+// boej --check-mods: opens the package and prints what each folder in mods/ would do
+// (format in mods.cpp), for the launcher. Returns the exit code.
+int mods_check(const std::string& pak_path);
+
 // log_printf (ntr/common.h) prints to the terminal and to boej.log next to the executable.
 
 // Directory of the running executable, with a trailing separator.

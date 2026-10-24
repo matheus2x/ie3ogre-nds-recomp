@@ -6,6 +6,7 @@
 #include <cstring>
 #include <deque>
 #include <filesystem>
+#include <functional>
 #include <map>
 #include <string>
 #include <type_traits>
@@ -108,6 +109,7 @@ const uint8_t* gpu3d_hi_row_alpha(uint32_t row);
 // screen that shows 3D comes at the 3D resolution, the other one at native size).
 void host_present(const uint32_t* top, int top_scale, const uint32_t* bottom, int bottom_scale);
 bool host_fast_forward();  // fast forward is on (fewer frames reach the window)
+const Config& host_config();  // boej.ini over the defaults (defaults only without a window)
 uint16_t host_keyinput();  // REG_KEYINPUT, active low
 uint16_t host_extkeys();   // ARM7 EXTKEYIN (X, Y, pen, hinge), active low
 bool host_touch(int& x, int& y);  // bottom screen pixel, true while pressed
@@ -149,6 +151,22 @@ void interpret_arm(Cpu& c, uint32_t entry);
 // The cartridge image by ROM offset (rom.cpp); bytes outside it read as 0xFF.
 void rom_read(uint32_t offset, void* dst, uint32_t size);
 uint32_t rom_read32(uint32_t offset);
+// The image itself, without the mods.
+class RomImage;
+const RomImage& rom_image();
+// Reads of [offset, offset + size) come from `data` (kept alive by the caller). Ranges
+// must not overlap.
+void rom_override(uint32_t offset, const uint8_t* data, uint32_t size);
+// The same, with the bytes made on the first read that needs them (a zipped mod file).
+void rom_override_lazy(uint32_t offset, uint32_t size, std::function<const uint8_t*()> load);
+
+// --- mods (mods.cpp) ----------------------------------------------------------
+
+// mods_apply (ntr/runtime.h) lays the mods enabled in the settings ([mods] enabled, or
+// NTR_MODS) over the cartridge image. Problems go to the log; a mod with errors is left
+// out whole.
+// The mods in use and their files, for the savestate identity (0 without mods).
+uint64_t mods_fingerprint();
 
 void trace_install();
 void trace_frame(uint64_t frame);  // NTR_PROFILE window bookkeeping
@@ -157,6 +175,7 @@ void trace_frame(uint64_t frame);  // NTR_PROFILE window bookkeeping
 
 // Terminal and log file (diag.cpp); log_detail goes to the file only.
 void log_detail(const char* fmt, ...) NTR_PRINTF_FORMAT;
+void log_disable_file();  // terminal only (boej --check-mods must not replace boej.log)
 
 // --- diagnostics (diag.cpp) ----------------------------------------------------------
 

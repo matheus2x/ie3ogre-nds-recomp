@@ -31,12 +31,18 @@ struct Module {
     std::vector<uint8_t> data;
     std::vector<Section> sections;
     std::vector<Function> functions;  // sorted by address, includes alternate entries
+    // Bytes read by the translation (instructions, literals and tables baked into the
+    // generated code), one flag per byte of `data`.
+    mutable std::vector<uint8_t> baked;
 
     bool is_overlay() const { return name.rfind("ov", 0) == 0; }
     bool contains(uint32_t addr) const { return addr >= base && addr - base < data.size(); }
     std::optional<uint32_t> read32(uint32_t addr) const;
     std::optional<uint16_t> read16(uint32_t addr) const;
+    void mark_baked(uint32_t addr, uint32_t n) const;
     const Function* function_at(uint32_t addr) const;
+    // [start, end) ranges the generated code depends on: function bodies and baked bytes.
+    std::vector<std::pair<uint32_t, uint32_t>> code_ranges() const;
 };
 
 struct Program {

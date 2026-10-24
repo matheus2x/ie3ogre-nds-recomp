@@ -22,6 +22,8 @@
 
 #include <ntr/common.h>
 
+struct SDL_Window;
+
 namespace launcher {
 
 #ifndef LAUNCHER_VERSION
@@ -90,6 +92,13 @@ void settings_ui();
 bool settings_capturing();  // waiting for a key or gamepad input to bind
 void settings_event(const union SDL_Event& ev);
 const ntr::Config& settings();
+void settings_set(const std::string& section, const std::string& key, const std::string& value);  // and saves
+
+// --- mods (mods.cpp) ---------------------------------------------------------------------
+
+void mods_tab(SDL_Window* window);
+void mods_drop(const std::string& path);  // a .zip or a mod folder dropped on the window: copy it to mods/
+int mods_cli(const std::string& command, const std::string& path);  // --install-mod / --mod-from-dump
 
 // --- updates (update.cpp) --------------------------------------------------------------
 

@@ -19,6 +19,10 @@ struct ModuleEntry {
     uint32_t size;
     const FuncEntry* funcs;  // sorted by address
     uint32_t count;
+    // [start, end) pairs, sorted: the bytes the generated code was made from (function
+    // bodies, literal pools, jump tables). Mods may change everything else.
+    const uint32_t* code;
+    uint32_t code_count;
 };
 
 extern const ModuleEntry kRecompModules[];
