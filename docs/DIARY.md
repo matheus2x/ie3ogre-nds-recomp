@@ -1632,5 +1632,5 @@ lugar da 1.4, que fica desligada. Não testado: adicionar pelo botão e arrastar
   sobrava.
 - Correção: o `assets.txt` lista só os caminhos, e a página mostra `mod-CyberLifePlus-1.3.zip`. Ajustados o
   comentário do `release.yml`, `docs/MODS.md` e `docs/DESENVOLVIMENTO.md`.
-- Verificação: `tools/release.py` gera o `assets.txt` sem rótulos. O asset da release 0.1.10 já publicada precisa
-  ser renomeado à parte, porque o `gh` daqui está sem login.
+- Verificação: `tools/release.py` gera o `assets.txt` sem rótulos. Na release 0.1.10 já publicada, tirei o rótulo
+  do asset pela API (`PATCH releases/assets/<id>`, `label` vazio); agora ela mostra só `mod-CyberLifePlus-1.3.zip`.
