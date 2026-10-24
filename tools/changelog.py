@@ -58,7 +58,7 @@ def official_mods(ref: str, since: str | None) -> list[str]:
         parser.read_string(git("show", f"{ref}:mods/{path}/mod.ini"))
         info = dict(parser["mod"]) if parser.has_section("mod") else {}
         changed = not since or subprocess.run(["git", "diff", "--quiet", since, ref, "--", f"mods/{path}"]).returncode
-        lines.append(f"- **{info.get('name') or path}**, versão {info.get('version', '?')} (`{path}.zip`)"
+        lines.append(f"- **{info.get('name') or path}**, versão {info.get('version', '?')} (`mod-{path}-{info.get('version', '?')}.zip`)"
                      + (" — atualizado nesta versão" if changed else ""))
     return lines
 

@@ -1594,3 +1594,32 @@ desenhados no jogo). Saves antigos continuam mostrando o objetivo antigo no card
 
 **Não testado:** os modos do campo que começam em x = 5 (valor 4, 5 ou 6 em `0x0209A458`) não apareceram na
 sessão. O hook soma o quadrado ao x que recebe, então deve valer para eles também.
+
+## 2026-10-24 — Mods oficiais na release como `mod-<nome>-<versão>.zip`, e o launcher atualiza o mod no lugar
+
+- Pedido: o asset de cada mod oficial na release passa a se chamar `mod-<nome>-<versão>.zip` (a versão do
+  `mod.ini`), por exemplo `mod-CyberLifePlus-1.3.zip`, no lugar de `CyberLifePlus.zip`.
+- `tools/release.py` (nome do zip e rótulo), `tools/changelog.py` (seção "Mods oficiais"), `docs/MODS.md`,
+  `docs/DESENVOLVIMENTO.md` e `launcher/LEIA-ME.txt`. O `LEIA-ME.md` do CyberLifePlus ainda fala em
+  `CyberLifePlus.zip`: mudá-lo exigiria uma versão nova do mod (a release recusa um mod alterado com a mesma
+  versão). Fica para a próxima versão do mod.
+- O `[mods] enabled` guarda o nome do arquivo, então trocar o `.zip` por uma versão nova deixaria o mod
+  desligado. Pedido seguinte: o launcher resolve isso (`launcher/mods.cpp`), reconhecendo o mesmo mod pelo
+  `name` do `mod.ini`:
+  - **Adicionar** (botão, arrastar ou `--install-mod`): as outras cópias do mesmo mod com versão igual ou mais
+    velha são apagadas da pasta `mods`, e o novo fica no lugar delas na lista (ligado, se estavam). Uma versão
+    mais velha que a da pasta entra desligada e não apaga nada.
+  - **Colocado à mão** na pasta: na próxima listagem, uma versão mais nova de um mod ligado fica no lugar dele, e
+    o antigo continua na pasta, desligado.
+  - As versões são comparadas número a número ("1.10" é mais nova que "1.9").
+  - Ao abrir o `boej` direto, sem o launcher, nada disso acontece.
+
+**Verificação:** `tools/release.py` gera `mod-CyberLifePlus-1.3.zip`, com o mesmo nome no `assets.txt` e no
+`sha256sums.txt`; as notas (`changelog.py`) citam `mod-CyberLifePlus-1.3.zip`. Testes Python: 35, todos passando.
+A tag v0.1.9 já foi enviada com o nome antigo (`CyberLifePlus.zip`); o nome novo vale a partir da próxima release.
+
+Launcher (Linux, numa pasta de teste com zips só com o `mod.ini`): `--install-mod` de `mod-CyberLifePlus-1.3.zip`
+com o `CyberLifePlus.zip` 1.3 ligado (troca o antigo e mantém a ordem dos ligados, `…, Outro.zip`), depois da 1.4
+(troca a 1.3) e da 1.2 (entra desligada, a 1.4 continua). Com a 1.10 posta à mão, a aba Mods (captura) a liga no
+lugar da 1.4, que fica desligada. Não testado: adicionar pelo botão e arrastar na janela (o mesmo código do
+`--install-mod`, aplicado na listagem seguinte).

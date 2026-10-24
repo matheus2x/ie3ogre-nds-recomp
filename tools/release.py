@@ -5,9 +5,9 @@
   python3 tools/release.py --platform linux    # native Linux (system compiler and SDL3)
 
 Output in build/release/: ie3ogre-recomp-<version>-<platform>.zip and sha256sums.txt,
-the assets the launcher's updater looks for, and <name>.zip for each official mod in
-mods/<name>/ (patches only, no game data; the player puts it in the game's mods/ folder),
-labeled with the version in its mod.ini. assets.txt lists them for the release workflow.
+the assets the launcher's updater looks for, and mod-<name>-<version>.zip for each official
+mod in mods/<name>/ (patches only, no game data; the player puts it in the game's mods/
+folder), <version> being the one in its mod.ini. assets.txt lists them for the release workflow.
 A mod that changed since the previous tag without a new version is refused.
 The zip holds one folder:
 
@@ -151,7 +151,7 @@ def check_version(folder: Path, version: str):
 
 
 def official_mods(release: Path) -> list[tuple[Path, str]]:
-    """mods/<name>/ -> (<name>.zip, its label on the release page), as tools/mod.py pack makes
+    """mods/<name>/ -> (mod-<name>-<version>.zip, its label on the release page), as tools/mod.py pack makes
     it. Whole game files are refused: an official mod carries only patches (docs/MODS.md)."""
     out = []
     for folder in sorted((ROOT / "mods").iterdir()) if (ROOT / "mods").is_dir() else []:
@@ -167,7 +167,8 @@ def official_mods(release: Path) -> list[tuple[Path, str]]:
         if whole:
             sys.exit(f"error: {whole[0]} is a whole game file; official mods carry only patches "
                      f"(tools/mod.py patch)")
-        zip_path = release / f"{folder.name}.zip"
+        zip_path = release / f"mod-{folder.name}-{version}.zip"
+        zip_path.unlink(missing_ok=True)
         mod.pack(folder, zip_path)
         out.append((zip_path, f"{zip_path.name} — mod {info.get('name') or folder.name}, versão {version}"))
     return out

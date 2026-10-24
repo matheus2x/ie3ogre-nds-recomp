@@ -3,6 +3,9 @@
 // mods/; dropping it there by hand does the same), removing one, and making one from a
 // modified dump (a fan translation or ROM hack with the retail code).
 //
+// The same mod (the name in its mod.ini) in a new version keeps its place in the list: an
+// official mod comes as mod-<name>-<version>.zip, so each version has another file name.
+//
 // The game checks each mod when it starts (runtime/src/mods.cpp); the tab shows the same
 // check by running "boej --check-mods" in the background.
 #include <SDL3/SDL.h>
@@ -44,6 +47,7 @@ struct Worker {
     std::map<std::string, ModEntry> checked;  // by folder, from boej --check-mods
     bool check_done = false;
     std::atomic<bool> refresh{true};  // list the folders again on the next frame
+    std::vector<std::pair<std::string, std::string>> replaced;  // (old, new) by an install: done by refresh
 };
 
 Worker g_worker;
@@ -173,30 +177,91 @@ std::string listing(const std::vector<std::string>& names) {
     return out;
 }
 
+// What mod.ini says of a mod in mods/ (the name is the folder's when it has none).
+ModEntry read_mod(const std::string& folder) {
+    ModEntry m;
+    m.folder = folder;
+    m.zip = is_zip_name(folder);
+    ntr::ModPackage package;
+    std::string error;
+    std::vector<uint8_t> text;
+    ntr::Config ini;
+    if (package.open(paths().mods() + folder, error)) {
+        if (const ntr::ModPackage::Entry* e = package.find("mod.ini"); e && package.read(*e, text, error))
+            ntr::ini_parse(std::string(text.begin(), text.end()), folder + "/mod.ini", ini);
+    }
+    m.name = ini.get("mod", "name");
+    m.version = ini.get("mod", "version");
+    m.author = ini.get("mod", "author");
+    m.description = ini.get("mod", "description");
+    if (m.name.empty()) m.name = folder;
+    return m;
+}
+
+// "1.10" is newer than "1.9": the numbers between dots compare as numbers.
+bool newer_version(const std::string& a, const std::string& b) {
+    size_t i = 0, j = 0;
+    while (i < a.size() || j < b.size()) {
+        size_t ei = a.find('.', i), ej = b.find('.', j);
+        if (ei == std::string::npos) ei = a.size();
+        if (ej == std::string::npos) ej = b.size();
+        std::string x = i < a.size() ? a.substr(i, ei - i) : "0", y = j < b.size() ? b.substr(j, ej - j) : "0";
+        auto number = [](const std::string& t) {
+            return !t.empty() && t.size() <= 18 && t.find_first_not_of("0123456789") == std::string::npos;
+        };
+        bool numbers = number(x) && number(y);
+        if (numbers ? std::stoull(x) != std::stoull(y) : x != y)
+            return numbers ? std::stoull(x) > std::stoull(y) : x > y;
+        i = ei + 1;
+        j = ej + 1;
+    }
+    return false;
+}
+
+// The enabled list after an update: a mod the launcher replaced (`replaced`, whose old copy
+// is then deleted) or one with a newer version put in mods/ by hand takes the place of the
+// old one, which is left off.
+std::vector<std::string> update_enabled(std::vector<std::string> enabled,
+                                        const std::vector<std::pair<std::string, std::string>>& replaced) {
+    std::error_code ec;
+    for (const auto& [old, now] : replaced) {
+        auto it = std::find(enabled.begin(), enabled.end(), old);
+        if (it != enabled.end()) {
+            if (std::find(enabled.begin(), enabled.end(), now) == enabled.end()) *it = now;
+            else enabled.erase(it);
+        }
+        fs::remove_all(ntr::fs_path(paths().mods() + old), ec);
+    }
+    std::vector<ModEntry> all;
+    for (const std::string& folder : mod_names()) all.push_back(read_mod(folder));
+    for (std::string& on : enabled) {
+        auto mine = std::find_if(all.begin(), all.end(), [&](const ModEntry& m) { return m.folder == on; });
+        if (mine == all.end()) continue;
+        const ModEntry* best = &*mine;
+        for (const ModEntry& m : all) {
+            if (m.name == best->name && m.folder != best->folder && newer_version(m.version, best->version) &&
+                std::find(enabled.begin(), enabled.end(), m.folder) == enabled.end())
+                best = &m;
+        }
+        on = best->folder;
+    }
+    return enabled;
+}
+
 // Lists mods/ again and starts the check.
 void refresh() {
-    std::vector<std::string> enabled = enabled_list();
+    std::vector<std::pair<std::string, std::string>> replaced;
+    {
+        std::lock_guard lock(g_worker.mutex);
+        replaced.swap(g_worker.replaced);
+    }
+    std::vector<std::string> before = enabled_list(), enabled = update_enabled(before, replaced);
     std::vector<ModEntry> mods;
     std::vector<std::string> folders = mod_names();
     g_listing = listing(folders);
     auto add = [&](const std::string& folder, bool on) {
-        ModEntry m;
-        m.folder = folder;
-        m.zip = is_zip_name(folder);
+        ModEntry m = read_mod(folder);
         m.enabled = on;
-        ntr::ModPackage package;
-        std::string error;
-        std::vector<uint8_t> text;
-        ntr::Config ini;
-        if (package.open(paths().mods() + folder, error)) {
-            if (const ntr::ModPackage::Entry* e = package.find("mod.ini"); e && package.read(*e, text, error))
-                ntr::ini_parse(std::string(text.begin(), text.end()), folder + "/mod.ini", ini);
-        }
-        m.name = ini.get("mod", "name");
-        m.version = ini.get("mod", "version");
-        m.author = ini.get("mod", "author");
-        m.description = ini.get("mod", "description");
-        if (m.name.empty()) m.name = folder;
         mods.push_back(std::move(m));
     };
     for (const std::string& folder : enabled) {
@@ -212,8 +277,9 @@ void refresh() {
     for (size_t i = 0; i < g_mods.size(); i++) {
         if (g_mods[i].folder == selected) g_selected = int(i);
     }
-    // An enabled folder that is gone leaves the list.
-    if (enabled.size() != size_t(std::count_if(g_mods.begin(), g_mods.end(), [](const ModEntry& m) { return m.enabled; })))
+    // An enabled folder that is gone leaves the list; an updated mod takes its old place.
+    if (enabled != before ||
+        enabled.size() != size_t(std::count_if(g_mods.begin(), g_mods.end(), [](const ModEntry& m) { return m.enabled; })))
         save_enabled();
     {
         std::lock_guard lock(g_worker.mutex);
@@ -274,8 +340,27 @@ void install(const std::string& source) {
         set_status("Não foi possível copiar o mod para a pasta mods: " + ec.message(), true);
         return;
     }
-    set_status(std::string(replaced ? "Mod atualizado: " : "Mod adicionado: ") + name +
-               " (copiado para a pasta mods; o original não foi alterado). Ligue-o na lista.");
+    // Other copies of the same mod (another version, another file name) give it their place.
+    ModEntry added = read_mod(name);
+    std::vector<std::string> older;
+    for (const std::string& folder : mod_names()) {
+        if (folder == name) continue;
+        ModEntry m = read_mod(folder);
+        if (m.name == added.name && !newer_version(m.version, added.version)) older.push_back(folder);
+    }
+    {
+        std::lock_guard lock(g_worker.mutex);
+        for (const std::string& folder : older) g_worker.replaced.emplace_back(folder, name);
+    }
+    if (!older.empty() || replaced) {
+        std::string from;
+        for (const std::string& folder : older) from += (from.empty() ? "" : ", ") + folder;
+        set_status("Mod atualizado: " + name + (added.version.empty() ? "" : " (versão " + added.version + ")") +
+                   (from.empty() ? "" : "; " + from + " foi apagado da pasta mods e o novo fica no lugar dele") +
+                   ". O original não foi alterado.");
+        return;
+    }
+    set_status("Mod adicionado: " + name + " (copiado para a pasta mods; o original não foi alterado). Ligue-o na lista.");
 }
 
 bool write_file(const fs::path& path, const std::vector<uint8_t>& data) {
@@ -443,8 +528,22 @@ void remove_dialog() {
 
 // ie3-launcher --install-mod <zip> / --mod-from-dump <nds>: the same as the buttons.
 int mods_cli(const std::string& command, const std::string& path) {
-    if (command == "--install-mod") install(path);
-    else mod_from_dump(path);
+    if (command == "--install-mod") {
+        install(path);
+        std::vector<std::pair<std::string, std::string>> replaced;
+        {
+            std::lock_guard lock(g_worker.mutex);
+            replaced.swap(g_worker.replaced);
+        }
+        std::vector<std::string> before = enabled_list(), enabled = update_enabled(before, replaced);
+        if (enabled != before) {
+            std::string list;
+            for (const std::string& folder : enabled) list += (list.empty() ? "" : ", ") + folder;
+            settings_set("mods", "enabled", list);
+        }
+    } else {
+        mod_from_dump(path);
+    }
     std::lock_guard lock(g_worker.mutex);
     NTR_LOG("%s%s\n", g_worker.status_error ? "error: " : "", g_worker.status.c_str());
     return g_worker.status_error ? 1 : 0;
