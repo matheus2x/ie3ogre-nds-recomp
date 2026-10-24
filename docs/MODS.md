@@ -11,6 +11,7 @@ ligado, desligado e ordenado. O jogo lê os arquivos do mod no lugar dos origina
 |---|---|
 | Qualquer arquivo do NitroFS (`data_iz/...`): textos, fontes, imagens, modelos, sons, vídeos, tabelas | `files/<caminho no jogo>`, o arquivo inteiro; o tamanho pode mudar |
 | Dados das overlays (textos e tabelas que ficam dentro do código, como os menus) | `overlays/ovNNN.bin`, a overlay como fica na RAM (descomprimida) |
+| Os mesmos, só com a diferença | `files/<caminho>.bps` ou `overlays/ovNNN.bin.bps`: um patch BPS sobre o arquivo original (ver **Patches** abaixo) |
 
 | Não pode (por enquanto) | Por quê |
 |---|---|
@@ -29,9 +30,10 @@ mods/
     mod.ini
     files/
       data_iz/logic/CapsuleComment.dat   substitui /data_iz/logic/CapsuleComment.dat
-      data_iz/font/FONT12.NFTR
+      data_iz/font/FONT12.NFTR.bps       patch sobre o /data_iz/font/FONT12.NFTR original
     overlays/
       ov022.bin                          overlay 22 inteira, descomprimida
+      ov023.bin.bps                      patch sobre a overlay 23 descomprimida
 ```
 
 `mod.ini`:
@@ -71,6 +73,18 @@ funções, literal pools e tabelas de salto, gravados pelo `ntr-recomp` no `regi
 byte ali mudou, dizendo o endereço. Uma overlay menor que a original é completada com os bytes originais; uma
 maior aumenta o espaço da overlay (até 64 KiB a mais).
 
+**Patches.** Um arquivo `<caminho>.bps` no lugar do arquivo inteiro é um patch [BPS](https://www.romhacking.net/documents/746/)
+(o formato do beat e do Floating IPS) aplicado sobre o arquivo original do jogo; numa overlay, sobre ela
+descomprimida. O mod só leva o que mudou (textos traduzidos, pixels editados), e não os dados do jogo: é o formato
+para distribuir um mod. O patch confere o CRC-32 do original, do resultado e de si mesmo; um patch feito para outro
+arquivo, ou danificado, dá erro e deixa o mod de fora. O tamanho do arquivo pode mudar.
+
+Num mesmo mod, um caminho tem o arquivo inteiro ou o patch, não os dois. O patch é sempre sobre o original do
+jogo, nunca sobre o arquivo de outro mod (o último mod da lista que troca o arquivo vale, como sempre).
+
+Os patches são aplicados ao abrir o jogo, em segundo plano, como os arquivos comprimidos de um `.zip`. A tradução
+inteira (512 arquivos, 9 MB de patches para 76 MB de arquivos) custa uns 0,1 s a mais no começo.
+
 **Mod com erro** fica de fora inteiro (o jogo abre sem ele). Arquivos com caminho que o jogo não tem são
 ignorados, com um aviso. Os erros e avisos aparecem na aba Mods e no `boej.log` (linhas `[mods]`).
 
@@ -102,8 +116,14 @@ python3 tools/mod.py new mods/minha-traducao --name "Minha tradução" --author 
 python3 tools/mod.py unpack boej.pak build/original --only 'data_iz/logic/*'
 python3 tools/mod.py unpack boej.pak build/original --overlays
 
-# mod a partir de um dump modificado (o mesmo que o botão do launcher)
-python3 tools/mod.py from-dump boej.pak hack.nds mods/hack --name "Hack"
+# mod a partir de um dump modificado (o mesmo que o botão do launcher); --patch: só patches .bps
+python3 tools/mod.py from-dump boej.pak hack.nds mods/hack --name "Hack" --patch
+
+# arquivos inteiros do mod viram patches (um arquivo igual ao original sai, com o patch dele)
+python3 tools/mod.py patch mods/hack boej.pak
+
+# cópia do mod com os patches aplicados (arquivos inteiros), para editar
+python3 tools/mod.py expand mods/hack boej.pak build/hack
 
 # procura problemas (caminhos que não existem, overlays com código mudado); pasta ou .zip
 python3 tools/mod.py check mods/minha-traducao boej.pak
@@ -131,11 +151,22 @@ Jogue até a cena que interessa, aperte **F8** (marca o momento no log) e veja o
 2. Coloque só os arquivos alterados em `mods/<seu-mod>/files/` (mesmo caminho do jogo).
 3. Ligue o mod no launcher e abra o jogo. Não precisa recompilar nada: o mod é lido ao abrir o jogo.
 4. Confira a aba Mods (ou o `boej.log`) se algo não aparecer.
-5. `tools/mod.py pack` (ou "Compactar" no Windows) para gerar o `.zip` que os jogadores colocam na pasta `mods/`.
+5. `tools/mod.py patch` para trocar os arquivos inteiros por patches e `tools/mod.py pack` (ou "Compactar" no
+   Windows) para gerar o `.zip` que os jogadores colocam na pasta `mods/`.
 
-**Distribuição.** Um mod com arquivos inteiros leva dados do jogo (o arquivo original modificado). Distribuir é
-responsabilidade de quem fez o mod; este projeto não distribui mods. Patches que levam só a diferença estão
-nos próximos passos.
+**Distribuição.** Um mod com arquivos inteiros leva dados do jogo (o arquivo original modificado); com patches,
+só o que mudou. Distribua mods em patches. O "Criar de um dump modificado" do launcher gera arquivos inteiros,
+para uso no próprio PC.
+
+## Mods oficiais
+
+A pasta [`mods/`](../mods/) do repositório tem os mods mantidos pelo projeto, um por pasta, só com patches. Cada um
+sai na release como `<nome>.zip` (`tools/release.py`; o nome não muda entre versões, então o mod continua ligado
+quando o jogador troca o `.zip`). A release é recusada se um deles tiver um arquivo inteiro do jogo.
+
+| Mod | O que é |
+|---|---|
+| [`CyberLifePlus`](../mods/CyberLifePlus/LEIA-ME.md) | Tradução PT-BR, feita originalmente pelo grupo CyberLife e continuada aqui. O `LEIA-ME.md` dele tem os créditos e como continuar a tradução |
 
 ## Tipos de mod planejados
 
@@ -143,15 +174,14 @@ O que já dá para fazer com a troca de arquivos, e o que ainda falta no port pa
 
 | Tipo | Hoje | Falta |
 |---|---|---|
-| **Tradução** | sim: textos (`data_iz/logic`, `data_iz/movie/txt`), fontes (`data_iz/font`), imagens com texto e strings das overlays. Uma tradução já pronta em `.nds` vira mod pelo botão "Criar de um dump modificado" e roda igual ao dump traduzido (testado byte a byte com uma tradução de fãs) | documentar os formatos de texto e fonte e ter conversores para texto editável em `tools/` |
+| **Tradução** | sim: textos (`data_iz/logic`, `data_iz/movie/txt`), fontes (`data_iz/font`), imagens com texto e strings das overlays. Uma tradução já pronta em `.nds` vira mod pelo botão "Criar de um dump modificado" (ou `tools/mod.py from-dump --patch`) e roda igual ao dump traduzido (testado byte a byte com uma tradução de fãs, em arquivos inteiros e em patches) | documentar os formatos de texto e fonte e ter conversores para texto editável em `tools/` |
 | **Troca de sprites e imagens** | sim, trocando o arquivo (`data_iz/pic2d`, `obj2d`, `spr`, `face2d`, `pic3d`) no formato do jogo | documentar os formatos e ter conversores para PNG |
 | **Texturas em alta resolução (upscaling)** | não: um arquivo do jogo só pode ter o tamanho que cabe na VRAM do DS | pacotes de texturas por hash (`textures/` no mod), aplicados pelo renderizador 3D na resolução interna e pela composição 2D |
 | **Gerenciador de técnicas (estilo Mini Hack)** | em parte: as tabelas de jogadores e técnicas são arquivos e podem ser trocadas inteiras | mapear o formato das tabelas e fazer um editor que gere a pasta do mod |
 
 Próximos passos da infraestrutura, em ordem:
 
-1. **Patches por arquivo** (`files/<caminho>.patch`, só a diferença, aplicada sobre o original): mods
-   distribuíveis sem dados do jogo.
+1. ~~Patches por arquivo~~ (feito: `.bps`, ver **Patches** em Estrutura).
 2. **Formatos documentados** e conversores em `tools/` (texto, fonte, imagem, tabelas).
 3. **Pacotes de texturas** para o upscaling.
 4. **Editor de técnicas** gerando um mod.
@@ -164,5 +194,7 @@ os arquivos do mod em endereços da ROM depois do fim da imagem. Uma cópia da F
 overlays, com a overlay marcada como não comprimida) aponta o jogo para eles (`rom_override` em `rom.cpp`). O
 jogo lê os arquivos do mod pelos mesmos caminhos de sempre, sem saber que vieram de fora. Pastas e zips passam
 pelo `ModPackage` (`runtime/src/package.cpp`, com um leitor de zip e um inflate próprios, conferidos pelo CRC-32).
+Os patches BPS são aplicados pelo `bps_apply` (no mesmo arquivo) sobre os bytes originais do `boej.pak`; o
+`tools/ntr/bps.py` gera e aplica os mesmos patches em Python.
 Os arquivos de uma pasta e os guardados sem compressão num zip ficam mapeados em memória; os comprimidos são
 descomprimidos por uma thread em segundo plano, ou na hora, se o jogo pedir um antes dela.

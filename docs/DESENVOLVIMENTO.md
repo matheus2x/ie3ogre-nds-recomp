@@ -29,8 +29,9 @@ Dumps fora de `dumps.json` são recusados. Para experimentos, use `--allow-unkno
 | `game/` | Executável `boej` |
 | `launcher/` | `ie3-launcher` (SDL3 + Dear ImGui): prepara, configura, atualiza e abre o jogo; `LEIA-ME.txt` e `TERCEIROS.txt` da release |
 | `runtime/ui/` | `ntr-ui`: telas em Dear ImGui usadas pelo jogo (menu de pausa) e pelo launcher (painel de configurações) |
-| `tools/` | Ferramentas em Python (`ntr/` lê a ROM; `extract.py` extrai; `compare_dumps.py` compara dumps; `analyze.py` roda dsd/Ghidra; `mod.py` cria e confere mods; `build.py` compila para desenvolvimento; `release.py` monta a release; `ghidra/` tem os scripts do Ghidra; `tests/` tem os testes) |
+| `tools/` | Ferramentas em Python (`ntr/` lê a ROM; `extract.py` extrai; `compare_dumps.py` compara dumps; `analyze.py` roda dsd/Ghidra; `mod.py` cria, confere e transforma mods em patches; `ntr/bps.py` gera e aplica patches BPS; `build.py` compila para desenvolvimento; `release.py` monta a release; `ghidra/` tem os scripts do Ghidra; `tests/` tem os testes) |
 | `config/boej/` | `dumps.json` (dumps conhecidos), `layout/<variante>.json` (endereços, overlays, hashes), `dsd/` (funções, seções e relocações do ds-decomp), `names.tsv` (nomes identificados, com evidência), `hle.tsv` (funções substituídas no host) e `code_blobs.tsv` (código que o dsd classifica como dados). Nenhum dado do jogo |
+| `mods/` | Mods oficiais, um por pasta, só com patches `.bps` (nenhum dado do jogo); cada um sai como `.zip` na release |
 | `docs/` | Diário (`DIARY.md`), mods (`MODS.md`) e este documento |
 | `build/` | Saída local (extração, código gerado). Ignorada pelo git |
 
@@ -126,7 +127,7 @@ terminal, a saída continua nele, e `NTR_CONSOLE=1` mantém o console.
 ## Release (launcher + SDK)
 
 ```sh
-python3 tools/release.py                    # build/release/ie3ogre-recomp-<VERSION>-windows.zip + sha256sums.txt
+python3 tools/release.py                    # build/release/ie3ogre-recomp-<VERSION>-windows.zip, <mod>.zip, sha256sums.txt
 python3 tools/release.py --platform linux   # o mesmo para Linux (compilador e SDL3 do sistema)
 ```
 
@@ -137,9 +138,13 @@ Não precisa do dump. O pacote leva o launcher, o `SDL3.dll` e o `sdk/`:
 - os headers e a biblioteca de importação do SDL3;
 - o `toolchain.txt`, com o llvm-mingw fixado por URL e SHA-256.
 
+Cada mod oficial (`mods/<nome>/` com `mod.ini`) vira `build/release/<nome>.zip`, com o mesmo nome sempre (assim o
+mod continua ligado quando o jogador troca o `.zip`), e entra no `sha256sums.txt`. A release é recusada se um mod
+oficial tiver um arquivo inteiro do jogo em vez de um patch `.bps`.
+
 O launcher e o `ntr-recomp` são compilados com o mesmo llvm-mingw (`cmake/toolchains/llvm-mingw-x86_64.cmake`),
 baixado uma vez para `build/tools/`. O CI (`.github/workflows/release.yml`) roda isso ao receber uma tag `vX.Y.Z`,
-que precisa bater com o arquivo `VERSION`, e publica o zip e o `sha256sums.txt` na release. O texto da release sai
+que precisa bater com o arquivo `VERSION`, e publica os zips e o `sha256sums.txt` na release. O texto da release sai
 das mensagens de commit desde a tag anterior (`tools/changelog.py`; título de cada commit como seção, corpo em
 tópicos), seguido de como instalar e conferir o download. Para ver antes de criar a tag:
 `python3 tools/changelog.py HEAD`.

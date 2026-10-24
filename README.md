@@ -59,6 +59,13 @@ Mods trocam arquivos do jogo (textos, fontes, imagens, tabelas) sem alterar o `b
 ou um `.zip` dentro da pasta `mods/`, ao lado do `boej.exe`: coloque o mod lá e ligue-o na aba **Mods** do
 launcher, onde também dá para ordenar e remover. Como fazer um mod: [`docs/MODS.md`](docs/MODS.md).
 
+Mods oficiais (pasta [`mods/`](mods/) do repositório) saem como `.zip` separados em cada release. Eles só trazem
+patches, sem dados do jogo:
+
+| Mod | O que é |
+|---|---|
+| [`CyberLifePlus`](mods/CyberLifePlus/LEIA-ME.md) | Tradução PT-BR. Feita originalmente pelo grupo **CyberLife** e continuada aqui, completando o que faltou |
+
 ### Relatando problemas
 
 Se algo der errado, aperte **F8** na hora, feche o jogo e envie, da pasta do jogo, o `boej.log` e os
@@ -73,8 +80,8 @@ Se algo der errado, aperte **F8** na hora, feche o jogo e envie, da pasta do jog
 - [x] Áudio (16 canais a 32 kHz) e vídeos Mobiclip
 - [x] Save, savestates, avanço rápido, tela larga 16:9 e controles remapeáveis
 - [x] Launcher sem nada do jogo: prepara, configura, atualiza e gerencia mods
-- [x] Mods: troca de arquivos e dos dados das overlays
-- [ ] Mods: patches sem dados do jogo, formatos documentados, texturas em alta resolução, editor de técnicas
+- [x] Mods: troca de arquivos e dos dados das overlays, inteiros ou como patches (BPS) sem dados do jogo
+- [ ] Mods: formatos documentados, texturas em alta resolução, editor de técnicas
 - [x] Wi-Fi desativado (o Nintendo WFC foi encerrado)
 
 ## Desenvolvimento

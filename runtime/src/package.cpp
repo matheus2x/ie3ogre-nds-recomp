@@ -219,6 +219,94 @@ uint32_t crc32(const uint8_t* data, size_t size) {
     return ~c;
 }
 
+// --- BPS --------------------------------------------------------------------------------
+
+namespace {
+
+bool bps_varint(const std::vector<uint8_t>& p, size_t& at, size_t end, uint64_t& n) {
+    n = 0;
+    for (uint64_t shift = 1; at < end && shift < (1ull << 56); shift <<= 7) {
+        uint8_t x = p[at++];
+        n += (x & 0x7F) * shift;
+        if (x & 0x80) return true;
+        n += shift << 7;
+    }
+    return false;
+}
+
+bool bps_header(const std::vector<uint8_t>& p, size_t& at, uint64_t& source, uint64_t& target) {
+    uint64_t meta = 0;
+    at = 4;
+    if (p.size() < 4 + 3 + 12 || std::memcmp(p.data(), "BPS1", 4) != 0) return false;
+    size_t end = p.size() - 12;
+    if (!bps_varint(p, at, end, source) || !bps_varint(p, at, end, target) || !bps_varint(p, at, end, meta) ||
+        meta > end - at)
+        return false;
+    at += size_t(meta);
+    return true;
+}
+
+}  // namespace
+
+bool bps_sizes(const std::vector<uint8_t>& patch, uint64_t& source_size, uint64_t& target_size) {
+    size_t at = 0;
+    return bps_header(patch, at, source_size, target_size);
+}
+
+bool bps_apply(const std::vector<uint8_t>& p, const uint8_t* source, size_t source_size, std::vector<uint8_t>& out,
+               std::string& error) {
+    out.clear();
+    size_t at = 0;
+    uint64_t want_source = 0, target = 0;
+    if (!bps_header(p, at, want_source, target) || target > 0x10000000) {
+        error = "não é um patch BPS válido";
+        return false;
+    }
+    size_t end = p.size() - 12;
+    if (crc32(p.data(), end + 8) != load32(&p[end + 8])) {
+        error = "o patch está danificado (CRC)";
+        return false;
+    }
+    if (want_source != source_size || crc32(source, source_size) != load32(&p[end])) {
+        error = "o patch é para outra versão desse arquivo (o original não confere)";
+        return false;
+    }
+    out.reserve(size_t(target));
+    uint64_t source_rel = 0, target_rel = 0;
+    while (at < end) {
+        uint64_t data = 0, rel = 0;
+        if (!bps_varint(p, at, end, data)) break;
+        uint64_t length = (data >> 2) + 1;
+        unsigned kind = unsigned(data & 3);
+        if (length > target - out.size()) break;
+        if (kind == 0) {  // SourceRead
+            if (out.size() + length > source_size) break;
+            out.insert(out.end(), source + out.size(), source + out.size() + length);
+        } else if (kind == 1) {  // TargetRead
+            if (length > end - at) break;
+            out.insert(out.end(), p.begin() + std::ptrdiff_t(at), p.begin() + std::ptrdiff_t(at + length));
+            at += size_t(length);
+        } else {
+            if (!bps_varint(p, at, end, rel)) break;
+            uint64_t& base = kind == 2 ? source_rel : target_rel;
+            base = rel & 1 ? base - (rel >> 1) : base + (rel >> 1);
+            if (kind == 2) {  // SourceCopy
+                if (base > source_size || length > source_size - base) break;
+                out.insert(out.end(), source + base, source + base + length);
+            } else {  // TargetCopy: may overlap what it writes, so a byte at a time
+                if (base >= out.size()) break;
+                for (uint64_t i = 0; i < length; i++) out.push_back(out[size_t(base + i)]);
+            }
+            base += length;
+        }
+    }
+    if (at != end || out.size() != target || crc32(out.data(), out.size()) != load32(&p[end + 4])) {
+        error = "o patch está danificado";
+        return false;
+    }
+    return true;
+}
+
 // --- packages ---------------------------------------------------------------------------
 
 ModPackage::~ModPackage() {

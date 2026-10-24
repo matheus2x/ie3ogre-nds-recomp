@@ -1255,3 +1255,54 @@ Pedido: a próxima etapa para facilitar a criação de mods. Os mods planejados 
 - Testes Python: 15, todos passando. Linux e Windows compilam sem avisos.
 
 **Não testado:** cliques e arrastar de verdade no launcher, e o launcher do Windows com janela.
+
+## 2026-10-24 — Patches BPS e o primeiro mod oficial: CyberLifePlus (tradução PT-BR)
+
+- Pedido: uma pasta `mods/` no repositório, um mod oficial por pasta, cada um como `.zip` separado nas releases. O
+  primeiro é a tradução PT-BR do dump traduzido (BAHAMUT), com o nome **CyberLifePlus**: a tradução é do grupo
+  CyberLife, parada há meses, e vai ser continuada aqui com os créditos.
+- Problema: o mod com arquivos inteiros tem 76 MB de dados do jogo modificados (545 arquivos), o que vai contra a
+  regra de não versionar nem distribuir dados do jogo. Decisão (do usuário): fazer antes o passo 1 do roteiro de
+  mods, **patches por arquivo**, e guardar o mod só em patches.
+- **Formato:** BPS (beat / Floating IPS), conhecido de quem faz ROM hacks, com CRC-32 do original, do resultado e do
+  patch. `files/<caminho>.bps` e `overlays/ovNNN.bin.bps` (sobre a overlay descomprimida).
+- **`tools/ntr/bps.py`:** codificador guloso (trechos iguais na mesma posição, depois cópias achadas por um índice
+  dos blocos de 8 bytes do original, preferindo o deslocamento da última cópia) e aplicador, que também lê
+  TargetCopy (gerado por outras ferramentas). Uma primeira estimativa por XOR dava ~11 MB; o BPS deu 9,3 MB (5,8
+  MB zipado). O que sobra é quase todo o `script/eve.pkb` (4,9 MB de patch para 12,6 MB), cujos scripts mudam de
+  tamanho e deslocam tudo.
+- **`tools/mod.py`:** `from-dump --patch`; `patch` (arquivos inteiros do mod viram patches; um arquivo inteiro vale
+  mais que o patch do mesmo caminho, e um igual ao original sai junto com o patch); `expand` (cópia com os patches
+  aplicados, para editar); `check` aplica os patches e confere. `pack` virou função, usada também pela release.
+- **Jogo** (`mods.cpp` + `bps_apply`/`bps_sizes` em `package.cpp`): o patch é lido ao abrir (é pequeno), o tamanho
+  final sai do cabeçalho e o tamanho do original é conferido; o resultado é feito pela mesma thread em segundo
+  plano dos arquivos zipados (ou na hora, se o jogo pedir antes), sobre os bytes do `boej.pak`. `--check-mods`
+  aplica tudo e confere os CRCs. Inteiro + patch do mesmo caminho no mesmo mod é erro.
+- **`mods/CyberLifePlus/`:** gerado com `from-dump --patch` (512 arquivos e 32 overlays, 9,3 MB), `mod.ini` com os
+  créditos (CyberLife, tradução original; matheus2x, continuação) e `LEIA-ME.md` com créditos, origem (SHA-1 dos
+  dois dumps) e como continuar a tradução (`expand` → editar → `patch` → `check`).
+- **Release:** `tools/release.py` empacota cada `mods/<nome>/` como `build/release/<nome>.zip` (nome fixo, para o
+  mod continuar ligado quando o jogador troca o `.zip`) e o põe no `sha256sums.txt`; recusa um mod oficial com
+  arquivo inteiro do jogo. O CI já publica `build/release/*.zip`; o updater do launcher procura o pacote pelo nome,
+  então os zips a mais não atrapalham. As notas da release explicam os zips de mods. `mods/*.zip` no `.gitignore`.
+- Docs: `docs/MODS.md` (patches, mods oficiais, distribuição em patches), README (tabela de mods oficiais),
+  `docs/DESENVOLVIMENTO.md` e `LEIA-ME.txt` do launcher.
+
+**Verificação:**
+- `from-dump --patch` → `expand`: **idêntico byte a byte** ao `from-dump` com arquivos inteiros (512 arquivos, 32
+  overlays). `expand` → `patch` de volta dá os mesmos `.bps`.
+- Roteiro da história, quadros 1500, 3000, 6000, 9000 e 14000: mod em patches (pasta e `.zip`) com imagens
+  **idênticas byte a byte** às do mod com arquivos inteiros.
+- `--check-mods` e `mod.py check` com um mod com erros: patch de overlay danificado ("o patch está danificado
+  (CRC)"), patch de um arquivo aplicado em outro ("para outra versão desse arquivo") e inteiro + patch do mesmo
+  caminho.
+- 600 quadros sem janela: 1,46 s sem mod, 1,44 s com arquivos inteiros, 1,50 s em patches (pasta), 1,58 s em
+  patches (`.zip`).
+- Testes Python: 19, todos passando (novo `tests/test_bps.py`). Linux (GCC), MinGW e llvm-mingw compilam sem avisos.
+
+**Não testado:** a release completa pelo CI (só o `official_mods` foi rodado à parte) e o launcher do Windows com
+o mod em patches.
+
+**Pendente:** os créditos do CyberLife só têm o nome do grupo; faltam os nomes dos membros, links e a versão da
+tradução original. Cada versão nova de um patch grande (o `eve.pkb`) aumenta o repositório em alguns MB; se
+pesar, dá para passar `mods/**/*.bps` para o Git LFS.

@@ -29,7 +29,7 @@ class ModTest(unittest.TestCase):
         self.tmp.cleanup()
 
     def args(self, **kw):
-        defaults = {"name": None, "author": None, "description": None}
+        defaults = {"name": None, "author": None, "description": None, "patch": False}
         return argparse.Namespace(**{**defaults, **kw})
 
     def test_from_dump_keeps_only_changed_files(self):
@@ -39,6 +39,29 @@ class ModTest(unittest.TestCase):
         self.assertIn("game = BOEJ", (out / "mod.ini").read_text(encoding="utf-8"))
         errors, warnings = mod.check(out, mod.load_image(self.dir / "retail.nds"))
         self.assertEqual((errors, warnings), ([], []))
+
+    def test_patches_carry_the_same_files(self):
+        out, whole = self.dir / "mods" / "hack", self.dir / "whole"
+        retail = self.dir / "retail.nds"
+        mod.cmd_from_dump(self.args(retail=retail, modified=self.dir / "hack.nds", out=out, patch=True))
+        self.assertFalse((out / "files" / "dir" / "a.bin").exists())
+        self.assertTrue((out / "files" / "dir" / "a.bin.bps").exists())
+        self.assertEqual(mod.check(out, mod.load_image(retail)), ([], []))
+        mod.cmd_expand(argparse.Namespace(dir=out, image=retail, out=whole))
+        self.assertEqual((whole / "files" / "dir" / "a.bin").read_bytes(), b"MODS")
+        self.assertTrue((whole / "mod.ini").exists())
+
+        # A whole file replaces the patch of its path; one equal to the original removes it.
+        (out / "files" / "dir" / "a.bin").write_bytes(b"NEW!")
+        errors, _ = mod.check(out, mod.load_image(retail))
+        self.assertTrue(any("change the same file" in e for e in errors))
+        mod.cmd_patch(argparse.Namespace(dir=out, image=retail))
+        self.assertEqual([p.name for p in (out / "files" / "dir").iterdir()], ["a.bin.bps"])
+        mod.cmd_expand(argparse.Namespace(dir=out, image=retail, out=self.dir / "again"))
+        self.assertEqual((self.dir / "again" / "files" / "dir" / "a.bin").read_bytes(), b"NEW!")
+        (out / "files" / "dir" / "a.bin").write_bytes(mod.original(mod.load_image(retail), "files/dir/a.bin"))
+        mod.cmd_patch(argparse.Namespace(dir=out, image=retail))
+        self.assertEqual(list((out / "files" / "dir").iterdir()), [])
 
     def test_check_reports_unknown_paths_and_missing_ini(self):
         folder = self.dir / "mods" / "x"

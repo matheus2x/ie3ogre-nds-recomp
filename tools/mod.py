@@ -3,13 +3,17 @@
 
   python3 tools/mod.py new mods/minha-traducao --name "Minha tradução"
   python3 tools/mod.py unpack boej.pak build/original [--only 'data_iz/logic/*'] [--overlays]
-  python3 tools/mod.py from-dump retail.nds modificado.nds mods/traducao --name "Tradução"
+  python3 tools/mod.py from-dump retail.nds modificado.nds mods/traducao --name "Tradução" [--patch]
+  python3 tools/mod.py patch mods/traducao boej.pak
+  python3 tools/mod.py expand mods/traducao boej.pak build/traducao
   python3 tools/mod.py check mods/minha-traducao boej.pak     (or a .zip)
   python3 tools/mod.py pack mods/minha-traducao [minha-traducao.zip]
 
 unpack gives the original files to edit (NitroFS paths under files/, overlays as they
 are in RAM under overlays/). from-dump turns a modified dump (a ROM hack or fan
 translation whose code is the retail one) into a mod: the files and overlays that differ.
+patch turns the whole files of a mod into BPS patches (<path>.bps, only the changes, so
+the mod carries no game data); expand does the opposite, for editing the files.
 check looks for paths the game does not have and for overlays whose code changed; the
 game does the same check when it loads the mod (boej --check-mods prints it).
 
@@ -26,6 +30,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from ntr import bps  # noqa: E402
 from ntr.pak import MAGIC, PakReader  # noqa: E402
 from ntr.rom import Overlay, Rom  # noqa: E402
 
@@ -34,6 +39,7 @@ DSD_OVERLAYS = ROOT / "config" / "boej" / "dsd" / "arm9" / "overlays"
 # DS Protect: encrypted in the ROM and decrypted by the game, so it cannot be compared or
 # replaced.
 PROTECTED_OVERLAYS = {129}
+PATCH = ".bps"
 
 MOD_INI = """\
 ; Mod de Inazuma Eleven 3 - The Ogre (formato em docs/MODS.md).
@@ -86,6 +92,35 @@ def code_change(ov: Overlay, retail: bytes, image: bytes) -> int | None:
     return None
 
 
+_file_ids: dict[int, tuple[Rom, dict[str, int]]] = {}
+
+
+def file_ids(rom: Rom) -> dict[str, int]:
+    """NitroFS path (lower case) -> file id, worked out once per image."""
+    if id(rom) not in _file_ids:
+        _file_ids[id(rom)] = (rom, {p.lower(): i for p, i in rom.files()})
+    return _file_ids[id(rom)][1]
+
+
+def original(rom: Rom, rel: str) -> bytes | None:
+    """The retail bytes that a path of a mod replaces ("files/<path>" or "overlays/ovNNN.bin")."""
+    kind, _, name = rel.partition("/")
+    if kind == "files":
+        file_id = file_ids(rom).get(name.lower())
+        return None if file_id is None else rom.file_data(file_id)
+    m = re.fullmatch(r"ov(\d{3})\.bin", name.lower())
+    ov = next((o for o in rom.overlays9() if m and o.id == int(m[1])), None)
+    return None if ov is None or ov.id in PROTECTED_OVERLAYS else rom.overlay_decompressed(ov)
+
+
+def game_files(mod: Path):
+    """(relative path, file) of what the game reads in a mod folder, patches included."""
+    for kind in ("files", "overlays"):
+        for f in sorted((mod / kind).rglob("*")) if (mod / kind).is_dir() else []:
+            if f.is_file():
+                yield f.relative_to(mod).as_posix(), f
+
+
 def safe_name(path: str) -> bool:
     return not (path.startswith("/") or ".." in path.split("/") or "\\" in path)
 
@@ -128,6 +163,15 @@ def cmd_unpack(args) -> int:
     return 0
 
 
+def write(dst: Path, base: bytes, data: bytes, patch: bool):
+    """The file of a mod: whole, or as a patch over the retail bytes (<path>.bps)."""
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    if patch:
+        dst.with_name(dst.name + PATCH).write_bytes(bps.encode(base, data))
+    else:
+        dst.write_bytes(data)
+
+
 def cmd_from_dump(args) -> int:
     retail, other = load_image(args.retail), load_image(args.modified)
     if retail.header.game_code != other.header.game_code:
@@ -145,12 +189,10 @@ def cmd_from_dump(args) -> int:
         if path not in base_files:
             print(f"warning: {path} is not in the retail game (left out)")
             continue
-        data = other.file_data(file_id)
-        if data == retail.file_data(base_files[path]):
+        data, base = other.file_data(file_id), retail.file_data(base_files[path])
+        if data == base:
             continue
-        dst = out / "files" / path
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        dst.write_bytes(data)
+        write(out / "files" / path, base, data, args.patch)
         changed += 1
     for path in base_files.keys() - other_files.keys():
         print(f"warning: {path} was removed in the modified dump (the mod keeps the original)")
@@ -168,10 +210,7 @@ def cmd_from_dump(args) -> int:
             sys.exit(f"error: overlay {ob.id} changes code at {at:#010x}; mods may only change data")
         # The slot keeps its original size; a shorter overlay is completed with the
         # original bytes (the game loads the whole slot).
-        image = b + a[len(b):]
-        dst = out / "overlays" / f"ov{ob.id:03d}.bin"
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        dst.write_bytes(image)
+        write(out / "overlays" / f"ov{ob.id:03d}.bin", a, b + a[len(b):], args.patch)
         overlays += 1
 
     out.mkdir(parents=True, exist_ok=True)
@@ -182,39 +221,105 @@ def cmd_from_dump(args) -> int:
     return 0
 
 
+def cmd_patch(args) -> int:
+    """Whole files of the mod become patches over the retail ones; a whole file wins over a
+    patch of the same path (it is the newer edit), and one equal to the original removes it."""
+    rom = load_image(args.image)
+    patched = same = 0
+    for rel, f in list(game_files(args.dir)):
+        if rel.endswith(PATCH):
+            continue
+        base = original(rom, rel)
+        if base is None:
+            print(f"warning: {rel} is not part of the game (left as it is)")
+            continue
+        data = f.read_bytes()
+        if data == base or (rel.startswith("overlays/") and data == base[:len(data)]):
+            print(f"note: {rel} is the original; removed (and its patch)")
+            f.with_name(f.name + PATCH).unlink(missing_ok=True)
+            same += 1
+        else:
+            write(f, base, data, True)
+            patched += 1
+        f.unlink()
+    print(f"{args.dir}: {patched} files turned into patches" + (f", {same} originals removed" if same else ""))
+    return 0
+
+
+def cmd_expand(args) -> int:
+    """A copy of the mod with every patch applied: whole files, to edit or to compare."""
+    rom = load_image(args.image)
+    out: Path = args.out
+    if out.exists() and any(out.iterdir()):
+        sys.exit(f"error: {out} already exists and is not empty")
+    for f in sorted(args.dir.rglob("*")):
+        if not f.is_file():
+            continue
+        rel = f.relative_to(args.dir).as_posix()
+        dst = out / rel
+        data = f.read_bytes()
+        if rel.endswith(PATCH) and rel.startswith(("files/", "overlays/")):
+            dst = dst.with_name(dst.name.removesuffix(PATCH))
+            base = original(rom, rel.removesuffix(PATCH))
+            if base is None:
+                sys.exit(f"error: {rel} is not part of the game")
+            try:
+                data = bps.apply(data, base)
+            except bps.BpsError as e:
+                sys.exit(f"error: {rel}: {e}")
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.write_bytes(data)
+    print(f"{out}: the mod with whole files")
+    return 0
+
+
 def check(mod: Path, rom: Rom) -> tuple[list[str], list[str]]:
     errors, warnings = [], []
     if not (mod / "mod.ini").exists():
         errors.append("missing mod.ini")
-    paths = {p.lower() for p, _ in rom.files()}
-    files = mod / "files"
-    count = 0
-    for f in sorted(files.rglob("*")) if files.is_dir() else []:
-        if not f.is_file():
-            continue
-        rel = f.relative_to(files).as_posix()
-        if rel.lower() not in paths:
-            warnings.append(f"files/{rel} is not a file of the game (ignored)")
-        elif f.stat().st_size == 0:
-            errors.append(f"files/{rel} is empty")
-        else:
-            count += 1
+    paths = file_ids(rom)
     overlays = {ov.id: ov for ov in rom.overlays9()}
-    ovdir = mod / "overlays"
-    for f in sorted(ovdir.iterdir()) if ovdir.is_dir() else []:
-        m = re.fullmatch(r"ov(\d{3})\.bin", f.name.lower())
-        if not m or not f.is_file():
-            warnings.append(f"overlays/{f.name}: expected ovNNN.bin (ignored)")
+    count = 0
+    seen: dict[str, str] = {}
+    for rel, f in game_files(mod):
+        target = rel.removesuffix(PATCH)
+        kind, _, name = target.partition("/")
+        if target.lower() in seen:
+            errors.append(f"{seen[target.lower()]} and {rel} change the same file (keep one)")
             continue
-        ov = overlays.get(int(m[1]))
-        if ov is None or ov.id in PROTECTED_OVERLAYS:
-            errors.append(f"overlays/{f.name}: overlay {int(m[1])} cannot be replaced")
+        seen[target.lower()] = rel
+        ov = None
+        if kind == "files":
+            if name.lower() not in paths:
+                warnings.append(f"{rel} is not a file of the game (ignored)")
+                continue
+        else:
+            m = re.fullmatch(r"ov(\d{3})\.bin", name.lower())
+            if not m or "/" in name:
+                warnings.append(f"{rel}: expected overlays/ovNNN.bin (ignored)")
+                continue
+            ov = overlays.get(int(m[1]))
+            if ov is None or ov.id in PROTECTED_OVERLAYS:
+                errors.append(f"{rel}: overlay {int(m[1])} cannot be replaced")
+                continue
+        data = f.read_bytes()
+        if rel.endswith(PATCH):
+            try:
+                data = bps.apply(data, original(rom, target))
+            except bps.BpsError as e:
+                errors.append(f"{rel}: {e}")
+                continue
+        if not data:
+            errors.append(f"{rel} is empty")
             continue
-        retail, image = rom.overlay_decompressed(ov), f.read_bytes()
-        if len(image) > len(retail) + 0x10000:
-            errors.append(f"overlays/{f.name} is much larger than the original")
-        elif (at := code_change(ov, retail, image)) is not None:
-            errors.append(f"overlays/{f.name} changes code at {at:#010x}")
+        if ov is not None:
+            retail = rom.overlay_decompressed(ov)
+            if len(data) > len(retail) + 0x10000:
+                errors.append(f"{rel} is much larger than the original")
+                continue
+            if (at := code_change(ov, retail, data)) is not None:
+                errors.append(f"{rel} changes code at {at:#010x}")
+                continue
         count += 1
     if not count and not errors:
         warnings.append("the mod changes nothing")
@@ -247,15 +352,20 @@ def cmd_check(args) -> int:
     return 1 if errors else 0
 
 
+def pack(mod: Path, out: Path):
+    """The zip the launcher reads: the mod in one folder named like it."""
+    with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
+        for f in sorted(mod.rglob("*")):
+            if f.is_file():
+                z.write(f, Path(mod.name) / f.relative_to(mod))
+
+
 def cmd_pack(args) -> int:
     mod: Path = args.dir
     if not (mod / "mod.ini").exists():
         sys.exit(f"error: {mod} has no mod.ini")
     out: Path = args.out or mod.with_suffix(".zip")
-    with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
-        for f in sorted(mod.rglob("*")):
-            if f.is_file():
-                z.write(f, Path(mod.name) / f.relative_to(mod))
+    pack(mod, out)
     print(f"{out} ({out.stat().st_size} bytes): put it in the mods folder next to the game")
     return 0
 
@@ -286,7 +396,19 @@ def main() -> int:
     p.add_argument("--name")
     p.add_argument("--author")
     p.add_argument("--description")
+    p.add_argument("--patch", action="store_true", help="patches (<path>.bps) instead of whole files")
     p.set_defaults(fn=cmd_from_dump)
+
+    p = sub.add_parser("patch", help="whole files of a mod into patches over the retail ones")
+    p.add_argument("dir", type=Path)
+    p.add_argument("image", type=Path, help="boej.pak or the retail .nds")
+    p.set_defaults(fn=cmd_patch)
+
+    p = sub.add_parser("expand", help="copy of a mod with the patches applied (whole files)")
+    p.add_argument("dir", type=Path)
+    p.add_argument("image", type=Path, help="boej.pak or the retail .nds")
+    p.add_argument("out", type=Path)
+    p.set_defaults(fn=cmd_expand)
 
     p = sub.add_parser("check", help="look for problems in a mod (folder or .zip)")
     p.add_argument("dir", type=Path, help="the mod folder or .zip")

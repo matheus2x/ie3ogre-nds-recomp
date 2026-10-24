@@ -6,6 +6,8 @@
 //   files/<path>         replaces the NitroFS file at <path> (data_iz/...)
 //   overlays/ovNNN.bin   overlay NNN as it is in RAM (decompressed); only bytes outside the
 //                        recompiled code may change
+//   <either>.bps         the same as a BPS patch over the retail file (ntr/package.h): a mod
+//                        that carries only its changes, not the game's data
 //
 // Nothing is copied into boej.pak: the mods' files go at ROM offsets past the end of the
 // image and patched copies of the FAT and of the overlay table point the game at them
@@ -49,8 +51,10 @@ struct ModFile {
     std::string path;  // as in NitroFS
     uint16_t id;
     uint32_t size;
-    const uint8_t* data;  // in place (folder or stored zip entry), or null: inflated when read
+    const uint8_t* data;  // in place (folder or stored zip entry), or null: made when read
     const ModPackage::Entry* entry;
+    std::shared_ptr<const std::vector<uint8_t>> patch;  // a .bps, over the retail file at
+    uint32_t base_start = 0, base_size = 0;             // these ROM offsets
 };
 
 struct ModOverlay {
@@ -115,9 +119,12 @@ const ModuleEntry* module_named(const std::string& name) {
     return nullptr;
 }
 
-bool is_zip_name(const std::string& name) {
-    return name.size() > 4 && lower(name.substr(name.size() - 4)) == ".zip";
+bool ends_with(const std::string& name, const char* suffix) {
+    size_t n = std::strlen(suffix);
+    return name.size() > n && lower(name.substr(name.size() - n)) == suffix;
 }
+
+bool is_zip_name(const std::string& name) { return ends_with(name, ".zip"); }
 
 // Reads the mod; problems go into its errors and warnings. With `verify`, every zipped file
 // is inflated and checked (boej --check-mods); otherwise that waits for the game to read it.
@@ -148,14 +155,50 @@ Mod scan_mod(const std::string& folder, const std::map<std::string, const NitroF
         mod.errors.push_back("o mod é para outro jogo (" + ini.get("mod", "game") + ")");
     }
     uint64_t h = fnv(0xCBF29CE484222325ull, folder.data(), folder.size());
+    std::map<std::string, std::string> targets;  // what each entry replaces -> the entry
 
     for (const ModPackage::Entry& e : pkg.entries()) {
         std::string lpath = lower(e.path);
+        bool patch = ends_with(lpath, ".bps");
+        std::string target = patch ? lpath.substr(0, lpath.size() - 4) : lpath;
+        if (auto [it, fresh] = targets.emplace(target, e.path); !fresh) {
+            mod.errors.push_back(it->second + " e " + e.path + " trocam o mesmo arquivo (deixe só um)");
+            continue;
+        }
         if (lpath.rfind("files/", 0) == 0) {
-            std::string rel = e.path.substr(6);
+            std::string rel = e.path.substr(6, e.path.size() - 6 - (patch ? 4 : 0));
             auto found = by_path.find(lower(rel));
             if (found == by_path.end()) {
                 mod.warnings.push_back(e.path + " não existe no jogo (ignorado)");
+                continue;
+            }
+            if (patch) {
+                const NitroFile& nf = *found->second;
+                auto bytes = std::make_shared<std::vector<uint8_t>>();
+                uint64_t source = 0, size = 0;
+                if (!pkg.read(e, *bytes, error)) {
+                    mod.errors.push_back(error);
+                    continue;
+                }
+                if (!bps_sizes(*bytes, source, size) || size == 0 || size > 0x10000000) {
+                    mod.errors.push_back(e.path + " não é um patch BPS válido");
+                    continue;
+                }
+                if (nf.end < nf.start || source != nf.end - nf.start) {
+                    mod.errors.push_back(e.path + ": o patch é para outra versão desse arquivo");
+                    continue;
+                }
+                if (verify) {
+                    std::vector<uint8_t> base = rom_image().bytes(nf.start, nf.end - nf.start), out;
+                    if (!bps_apply(*bytes, base.data(), base.size(), out, error)) {
+                        mod.errors.push_back(e.path + ": " + error);
+                        continue;
+                    }
+                }
+                mod.files.push_back({nf.path, nf.id, uint32_t(size), nullptr, &e, bytes, nf.start, nf.end - nf.start});
+                h = fnv(h, e.path.data(), e.path.size());
+                h = fnv(h, &e.size, sizeof e.size);
+                h = fnv(h, &e.stamp, sizeof e.stamp);
                 continue;
             }
             if (e.size == 0 || e.size > 0x10000000) {
@@ -171,12 +214,12 @@ Mod scan_mod(const std::string& folder, const std::map<std::string, const NitroF
                 mod.errors.push_back("não foi possível ler " + e.path);
                 continue;
             }
-            mod.files.push_back({found->second->path, found->second->id, uint32_t(e.size), data, &e});
+            mod.files.push_back({found->second->path, found->second->id, uint32_t(e.size), data, &e, nullptr});
             h = fnv(h, e.path.data(), e.path.size());
             h = fnv(h, &e.size, sizeof e.size);
             h = fnv(h, &e.stamp, sizeof e.stamp);
         } else if (lpath.rfind("overlays/", 0) == 0) {
-            std::string name = e.path.substr(9);
+            std::string name = e.path.substr(9, e.path.size() - 9 - (patch ? 4 : 0));
             unsigned id = 0;
             char expect[32] = {};
             if (std::sscanf(lower(name).c_str(), "ov%u", &id) == 1) std::snprintf(expect, sizeof expect, "ov%03u.bin", id);
@@ -201,6 +244,13 @@ Mod scan_mod(const std::string& folder, const std::map<std::string, const NitroF
             if (!pkg.read(e, image, error) || image.empty() || retail.empty()) {
                 mod.errors.push_back(image.empty() && error.empty() ? "não foi possível ler " + e.path : error);
                 continue;
+            }
+            if (patch) {
+                std::vector<uint8_t> bytes = std::move(image);
+                if (!bps_apply(bytes, retail.data(), retail.size(), image, error) || image.empty()) {
+                    mod.errors.push_back(e.path + ": " + (error.empty() ? "o patch não tem nada" : error));
+                    continue;
+                }
             }
             if (image.size() > retail.size() + 0x10000) {
                 mod.errors.push_back(e.path + " é bem maior que a original (" + std::to_string(image.size()) +
@@ -344,21 +394,29 @@ void mods_apply() {
         cursor = (cursor + size + kAlign - 1) / kAlign * kAlign;
         return true;
     };
-    // Zipped files are inflated by a thread in the background, from the start; one the game
-    // asks for before that thread gets to it is inflated right then (call_once: never twice).
+    // Zipped files are inflated, and patches applied, by a thread in the background, from the
+    // start; one the game asks for before that thread gets to it is made right then
+    // (call_once: never twice).
     struct Inflated {
         std::once_flag once;
         std::vector<uint8_t> data;
         std::shared_ptr<ModPackage> package;
-        const ModPackage::Entry* entry;
-        uint32_t size;
+        const ModFile* file;
         std::string folder;
         const uint8_t* get() {
             std::call_once(once, [this] {
                 std::string error;
-                if (!package->read(*entry, data, error) || data.size() != size) {
+                bool ok;
+                if (file->patch) {
+                    std::vector<uint8_t> base = rom_image().bytes(file->base_start, file->base_size);
+                    ok = bps_apply(*file->patch, base.data(), base.size(), data, error);
+                    if (!ok) error = file->entry->path + ": " + error;
+                } else {
+                    ok = package->read(*file->entry, data, error);
+                }
+                if (!ok || data.size() != file->size) {
                     NTR_LOG("[mods] %s: error: %s\n", folder.c_str(), error.c_str());
-                    data.assign(size, 0);  // reads as zeros rather than crashing
+                    data.assign(file->size, 0);  // reads as zeros rather than crashing
                 }
             });
             return data.data();
@@ -372,8 +430,7 @@ void mods_apply() {
             if (!f.data) {
                 auto z = std::make_shared<Inflated>();
                 z->package = mod.package;
-                z->entry = f.entry;
-                z->size = f.size;
+                z->file = &f;
                 z->folder = mod.folder;
                 zipped.push_back(z);
                 load = [z] { return z->get(); };

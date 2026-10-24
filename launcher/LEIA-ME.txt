@@ -29,6 +29,9 @@ na aba "Mods", ligue, desligue e ordene os mods. A aba também cria um mod a
 partir de um dump modificado (uma tradução, por exemplo), desde que o código
 dele seja o do jogo original. As mudanças valem na próxima vez que o jogo
 abrir. Como fazer um mod: veja docs/MODS.md no repositório do projeto.
+Os mods oficiais saem como .zip separados nas releases (por exemplo, o
+CyberLifePlus.zip, a tradução PT-BR): coloque o .zip na pasta "mods" sem
+descompactar.
 
 ARQUIVOS CRIADOS NESTA PASTA
 - boej.exe, boej.pak  o jogo, preparado a partir do seu dump (uso pessoal:

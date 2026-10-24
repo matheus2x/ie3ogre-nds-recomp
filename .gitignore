@@ -25,3 +25,6 @@ __pycache__/
 *.swp
 .DS_Store
 Thumbs.db
+
+# Mods zipped by tools/mod.py pack (official mods ship as patches in mods/<name>/)
+mods/*.zip

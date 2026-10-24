@@ -52,6 +52,13 @@ private:
     mutable std::vector<std::pair<const uint8_t*, uint64_t>> mapped_;
 };
 
+// BPS patches (files/<path>.bps in a mod; format in tools/ntr/bps.py): the sizes in the
+// header, and the patch applied over `source` into `out`, with the CRC-32 of the source, of
+// the result and of the patch checked. False with a message for the player.
+bool bps_sizes(const std::vector<uint8_t>& patch, uint64_t& source_size, uint64_t& target_size);
+bool bps_apply(const std::vector<uint8_t>& patch, const uint8_t* source, size_t source_size,
+               std::vector<uint8_t>& out, std::string& error);
+
 // Raw DEFLATE (RFC 1951) into `out` (appended). False if the stream is damaged.
 bool inflate(const uint8_t* data, size_t size, std::vector<uint8_t>& out);
 uint32_t crc32(const uint8_t* data, size_t size);

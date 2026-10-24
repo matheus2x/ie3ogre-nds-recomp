@@ -80,7 +80,10 @@ def main() -> int:
                "Quem já tem o launcher pode atualizar pela aba **Atualizações**: saves e configurações são mantidos, e o "
                "dump não é pedido de novo.\n\n"
                "O pacote não contém dados nem código do jogo. Para conferir o download, compare o SHA-256 do zip com o "
-               "`sha256sums.txt` (no PowerShell: `Get-FileHash ie3ogre-recomp-*.zip`).\n")
+               "`sha256sums.txt` (no PowerShell: `Get-FileHash ie3ogre-recomp-*.zip`).\n\n"
+               "Os outros `.zip` da release são os mods oficiais (como o `CyberLifePlus.zip`, a tradução PT-BR): "
+               "coloque-os, sem descompactar, na pasta `mods` ao lado do jogo e ligue-os na aba **Mods**. Eles só "
+               "trazem patches e também não contêm dados do jogo.\n")
     if since and args.repo:
         out.append(f"**Todas as mudanças:** https://github.com/{args.repo}/compare/{since}...{args.tag}\n")
     print("\n".join(out).rstrip() + "\n")

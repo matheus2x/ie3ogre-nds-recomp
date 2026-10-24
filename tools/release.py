@@ -5,7 +5,9 @@
   python3 tools/release.py --platform linux    # native Linux (system compiler and SDL3)
 
 Output in build/release/: ie3ogre-recomp-<version>-<platform>.zip and sha256sums.txt,
-the assets the launcher's updater looks for. The zip holds one folder:
+the assets the launcher's updater looks for, and <name>.zip for each official mod in
+mods/<name>/ (patches only, no game data; the player puts it in the game's mods/ folder).
+The zip holds one folder:
 
   ie3ogre-recomp/
     ie3-launcher(.exe)  SDL3.dll (Windows)  LEIA-ME.txt  TERCEIROS.txt  licenses/
@@ -33,6 +35,8 @@ import tarfile
 import urllib.request
 import zipfile
 from pathlib import Path
+
+import mod  # tools/mod.py
 
 ROOT = Path(__file__).resolve().parent.parent
 TOOLS = ROOT / "build" / "tools"
@@ -127,6 +131,24 @@ def copy_tree(src: Path, dst: Path, patterns: tuple[str, ...]):
                 shutil.copy2(f, dst / f.name)
 
 
+def official_mods(release: Path) -> list[Path]:
+    """mods/<name>/ -> <name>.zip, as tools/mod.py pack makes it. Whole game files are refused:
+    an official mod carries only patches (docs/MODS.md)."""
+    out = []
+    for folder in sorted((ROOT / "mods").iterdir()) if (ROOT / "mods").is_dir() else []:
+        if not (folder / "mod.ini").is_file():
+            continue
+        whole = [f for kind in ("files", "overlays") for f in (folder / kind).rglob("*")
+                 if f.is_file() and f.suffix != ".bps"]
+        if whole:
+            sys.exit(f"error: {whole[0]} is a whole game file; official mods carry only patches "
+                     f"(tools/mod.py patch)")
+        zip_path = release / f"{folder.name}.zip"
+        mod.pack(folder, zip_path)
+        out.append(zip_path)
+    return out
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--platform", choices=["windows", "linux"], default="windows")
@@ -183,11 +205,15 @@ def main() -> int:
                 info = zipfile.ZipInfo.from_file(f, f.relative_to(stage).as_posix())
                 info.compress_type = zipfile.ZIP_DEFLATED
                 z.writestr(info, f.read_bytes())
+    zips = [zip_path] + official_mods(release)
     sums = release / "sha256sums.txt"
-    lines = [line for line in (sums.read_text().splitlines() if sums.exists() else []) if not line.endswith(name)]
-    lines.append(f"{sha256(zip_path)}  {name}")
+    names = {z.name for z in zips}
+    lines = [line for line in (sums.read_text().splitlines() if sums.exists() else []) if line.split()[-1] not in names]
+    lines += [f"{sha256(z)}  {z.name}" for z in zips]
     sums.write_text("\n".join(sorted(lines, key=lambda l: l.split()[-1])) + "\n")
-    print(f"release: {zip_path} ({zip_path.stat().st_size / 2**20:.1f} MiB)\nsums: {sums}")
+    for z in zips:
+        print(f"release: {z} ({z.stat().st_size / 2**20:.1f} MiB)")
+    print(f"sums: {sums}")
     return 0
 
 
