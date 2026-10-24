@@ -1350,3 +1350,247 @@ pesar, dá para passar `mods/**/*.bps` para o Git LFS.
 alteração temporária no código, já desfeita). Linux e llvm-mingw compilam sem avisos.
 
 **Não testado:** o clique de verdade em Apagar (o código que apaga é o mesmo de antes).
+
+## 2026-10-24 — Levantamento do que falta traduzir no CyberLifePlus
+
+- Pedido: mapear o que o mod de tradução ainda deixa em japonês e montar um roadmap com a porcentagem que falta.
+  Só o levantamento; nada do mod mudou.
+- Resultado e roadmap em `docs/TRADUCAO.md`. Resumo: **33 % do texto que o jogador lê está traduzido** (41 % dos
+  textos únicos); a história dos capítulos 1–11 está em 91 %. O grosso do que falta: falas dos jogadores nas
+  partidas (`evet` 3700, 0 %), perfis (`unitbase.STR`, 0 %), subeventos (`evet` 3300, 26 %) e NPCs (36xx, 3 %).
+  Também sobraram ~1.200 falas e ~250 textos de tabela em inglês.
+- **Formatos descobertos:**
+  - a chave do `.pkh` é o número do evento em decimal (`eve31010000.ssd` → 31010000 = 0x01D92CD0);
+  - `evet.pkb`/`mcht.pkb`: o texto dos diálogos. Registros `[u32 BE tamanho][texto\0 + preenchimento]`; cada fala
+    tem marcadores `%nF` e é seguida de um registro de leitura (furigana) por marcador. A tradução tira os
+    marcadores e deixa os registros de leitura;
+  - SSD (`eve`, `mch`, `act`…): cabeçalho de 0x20 bytes, código (tamanho na palavra 4) e dados (palavra 5) com
+    registros `[u16 id][u8 índice][u8 tamanho][conteúdo]`; o texto vai até o NUL, o resto é sobra do original;
+  - tabelas `logic/*.STR` usam `[漢字/かな]` para furigana; os acentos da tradução são bytes únicos em
+    0xA1–0xDF (o lugar do kana de meia largura: `ã` = 0xB4, `á` = 0xB2, `é` = 0xBA, `ê` = 0xBB).
+- **Achado:** 822 falas traduzidas passam do fim do registro e escrevem por cima do tamanho do registro de furigana
+  seguinte (por isso 15 entradas do `evet` nem andam mais pelos tamanhos). Falta ver no jogo se quebra algo.
+- O scanner ficou fora do repositório (scripts temporários); dá para trazê-lo para `tools/` quando a tradução
+  começar, para medir o progresso.
+
+**Não testado:** nada foi visto no jogo; os números são de heurística (detalhes em `docs/TRADUCAO.md`). Imagens
+com texto não entram na conta.
+
+## 2026-10-24 — CyberLifePlus 1.1: fase 1 da tradução (a história inteira)
+
+- Pedido: fazer a etapa 1 do roadmap de `docs/TRADUCAO.md`, seguindo o padrão da tradução existente para nomes
+  de personagens e de técnicas.
+- **Traduzido:** 1.281 falas em 366 entradas: o que faltava dos capítulos 1–11 (`evet` 3201–3211), o capítulo 12
+  inteiro (3212, a prévia do GO com o Tenma), as aberturas (31xx), as mensagens de campo/lojas/máquina de
+  busca/broches (35xx), o `mcht.pkb` (eventos durante as partidas) e as strings do `eve.pkb` (rótulos de quem
+  fala, como "Kido?", e a máquina de recuperação). 50 linhas ficaram de fora de propósito (debug do `eve.pkb` e
+  furigana sem uso). Falas longas idênticas a falas que o CyberLife já tinha traduzido foram reaproveitadas; as
+  curtas não, porque a tradução original às vezes redistribuiu o conteúdo entre falas vizinhas.
+- **Padrão:** os nomes vêm das falas já traduzidas, não das tabelas: o diálogo segue a dublagem brasileira
+  ("Super Onze", "Mão Fantasma", "Cavaleiros da Rainha"), e as tabelas vieram de um patch em inglês ("Inazuma
+  Japan", "God Hand"). Glossário e termos novos em `docs/TRADUCAO.md`.
+- **Formatos descobertos:**
+  - o `eve.pkb` aponta cada fala com `"@deslocamento,tamanho"`, e o tamanho é a fala + os registros de furigana
+    seguintes. A fala traduzida pode usar esse espaço todo: é o que o CyberLife já fazia nas falas que "passavam"
+    do registro;
+  - em 41 entradas o CyberLife mudou as falas de lugar e atualizou essas referências, às vezes sem mudar o
+    tamanho da entrada. A primeira aplicação desta versão escrevia nas posições do original japonês e, em 17
+    dessas entradas, gravou 61 falas onde o jogo não lê (por cima de falas já traduzidas). Achado ao passar o
+    trabalho para `tools/text.py`; o mod foi refeito a partir da v1.0 com as posições do script. 33 dessas falas
+    já estavam traduzidas pelo CyberLife (o japonês visto era sobra num espaço sem uso) e saíram;
+  - tabela de acentos tirada da fonte traduzida (`FONT12.NFTR`): ã = B4, ç = B8 etc. (lista no `TRADUCAO.md`);
+  - o jogo quebra sozinho as linhas largas (~226 px), mas mostra só 3 linhas por caixa (testado no jogo com uma
+    fala de 321 px: virou duas linhas, e a quarta linha não apareceu);
+  - `evet`/`mcht` guardam as entradas sem compressão (edição no lugar, mesmo tamanho); o `eve.pkb` é LZ10 por
+    entrada, com o `.pkh` alinhado em 16.
+- `mod.ini`: versão 1.1. `LEIA-ME.md`: seção de versões e o novo jeito de continuar a tradução.
+
+**Verificação:**
+- `tools/text.py check`: 1.281 falas sem problema (cabem no espaço, até 3 linhas por caixa com a quebra
+  automática, `%s` mantido, só caracteres da fonte).
+- Comparado com a v1.0: das 92.112 posições de texto (falas e strings dos scripts), mudaram exatamente as 1.281
+  traduzidas, e cada uma tem o texto da tradução; todas as outras estão iguais. `mod.py check`: ok.
+- `text.py survey`: 29 % → 32 % do texto (com repetições), 39 % → 44 % dos textos únicos; capítulos 1–11,
+  capítulo 12, 31xx, 35xx e `mcht` em 100 %.
+- Roteiro da história até o quadro 14000: quadros 9500, 11000, 12500 e 14000 **idênticos byte a byte** aos da v1.0
+  (o prólogo não mudou). O compressor LZ10, usado em 40 entradas do prólogo, também deu capturas idênticas.
+
+**Não testado:** nenhuma das falas novas foi vista no jogo; o roteiro gravado para no quadro ~14000, antes delas.
+O teste com a fala de 321 px confirma o mecanismo (escrever no espaço da fala, quebra automática), e o `check`
+aplica as mesmas regras a todas.
+
+**Achado à parte:** encerrar o jogo muito cedo (`NTR_EXIT_FRAME=5`) com mods em patch mostra erros falsos de
+"não é um patch BPS válido" para o CyberLifePlus; com 300 quadros não aparece nenhum. Parece corrida entre o
+encerramento e a verificação dos patches em segundo plano.
+
+## 2026-10-24 — `tools/text.py`: ferramentas da tradução no repositório
+
+- Pedido: trazer para `tools/` as ferramentas usadas na fase 1, sem versionar o texto japonês.
+- **`tools/ntr/lz10.py`:** LZ10 (descompressão e compressão gulosa, sem distância 1).
+- **`tools/ntr/text.py`:** formatos (pacotes `.pkh`/`.pkb`, dados e referências `@off,len` dos scripts SSD,
+  listas de falas do `evet`/`mcht`), codificação com a tabela de acentos, larguras da fonte NFTR, quebra
+  automática da caixa e as regras de uma fala (`problems`).
+- **`tools/text.py`:** `survey` (quanto falta, por área), `extract` (as falas em japonês com o espaço de cada uma
+  e as falas traduzidas em volta), `lookup` (como um termo já foi traduzido), `check` e `apply` (grava a
+  tradução no mod como patches, regravando só o que mudou). As falas do `evet` são achadas pelas referências do
+  script do mod, o que revelou o erro de posição da v1.1 (entrada anterior) e mais 12 falas da máquina de busca
+  que faltavam (traduzidas).
+- **`translations/CyberLifePlus/`:** a tradução da fase 1, um `.json` por grupo, com o lugar de cada fala
+  (`"evet:32120100:4"`) e o português.
+- **Sem texto do jogo no repositório:** o `text.py` recusa traduções com japonês, `extract`/`lookup` só escrevem
+  dentro de `build/` (ignorada pelo git) e o `tools/tests/test_text.py` confere que `translations/` não tem
+  japonês. As listas da fase 1 (com o japonês) ficaram só no scratchpad desta sessão.
+- Docs: `docs/TRADUCAO.md` (números do método novo, passo a passo), LEIA-ME do mod e a tabela de pastas do
+  `DESENVOLVIMENTO.md`.
+
+**Verificação:** testes Python: 29, todos passando (novo `test_text.py`: LZ10, acentos, falas e espaço,
+pacotes, referências, regras de uma fala, trava contra japonês em `translations/`, `extract` só em `build/`).
+`text.py apply` refez a v1.1 a partir da v1.0 (comparação na entrada anterior).
+
+## 2026-10-24 — CyberLifePlus 1.2: fase 2 da tradução, itens e táticas
+
+- Pedido: continuar com a próxima etapa da tradução (fase 2 do roadmap de `docs/TRADUCAO.md`).
+- **Formatos descobertos** (no Ghidra):
+  - `item.dat`: 1024 registros de 0x2C bytes embaralhados. `func_02071458` carrega o arquivo e
+    `func_020748c8` desfaz o embaralhamento (XOR 0xAD, rotação de 2 bits para a direita e trocas de bytes a
+    distâncias 2, 4, 6 e 1). O nome do item fica em 0x00–0x1F e o índice da descrição em 0x2A;
+  - `item.STR` e `tacticscmd.STR`: textos em passos de 32 bytes. Quem mostra a descrição lê 0x80 bytes a partir
+    de índice × 32 (`func_ov110_02124f70` e `func_ov094_02125484` para itens, `func_ov123_02124d84` para táticas).
+    Furigana `[漢字/かな]`, quebra de linha com o byte 0x0A;
+  - os nomes dos itens estavam em inglês (vindos do patch em inglês) e o levantamento não os via, por causa do
+    embaralhamento.
+- **`tools/text.py`** passou a cobrir essas tabelas: lugares `item.dat:registro`, `item.STR:deslocamento` e
+  `tacticscmd.STR:deslocamento`. A tradução fica no lugar do original, com o espaço até o texto seguinte (e no
+  máximo 128 bytes). Como não se sabe se o jogo quebra as linhas dessas janelas, o `check` exige que cada linha
+  caiba na largura da linha mais larga da tabela (`item.STR`: 2 linhas de 200 px; nomes: 1 de 133 px). Novo
+  `extract --redo`, que também lista o que o mod tem em outra língua. O `survey` agora lê o `item.dat`.
+- **Traduzido:** 820 descrições de itens, 434 nomes de itens (do inglês) e as 43 táticas (nomes e descrições).
+  As descrições dos 349 cadernos de técnicas seguem uma fórmula ("Fogo  TP 46  1 jog." / "Caderno de técnica de
+  chute") e foram geradas por regra; as outras foram escritas à mão. Termos novos (status, elementos, tipos de
+  item) no glossário do `TRADUCAO.md`.
+- **Ficaram como estavam, de propósito:** os nomes dos cadernos de técnicas (são os nomes das técnicas), das
+  táticas e das habilidades (46 itens). As técnicas aparecem com os mesmos nomes em inglês no `command.STR`, e a
+  troca deve ser feita junto, seguindo os nomes do diálogo ("Mão Fantasma"). Os nomes das táticas no
+  `tacticscmd.STR`, que estavam em japonês, receberam os mesmos nomes em inglês dos itens. Os menus continuam
+  dizendo "Kick", "Guard" etc.
+- `mod.ini`: versão 1.2. `LEIA-ME.md`: versão e o que o `text.py` cobre.
+
+**Verificação:**
+- `text.py check`: 2.578 linhas sem problema (1.281 da fase 1 + 1.297 novas).
+- Comparação com o mod de antes: no `item.dat`, só mudaram os nomes traduzidos (o resto de cada registro está
+  igual, já desembaralhado); `item.STR` e `tacticscmd.STR` são iguais ao original, a não ser pelas traduções nos
+  lugares esperados.
+- Testes Python: 32, todos passando (novos: embaralhamento do `item.dat` ida e volta, textos do `.STR`, regras
+  das tabelas). `mod.py check`: ok.
+- `text.py survey`: 34,4 % do texto (com repetições) e 47,1 % dos textos únicos; descrições de itens 99,8 % (os
+  22 caracteres que sobram são 2 textos que nenhum item usa) e táticas 100 %.
+
+**Não testado:** nada disto foi visto no jogo. O roteiro gravado não chega a nenhum menu de itens. Falta confirmar
+que as janelas de itens mostram bem o texto de meia largura com acentos (os nomes em inglês do CyberLife já
+eram de meia largura) e se o jogo quebra linhas longas nessas janelas.
+
+## 2026-10-24 — CyberLifePlus 1.2: nomes de técnicas em romaji
+
+- Pedido: técnicas não precisam de tradução, mas devem ficar em romaji legível (ex.: "Majin the Hand").
+- **Achado:** a lista de técnicas do jogo (`command.STR`, do CyberLife) tinha traduções do inglês ("Divine
+  Stamp" para さばきのてっつい, "Dirt Ball", "Table-Turner", "Teleport Shot"), erros ("Mughen the Hand", "Greet
+  Barrier Reef", "Safety Fist") e 4 habilidades ainda em japonês (風のごとし！…). Os nomes dos cadernos nos itens
+  nem sempre batiam com ela ("Tenma Shot" no item, "Pegasus Shot" na lista).
+- **Regra** (no `TRADUCAO.md`): japonês vira romaji, katakana que vem do inglês fica em inglês, ごう = "gou" sem
+  hífen (com hífen, "Koutei Penguin 2-gou" passava da largura). Mesmo nome na lista e no caderno.
+- **`command.dat`:** registros de 0x24 bytes, índice do nome no `command.STR` em 0x18 e da descrição em 0x1A (sem
+  embaralhamento). O `text.py` passou a cobrir esses nomes (`command.dat:registro`): escreve em largura cheia,
+  como o CyberLife, e o nome que não cabe no lugar vai para o fim do arquivo, com o índice novo. Largura máxima
+  124 px (o nome mais largo do CyberLife, "Honoo no Kazamidori").
+- **Revisado:** 360 nomes da lista (72 trocados, incluindo as 4 habilidades: "Kaze no Gotoshi!" etc.), os 349
+  cadernos e as táticas com nome japonês ("Muteki no Yari", "Andes no Arijigoku", "Engetsu no Jin") nos itens e
+  no `tacticscmd.STR`. As outras habilidades e os comandos básicos (Feint, Tackle…) ficaram como estavam.
+
+**Verificação:** `text.py check`: 3.291 linhas sem problema. No `command.dat` só mudaram 8 índices de nome (os
+nomes que foram para o fim do arquivo); todos os nomes lidos pelo índice são os da tradução, e as descrições
+continuam as mesmas. Rodar o `apply` de novo não muda nada. Testes Python: 33, todos passando (novos: largura
+cheia e a mudança de lugar de um nome). `mod.py check`: ok.
+
+**Não testado:** nada visto no jogo, nem a lista de técnicas nem os itens.
+
+**Pasta de teste do Windows** (`C:\Games\ie3-teste\ie3ogre-recomp`): atualizada da 0.1.3 para uma release 0.1.8
+gerada deste código (`tools/release.py`). Troquei o launcher, o `SDL3.dll`, o `sdk/`, `licenses/`, `LEIA-ME.txt` e
+`TERCEIROS.txt`; mantive `boej.ini`, `boej.pak`, `cache/`, `toolchain/`, `saves/` e os replays. Criei `mods/` com o
+`CyberLifePlus.zip` (versão 1.2, com os itens e as técnicas desta sessão). O `ie3-launcher.exe --prepare` recompilou
+o jogo (185 arquivos em 36 s; `build.stamp` 0.1.8). O mod ainda precisa ser ligado na aba Mods.
+
+## 2026-10-24 — Objetivos da tela de cima: letras sobrepostas e textos em inglês
+
+- Pedido: no teste do Windows, o objetivo "O que aconteceu? Vá averiguar!" aparecia com o "t" sobre o "e" e o
+  "v" sobre o "e"; o card do save tinha textos em japonês; na digitação do nome do save, as letras não caem
+  nos quadradinhos.
+- **Card do save em japonês:** o card mostra o lugar e o objetivo gravados no save, e o save era de antes do
+  mod. Os dois textos já estavam traduzidos no mod ("Futuro - Rua", o objetivo); um save novo mostra em
+  português (o usuário confirmou).
+- **Objetivos:** são as strings do comando 0x201D dos scripts (`[u16 id][u16 tamanho][u16 opcode]…`; a string é
+  o registro 3 da instrução). São 102, e uns 80 ainda estavam em **inglês** (do patch em inglês), alguns com
+  espaços no meio das palavras ("para tre inar"), que eram a tentativa do CyberLife de contornar o problema.
+- **Como o jogo desenha o objetivo** (medido no jogo com textos de teste, pela sessão gravada do usuário e
+  capturas; a OAM mostra 4 sprites 64×32 em x = 8, 68, 128, 188): o texto vai em 4 sprites de 64 px colocados a
+  cada 60 px. O espaço de 1 px entre letras vem antes de cada letra, menos da primeira de um sprite, e uma
+  letra só passa para o sprite seguinte quando não cabe nos 64 px. Em japonês (5 letras de 12 px por sprite)
+  isso nunca aparece; com letras estreitas, os últimos 4 px de um sprite caem sobre o começo do próximo. Cada
+  sprite desce 1 px em relação ao anterior, também no japonês original. O modelo reproduz as posições
+  medidas em 6 textos de teste, pixel a pixel.
+- **Correção, sem mexer em código:** o `text.py` reconhece os objetivos, simula o desenho
+  (`objective_layout`) e grava cada um com espaçadores de 1 px junto dos espaços onde é preciso
+  (`objective_fit`), para que nenhuma letra fique sobre outra e o vão entre palavras tenha pelo menos 4 px. O
+  espaçador é o código 0xCF da `FONT12` (um glifo vazio que nenhum texto do jogo usa), que o `apply` deixa com
+  largura 0 (avança 1 px). Um espaçador no começo de um sprite não conta; um espaço conta.
+- **Traduzido:** os 102 objetivos, a partir do japonês, com os nomes do diálogo (Estádio Pavão, Ilha Hidra,
+  Fideo, Restaurante Tora…). Alguns ficaram mais curtos por causa do espaço de cada string, que também
+  precisa caber os espaçadores.
+- **Nome do save:** o campo desenha o nome inteiro com a fonte proporcional, e os quadradinhos são de 12 px (uma
+  letra japonesa). O teclado do CyberLife digita letras de meia largura. Não dá para alinhar só com dados: as
+  letras de largura cheia da fonte traduzida também são proporcionais (e servem aos nomes das técnicas).
+  Ficou anotado como limitação; resolver pede mudar o código do campo de nome.
+- `mod.ini`: versão 1.3. `LEIA-ME.md` e `TRADUCAO.md` (regras dos objetivos).
+
+**Verificação:**
+- Pela sessão gravada do usuário (quadro 4405), seis objetivos traduzidos foram desenhados no jogo (no lugar do
+  primeiro objetivo): nenhuma letra sobreposta, vãos entre palavras de 4 px ou mais. O zip final da 1.3 dá a
+  mesma imagem ("Que barulho é esse? Vamos ver!").
+- `text.py check`: 3.393 linhas sem problema. Testes Python: 35, todos passando (novos: posições medidas no
+  jogo e o ajuste). `mod.py check`: ok.
+- Pasta de teste do Windows: `mods\CyberLifePlus.zip` trocado pela 1.3.
+
+**Não testado:** os outros 101 objetivos só foram simulados (o simulador reproduz as medições, e seis foram
+desenhados no jogo). Saves antigos continuam mostrando o objetivo antigo no card até salvar de novo.
+
+## 2026-10-24 — Nome do save: uma letra por quadrado (hook no runtime)
+
+- Pedido: corrigir o campo do nome do save para cada letra (japonesa ou não) cair no seu quadrado. Corrige a
+  limitação anotada na entrada anterior; a correção é no código do port, não no mod.
+- **Medido** (sessão gravada do teste, quadros 1075/1110, nome "ＺＺＺＷＭＣ"): os quadrados ficam em
+  x = 96 + 13·k, com 12 px cada. O teclado grava letras de **largura cheia** em SJIS (no buffer `0x0209A460`: `82 79`
+  = Ｚ), no modo latino e no japonês. A nota anterior estava errada: não são letras de meia largura.
+- **Como o jogo desenha:** `func_ov055_0211b07c` limpa o bitmap do campo e chama, em `0x0211B13C` (`blx r5`), o
+  método +8 da classe de fonte (vtable `0x0208FFEC`), `func_02042e4c`, que desenha a string com espaçamento 2. Cada
+  letra avança pelo 3º byte do CWDH + 2. Achei a função comparando os perfis (`NTR_PROFILE`) de quadros com e
+  sem digitação.
+- **Causa:** na `FONT12` original, 2.127 das letras têm avanço 11, e 11 + 2 = 13, o passo dos quadrados. Na fonte
+  traduzida o avanço é proporcional (Ｚ = 6, ア = 10), então até os kana saem do lugar.
+- **Correção:** nomes novos em `names.tsv` (`Font_DrawString`, `Font_GlyphIndex`, `Font_GlyphWidths`) e o hook
+  `font_draw_string` (`hle.tsv`, `hle.cpp`). Só quando a chamada vem do campo de nome (retorno `0x0211B140`,
+  overlay 55 ativa nessa página e a instrução `blx r5` no lugar), o hook desenha uma letra por chamada, no
+  quadrado k. Letra com avanço 11 fica onde o jogo a põe; as outras são centralizadas pela tinta (esquerda e
+  largura do CWDH). Para isso, o nome é cortado no próprio buffer, um byte de cada vez, e o byte é restaurado
+  em seguida. Nas outras chamadas, o original roda direto. Novo `overlay_active_at` no `cpu.cpp`.
+
+**Verificação:**
+- Com o CyberLifePlus: "ZZZWMC" e, no modo "Jap" do teclado (toques acrescentados à sessão), "あき". Todas as
+  letras ficam dentro do quadrado, com 3 px de cada lado no Z, e no pior caso 1 px de um lado e 2 do outro
+  (W, あ).
+- Sem mod (fonte japonesa): os quadros 1075 e 1110 saem idênticos, pixel a pixel, aos do build de antes do hook.
+- Windows: release 0.1.8 gerada deste código, na pasta de teste (launcher, `sdk/`, `licenses/`, leia-me). Apaguei
+  o `cache\build.stamp` para o `--prepare` recompilar (mesma versão), e ele levou 60 s. O `boej.exe` dá a mesma
+  imagem do Linux no quadro 1220.
+- Testes Python: 35, todos passando.
+
+**Não testado:** os modos do campo que começam em x = 5 (valor 4, 5 ou 6 em `0x0209A458`) não apareceram na
+sessão. O hook soma o quadrado ao x que recebe, então deve valer para eles também.

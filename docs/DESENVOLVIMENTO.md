@@ -29,7 +29,8 @@ Dumps fora de `dumps.json` são recusados. Para experimentos, use `--allow-unkno
 | `game/` | Executável `boej` |
 | `launcher/` | `ie3-launcher` (SDL3 + Dear ImGui): prepara, configura, atualiza e abre o jogo; `LEIA-ME.txt` e `TERCEIROS.txt` da release |
 | `runtime/ui/` | `ntr-ui`: telas em Dear ImGui usadas pelo jogo (menu de pausa) e pelo launcher (painel de configurações) |
-| `tools/` | Ferramentas em Python (`ntr/` lê a ROM; `extract.py` extrai; `compare_dumps.py` compara dumps; `analyze.py` roda dsd/Ghidra; `mod.py` cria, confere e transforma mods em patches; `ntr/bps.py` gera e aplica patches BPS; `build.py` compila para desenvolvimento; `release.py` monta a release; `ghidra/` tem os scripts do Ghidra; `tests/` tem os testes) |
+| `translations/` | Traduções do texto para os mods oficiais: o lugar de cada fala e o português, sem texto do jogo (`tools/text.py apply`) |
+| `tools/` | Ferramentas em Python (`ntr/` lê a ROM; `extract.py` extrai; `compare_dumps.py` compara dumps; `analyze.py` roda dsd/Ghidra; `mod.py` cria, confere e transforma mods em patches; `ntr/bps.py` gera e aplica patches BPS; `text.py` mede, lista e aplica a tradução do texto (formatos em `ntr/text.py`, LZ10 em `ntr/lz10.py`); `build.py` compila para desenvolvimento; `release.py` monta a release; `ghidra/` tem os scripts do Ghidra; `tests/` tem os testes) |
 | `config/boej/` | `dumps.json` (dumps conhecidos), `layout/<variante>.json` (endereços, overlays, hashes), `dsd/` (funções, seções e relocações do ds-decomp), `names.tsv` (nomes identificados, com evidência), `hle.tsv` (funções substituídas no host) e `code_blobs.tsv` (código que o dsd classifica como dados). Nenhum dado do jogo |
 | `mods/` | Mods oficiais, um por pasta, só com patches `.bps` (nenhum dado do jogo); cada um sai como `.zip` na release |
 | `docs/` | Diário (`DIARY.md`), mods (`MODS.md`) e este documento |
