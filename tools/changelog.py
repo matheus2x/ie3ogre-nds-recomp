@@ -8,11 +8,13 @@
 Each commit becomes a section: the subject as a heading and the body (already in
 Markdown bullets) below it, without the Co-Authored-By lines. The previous release is
 the closest vX.Y.Z tag before the given one; for the first release every commit is
-listed by subject only, to keep the page short. The notes end with how to install and
-check the download, and a link to the full comparison.
+listed by subject only, to keep the page short. Then the official mods (mods/*/mod.ini:
+name, version, whether they changed), how to install and check the download, and a link
+to the full comparison.
 """
 
 import argparse
+import configparser
 import os
 import re
 import subprocess
@@ -46,6 +48,25 @@ def commits(rev_range: str) -> list[tuple[str, str, str]]:
     return result
 
 
+def official_mods(ref: str, since: str | None) -> list[str]:
+    """One line per mods/<name>/mod.ini at ref: name, version and whether it changed."""
+    lines = []
+    for path in git("ls-tree", "--name-only", f"{ref}:mods").split() if ref_has(ref, "mods") else []:
+        if not ref_has(ref, f"mods/{path}/mod.ini"):
+            continue
+        parser = configparser.RawConfigParser()
+        parser.read_string(git("show", f"{ref}:mods/{path}/mod.ini"))
+        info = dict(parser["mod"]) if parser.has_section("mod") else {}
+        changed = not since or subprocess.run(["git", "diff", "--quiet", since, ref, "--", f"mods/{path}"]).returncode
+        lines.append(f"- **{info.get('name') or path}**, versão {info.get('version', '?')} (`{path}.zip`)"
+                     + (" — atualizado nesta versão" if changed else ""))
+    return lines
+
+
+def ref_has(ref: str, path: str) -> bool:
+    return subprocess.run(["git", "cat-file", "-e", f"{ref}:{path}"], capture_output=True).returncode == 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("tag", help="the release tag (or any ref, for a preview)")
@@ -73,6 +94,11 @@ def main() -> int:
         out.extend(f"- {subject} ({short})" for short, subject, _ in entries)
         out.append("")
 
+    if mods := official_mods(args.tag, since):
+        out.append("## Mods oficiais\n")
+        out.extend(mods)
+        out.append("")
+
     out.append("## Como instalar\n")
     out.append("1. Baixe o `ie3ogre-recomp-<versão>-windows.zip` abaixo e descompacte numa pasta em que dê para gravar.\n"
                "2. Abra o `ie3-launcher.exe` e escolha o dump do **seu** cartucho (`.nds`, BOEJ, sem modificações).\n"
@@ -81,7 +107,7 @@ def main() -> int:
                "dump não é pedido de novo.\n\n"
                "O pacote não contém dados nem código do jogo. Para conferir o download, compare o SHA-256 do zip com o "
                "`sha256sums.txt` (no PowerShell: `Get-FileHash ie3ogre-recomp-*.zip`).\n\n"
-               "Os outros `.zip` da release são os mods oficiais (como o `CyberLifePlus.zip`, a tradução PT-BR): "
+               "Os outros `.zip` da release são os mods oficiais (lista acima): "
                "coloque-os, sem descompactar, na pasta `mods` ao lado do jogo e ligue-os na aba **Mods**. Eles só "
                "trazem patches e também não contêm dados do jogo.\n")
     if since and args.repo:

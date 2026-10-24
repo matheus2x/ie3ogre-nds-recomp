@@ -25,10 +25,11 @@ Seus saves e configurações não são mexidos.
 MODS
 Cada mod é uma pasta ou um .zip. Para adicionar, coloque o mod na pasta
 "mods", ao lado do boej.exe (ou arraste-o para a janela do launcher). Depois,
-na aba "Mods", ligue, desligue e ordene os mods. A aba também cria um mod a
-partir de um dump modificado (uma tradução, por exemplo), desde que o código
-dele seja o do jogo original. As mudanças valem na próxima vez que o jogo
-abrir. Como fazer um mod: veja docs/MODS.md no repositório do projeto.
+na aba "Mods", ligue, desligue, ordene e remova os mods. Adicionar só copia o
+mod para a pasta "mods", e Remover só apaga essa cópia: o arquivo ou a pasta
+original não é alterado. A aba também cria um mod a partir de um dump
+modificado (uma tradução, por exemplo), desde que o código dele seja o do
+jogo original. As mudanças valem na próxima vez que o jogo abrir. Como fazer um mod: veja docs/MODS.md no repositório do projeto.
 Os mods oficiais saem como .zip separados nas releases (por exemplo, o
 CyberLifePlus.zip, a tradução PT-BR): coloque o .zip na pasta "mods" sem
 descompactar.

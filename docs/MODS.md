@@ -101,7 +101,10 @@ arquivo do mod) não abre, porque o jogo já tinha lido os arquivos antigos.
 - **Criar de um dump modificado:** escolha um `.nds` de uma tradução ou hack. O launcher compara com o jogo
   original (`boej.pak`) e cria um mod com os arquivos e overlays que mudaram. Só dá certo se o código do dump
   for o do retail (o caso das traduções que só mudam textos, fontes e imagens).
-- **Remover** (apaga a pasta ou o `.zip`), ligar/desligar e mudar a ordem com as setas.
+- **Remover** (na linha do mod ou nos detalhes, com confirmação) apaga a pasta ou o `.zip` de dentro de `mods/`.
+- Adicionar e remover mexem só na cópia que está em `mods/`: o `.zip` ou a pasta de onde o mod foi adicionado
+  nunca é alterado nem apagado. A aba e a confirmação de remover dizem isso.
+- Ligar/desligar e mudar a ordem com as setas.
 
 Pela linha de comando: `ie3-launcher --install-mod mod.zip` e `ie3-launcher --mod-from-dump hack.nds`.
 O próprio jogo faz a checagem com `boej --check-mods` (uma linha por mod e por problema).
@@ -162,7 +165,10 @@ para uso no próprio PC.
 
 A pasta [`mods/`](../mods/) do repositório tem os mods mantidos pelo projeto, um por pasta, só com patches. Cada um
 sai na release como `<nome>.zip` (`tools/release.py`; o nome não muda entre versões, então o mod continua ligado
-quando o jogador troca o `.zip`). A release é recusada se um deles tiver um arquivo inteiro do jogo.
+quando o jogador troca o `.zip`). A versão é o `version` do `mod.ini`: aparece no rótulo do `.zip` na página da
+release, na seção "Mods oficiais" das notas (com "atualizado nesta versão" quando o mod mudou) e, no launcher, na
+lista e nos detalhes da aba Mods. A release é recusada se um mod oficial tiver um arquivo inteiro do jogo ou se
+tiver mudado desde a release anterior sem um `version` novo.
 
 | Mod | O que é |
 |---|---|

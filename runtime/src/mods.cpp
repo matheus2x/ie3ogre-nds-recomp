@@ -70,6 +70,7 @@ struct Mod {
     std::vector<ModFile> files;
     std::vector<ModOverlay> overlays;
     std::vector<std::string> errors, warnings;
+    std::string version;  // from mod.ini, for the log
     uint64_t fingerprint = 0;
 };
 
@@ -154,6 +155,7 @@ Mod scan_mod(const std::string& folder, const std::map<std::string, const NitroF
                ini.get("mod", "game") != "" && ini.get("mod", "game") != "BOEJ") {
         mod.errors.push_back("o mod é para outro jogo (" + ini.get("mod", "game") + ")");
     }
+    mod.version = ini.get("mod", "version");
     uint64_t h = fnv(0xCBF29CE484222325ull, folder.data(), folder.size());
     std::map<std::string, std::string> targets;  // what each entry replaces -> the entry
 
@@ -372,7 +374,8 @@ void mods_apply() {
             NTR_LOG("[mods] %s is off because of the errors above\n", mod.folder.c_str());
             continue;
         }
-        NTR_LOG("[mods] %s: %zu files, %zu overlays\n", mod.folder.c_str(), mod.files.size(), mod.overlays.size());
+        NTR_LOG("[mods] %s%s%s: %zu files, %zu overlays\n", mod.folder.c_str(), mod.version.empty() ? "" : " v",
+                mod.version.c_str(), mod.files.size(), mod.overlays.size());
         h = fnv(h, &mod.fingerprint, sizeof mod.fingerprint);
     }
     if (files.empty() && overlays.empty()) return;

@@ -21,6 +21,7 @@ The retail image may be the dump or the game data package (boej.pak).
 """
 
 import argparse
+import configparser
 import fnmatch
 import re
 import sys
@@ -50,6 +51,13 @@ author = {author}
 description = {description}
 game = BOEJ
 """
+
+
+def ini(text: str) -> dict[str, str]:
+    """The [mod] section of a mod.ini (name, version, author, description, game)."""
+    parser = configparser.RawConfigParser()
+    parser.read_string(text)
+    return dict(parser["mod"]) if parser.has_section("mod") else {}
 
 
 def load_image(path: Path) -> Rom:

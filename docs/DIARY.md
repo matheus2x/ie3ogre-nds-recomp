@@ -1306,3 +1306,47 @@ o mod em patches.
 **Pendente:** os créditos do CyberLife só têm o nome do grupo; faltam os nomes dos membros, links e a versão da
 tradução original. Cada versão nova de um patch grande (o `eve.pkb`) aumenta o repositório em alguns MB; se
 pesar, dá para passar `mods/**/*.bps` para o Git LFS.
+
+## 2026-10-24 — Versão dos mods na release e no launcher
+
+- Pedido: mostrar a versão do mod nas releases e no launcher.
+- **Launcher:** a lista da aba Mods mostra `v<versão>` ao lado do nome (os detalhes já mostravam "versão X").
+  O jogo também escreve a versão no `boej.log` (`[mods] CyberLifePlus v1.0: 512 files, 32 overlays`).
+- **Release:** o nome do `.zip` continua fixo (`CyberLifePlus.zip`), para o mod continuar ligado no `boej.ini`
+  quando o jogador troca o arquivo. A versão vai:
+  - no rótulo do arquivo na página da release (`gh release create arquivo#rótulo`), "CyberLifePlus.zip — mod
+    CyberLifePlus (tradução PT-BR), versão 1.0". O `tools/release.py` escreve `build/release/assets.txt` com
+    `caminho#rótulo`, e o `release.yml` passa essa lista ao `gh`;
+  - numa seção "Mods oficiais" das notas (`tools/changelog.py`, lendo os `mod.ini` da tag), com "atualizado nesta
+    versão" quando a pasta do mod mudou desde a tag anterior.
+- **Conferência:** a release é recusada se um mod oficial mudou desde a tag anterior e o `version` do `mod.ini`
+  não mudou (ou se não tem `version`). `tools/mod.py` ganhou `ini()` para ler o `mod.ini`.
+
+**Verificação:**
+- Captura da aba Mods com o CyberLifePlus: "CyberLifePlus (tradução PT-BR) v1.0" na lista e "versão 1.0" nos
+  detalhes.
+- Num clone de teste: um commit que muda o mod sem mudar a versão faz o `release.py` parar com "changed since
+  v0.1.7 but mod.ini still says version = 1.0"; com `version = 1.1`, sai o rótulo com "versão 1.1" e a nota
+  "versão 1.1 … atualizado nesta versão".
+- Linux e llvm-mingw compilam sem avisos; testes Python passando.
+
+**Não testado:** o `gh release create` com os rótulos de verdade (só no próximo CI de tag).
+
+## 2026-10-24 — Botão Remover na lista de mods e aviso de que o original não é mexido
+
+- Pedido: um botão para remover um mod adicionado (apagando-o da pasta `mods`) e um aviso, ao adicionar e ao
+  apagar, de que só a cópia dentro da pasta do jogo é mexida, e não o arquivo ou a pasta original.
+- Antes, "Remover..." só existia nos detalhes, que só aparecem com um mod selecionado.
+- **Launcher (`mods.cpp`):**
+  - botão **Remover** em cada linha da lista, ao lado das setas, com tooltip; o dos detalhes continua;
+  - os dois abrem a mesma confirmação ("Remover mod"), agora no nível da aba (`remove_dialog`, guiada por
+    `g_remove`), com o nome do mod, o caminho em `mods/` e o aviso de que o original de onde ele foi copiado continua
+    onde estava; Esc cancela. A mensagem depois de apagar repete o aviso;
+  - aviso fixo no topo da aba ("Adicionar só copia… Remover só apaga essa cópia…"), tooltip no "Adicionar mod
+    (.zip)…" e a mensagem depois de adicionar dizem que o original não foi alterado.
+- Docs: `docs/MODS.md` e `LEIA-ME.txt`.
+
+**Verificação:** capturas da aba (botão na linha e aviso quebrando a linha) e da confirmação (aberta por uma
+alteração temporária no código, já desfeita). Linux e llvm-mingw compilam sem avisos.
+
+**Não testado:** o clique de verdade em Apagar (o código que apaga é o mesmo de antes).

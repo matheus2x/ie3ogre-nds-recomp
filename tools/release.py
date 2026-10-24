@@ -6,7 +6,9 @@
 
 Output in build/release/: ie3ogre-recomp-<version>-<platform>.zip and sha256sums.txt,
 the assets the launcher's updater looks for, and <name>.zip for each official mod in
-mods/<name>/ (patches only, no game data; the player puts it in the game's mods/ folder).
+mods/<name>/ (patches only, no game data; the player puts it in the game's mods/ folder),
+labeled with the version in its mod.ini. assets.txt lists them for the release workflow.
+A mod that changed since the previous tag without a new version is refused.
 The zip holds one folder:
 
   ie3ogre-recomp/
@@ -36,6 +38,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
+import changelog  # tools/changelog.py
 import mod  # tools/mod.py
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -131,13 +134,34 @@ def copy_tree(src: Path, dst: Path, patterns: tuple[str, ...]):
                 shutil.copy2(f, dst / f.name)
 
 
-def official_mods(release: Path) -> list[Path]:
-    """mods/<name>/ -> <name>.zip, as tools/mod.py pack makes it. Whole game files are refused:
-    an official mod carries only patches (docs/MODS.md)."""
+def check_version(folder: Path, version: str):
+    """A mod that changed since the previous release must have a new version in mod.ini."""
+    since = changelog.previous_tag("HEAD")
+    if not since:
+        return
+    rel = folder.relative_to(ROOT).as_posix()
+    if subprocess.run(["git", "diff", "--quiet", since, "HEAD", "--", rel], cwd=ROOT).returncode == 0:
+        return
+    try:
+        before = mod.ini(changelog.git("show", f"{since}:{rel}/mod.ini")).get("version", "")
+    except subprocess.CalledProcessError:
+        return  # a new mod
+    if before == version:
+        sys.exit(f"error: {rel} changed since {since} but mod.ini still says version = {version}")
+
+
+def official_mods(release: Path) -> list[tuple[Path, str]]:
+    """mods/<name>/ -> (<name>.zip, its label on the release page), as tools/mod.py pack makes
+    it. Whole game files are refused: an official mod carries only patches (docs/MODS.md)."""
     out = []
     for folder in sorted((ROOT / "mods").iterdir()) if (ROOT / "mods").is_dir() else []:
         if not (folder / "mod.ini").is_file():
             continue
+        info = mod.ini((folder / "mod.ini").read_text(encoding="utf-8"))
+        version = info.get("version", "")
+        if not version:
+            sys.exit(f"error: {folder}/mod.ini has no version")
+        check_version(folder, version)
         whole = [f for kind in ("files", "overlays") for f in (folder / kind).rglob("*")
                  if f.is_file() and f.suffix != ".bps"]
         if whole:
@@ -145,7 +169,7 @@ def official_mods(release: Path) -> list[Path]:
                      f"(tools/mod.py patch)")
         zip_path = release / f"{folder.name}.zip"
         mod.pack(folder, zip_path)
-        out.append(zip_path)
+        out.append((zip_path, f"{zip_path.name} — mod {info.get('name') or folder.name}, versão {version}"))
     return out
 
 
@@ -205,12 +229,16 @@ def main() -> int:
                 info = zipfile.ZipInfo.from_file(f, f.relative_to(stage).as_posix())
                 info.compress_type = zipfile.ZIP_DEFLATED
                 z.writestr(info, f.read_bytes())
-    zips = [zip_path] + official_mods(release)
+    mods = official_mods(release)
+    zips = [zip_path] + [z for z, _ in mods]
     sums = release / "sha256sums.txt"
     names = {z.name for z in zips}
     lines = [line for line in (sums.read_text().splitlines() if sums.exists() else []) if line.split()[-1] not in names]
     lines += [f"{sha256(z)}  {z.name}" for z in zips]
     sums.write_text("\n".join(sorted(lines, key=lambda l: l.split()[-1])) + "\n")
+    # What the release workflow uploads: "path#label" (the label is what the page shows).
+    assets = [str(zip_path)] + [f"{z}#{label}" for z, label in mods] + [str(sums)]
+    (release / "assets.txt").write_text("\n".join(assets) + "\n", encoding="utf-8")
     for z in zips:
         print(f"release: {z} ({z.stat().st_size / 2**20:.1f} MiB)")
     print(f"sums: {sums}")

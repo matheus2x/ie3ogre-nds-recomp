@@ -49,6 +49,7 @@ struct Worker {
 Worker g_worker;
 std::vector<ModEntry> g_mods;  // in load order: the enabled ones first
 int g_selected = -1;
+int g_remove = -1;  // the mod whose "Remover" was clicked: the confirmation is open
 std::string g_pending_zip, g_pending_dump;  // from a file dialog or a drop (a .zip or a folder)
 std::string g_listing;  // names in mods/ at the last refresh, to notice mods added by hand
 double g_listing_time = 0;
@@ -273,7 +274,8 @@ void install(const std::string& source) {
         set_status("Não foi possível copiar o mod para a pasta mods: " + ec.message(), true);
         return;
     }
-    set_status(std::string(replaced ? "Mod atualizado: " : "Mod adicionado: ") + name + ". Ligue-o na lista.");
+    set_status(std::string(replaced ? "Mod atualizado: " : "Mod adicionado: ") + name +
+               " (copiado para a pasta mods; o original não foi alterado). Ligue-o na lista.");
 }
 
 bool write_file(const fs::path& path, const std::vector<uint8_t>& data) {
@@ -394,23 +396,47 @@ void details(ModEntry& m) {
     if (ImGui::Button(m.zip ? "Mostrar na pasta mods" : "Abrir a pasta do mod"))
         open_folder(m.zip ? paths().mods() : paths().mods() + m.folder);
     ImGui::SameLine();
-    if (ImGui::Button("Remover...")) ImGui::OpenPopup("remove");
-    if (ImGui::BeginPopupModal("remove", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        ImGui::Text("Apagar %s mods/%s?", m.zip ? "o arquivo" : "a pasta", m.folder.c_str());
-        ImGui::TextDisabled("Os saves não mudam.");
-        if (ImGui::Button("Apagar")) {
-            std::error_code ec;
-            fs::remove_all(ntr::fs_path(paths().mods() + m.folder), ec);
-            m.enabled = false;
-            save_enabled();
-            set_status(ec ? "Não foi possível apagar: " + ec.message() : "Mod removido: " + m.folder, bool(ec));
-            g_worker.refresh = true;
-            ImGui::CloseCurrentPopup();
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Cancelar")) ImGui::CloseCurrentPopup();
-        ImGui::EndPopup();
+    if (ImGui::Button("Remover...")) g_remove = g_selected;
+}
+
+// The confirmation of "Remover" (from the list or from the details). Only the copy in mods/
+// goes: a mod added through the launcher was copied there, and its source stays as it was.
+void remove_dialog() {
+    if (g_remove >= int(g_mods.size())) g_remove = -1;
+    if (g_remove >= 0 && !ImGui::IsPopupOpen("Remover mod")) ImGui::OpenPopup("Remover mod");
+    if (!ImGui::BeginPopupModal("Remover mod", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        g_remove = -1;
+        return;
     }
+    ModEntry& m = g_mods[std::max(g_remove, 0)];
+    ImGui::Text("Apagar o mod \"%s\"?", m.name.c_str());
+    ImGui::TextDisabled("%s: mods/%s", m.zip ? "Arquivo" : "Pasta", m.folder.c_str());
+    ImGui::Spacing();
+    ImGui::PushTextWrapPos(ImGui::GetFontSize() * 34);
+    ImGui::TextWrapped("Só a cópia que está na pasta mods do jogo é apagada. Se você adicionou o mod pelo launcher, "
+                       "o arquivo ou a pasta original, de onde ele foi copiado, continua onde estava, sem mudanças.");
+    ImGui::PopTextWrapPos();
+    ImGui::TextDisabled("Os saves não mudam.");
+    ImGui::Spacing();
+    bool close = false;
+    if (ImGui::Button("Apagar")) {
+        std::error_code ec;
+        fs::remove_all(ntr::fs_path(paths().mods() + m.folder), ec);
+        m.enabled = false;
+        save_enabled();
+        set_status(ec ? "Não foi possível apagar: " + ec.message()
+                      : "Mod removido: " + m.folder + " (só a cópia da pasta mods; o original não foi mexido).",
+                   bool(ec));
+        g_worker.refresh = true;
+        close = true;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Cancelar") || ImGui::IsKeyPressed(ImGuiKey_Escape)) close = true;
+    if (close) {
+        g_remove = -1;
+        ImGui::CloseCurrentPopup();
+    }
+    ImGui::EndPopup();
 }
 
 }  // namespace
@@ -470,8 +496,14 @@ void mods_tab(SDL_Window* window) {
     ImGui::TextWrapped("Cada mod é uma pasta ou um .zip dentro da pasta mods, ao lado do jogo: coloque-o lá (ou use "
                        "\"Adicionar\", ou arraste para esta janela) e ligue-o na lista. Quando dois mods mudam o mesmo "
                        "arquivo, vale o que está mais abaixo. As mudanças valem na próxima vez que o jogo abrir.");
+    ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+    ImGui::TextWrapped("Adicionar só copia o mod para a pasta mods do jogo, e Remover só apaga essa cópia: o arquivo ou "
+                       "a pasta original nunca é alterado.");
+    ImGui::PopStyleColor();
     ImGui::Spacing();
     if (ImGui::Button("Adicionar mod (.zip)...")) choose(window, true);
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Copia o .zip para a pasta mods do jogo. O arquivo escolhido não é alterado nem movido.");
     ImGui::SameLine();
     if (ImGui::Button("Criar de um dump modificado...")) choose(window, false);
     if (ImGui::IsItemHovered())
@@ -512,6 +544,10 @@ void mods_tab(SDL_Window* window) {
             if (ImGui::Checkbox("##on", &m.enabled)) changed = true;
             ImGui::TableNextColumn();
             if (ImGui::Selectable(m.name.c_str(), g_selected == i, ImGuiSelectableFlags_AllowOverlap)) g_selected = i;
+            if (!m.version.empty()) {
+                ImGui::SameLine();
+                ImGui::TextDisabled("v%s", m.version.c_str());
+            }
             if (m.name != m.folder) {
                 ImGui::SameLine();
                 ImGui::TextDisabled("%s", m.folder.c_str());  // two mods can have the same name
@@ -529,6 +565,10 @@ void mods_tab(SDL_Window* window) {
             ImGui::BeginDisabled(i + 1 == int(g_mods.size()));
             if (ImGui::ArrowButton("##down", ImGuiDir_Down)) move_from = i, move_to = i + 1;
             ImGui::EndDisabled();
+            ImGui::SameLine();
+            if (ImGui::Button("Remover")) g_remove = i;
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Apaga mods/%s (pede confirmação). O original não é mexido.", m.folder.c_str());
             ImGui::PopID();
         }
         if (g_mods.empty()) {
@@ -555,6 +595,7 @@ void mods_tab(SDL_Window* window) {
     } else {
         ImGui::TextDisabled("Escolha um mod na lista para ver os detalhes. Para fazer o seu, veja docs/MODS.md.");
     }
+    remove_dialog();
 }
 
 }  // namespace launcher
