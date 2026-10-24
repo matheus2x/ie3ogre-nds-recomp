@@ -743,6 +743,19 @@ void gpu_vblank() {
     for (Engine& e : g_engines) e.hi_frame = false;
 }
 
+// The lines drawn so far this frame, and what the host's large picture needs of them.
+void gpu2d_state(StateIo& io) {
+    io.section("GPU2");
+    for (Engine& e : g_engines) {
+        io.value(e.ref_x);
+        io.value(e.ref_y);
+        io.value(e.fb);
+        io.value(e.hi_frame);
+        if (e.hi_frame) io.vector(e.hi_lines);
+    }
+    io.value(g_capturing);
+}
+
 void gpu_io_written(uint32_t addr) {
     uint32_t off = addr & 0xFFF;
     if (off < 0x28 || off >= 0x40 || (off & 0xF) < 8) return;

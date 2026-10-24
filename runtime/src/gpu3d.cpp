@@ -1296,6 +1296,91 @@ uint32_t gpu3d_read(uint32_t addr, uint32_t stored) {
     return stored;
 }
 
+// Geometry state, the polygon list being built, the frame on screen and, between
+// SWAP_BUFFERS and VBlank, the one rendered for the next frame. The depth and attribute
+// buffers are cleared before every render; the texture cache is rebuilt.
+void gpu3d_state(StateIo& io) {
+    io.section("GPU3");
+    io.value(g.mode);
+    io.value(g.proj);
+    io.value(g.pos);
+    io.value(g.vec);
+    io.value(g.tex);
+    io.value(g.proj_stack);
+    io.value(g.pos_stack);
+    io.value(g.vec_stack);
+    io.value(g.tex_stack);
+    io.value(g.proj_sp);
+    io.value(g.pos_sp);
+    io.value(g.tex_sp);
+    io.value(g.overflow);
+    io.value(g.clip);
+    io.value(g.clip_dirty);
+    io.value(g.vtx);
+    io.value(g.color);
+    io.value(g.raw_s);
+    io.value(g.raw_t);
+    io.value(g.s);
+    io.value(g.t);
+    io.value(g.normal);
+    io.value(g.polygon_attr);
+    io.value(g.current_attr);
+    io.value(g.teximage);
+    io.value(g.pltt);
+    io.value(g.diffuse);
+    io.value(g.ambient);
+    io.value(g.specular);
+    io.value(g.emission);
+    io.value(g.shininess_table);
+    io.value(g.shininess);
+    io.value(g.lights);
+    io.value(g.in_begin);
+    io.value(g.prim);
+    io.vector(g.strip);
+    io.value(g.prim_count);
+    io.value(g.vp_x1);
+    io.value(g.vp_y1);
+    io.value(g.vp_x2);
+    io.value(g.vp_y2);
+    io.vector(g.polys);
+    io.value(g.vertex_count);
+    io.value(g.swap_pending);
+    io.value(g.fifo_cmds);
+    io.value(g.fifo_left);
+    io.vector(g.params);
+    io.vector(g.port_params);
+    io.value(g.port_cmd);
+    io.value(g.box_result);
+    io.value(g.pos_result);
+    io.value(g.vec_result);
+    if (io.loading()) {
+        for (Polygon& p : g.polys) p.texels = nullptr;
+    }
+
+    io.value(g_front_scale);
+    io.vector(g_front.color);
+    io.vector(g_front.alpha);
+    io.vector(g_native.color);
+    io.vector(g_native.alpha);
+    int scale = g_scale;
+    io.value(scale);
+    if (g.swap_pending) {
+        io.vector(g_back.color);
+        io.vector(g_back.alpha);
+    }
+    if (!io.loading() || !io.ok()) return;
+    auto size_is = [](const Frame& f, int s) {
+        size_t n = size_t(kScreenWidth) * kScreenHeight * s * s;
+        return f.color.size() == n && f.alpha.size() == n;
+    };
+    if (scale < 1 || scale > kMax3dScale || g_front_scale < 1 || g_front_scale > kMax3dScale ||
+        !size_is(g_front, g_front_scale) || !size_is(g_native, 1) || (g.swap_pending && !size_is(g_back, scale))) {
+        return io.fail("bad 3D frame sizes");
+    }
+    g_scale = scale;
+    resize_buffers();
+}
+
 void gpu3d_set_scale(int scale) { g_wanted_scale = std::clamp(scale, 1, kMax3dScale); }
 
 int gpu3d_scale() { return g_front_scale; }

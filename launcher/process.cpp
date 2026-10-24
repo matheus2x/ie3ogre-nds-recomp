@@ -1,5 +1,6 @@
 // Child processes for the build tools, without console windows popping up on Windows.
 #include <cstdlib>
+#include <thread>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -91,14 +92,22 @@ int run_process(const std::vector<std::string>& args, std::string& output, const
     return int(code);
 }
 
-bool start_process(const std::vector<std::string>& args, const std::string& cwd) {
+bool start_process(const std::vector<std::string>& args, const std::string& cwd, std::function<void()> on_exit) {
     STARTUPINFOW si = {};
     si.cb = sizeof si;
     PROCESS_INFORMATION pi = {};
     std::wstring cmd = command_line(args), wcwd = widen(cwd);
     if (!CreateProcessW(nullptr, cmd.data(), nullptr, nullptr, FALSE, 0, nullptr, wcwd.c_str(), &si, &pi)) return false;
-    CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);
+    if (!on_exit) {
+        CloseHandle(pi.hProcess);
+        return true;
+    }
+    std::thread([process = pi.hProcess, on_exit = std::move(on_exit)] {
+        WaitForSingleObject(process, INFINITE);
+        CloseHandle(process);
+        on_exit();
+    }).detach();
     return true;
 }
 
@@ -153,7 +162,7 @@ int run_process(const std::vector<std::string>& args, std::string& output, const
     return WIFEXITED(status) ? WEXITSTATUS(status) : 1;
 }
 
-bool start_process(const std::vector<std::string>& args, const std::string& cwd) {
+bool start_process(const std::vector<std::string>& args, const std::string& cwd, std::function<void()> on_exit) {
     posix_spawn_file_actions_t actions;
     posix_spawn_file_actions_init(&actions);
     posix_spawn_file_actions_addchdir_np(&actions, cwd.c_str());
@@ -161,7 +170,15 @@ bool start_process(const std::vector<std::string>& args, const std::string& cwd)
     pid_t pid;
     int err = posix_spawn(&pid, argv[0], &actions, nullptr, argv.data(), environ);
     posix_spawn_file_actions_destroy(&actions);
-    return err == 0;
+    if (err != 0) return false;
+    if (on_exit) {
+        std::thread([pid, on_exit = std::move(on_exit)] {
+            int status;
+            waitpid(pid, &status, 0);
+            on_exit();
+        }).detach();
+    }
+    return true;
 }
 
 std::string system_tool(const char* name) { return name; }

@@ -53,6 +53,7 @@ void thread_entry(void* arg) {
 }  // namespace
 
 void hle_os_load_context(Cpu& c, GuestFn);
+bool task_uses_fiber(const Fiber* f);  // task.cpp
 
 // OS_SaveContext(OSContext* ctx): returns 0 now, 1 when the context is loaded again.
 void hle_os_save_context(Cpu& c, GuestFn) {
@@ -154,10 +155,46 @@ void hle_os_irq_handler(Cpu& c, GuestFn) {
     irq_thread_switch(c);
 }
 
-// OS_InitContext(ctx, func, stack): a reused OSThread starts over on a new fiber.
+// OS_InitContext(ctx, func, stack): a reused OSThread starts over on a new fiber. The old
+// one (a thread that ended or was destroyed) is never resumed.
 void hle_os_init_context(Cpu& c, GuestFn orig) {
-    g_saved.erase(c.r[0]);
+    auto it = g_saved.find(c.r[0]);
+    if (it != g_saved.end()) {
+        Fiber* old = it->second.fiber;
+        g_saved.erase(it);
+        bool shared = old == fiber_current() || task_uses_fiber(old);
+        for (auto& [ctx, s] : g_saved) shared |= s.fiber == old;
+        if (!shared) fiber_destroy(old);
+    }
     orig(c);
+}
+
+void thread_state(StateIo& io) {
+    io.section("THRD");
+    uint32_t count = uint32_t(g_saved.size());
+    io.value(count);
+    if (!io.loading()) {
+        for (auto& [ctx, s] : g_saved) {
+            uint32_t key = ctx;
+            int32_t fiber = fiber_index(s.fiber);
+            io.value(key);
+            io.value(fiber);
+            io.value(s.regs);
+        }
+        return;
+    }
+    g_saved.clear();
+    for (uint32_t i = 0; i < count && io.ok(); i++) {
+        uint32_t key = 0;
+        int32_t fiber = -1;
+        Saved s;
+        io.value(key);
+        io.value(fiber);
+        io.value(s.regs);
+        s.fiber = fiber_at(fiber);
+        if (!s.fiber) return io.fail("thread without a fiber");
+        g_saved[key] = s;
+    }
 }
 
 }  // namespace ntr

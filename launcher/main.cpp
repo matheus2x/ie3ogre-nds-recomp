@@ -83,6 +83,8 @@ Job g_job;
 std::mutex g_drop_mutex;
 std::string g_dropped;  // a dump from the file dialog or dropped on the window
 bool g_quit = false;
+bool g_hidden = false;          // the window waits hidden while the game runs
+Uint32 g_game_exited_event = 0;  // pushed by the thread that waits for the game
 
 void on_dump(const std::string& path) {
     std::lock_guard lock(g_drop_mutex);
@@ -98,13 +100,34 @@ void choose_dump(SDL_Window* window) {
         nullptr, window, kFilters, 2, nullptr, false);
 }
 
-void play() {
-    if (!start_process({paths().game()}, paths().root)) {
+void play(SDL_Window* window) {
+    auto on_exit = [] {
+        SDL_Event ev = {};
+        ev.type = g_game_exited_event;
+        SDL_PushEvent(&ev);
+    };
+    if (!start_process({paths().game()}, paths().root, on_exit)) {
         NTR_LOG("[launcher] cannot start %s\n", paths().game().c_str());
         return;
     }
     NTR_LOG("[launcher] started the game\n");
-    if (settings().get_bool("launcher", "close_on_play")) g_quit = true;
+    if (!settings().get_bool("launcher", "close_on_play")) return;
+    if (settings().get_bool("launcher", "stay_closed")) {
+        g_quit = true;
+    } else {
+        SDL_HideWindow(window);
+        g_hidden = true;
+    }
+}
+
+// The game closed: its pause menu may have changed boej.ini, and a hidden launcher comes back.
+void game_exited(SDL_Window* window) {
+    NTR_LOG("[launcher] the game closed\n");
+    settings_load();
+    if (!g_hidden) return;
+    g_hidden = false;
+    SDL_ShowWindow(window);
+    SDL_RaiseWindow(window);
 }
 
 void big_button_style(bool on) {
@@ -194,7 +217,7 @@ void play_tab(SDL_Window* window) {
             break;
         case Readiness::Ready:
             big_button_style(true);
-            if (ImGui::Button("Jogar", big)) play();
+            if (ImGui::Button("Jogar", big)) play(window);
             big_button_style(false);
             if (update_available()) {
                 ImGui::SameLine();
@@ -286,6 +309,7 @@ int main(int argc, char** argv) {
     SDL_SetRenderVSync(renderer, 1);
 
     ntr::ui::init(window, renderer, scale);
+    g_game_exited_event = SDL_RegisterEvents(1);
 
     if (settings().get_bool("launcher", "check_updates")) update_check_start();
 
@@ -298,6 +322,7 @@ int main(int argc, char** argv) {
 
     while (!g_quit) {
         SDL_Event ev;
+        if (g_hidden) SDL_WaitEvent(nullptr);  // nothing to draw until the game closes
         while (SDL_PollEvent(&ev)) {
             if (ev.type == SDL_EVENT_GAMEPAD_ADDED) SDL_OpenGamepad(ev.gdevice.which);
             if (settings_capturing() && (ev.type == SDL_EVENT_KEY_DOWN || ev.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN ||
@@ -308,7 +333,9 @@ int main(int argc, char** argv) {
             ntr::ui::process_event(ev);
             if (ev.type == SDL_EVENT_QUIT) g_quit = true;
             if (ev.type == SDL_EVENT_DROP_FILE && ev.drop.data && !g_job.running) on_dump(ev.drop.data);
+            if (ev.type == g_game_exited_event) game_exited(window);
         }
+        if (g_hidden) continue;
         if (SDL_GetWindowFlags(window) & SDL_WINDOW_MINIMIZED) {
             SDL_Delay(50);
             continue;

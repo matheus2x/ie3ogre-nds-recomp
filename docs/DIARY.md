@@ -1120,3 +1120,49 @@ Pedido: a 4× o FPS caía abaixo de 60 e o som engasgava. O usuário também ped
 - A primeira tentativa do `--prepare` falhou: o libc++ do llvm-mingw instancia o destrutor de `std::vector<HiLine>` na definição de `g_engines`, onde o `HiLine` ainda era só declarado (o GCC aceitava). As structs `Effects`/`HiPixel`/`HiLine` foram para antes do `Engine`.
 - Na segunda tentativa, `boej.exe` recompilado em 43 s, sem avisos.
 - Teste do `boej.exe` sem janela, pelo interop (roteiro da história até o quadro 12000, a 4×): 4,83 ms de média, pior quadro de 18,4 ms, 3 acima de 16,7 ms.
+
+## 2026-10-23 — Velocidade do avanço rápido configurável
+
+- Antes o avanço rápido não tinha limite: o `pace()` não esperava, e a janela recebia 1 a cada 4 quadros. Pelas medições sem janela (3,1 ms por quadro a 1×), isso dava ~5× em média nesta máquina, variando com a cena.
+- Opção nova `[game] fast_forward_speed` no `boej.ini`: 2 a 10 vezes a velocidade normal, padrão 4. Sem opção ilimitada, a pedido do usuário. Um valor fora da faixa (o 0 de um ini antigo, por exemplo) gera um aviso no log e volta ao padrão.
+- `pace()`: com o avanço rápido, o prazo de cada quadro passa a ser `kFrameNs / velocidade`. Se o processador não aguentar, vai no máximo que conseguir.
+- A janela recebe 1 a cada N quadros (~60 imagens por segundo).
+- Launcher e menu de pausa: combo "Velocidade ao acelerar" no topo da página Atalhos (2× a 10×). Vale na hora, pelo `apply_settings()`.
+- README atualizado. `build/cmake-rel` compila. **Não testado com janela.**
+
+## 2026-10-23 — Launcher volta quando o jogo fecha
+
+- Pedido: ao fechar o jogo, o launcher reabre; opção para não reabrir, desmarcada por padrão.
+- `start_process()` ganhou um `on_exit` opcional: uma thread espera o processo (`WaitForSingleObject` / `waitpid`) e o chama no fim. O launcher usa isso para empurrar um evento SDL próprio (`SDL_RegisterEvents`).
+- Com `close_on_play` (padrão), o "Jogar" agora esconde a janela em vez de sair; escondido, o laço fica em `SDL_WaitEvent` sem desenhar. Quando o jogo fecha, a janela volta (`SDL_ShowWindow` + `SDL_RaiseWindow`) e o `boej.ini` é relido, porque o menu de pausa pode ter mudado as configurações.
+- Opção nova `[launcher] stay_closed` (padrão `false`): com ela, o launcher fecha de vez como antes. Na página Launcher, "Não reabrir ao fechar o jogo" só aparece com "Fechar o launcher ao abrir o jogo" ligado.
+- README atualizado. Launcher compila em `build/cmake-rel` e `build/cmake-win`. **Não testado com janela.**
+
+## 2026-10-23 — Savestates (5 slots)
+
+- Pedido: savestate com recarga, até 5 slots, cada um num arquivo em `savestates/` junto do executável.
+- **O problema:** o estado do DS (RAM, VRAM, registradores) não basta. O código recompilado guarda a cadeia de chamadas do jogo nas pilhas do host, uma por fiber (threads do NitroSDK e tasks do motor). Recriar essas pilhas a partir do estado do guest não dá (o interpretador só faz ARM, e os quadros do host guardam valores próprios).
+- **A solução:** copiar as pilhas das fibers e devolvê-las nos mesmos endereços:
+  - `fiber.cpp` reescrito: troca de contexto própria em assembly (Win64 e System V; registradores salvos na própria pilha) no lugar de `CreateFiber`/`ucontext`. As pilhas são slots de 1 MiB (com 64 KiB de guarda) numa região reservada em endereço fixo (`0x200000000000`). No Windows o `StackBase`/`StackLimit` do TIB acompanha a fiber, como no `SwitchToFiber`.
+  - O `boej` é ligado sem ASLR (`--disable-dynamicbase` no Windows, `-no-pie` no Linux; no CMake e no launcher) e sem stack protector (o canário muda a cada execução).
+  - A thread principal do jogo passou a rodar numa fiber da região; a pilha da thread do SO fica só com o `savestate_run`, que faz o trabalho de salvar/carregar.
+  - O pedido (atalho ou menu) vale no próximo `poll()`: a fiber que está rodando passa o controle à fiber principal (`savestate_poll`), com todas as fibers do jogo suspensas. Entre o `poll` e a troca não há ponteiros para o heap na pilha.
+- **O que vai no arquivo** (`savestate.cpp`, cada módulo com seu `*_state(StateIo&)`): pilhas das fibers, toda a memória do DS, CPU (bancos, CP15, overlays ativos), tempo e timers, IRQ, contextos das threads e tasks, FIFO do cartão, PXI, 2D (linhas já desenhadas no quadro), 3D (geometria, lista de polígonos, quadro na tela e o renderizado esperando o VBlank), som (canais, captura, alarmes, amostras do quadro), cartão e início do relógio. Cabeçalho com uma identidade da build (data da compilação, endereços de funções, região das pilhas) e um hash do conteúdo. ~6 MB por slot.
+- O save do próprio jogo (`saves/boej.sav`) fica de fora: carregar um savestate nunca volta o save do jogador.
+- Carregar guarda uma cópia do estado atual antes; se o arquivo falhar no meio, ela volta. Arquivo de outra build: "de outra versão do jogo" (depois de uma atualização os slots antigos não abrem).
+- `OS_InitContext` agora libera a fiber da thread antiga (antes vazava; com 128 slots fixos, precisava).
+- **Interface:** F5 salva no slot escolhido, F9 carrega, F6/F7 trocam o slot (1 a 5), configuráveis em Atalhos. Mensagem no canto da tela por 2,5 s. Menu de pausa: página "Savestates" com a data de cada slot, Salvar (pede confirmação para substituir) e Carregar. Depois de carregar, a fila de som é limpa, o ritmo recomeça e a gravação de sessão para (não daria mais para reproduzi-la do boot).
+- Testes: `NTR_STATE_SAVE=N` / `NTR_STATE_LOAD=N` (slot 1).
+- **Testado** (sem janela, roteiro da história `bug3`): salvar no quadro N de um processo, carregar no quadro 10 de outro e seguir 600 quadros com a mesma entrada dá **a mesma imagem byte a byte** (e o mesmo áudio no teste do quadro 34000):
+  - Linux: N = 3000, 9000, 15017, 21000, 27500, 30001, 34000 e 36000 (3D a 2× e 3×); carregar, salvar de novo e carregar esse segundo estado também; estado de 2× carregado a 1× e a 4× roda normal.
+  - Windows (`boej.exe` do llvm-mingw, pelo interop): N = 3000 a 3× e 27500 a 4×.
+  - Salvar não muda a execução (a imagem do quadro 900 é igual à de uma execução sem savestate).
+- Com janela (Linux, WSLg): salvar e carregar por `NTR_STATE_*` funciona; a mensagem "Slot 1 salvo" e a página Savestates do menu aparecem certas (conferidas lendo a imagem do renderer, com um ajuste temporário). **Não testado:** apertar os atalhos e os botões de verdade, e no Windows com janela.
+
+## 2026-10-23 — Lado das telas pequenas na tela larga
+
+- Pedido: na tela larga (16:9), escolher se as duas telas pequenas ficam à esquerda (padrão, como antes) ou à direita.
+- Opção nova `[video] wide_side` (`left` ou `right`, padrão `left`). No `host.cpp`, os retângulos fixos `kWideStack`/`kWideBottom` viraram `wide_stack()`/`wide_bottom()`, que dependem do lado; desenho e toque do mouse (nas duas cópias da tela de baixo) usam essas funções. A mensagem dos savestates vai para o canto de cima do lado das telas pequenas.
+- Launcher e menu de pausa: combo "Telas pequenas" (À esquerda / À direita) logo abaixo de "Layout", só no modo tela larga. Vale na hora, pelo `apply_presentation()`.
+- README atualizado. `build/cmake-rel` compila sem avisos.
+- **Testado** com janela (WSLg, ajuste temporário lendo a imagem do renderer no quadro 600): com `right`, a tela de baixo ampliada fica à esquerda e as duas pequenas à direita; com `left`, igual a antes. Um clique em (50, 50) da janela vira toque com `right` e não com `left` (cai na tela de cima). **Não testado:** trocar pelo menu de pausa com o jogo rodando e o build do Windows.

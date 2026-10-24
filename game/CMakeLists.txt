@@ -19,6 +19,14 @@ endif()
 
 add_executable(boej main.cpp)
 target_link_libraries(boej PRIVATE ntr-runtime boej-generated)
+# Savestates put the fiber stacks back at their addresses, return addresses into this
+# executable included (runtime/src/savestate.cpp): it must load at the same address in
+# every run. Keep in sync with launcher/prepare.cpp.
+if(MINGW)
+    target_link_options(boej PRIVATE -Wl,--disable-dynamicbase -Wl,--large-address-aware)
+elseif(UNIX AND NOT APPLE)
+    target_link_options(boej PRIVATE -no-pie)
+endif()
 if(WIN32)
     target_link_libraries(boej PRIVATE shell32)  # CommandLineToArgvW
 endif()

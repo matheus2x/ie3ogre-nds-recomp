@@ -109,6 +109,14 @@ uint32_t mrc(Cpu& c, uint32_t cp, uint32_t op1, uint32_t crn, uint32_t crm, uint
     std::exit(3);
 }
 
+void cpu_state(StateIo& io) {
+    io.section("CPU ");
+    io.value(g_cpu);
+    io.value(g_banks);
+    io.value(g_cp15);
+    io.value(g_active_overlay);
+}
+
 // --- dispatch ---------------------------------------------------------------------
 
 namespace {

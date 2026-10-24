@@ -373,6 +373,18 @@ void on_command_list(uint32_t list, bool) {
 
 void arm7_sound_init() { pxi_register_service(7, on_command_list); }
 
+void sound_state(StateIo& io) {
+    io.section("SND ");
+    io.value(g_snd.ch);
+    io.value(g_snd.cap);
+    io.value(g_snd.alarms);
+    io.value(g_snd.shared_work);
+    io.value(g_snd.master_volume);
+    io.value(g_snd.sample_clock);
+    io.value(g_snd.last_cycles);
+    io.vector(g_snd.out);
+}
+
 // Mixes up to the current emulated time and delivers due alarms.
 void sound_advance() {
     uint64_t now = now_cycles();

@@ -44,6 +44,10 @@ const ActionInfo kShortcuts[] = {
     {"screenshot", "Captura de tela"},
     {"debug_dump", "Registrar problema"},
     {"fullscreen", "Tela cheia"},
+    {"save_state", "Salvar savestate"},
+    {"load_state", "Carregar savestate"},
+    {"state_slot_prev", "Slot anterior"},
+    {"state_slot_next", "Próximo slot"},
 };
 
 // A binding being captured. It keeps its own config pointer: the capture ends in an event,
@@ -149,7 +153,7 @@ std::string pretty_list(const std::string& value) {
 }
 
 // The page being shown; kept between frames and between the launcher's tabs.
-enum class Page { Video, Audio, Buttons, Shortcuts, Launcher };
+enum class Page { Extra, Video, Audio, Buttons, Shortcuts, Launcher };
 Page g_page = Page::Video;
 bool g_gamepad_view = false;  // the controls pages show the keyboard or the gamepad bindings
 
@@ -415,7 +419,7 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
     g_path = path;
     g_options = options;
     bool in_game = options.in_game;
-    if (in_game && g_page == Page::Launcher) g_page = Page::Video;
+    if ((in_game && g_page == Page::Launcher) || (g_page == Page::Extra && !options.extra_page)) g_page = Page::Video;
     const ImGuiStyle& style = ImGui::GetStyle();
 
     // Left: the sections (plus the caller's own items, e.g. the pause menu's actions).
@@ -424,6 +428,13 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
     ImGui::BeginChild("nav", ImVec2(nav_width, 0), ImGuiChildFlags_NavFlattened | ImGuiChildFlags_AlwaysUseWindowPadding);
     ImGui::PopStyleColor();
     if (options.nav_top) options.nav_top();
+    ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0, 0.5f));
+    if (options.extra_page) {
+        if (ImGui::Selectable(options.extra_page, g_page == Page::Extra, 0, ImVec2(0, ImGui::GetFrameHeight()))) {
+            g_page = Page::Extra;
+        }
+        ImGui::Spacing();
+    }
     ImGui::TextDisabled("CONFIGURAÇÕES");
     struct Entry {
         Page page;
@@ -431,7 +442,6 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
     };
     const Entry kPages[] = {{Page::Video, "Vídeo"}, {Page::Audio, "Áudio"}, {Page::Buttons, "Controles"},
                             {Page::Shortcuts, "Atalhos"}, {Page::Launcher, "Launcher"}};
-    ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0, 0.5f));
     for (const Entry& e : kPages) {
         if (in_game && e.page == Page::Launcher) continue;
         if (ImGui::Selectable(e.label, g_page == e.page, 0, ImVec2(0, ImGui::GetFrameHeight()))) g_page = e.page;
@@ -450,16 +460,24 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
     float footer = ImGui::GetFrameHeightWithSpacing() + style.ItemSpacing.y;
     ImGui::BeginChild("page", ImVec2(0, -footer), ImGuiChildFlags_NavFlattened);
     switch (g_page) {
+        case Page::Extra:
+            options.draw_extra_page();
+            break;
         case Page::Video: {
             page_title("Vídeo", nullptr);
             if (!begin_rows("video")) break;
             bool wide = config.get_bool("video", "wide_layout");
-            row("Layout", wide ? "As duas telas à esquerda e a de baixo ampliada ao lado."
+            row("Layout", wide ? "As duas telas num canto e a de baixo ampliada ao lado."
                                : "As duas telas uma sobre a outra, como no DS.");
             int layout = wide ? 0 : 1;
             const char* kLayouts[] = {"Tela larga (16:9)", "Telas empilhadas"};
             if (ImGui::Combo("##layout", &layout, kLayouts, 2)) set("video", "wide_layout", layout == 0 ? "true" : "false");
-            if (!wide) {
+            if (wide) {
+                row("Telas pequenas", "De que lado ficam as duas telas; a de baixo ampliada vai para o outro.");
+                int side = SDL_strcasecmp(config.get("video", "wide_side").c_str(), "right") == 0;
+                const char* kSides[] = {"À esquerda", "À direita"};
+                if (ImGui::Combo("##side", &side, kSides, 2)) set("video", "wide_side", side ? "right" : "left");
+            } else {
                 row("Tamanho da janela");
                 int scale = config.get_int("video", "window_scale", 1, 16);
                 char format[48];
@@ -506,6 +524,19 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
             break;
         case Page::Shortcuts:
             page_title("Atalhos", "Funções extras do port.");
+            if (begin_rows("speed")) {
+                row("Velocidade ao acelerar", "Se o processador não aguentar, vai o mais rápido que ele conseguir.");
+                int speed = config.get_int("game", "fast_forward_speed", 2, 10);
+                auto speed_label = [](int n) { return std::to_string(n) + "×"; };
+                if (ImGui::BeginCombo("##ffspeed", speed_label(speed).c_str())) {
+                    for (int n = 2; n <= 10; n++) {
+                        if (ImGui::Selectable(speed_label(n).c_str(), n == speed)) set("game", "fast_forward_speed", std::to_string(n));
+                    }
+                    ImGui::EndCombo();
+                }
+                end_rows();
+            }
+            ImGui::Spacing();
             bindings_page("shortcuts", kShortcuts, std::size(kShortcuts));
             break;
         case Page::Launcher:
@@ -513,11 +544,17 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
             if (!begin_rows("launcher")) break;
             checkbox_row("Procurar atualizações ao abrir", nullptr, "launcher", "check_updates");
             checkbox_row("Fechar o launcher ao abrir o jogo", nullptr, "launcher", "close_on_play");
+            if (config.get_bool("launcher", "close_on_play"))
+                checkbox_row("Não reabrir ao fechar o jogo", nullptr, "launcher", "stay_closed");
             end_rows();
             break;
     }
     ImGui::EndChild();
     ImGui::Separator();
+    if (g_page == Page::Extra) {  // not a settings page: no footer
+        ImGui::EndGroup();
+        return;
+    }
     if (ImGui::Button("Restaurar o padrão")) ImGui::OpenPopup("Restaurar");
     if (confirm("Restaurar", "Voltar todas as configurações e controles ao padrão?", "Restaurar")) {
         config_load("", config);
@@ -533,7 +570,8 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
     capture_popup();
 }
 
-PauseAction pause_menu(Config& config, const std::string& path, const SettingsOptions& options) {
+PauseAction pause_menu(Config& config, const std::string& path, const SettingsOptions& options,
+                       const std::vector<std::string>& states, const std::vector<bool>& loadable, int& slot) {
     PauseAction action = PauseAction::None;
     const ImGuiViewport* vp = ImGui::GetMainViewport();
     // The menu takes about three quarters of the window's height: in a big window the text
@@ -566,6 +604,42 @@ PauseAction pause_menu(Config& config, const std::string& path, const SettingsOp
             action = PauseAction::Restart;
         }
         if (confirm("Sair", "Fechar o jogo? O progresso desde o último save será perdido.", "Sair")) action = PauseAction::Quit;
+    };
+    menu.extra_page = "Savestates";
+    menu.draw_extra_page = [&] {
+        page_title("Savestates", "O jogo exatamente como está agora, para voltar a este ponto depois.");
+        if (!begin_rows("states")) return;
+        for (size_t i = 0; i < states.size(); i++) {
+            std::string name = "Slot " + std::to_string(i + 1);
+            row(name.c_str(), states[i].empty() ? "Vazio" : states[i].c_str());
+            ImGui::PushID(int(i));
+            float w = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) / 2;
+            if (ImGui::Button("Salvar", ImVec2(w, 0))) {
+                if (states[i].empty()) {
+                    action = PauseAction::SaveState;
+                    slot = int(i) + 1;
+                } else {
+                    ImGui::OpenPopup("Substituir");
+                }
+            }
+            ImGui::SameLine();
+            ImGui::BeginDisabled(!loadable[i]);
+            if (ImGui::Button("Carregar", ImVec2(w, 0))) {
+                action = PauseAction::LoadState;
+                slot = int(i) + 1;
+            }
+            ImGui::EndDisabled();
+            std::string question = "Substituir o savestate do " + name + "?";
+            if (confirm("Substituir", question.c_str(), "Substituir")) {
+                action = PauseAction::SaveState;
+                slot = int(i) + 1;
+            }
+            ImGui::PopID();
+        }
+        end_rows();
+        ImGui::Spacing();
+        ImGui::TextWrapped("Cada slot é um arquivo na pasta savestates, ao lado do jogo. Os atalhos (em Atalhos) "
+                           "salvam e carregam no slot escolhido. O save do próprio jogo não é alterado ao carregar.");
     };
     settings_panel(config, path, menu);
     ImGui::End();

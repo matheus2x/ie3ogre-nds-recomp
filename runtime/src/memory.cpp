@@ -39,6 +39,16 @@ void memory_init() {
     vram_remap();  // all banks start disabled
 }
 
+// The page tables point into the buffers: they are rebuilt, not saved.
+void memory_state(StateIo& io) {
+    io.section("MEMO");
+    for (std::vector<uint8_t>* buf : {&g_memory.main_ram, &g_memory.itcm, &g_memory.dtcm, &g_memory.shared_wram,
+                                      &g_memory.palette, &g_memory.vram, &g_memory.oam, &g_memory.io}) {
+        io.bytes(buf->data(), buf->size());
+    }
+    if (io.loading()) memory_init();
+}
+
 void guest_copy_in(uint32_t dst, const void* src, uint32_t size) {
     const uint8_t* s = static_cast<const uint8_t*>(src);
     for (uint32_t i = 0; i < size; i++) wr8(dst + i, s[i]);

@@ -113,6 +113,14 @@ void on_word(uint32_t data, bool) {
 
 }  // namespace
 
+// The backup memory (the game's own save) is left out: loading a savestate never takes
+// the player's save back to an older one.
+void card_state(StateIo& io) {
+    io.section("CARD");
+    io.value(g_shared);
+    io.value(g_expect_pointer);
+}
+
 void arm7_card_init(const std::string& save_path) {
     if (save_path.empty()) {
         // saves/boej.sav next to the executable. Older builds used the current directory;

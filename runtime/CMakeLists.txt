@@ -48,6 +48,7 @@ add_library(ntr-runtime STATIC
     src/pool.cpp
     src/pxi.cpp
     src/rom.cpp
+    src/savestate.cpp
     src/task.cpp
     src/thread.cpp
     src/timing.cpp

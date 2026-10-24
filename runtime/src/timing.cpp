@@ -115,10 +115,17 @@ void timer_write(int i, uint16_t reload, uint16_t ctrl) {
     t.start = g_cycles;
 }
 
+void timing_state(StateIo& io) {
+    io.section("TIME");
+    io.value(g_cycles);
+    io.value(g_timers);
+}
+
 void poll(Cpu& c) {
     c.budget = kPollBudget;
     advance_time(kCyclesPerPoll);
     check_interrupts(c);
+    if (g_savestate_pending) savestate_poll();
 }
 
 }  // namespace ntr

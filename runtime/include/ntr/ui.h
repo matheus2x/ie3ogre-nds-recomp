@@ -4,6 +4,7 @@
 
 #include <functional>
 #include <string>
+#include <vector>
 
 #include <SDL3/SDL.h>
 
@@ -26,6 +27,9 @@ struct SettingsOptions {
     std::function<void()> nav_top;
     std::function<void()> nav_bottom;
     float nav_bottom_height = 0;
+    // A page of the caller's own, first in the side list (the pause menu's savestates).
+    const char* extra_page = nullptr;
+    std::function<void()> draw_extra_page;
 };
 
 // The settings: a side list of sections (video, audio, controls...) and the chosen one
@@ -36,8 +40,11 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
 bool capturing();
 void capture_event(const SDL_Event& ev);
 
-enum class PauseAction { None, Resume, Restart, Quit };
-// The game's pause menu, settings included; one frame of it.
-PauseAction pause_menu(Config& config, const std::string& path, const SettingsOptions& options);
+enum class PauseAction { None, Resume, Restart, Quit, SaveState, LoadState };
+// The game's pause menu, settings included; one frame of it. `states` says what each
+// savestate slot holds ("" = empty, else when it was saved); for SaveState and LoadState
+// `slot` (1 = the first) is the one chosen. `loadable` tells the slots that can be loaded.
+PauseAction pause_menu(Config& config, const std::string& path, const SettingsOptions& options,
+                       const std::vector<std::string>& states, const std::vector<bool>& loadable, int& slot);
 
 }  // namespace ntr::ui

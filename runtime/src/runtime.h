@@ -3,9 +3,12 @@
 
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
+#include <deque>
 #include <filesystem>
 #include <map>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #include <ntr/common.h>
@@ -170,5 +173,104 @@ void replay_finish(uint64_t frame);
 void log_close();  // before handing the log files to a restarted game
 const std::string& rtc_start_text();  // "YYYY-MM-DD HH:MM:SS" the clock started from (arm7_rtc.cpp)
 void rtc_request_start(const std::string& text);  // before boot: start the clock there
+
+// --- savestates (savestate.cpp) ---------------------------------------------------------
+
+struct Fiber;
+
+// One pass over the emulator's state, writing it to a buffer or reading it back in place.
+// Every module with state has a <module>_state(StateIo&) listing its fields in a fixed
+// order; the same function serves both directions. After a failed read the state is
+// partly overwritten: the caller puts back a copy taken before.
+class StateIo {
+public:
+    StateIo(std::vector<uint8_t>& data, bool loading) : data_(data), loading_(loading) {}
+    bool loading() const { return loading_; }
+    bool ok() const { return error_.empty(); }
+    const std::string& error() const { return error_; }
+    void fail(const std::string& why) {
+        if (error_.empty()) error_ = why;
+    }
+
+    void bytes(void* p, size_t n) {
+        if (!ok()) return;
+        if (!loading_) {
+            const uint8_t* b = static_cast<const uint8_t*>(p);
+            data_.insert(data_.end(), b, b + n);
+        } else if (n > data_.size() - pos_) {
+            fail("truncated");
+        } else {
+            std::memcpy(p, data_.data() + pos_, n);
+            pos_ += n;
+        }
+    }
+    template <class T>
+    void value(T& v) {
+        static_assert(std::is_trivially_copyable_v<T>);
+        bytes(&v, sizeof v);
+    }
+    template <class T>
+    void vector(std::vector<T>& v) {
+        static_assert(std::is_trivially_copyable_v<T>);
+        uint64_t n = v.size();
+        value(n);
+        if (loading_) {
+            if (!ok() || n > (data_.size() - pos_) / sizeof(T)) return fail("truncated");
+            v.resize(size_t(n));
+        }
+        bytes(v.data(), size_t(n) * sizeof(T));
+    }
+    template <class T>
+    void deque(std::deque<T>& d) {
+        std::vector<T> v(d.begin(), d.end());
+        vector(v);
+        if (loading_) d.assign(v.begin(), v.end());
+    }
+    // A four-letter marker between modules: a mismatch tells which one went wrong.
+    void section(const char (&tag)[5]) {
+        char got[4];
+        std::memcpy(got, tag, 4);
+        bytes(got, 4);
+        if (loading_ && ok() && std::memcmp(got, tag, 4) != 0) fail(std::string("section ") + tag + " not found");
+    }
+
+private:
+    std::vector<uint8_t>& data_;
+    bool loading_;
+    size_t pos_ = 0;
+    std::string error_;
+};
+
+void memory_state(StateIo& io);
+void cpu_state(StateIo& io);
+void timing_state(StateIo& io);
+void irq_state(StateIo& io);
+void thread_state(StateIo& io);
+void task_state(StateIo& io);
+void io_state(StateIo& io);
+void pxi_state(StateIo& io);
+void gpu2d_state(StateIo& io);
+void gpu3d_state(StateIo& io);
+void sound_state(StateIo& io);
+void card_state(StateIo& io);
+void rtc_state(StateIo& io);
+
+// Runs the game on `game` and does, on this (the main) fiber, the savestate work the
+// game's fibers hand over. Does not return.
+[[noreturn]] void savestate_run(Fiber* game);
+// Called by poll(): when a save or load is pending, hands control to the main fiber.
+void savestate_poll();
+extern bool g_savestate_pending;
+
+// Requests from the host (keyboard shortcut, pause menu); they run at the next poll.
+constexpr int kStateSlots = 5;
+void savestate_request_save(int slot);  // 1..kStateSlots
+void savestate_request_load(int slot);
+// What a slot holds, for the menu: "" if empty, else the date and time it was saved (or
+// why it cannot be loaded).
+std::string savestate_describe(int slot);
+// Set by a finished save or load, for the host's on-screen message; cleared by the host.
+extern std::string g_savestate_message;
+extern bool g_savestate_loaded;  // a load replaced the state: the host resets its pacing and sound
 
 }  // namespace ntr

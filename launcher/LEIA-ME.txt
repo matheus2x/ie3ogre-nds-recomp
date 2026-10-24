@@ -27,6 +27,7 @@ ARQUIVOS CRIADOS NESTA PASTA
                       não distribua)
 - cache\, toolchain\  código extraído do dump e o compilador
 - saves\boej.sav      o save
+- savestates\         os savestates (slots 1 a 5)
 - boej.ini            configurações (também editáveis no launcher)
 - boej.log, boej-replay.*, launcher.log   registros para relatar problemas
 - mods\               reservada para mods (em breve)
@@ -40,6 +41,9 @@ CONTROLES PADRÃO (mude no menu do jogo ou na aba Configurações do launcher)
   Esc         pausa e abre o menu (configurações valem na hora,
               reiniciar o jogo, sair)
   F11 tela cheia, F12 captura de tela
+  F5 salva savestate, F9 carrega, F6/F7 trocam o slot (1 a 5); também
+      no menu de pausa, em "Savestates". Só valem nesta versão do jogo:
+      uma atualização recompila o jogo e os savestates antigos não abrem.
   Tab (segurar) ou F2: acelerar      C (segurar) ou F3: A automático
   F8: se algo der errado, aperte no momento e envie o boej.log,
       boej-replay.txt e boej-replay.sav

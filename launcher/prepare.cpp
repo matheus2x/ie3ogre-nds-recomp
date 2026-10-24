@@ -242,7 +242,10 @@ bool build_game(Job& job) {
     }
     NTR_LOG("[prepare] recompiled in %.1f s\n", seconds_since(start));
 
-    std::vector<std::string> common = {tc.cxx, "-std=c++20", "-I" + sdk + "include", "-I" + sdk + "imgui"};
+    // Savestates restore stack frames from another run: no stack canaries (they change in
+    // every run) and, at link time, a fixed load address. Keep in sync with game/CMakeLists.txt.
+    std::vector<std::string> common = {tc.cxx, "-std=c++20", "-fno-stack-protector", "-I" + sdk + "include",
+                                       "-I" + sdk + "imgui"};
 #ifdef _WIN32
     common.push_back("-I" + sdk + "sdl3/include");
 #endif
@@ -298,9 +301,10 @@ bool build_game(Job& job) {
     std::string target = paths().game();
     std::vector<std::string> link = {tc.cxx, "-o", target + ".tmp", "@" + work + "objects.rsp"};
 #ifdef _WIN32
-    link.insert(link.end(), {"-static", sdk + "sdl3/lib/libSDL3.dll.a", "-lshell32"});
+    link.insert(link.end(), {"-static", sdk + "sdl3/lib/libSDL3.dll.a", "-lshell32", "-Wl,--disable-dynamicbase",
+                             "-Wl,--large-address-aware"});
 #else
-    link.insert(link.end(), {"-lSDL3", "-pthread"});
+    link.insert(link.end(), {"-lSDL3", "-pthread", "-no-pie"});
 #endif
     out.clear();
     code = run_process(link, out);

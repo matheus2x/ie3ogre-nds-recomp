@@ -54,6 +54,11 @@ void check_interrupts(Cpu& c) {
 void irq_leave_for_switch() { g_in_irq = false; }
 void irq_resume_after_switch() { g_in_irq = true; }
 
+void irq_state(StateIo& io) {
+    io.section("IRQ ");
+    io.value(g_in_irq);
+}
+
 void wait_for_interrupt(Cpu& c) {
     // Jump ahead scanline by scanline until a requested interrupt is pending.
     for (int guard = 0; guard < 263 * 600; guard++) {

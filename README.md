@@ -21,7 +21,8 @@ com um **launcher**, sem nenhum dado e nenhum código do jogo, mais o `sha256sum
 3. O launcher confere o SHA-1, cria o `boej.pak` (dados do jogo), extrai o código do dump, baixa uma vez o
    compilador [llvm-mingw](https://github.com/mstorsjo/llvm-mingw) (~190 MB, conferido por SHA-256), recompila
    e compila o `boej.exe` **no seu PC**. Leva cerca de 1 minuto num processador de 16 núcleos, alguns minutos
-   em máquinas menores. Depois é só clicar em **Jogar**.
+   em máquinas menores. Depois é só clicar em **Jogar**. O launcher some enquanto o jogo roda e volta quando
+   ele fecha (dá para desligar em Configurações → Launcher).
 
 O launcher também tem as abas **Configurações** (vídeo, áudio e controles, remapeados apertando a tecla ou o
 botão), **Mods** (reservada; por enquanto só lista a pasta `mods/`) e **Atualizações** (baixa a release nova,
@@ -163,6 +164,12 @@ Também dá para passar o caminho de um `boej.pak` ou de um `.nds` como argument
 configurações do launcher (vídeo, áudio, controles e atalhos, uma seção por vez). As mudanças valem na hora, sem reiniciar, e ficam salvas no
 `boej.ini`. F12 salva a tela em `boej-<quadro>.bmp` e F11 alterna a tela cheia.
 
+**Savestates:** 5 slots, cada um num arquivo em `savestates/` na pasta do jogo (`boej-slot1.state` a
+`boej-slot5.state`, ~6 MB cada). **F5** salva no slot escolhido, **F9** carrega, **F6**/**F7** escolhem o slot; o
+menu de pausa tem a página **Savestates**, com a data de cada slot. Carregar não mexe no save do próprio jogo
+(`saves/boej.sav`). O savestate guarda também as pilhas do código recompilado, então só abre no mesmo `boej.exe`
+que o criou: depois de uma atualização (que recompila o jogo), os slots antigos aparecem como "de outra versão".
+
 Atalhos para testar mais rápido (o título da janela mostra quais estão ligados):
 
 | Atalho | Teclado | Controle |
@@ -180,9 +187,10 @@ Ele é lido ao abrir o jogo; apague-o para voltar ao padrão.
 
 | Seção | Opções |
 |---|---|
-| `[video]` | `wide_layout` (padrão `true`: janela 16:9 pela altura do monitor, as duas telas à esquerda e a de baixo ampliada à direita; `false` = telas empilhadas e centralizadas), `window_scale` (tamanho inicial da janela, só sem `wide_layout`), `resolution_3d` (1 a 4), `fullscreen`, `filter` (`nearest` ou `linear`), `integer_scale` (ampliar só em múltiplos inteiros, só sem `wide_layout`) |
+| `[video]` | `wide_layout` (padrão `true`: janela 16:9 pela altura do monitor, as duas telas à esquerda e a de baixo ampliada à direita; `false` = telas empilhadas e centralizadas), `wide_side` (`left` ou `right`: lado das duas telas pequenas na tela larga), `window_scale` (tamanho inicial da janela, só sem `wide_layout`), `resolution_3d` (1 a 4), `fullscreen`, `filter` (`nearest` ou `linear`), `integer_scale` (ampliar só em múltiplos inteiros, só sem `wide_layout`) |
 | `[audio]` | `volume` (0 a 100) |
-| `[keyboard]` | uma linha por botão do DS (`A`, `B`, ..., `UP`, `DOWN`) e por atalho (`fast_forward`, `fast_forward_toggle`, `turbo`, `turbo_toggle`, `screenshot`, `debug_dump`, `fullscreen`), com nomes de tecla do SDL separados por vírgula, por exemplo `SELECT = Right Shift, Backspace`. Vazio desliga. |
+| `[game]` | `fast_forward_speed`: velocidade do avanço rápido, 2 a 10 (vezes a normal; padrão 4) |
+| `[keyboard]` | uma linha por botão do DS (`A`, `B`, ..., `UP`, `DOWN`) e por atalho (`fast_forward`, `fast_forward_toggle`, `turbo`, `turbo_toggle`, `screenshot`, `debug_dump`, `fullscreen`, `save_state`, `load_state`, `state_slot_prev`, `state_slot_next`), com nomes de tecla do SDL separados por vírgula, por exemplo `SELECT = Right Shift, Backspace`. Vazio desliga. |
 | `[gamepad]` | o mesmo, com botões pela posição (`south`, `east`, `west`, `north`), `start`, `back`, `leftshoulder`, `dpup` etc., e eixos com direção (`lefty-` = analógico para cima, `righttrigger`). Por padrão, o analógico esquerdo também move o direcional. |
 
 Valores inválidos aparecem no `boej.log` com o número da linha, e o padrão é usado no lugar.
@@ -256,7 +264,8 @@ Variáveis de ambiente:
 - **Testes automáticos:**
   - `NTR_INPUT` roteiriza a entrada por quadro, por exemplo `300-310:TOUCH@128,96;900-905:A+START`;
   - `NTR_SCREENSHOT_FRAMES` (lista separada por vírgulas) com `NTR_SCREENSHOT` (caminho; `%d` vira o número do quadro) salva quadros em BMP;
-  - `NTR_EXIT_FRAME` encerra depois de N quadros.
+  - `NTR_EXIT_FRAME` encerra depois de N quadros;
+  - `NTR_STATE_SAVE=N` / `NTR_STATE_LOAD=N` salvam no / carregam do slot 1 de savestate no quadro N.
 - **Depuração:**
   - `NTR_LOG_IRQ`, `NTR_LOG_THREAD`, `NTR_LOG_CARD`, `NTR_DUMP_SND` (cada comando SND), `NTR_LOG_TP`, `NTR_LOG_3D` (polígonos e comandos do GX a cada 60 trocas de buffer);
   - `NTR_PEEK=endereço:tamanho` imprime memória do jogo a cada quadro;

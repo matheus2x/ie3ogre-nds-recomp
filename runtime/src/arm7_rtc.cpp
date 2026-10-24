@@ -71,6 +71,18 @@ void rtc_request_start(const std::string& text) { g_requested = text; }
 
 const std::string& rtc_start_text() { return g_start_text; }
 
+// The clock's start: with the emulated time it gives the date and time the game sees.
+void rtc_state(StateIo& io) {
+    io.section("RTC ");
+    std::vector<char> text(g_start_text.begin(), g_start_text.end());
+    io.vector(text);
+    if (io.loading() && io.ok()) {
+        std::string t(text.begin(), text.end());
+        if (!parse_time(t, g_start)) return io.fail("bad clock start");
+        g_start_text = t;
+    }
+}
+
 void arm7_rtc_init() {
     const char* fixed = std::getenv("NTR_RTC");
     std::string wanted = fixed ? fixed : g_requested;

@@ -74,6 +74,34 @@ void run_task(Cpu& c, int i) {
 
 }  // namespace
 
+// A thread interrupted while one of its tasks ran is resumed on the task's fiber.
+bool task_uses_fiber(const Fiber* f) {
+    if (f == g_scheduler) return true;
+    for (const Task& t : g_tasks) {
+        if (t.fiber == f) return true;
+    }
+    return false;
+}
+
+void task_state(StateIo& io) {
+    io.section("TASK");
+    for (Task& t : g_tasks) {
+        int32_t fiber = fiber_index(t.fiber);
+        io.value(fiber);
+        io.value(t.sp);
+        io.value(t.regs);
+        if (io.loading()) t.fiber = fiber_at(fiber);
+    }
+    int32_t scheduler = fiber_index(g_scheduler), finished = fiber_index(g_finished);
+    io.value(scheduler);
+    io.value(g_scheduler_regs);
+    io.value(finished);
+    if (io.loading()) {
+        g_scheduler = fiber_at(scheduler);
+        g_finished = fiber_at(finished);
+    }
+}
+
 void hle_task_run_all(Cpu& c, GuestFn) {
     for (int i = 0; i < kTasks; i++) {
         wr32(kCurrentTask, i);

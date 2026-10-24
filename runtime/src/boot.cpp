@@ -34,6 +34,15 @@ void write_user_settings() {
     wr16(base + 0x64, 0x0000);  // language: Japanese
 }
 
+// The game's first thread, on a fiber of its own like the others (savestates copy every
+// game fiber's stack; the OS thread's stack stays out of them).
+void game_entry(void* arg) {
+    uint32_t entry = uint32_t(reinterpret_cast<uintptr_t>(arg));
+    Cpu& c = cpu();
+    call_address(c, entry);
+    unhandled(c, entry, "ARM9 entry returned");
+}
+
 }  // namespace
 
 [[noreturn]] void boot() {
@@ -68,11 +77,9 @@ void write_user_settings() {
     fiber_init_main();
 
     cpu_reset(0x1F);  // SYS mode, interrupts disabled
-    Cpu& c = cpu();
-    c.budget = 64;
+    cpu().budget = 64;
     NTR_LOG("[boot] ARM9 %08X..%08X, entry %08X\n", arm9_ram, arm9_ram + arm9_size, arm9_entry);
-    call_address(c, arm9_entry);
-    unhandled(c, arm9_entry, "ARM9 entry returned");
+    savestate_run(fiber_create(game_entry, reinterpret_cast<void*>(uintptr_t(arm9_entry)), kFiberStackSize));
 }
 
 }  // namespace ntr

@@ -23,6 +23,9 @@ const char kDefaultConfig[] = R"(; Configurações do port de Inazuma Eleven 3 -
 ; Tela larga 16:9 (tamanho pela altura do monitor): as duas telas à esquerda e a de baixo
 ; ampliada à direita. false = só as duas telas empilhadas, centralizadas, com bordas pretas.
 wide_layout = true
+; Na tela larga, de que lado ficam as duas telas pequenas: left (esquerda) ou right
+; (direita, com a tela de baixo ampliada à esquerda).
+wide_side = left
 ; Tamanho inicial da janela, em múltiplos de 256x384 (só com wide_layout = false).
 window_scale = 2
 ; Resolução interna do 3D: 1 (nativa) a 10. Acima de 4 precisa de um processador com
@@ -39,19 +42,27 @@ integer_scale = false
 ; Volume de 0 a 100 (0 = sem som).
 volume = 100
 
+[game]
+; Velocidade do avanço rápido: 2 a 10 (vezes a normal). Se o processador não aguentar,
+; fica no máximo que ele conseguir.
+fast_forward_speed = 4
+
 ; Opções do launcher (o jogo ignora esta seção).
 [launcher]
 ; Procurar uma versão nova ao abrir o launcher.
 check_updates = true
-; Fechar o launcher quando o jogo abrir.
+; Fechar o launcher quando o jogo abrir. Ele volta quando o jogo fecha, a não ser com
+; stay_closed = true.
 close_on_play = true
+stay_closed = false
 
 ; Teclado: nomes de tecla do SDL (veja https://wiki.libsdl.org/SDL3/SDL_Keycode,
 ; sem o "SDLK_"), separados por vírgula. Deixe vazio para desligar.
 ; Botões do DS: A B X Y L R START SELECT UP DOWN LEFT RIGHT.
 ; Atalhos: menu (pausa, com as configurações), fast_forward (segurar) e fast_forward_toggle
 ; (avanço rápido), turbo (segurar) e turbo_toggle (A automático), screenshot, debug_dump
-; (estado no boej.log) e fullscreen.
+; (estado no boej.log), fullscreen, save_state e load_state (savestate no slot escolhido)
+; e state_slot_prev / state_slot_next (escolhem o slot, de 1 a 5).
 [keyboard]
 A = X
 B = Z
@@ -73,6 +84,10 @@ turbo_toggle = F3
 screenshot = F12
 debug_dump = F8
 fullscreen = F11
+save_state = F5
+load_state = F9
+state_slot_prev = F6
+state_slot_next = F7
 
 ; Controle: os mesmos botões e atalhos. Botões pela posição: south, east, west, north
 ; (A do DS = east, como num controle da Nintendo); também back, start, guide,
@@ -100,6 +115,10 @@ turbo_toggle =
 screenshot =
 debug_dump =
 fullscreen =
+save_state =
+load_state =
+state_slot_prev =
+state_slot_next =
 )";
 
 std::string trim(const std::string& s) {

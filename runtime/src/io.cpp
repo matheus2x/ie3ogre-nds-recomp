@@ -124,6 +124,11 @@ void update_sqrt() {
 
 }  // namespace
 
+void io_state(StateIo& io) {
+    io.section("IO  ");
+    io.deque(g_card_data);
+}
+
 uint32_t io_read32(uint32_t addr) {
     if (addr == REG_IPCFIFORECV) return pxi_recv_word();
     if (addr == REG_ROMDATA) {

@@ -2,8 +2,8 @@
 // frame pacing to the DS refresh rate (59.8261 Hz).
 //
 // Two layouts (video.wide_layout): wide (the default) is a 16:9 window sized from the
-// monitor's height, with both screens stacked in the left column and the bottom screen
-// enlarged on the right; otherwise the screens are stacked and centered, with black bars.
+// monitor's height, with both screens stacked in a side column (left by default,
+// video.wide_side) and the bottom screen enlarged beside it; otherwise the screens are stacked and centered, with black bars.
 //
 // Settings, key and gamepad bindings come from boej.ini (config.cpp), which also lists
 // the defaults: arrows = D-pad, X = A, Z = B, S = X, A = Y, Q = L, W = R, Enter = Start,
@@ -28,13 +28,19 @@
 // NTR_INPUT (scripted input for tests: "first-last:KEY[+KEY...];..." with frame numbers
 // and keys A B X Y L R START SELECT UP DOWN LEFT RIGHT or TOUCH@x,y), NTR_PEEK
 // ("hexaddr:size", dumps guest memory every frame), NTR_REPLAY (replays a session
-// recording, see diag.cpp), NTR_RECORD (record the session even when headless or scripted).
+// recording, see diag.cpp), NTR_RECORD (record the session even when headless or scripted),
+// NTR_STATE_SAVE / NTR_STATE_LOAD (save to / load from savestate slot 1 at that frame).
+//
+// Savestates (savestate.cpp): F5 saves to the chosen slot, F9 loads it, F6/F7 choose the
+// slot (1-5); the pause menu has a page for them too.
 #define SDL_MAIN_HANDLED  // main() is ours; SDL_SetMainReady() is called instead
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 
 #include <algorithm>
 #include <atomic>
+#include <cctype>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
@@ -65,22 +71,26 @@ enum Action {
     kScreenshot,
     kDebugDump,
     kFullscreen,
+    kSaveState,
+    kLoadState,
+    kStateSlotPrev,
+    kStateSlotNext,
     kMenu,
     kActionCount
 };
 constexpr uint32_t kButtonMask = 0xFFF;
 
-// The wide layout in logical pixels: 16:9, both screens stacked in the left third and the
-// bottom screen in the other two thirds, stretched to the full height like melonDS's
-// hybrid layout (no black bars, so the pixels are 12.5% taller than on a DS).
+// The wide layout in logical pixels: 16:9, both screens stacked in one third (the left
+// one, or the right with video.wide_side = right) and the bottom screen in the other two
+// thirds, stretched to the full height like melonDS's hybrid layout (no black bars, so
+// the pixels are 12.5% taller than on a DS).
 constexpr int kWideWidth = 2304, kWideHeight = 1296;
-constexpr SDL_FRect kWideStack = {0, 0, 768, 1296};
-constexpr SDL_FRect kWideBottom = {768, 0, 1536, 1296};
+constexpr float kWideStackWidth = 768;
 
 const char* const kActionNames[kActionCount] = {
     "A", "B", "SELECT", "START", "RIGHT", "LEFT", "UP", "DOWN", "R", "L", "X", "Y",
     "fast_forward", "fast_forward_toggle", "turbo", "turbo_toggle", "screenshot", "debug_dump", "fullscreen",
-    "menu"};
+    "save_state", "load_state", "state_slot_prev", "state_slot_next", "menu"};
 
 struct KeyBinding {
     SDL_Keycode key;
@@ -133,14 +143,20 @@ struct Host {
     int touch_x = 0, touch_y = 0;
     bool ff_held = false, ff_toggle = false;        // fast forward
     bool turbo_held = false, turbo_toggle = false;  // auto A
+    int ff_speed = 4;                               // game.fast_forward_speed
     bool linear_filter = false;
     std::string config_path;
     bool env_scale = false, env_scale_3d = false;  // NTR_SCALE / NTR_3D_SCALE win over boej.ini
     bool fullscreen_applied = false;
     int window_scale_applied = 0;
-    bool wide = true;  // video.wide_layout
+    bool wide = true;          // video.wide_layout
+    bool stack_right = false;  // video.wide_side = right
     bool menu_requested = false;
     bool ui_ready = false;
+    int state_slot = 1;  // the savestate slot the shortcuts use
+    uint64_t state_save_frame = 0, state_load_frame = 0;  // NTR_STATE_SAVE / NTR_STATE_LOAD
+    std::string toast;      // a short message over the picture (ASCII: SDL's debug font)
+    uint64_t toast_until = 0;
     std::vector<std::string> args;  // for restarting
     std::vector<ScriptedInput> script;
     uint16_t script_keys = 0;
@@ -394,6 +410,21 @@ void toggle_fullscreen() {
     SDL_SetWindowFullscreen(g_host.window, !on);
 }
 
+void show_toast(const std::string& text) {
+    g_host.toast = text;
+    g_host.toast_until = SDL_GetTicksNS() + 2500000000ull;
+}
+
+// The slot the shortcuts now use, and what it holds when that is a date.
+void change_slot(int delta) {
+    g_host.state_slot = (g_host.state_slot - 1 + delta + kStateSlots) % kStateSlots + 1;
+    std::string text = "Slot " + std::to_string(g_host.state_slot);
+    std::string held = savestate_describe(g_host.state_slot);
+    if (held.empty()) text += " (vazio)";
+    else if (std::isdigit(uint8_t(held[0]))) text += ": " + held;
+    show_toast(text);
+}
+
 // Recomputes what is held from the keyboard and the gamepads, and runs the shortcuts
 // that were just pressed.
 void update_actions() {
@@ -424,7 +455,19 @@ void update_actions() {
         g_host.f12_frame = g_host.frame + 1;
     }
     if (pressed & (1u << kFullscreen)) toggle_fullscreen();
+    if (pressed & (1u << kSaveState)) savestate_request_save(g_host.state_slot);
+    if (pressed & (1u << kLoadState)) savestate_request_load(g_host.state_slot);
+    if (pressed & (1u << kStateSlotPrev)) change_slot(-1);
+    if (pressed & (1u << kStateSlotNext)) change_slot(1);
     if (pressed & (1u << kMenu)) g_host.menu_requested = true;
+}
+
+// The wide layout's column with both screens, and the enlarged bottom screen beside it.
+SDL_FRect wide_stack() {
+    return {g_host.stack_right ? kWideWidth - kWideStackWidth : 0, 0, kWideStackWidth, kWideHeight};
+}
+SDL_FRect wide_bottom() {
+    return {g_host.stack_right ? 0 : kWideStackWidth, 0, kWideWidth - kWideStackWidth, kWideHeight};
 }
 
 // Window position -> bottom screen pixel; false outside the bottom screen.
@@ -432,14 +475,14 @@ bool to_touch(float wx, float wy, int& x, int& y) {
     float lx, ly;
     if (!SDL_RenderCoordinatesFromWindow(g_host.renderer, wx, wy, &lx, &ly)) return false;
     if (g_host.wide) {  // either copy of the bottom screen
-        const SDL_FRect& big = kWideBottom;
+        SDL_FRect big = wide_bottom(), stack = wide_stack();
         if (lx >= big.x && lx < big.x + big.w && ly >= big.y && ly < big.y + big.h) {
             x = int((lx - big.x) * kScreenWidth / big.w);
             y = int((ly - big.y) * kScreenHeight / big.h);
             return true;
         }
-        lx = lx * kScreenWidth / kWideStack.w;
-        ly = ly * 2 * kScreenHeight / kWideStack.h;
+        lx = (lx - stack.x) * kScreenWidth / stack.w;
+        ly = (ly - stack.y) * 2 * kScreenHeight / stack.h;
     }
     if (lx < 0 || lx >= kScreenWidth || ly < kScreenHeight || ly >= 2 * kScreenHeight) return false;
     x = int(lx);
@@ -526,10 +569,10 @@ void pace() {
             g_host.worst_frame = g_host.frame;
         }
     }
-    if (!g_host.throttle || fast_forward()) {
+    if (!g_host.throttle) {
         g_host.deadline = now;
     } else {
-        g_host.deadline += kFrameNs;
+        g_host.deadline += fast_forward() ? kFrameNs / g_host.ff_speed : kFrameNs;
         if (g_host.deadline > now) SDL_DelayPrecise(g_host.deadline - now);
         else if (now - g_host.deadline > 4 * kFrameNs) g_host.deadline = now;  // too far behind: resync
     }
@@ -573,10 +616,33 @@ void draw_screens(float x, float y, float s) {
         draw(1, {0, kScreenHeight, kScreenWidth, kScreenHeight});
         return;
     }
-    const SDL_FRect& stack = kWideStack;
+    SDL_FRect stack = wide_stack();
     draw(0, {stack.x, stack.y, stack.w, stack.h / 2});
     draw(1, {stack.x, stack.y + stack.h / 2, stack.w, stack.h / 2});
-    draw(1, kWideBottom);
+    draw(1, wide_bottom());
+}
+
+// The message of the last savestate action or slot change, in the top corner on the
+// side of the small screens (the left one in the stacked layout).
+void draw_toast() {
+    if (g_host.toast.empty()) return;
+    if (SDL_GetTicksNS() > g_host.toast_until) {
+        g_host.toast.clear();
+        return;
+    }
+    SDL_Renderer* r = g_host.renderer;
+    int lw, lh;
+    layout_size(lw, lh);
+    float s = std::max(1.0f, std::floor(lh / 320.0f));  // the 8-pixel font, about 1/40 of the height
+    SDL_SetRenderScale(r, s, s);
+    SDL_FRect box = {4, 4, 8.0f * float(g_host.toast.size()) + 8, 16};
+    if (g_host.wide && g_host.stack_right) box.x = lw / s - box.w - 4;
+    SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawColor(r, 0, 0, 0, 190);
+    SDL_RenderFillRect(r, &box);
+    SDL_SetRenderDrawColor(r, 255, 255, 255, 255);
+    SDL_RenderDebugText(r, box.x + 4, 8, g_host.toast.c_str());
+    SDL_SetRenderScale(r, 1, 1);
 }
 
 // A window size for the layout: wide is 16:9 at most 85% of the monitor's usable
@@ -601,6 +667,7 @@ void default_window_size(int scale, int& w, int& h) {
 void apply_presentation() {
     const Config& c = g_host.config;
     g_host.wide = c.get_bool("video", "wide_layout");
+    g_host.stack_right = SDL_strcasecmp(c.get("video", "wide_side").c_str(), "right") == 0;
     int w, h;
     layout_size(w, h);
     // Integer scaling of the 2304x1296 wide layout would not fit most windows.
@@ -620,6 +687,7 @@ void apply_presentation() {
 void apply_settings() {
     const Config& c = g_host.config;
     if (g_host.audio) SDL_SetAudioStreamGain(g_host.audio, c.get_int("audio", "volume", 0, 100) / 100.0f);
+    g_host.ff_speed = c.get_int("game", "fast_forward_speed", 2, 10);
     bool was_wide = g_host.wide;
     apply_presentation();
     bool fullscreen = c.get_bool("video", "fullscreen");
@@ -721,6 +789,13 @@ void run_menu() {
     ui::SettingsOptions options;
     options.in_game = true;
     options.on_change = apply_settings;
+    // Saving or loading closes the menu, so the slots are read once.
+    std::vector<std::string> states;
+    std::vector<bool> loadable;
+    for (int slot = 1; slot <= kStateSlots; slot++) {
+        states.push_back(savestate_describe(slot));
+        loadable.push_back(!states.back().empty() && std::isdigit(uint8_t(states.back()[0])));
+    }
     for (bool open = true; open;) {
         SDL_Event ev;
         while (SDL_PollEvent(&ev)) {
@@ -741,10 +816,17 @@ void run_menu() {
         diag_frame(g_host.frame);  // paused, not stuck: keeps the watchdog quiet
         draw_paused_frame();
         ui::begin_frame();
-        ui::PauseAction action = ui::pause_menu(g_host.config, g_host.config_path, options);
+        int slot = 0;
+        ui::PauseAction action = ui::pause_menu(g_host.config, g_host.config_path, options, states, loadable, slot);
         ui::end_frame(g_host.renderer);
         SDL_RenderPresent(g_host.renderer);
         if (action == ui::PauseAction::Resume) open = false;
+        if (action == ui::PauseAction::SaveState || action == ui::PauseAction::LoadState) {
+            g_host.state_slot = slot;  // the shortcuts go on with this slot
+            if (action == ui::PauseAction::SaveState) savestate_request_save(slot);
+            else savestate_request_load(slot);
+            open = false;
+        }
         if (action == ui::PauseAction::Restart) restart();
         if (action == ui::PauseAction::Quit) quit();
         SDL_Delay(16);
@@ -782,6 +864,8 @@ bool host_init() {
     }
     if (const char* p = std::getenv("NTR_SCREENSHOT")) g_host.screenshot_path = p;
     g_host.exit_frame = env_u64("NTR_EXIT_FRAME");
+    g_host.state_save_frame = env_u64("NTR_STATE_SAVE");
+    g_host.state_load_frame = env_u64("NTR_STATE_LOAD");
     g_host.throttle = !std::getenv("NTR_FAST");
     if (const char* s = std::getenv("NTR_INPUT")) parse_script(s);
     if (const char* path = std::getenv("NTR_REPLAY")) load_replay(path);
@@ -808,6 +892,7 @@ bool host_init() {
     int scale_3d = int(env_u64("NTR_3D_SCALE"));
     if (scale_3d <= 0) scale_3d = headless && !config_env ? 1 : config.get_int("video", "resolution_3d", 1, kMax3dScale);
     gpu3d_set_scale(scale_3d);
+    g_host.ff_speed = config.get_int("game", "fast_forward_speed", 2, 10);
     if (headless) return true;
 
     SDL_SetMainReady();
@@ -959,8 +1044,28 @@ static void record_input() {
                   g_host.touch_y);
 }
 
+// After a save or load (savestate.cpp), before the frame is shown.
+void savestate_finished() {
+    if (g_savestate_loaded) {
+        g_savestate_loaded = false;
+        // The game is somewhere else: what is queued would play over it, and the recording
+        // can no longer be replayed from boot.
+        if (g_host.audio) SDL_ClearAudioStream(g_host.audio);
+        g_host.deadline = g_host.work_start = SDL_GetTicksNS();
+        if (!g_host.headless) NTR_LOG("[host] savestate loaded at frame %llu\n", (unsigned long long)g_host.frame);
+        replay_finish(g_host.frame);
+    }
+    if (!g_savestate_message.empty()) {
+        show_toast(g_savestate_message);
+        g_savestate_message.clear();
+    }
+}
+
 void host_present(const uint32_t* top, int top_scale, const uint32_t* bottom, int bottom_scale) {
     g_host.frame++;
+    savestate_finished();
+    if (g_host.frame == g_host.state_save_frame) savestate_request_save(1);
+    if (g_host.frame == g_host.state_load_frame) savestate_request_load(1);
     diag_frame(g_host.frame);
     trace_frame(g_host.frame);
     apply_script();
@@ -1003,7 +1108,7 @@ void host_present(const uint32_t* top, int top_scale, const uint32_t* bottom, in
         record_input();
         return;
     }
-    if (fast_forward() && g_host.frame % 4 != 0) {  // drawing every frame would slow fast forward down
+    if (fast_forward() && g_host.frame % uint64_t(g_host.ff_speed) != 0) {  // about 60 pictures a second
         pump_events();
         record_input();
         if (g_host.menu_requested) run_menu();
@@ -1027,6 +1132,7 @@ void host_present(const uint32_t* top, int top_scale, const uint32_t* bottom, in
     SDL_SetRenderDrawColor(g_host.renderer, 0, 0, 0, 255);
     SDL_RenderClear(g_host.renderer);
     draw_screens(0, 0, 1);
+    draw_toast();
     SDL_RenderPresent(g_host.renderer);
     pump_events();
     record_input();

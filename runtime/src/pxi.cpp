@@ -79,6 +79,14 @@ void pxi_register_service(uint32_t tag, PxiService service) {
     wr32(kPxiReadyArm7, g_ready_tags);
 }
 
+// The services are registered at boot and stay the same.
+void pxi_state(StateIo& io) {
+    io.section("PXI ");
+    io.value(g_sync_arm7);
+    io.deque(g_recv);
+    io.value(g_ready_tags);
+}
+
 void arm7_boot() {
     // Services the game needs on the ARM7; each logs until it is implemented.
     // Wireless (WMW, tag 10) is left unregistered on purpose: Nintendo WFC is gone and

@@ -50,8 +50,9 @@ std::string sdk_version();  // sdk/version.txt, or "" without an SDK
 // Runs a program without a console window and waits; stdout and stderr go to `output`.
 // Returns the exit code, or -1 if it could not start.
 int run_process(const std::vector<std::string>& args, std::string& output, const std::string& cwd = "");
-// Starts a program and does not wait (the game).
-bool start_process(const std::vector<std::string>& args, const std::string& cwd);
+// Starts a program and does not wait (the game). With `on_exit`, a thread waits for the
+// program and calls it when the program ends.
+bool start_process(const std::vector<std::string>& args, const std::string& cwd, std::function<void()> on_exit = {});
 std::string system_tool(const char* name);  // curl / tar: System32 on Windows, PATH elsewhere
 
 // --- preparing the game (prepare.cpp) -------------------------------------------------
