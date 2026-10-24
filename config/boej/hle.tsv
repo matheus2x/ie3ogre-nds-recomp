@@ -28,3 +28,4 @@ Task_RunAll	task_run_all	game coroutines on host fibers (they switch guest stack
 Task_Yield	task_yield	back to the scheduler fiber
 Task_Exit	task_exit	ends the task's fiber
 blob_ov127_02130754	mobiclip_decode	Mobiclip decoder blob (hand-written ARM, computed jumps, lr set ahead): runs in the interpreter
+Font_DrawString	font_draw_string	the name entry field draws one letter per box

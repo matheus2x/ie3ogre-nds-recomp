@@ -146,6 +146,10 @@ void overlay_set_active(uint32_t id, bool active) {
     NTR_LOG("[ovl] overlay %u was not recompiled\n", id);
 }
 
+bool overlay_active_at(uint32_t overlay_id, uint32_t addr) {
+    return g_active_overlay[overlay_block(addr)] == overlay_id + 1;
+}
+
 std::string overlay_active_list() {
     std::set<uint32_t> ids;
     for (uint32_t v : g_active_overlay) {

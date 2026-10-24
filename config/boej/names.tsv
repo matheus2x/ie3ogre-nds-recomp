@@ -396,3 +396,6 @@ main	0x0206efa0	Task_Start	call; Task_Create(Task_Trampoline, ...) and stores th
 main	0x0206efc4	Task_ClearEntry	call; entry table slot = 0
 main	0x0206efd8	Task_SwitchToTask	call; saves the scheduler sp, loads the current task's sp, pops pc
 main	0x0206f014	Task_RunAll	call; per-frame scheduler: resumes each of the 16 tasks once
+main	0x020182ac	Font_GlyphIndex	call; (font+4, char code) -> glyph index, or the "no glyph" value (then the default glyph, u16 at +2 of the font)
+main	0x020182f4	Font_GlyphWidths	call; (font+4, glyph index) -> CWDH entry: left, glyph width, advance
+main	0x02042e4c	Font_DrawString	call; vtable+8 of the font class (0x0208FFEC): (font, x, y, SJIS string, ...), each letter advances CWDH advance + the spacing at +0x14

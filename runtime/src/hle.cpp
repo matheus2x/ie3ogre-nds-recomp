@@ -117,6 +117,72 @@ void hle_fs_start_overlay(Cpu& c, GuestFn orig) {
     orig(c);
 }
 
+// --- text ----------------------------------------------------------------------------
+// The name entry field (overlay 55) draws the name with Font_DrawString over a row of
+// 12 px boxes, 13 px apart. Every letter of the game's font advances 11 px, which with
+// the field's 2 px spacing makes 13; a translated font with narrower letters (the keyboard
+// types full-width letters) drifts out of the boxes. So that call draws one letter per
+// box: a letter that advances 11 px where the game puts it, any other centered by its ink.
+
+namespace {
+
+constexpr uint32_t kNameFieldOverlay = 55;
+constexpr uint32_t kNameFieldReturn = 0x0211B140;  // after "blx r5" in func_ov055_0211b07c
+constexpr uint32_t kNameFieldCall = 0xE12FFF35;
+constexpr int kNameBoxStep = 13;
+constexpr int kNameBoxWidth = 12;
+constexpr int kNameLetterAdvance = 11;  // CWDH advance of every letter of the game's font
+constexpr uint32_t kFontGlyphIndex = 0x020182AC;
+constexpr uint32_t kFontGlyphWidths = 0x020182F4;
+constexpr uint32_t kNoGlyph = 0xFFFF;
+
+bool is_name_field(const Cpu& c) {
+    return c.r[14] == kNameFieldReturn && overlay_active_at(kNameFieldOverlay, kNameFieldReturn) &&
+           rd32(kNameFieldReturn - 4) == kNameFieldCall;
+}
+
+// Where a letter starts in its box. The CWDH entry (left, glyph width, advance) is looked
+// up as Font_DrawString does.
+int letter_offset(Cpu& c, uint32_t font, uint32_t code) {
+    c.r[0] = font + 4;
+    c.r[1] = code;
+    call_address(c, kFontGlyphIndex);
+    uint32_t glyph = c.r[0];
+    if (glyph == kNoGlyph) glyph = rd16(rd32(font + 4) + 2);
+    c.r[0] = font + 4;
+    c.r[1] = glyph;
+    call_address(c, kFontGlyphWidths);
+    uint32_t widths = c.r[0];
+    if (int8_t(rd8(widths + 2)) == kNameLetterAdvance) return 0;
+    return (kNameBoxWidth - rd8(widths + 1)) / 2 - int8_t(rd8(widths));
+}
+
+}  // namespace
+
+void hle_font_draw_string(Cpu& c, GuestFn orig) {
+    if (!is_name_field(c) || !c.r[3]) return orig(c);
+    const uint32_t font = c.r[0], x = c.r[1], y = c.r[2], lr = c.r[14];
+    uint32_t at = c.r[3];
+    for (int box = 0; uint8_t lead = rd8(at); box++) {
+        bool single = (lead >= 0x20 && lead <= 0x7E) || (lead >= 0xA1 && lead <= 0xDF);
+        uint32_t size = single ? 1 : 2;
+        uint32_t code = single ? lead : uint32_t(lead) << 8 | rd8(at + 1);
+        int offset = letter_offset(c, font, code);
+        uint8_t after = rd8(at + size);
+        wr8(at + size, 0);  // the string ends after this letter for the call
+        c.r[0] = font;
+        c.r[1] = x + box * kNameBoxStep + offset;
+        c.r[2] = y;
+        c.r[3] = at;
+        c.r[14] = lr;
+        orig(c);
+        wr8(at + size, after);
+        at += size;
+    }
+    c.r[0] = 1;
+    c.r[14] = lr;
+}
+
 }  // namespace ntr
 
 namespace ntr {
