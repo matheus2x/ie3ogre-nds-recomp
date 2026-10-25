@@ -9,21 +9,23 @@ from pathlib import Path
 
 import text as texttool
 from ntr import lz10
-from ntr.text import (BOX_ROWS, Font, JAPANESE, TextError, decode, encode, lines, problems, read_pack,
-                      SPACER, objective_cost, objective_fit, objective_layout, scramble, ssd_refs,
+from ntr.text import (BOX_ROWS, Font, JAPANESE, PAIRED, TextError, WIDE, decode, encode, lines, paired,
+                      problems, read_pack, SPACER,
+                      DEBUG_PRINT, objective_cost, objective_fit, objective_layout, scramble, ssd_opcodes,
+                      ssd_refs,
                       str_strings, table_bytes, unscramble, wide, write_pack)
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
 class FixedFont(Font):
-    """Every character 6 pixels wide (no NFTR needed)."""
+    """Every character 6 pixels wide, the pixel after it included (no NFTR needed)."""
 
     def __init__(self):
         pass
 
-    def measure(self, s: str) -> int:
-        return 6 * len(s)
+    def measure(self, s: str, gap: int = 1) -> int:
+        return (5 + gap) * len(s)
 
 
 def record(text: bytes, size: int) -> bytes:
@@ -78,6 +80,13 @@ class TextTest(unittest.TestCase):
         struct.pack_into("<II", ssd, 16, 0, len(data))
         self.assertEqual(ssd_refs(bytes(ssd) + data), {96: 44})
 
+    def test_script_opcodes(self):
+        # instructions [u16 id][u16 size][u16 opcode]...: a debug print (0x3070) and who speaks (0x3019)
+        code = struct.pack("<HHHH", 1, 8, DEBUG_PRINT, 0) + struct.pack("<HHHH", 2, 8, 0x3019, 0)
+        ssd = bytearray(b"SSD\0" + bytes(28))
+        struct.pack_into("<II", ssd, 16, len(code), 0)
+        self.assertEqual(ssd_opcodes(bytes(ssd) + code), {b"\x01\0": DEBUG_PRINT, b"\x02\0": 0x3019})
+
     def test_problems(self):
         font = FixedFont()
         self.assertEqual(problems(b"%s", "Oi, %s!", 20, font), [])
@@ -104,7 +113,21 @@ class TableTest(unittest.TestCase):
         self.assertEqual(str_strings(bytes(d)), [(0, 64), (64, 32), (96, 128)])
         self.assertEqual(table_bytes("a\\nb"), b"a\nb")
         self.assertEqual(wide("God Hand!"), "Ｇｏｄ\u3000Ｈａｎｄ！")
-        self.assertEqual(table_bytes("Go", True), "Ｇｏ".encode("cp932"))
+        self.assertEqual(table_bytes("Go", WIDE), "Ｇｏ".encode("cp932"))
+
+    def test_paired_for_the_gallery(self):
+        # a one-byte character read alone gets the SPACER; an accent carries the next letter
+        sp = encode(SPACER)
+        self.assertEqual(paired(encode("Aé")), sp + b"A" + encode("é") + sp)
+        self.assertEqual(paired(encode("éa b")), encode("éa") + sp + b" " + sp + b"b")
+        self.assertEqual(paired(b"%s!"), b"%s" + sp + b"!")  # sprintf sees %s whole
+        b = "Ｂ".encode("cp932")
+        self.assertEqual(paired(b + b"\n" + encode("ú")), b + b"\n" + encode("ú") + sp)
+        self.assertEqual(table_bytes("a b", PAIRED), sp + b"a" + sp + b" " + sp + b"b")
+        # the gallery draws with no pixel between letters, and the pairs take twice the bytes
+        font = FixedFont()
+        self.assertEqual(problems(b"x", "abc", 6, font, (1, 18, PAIRED)), [])
+        self.assertEqual(len(problems(b"x", "abcd", 6, font, (1, 18, PAIRED))), 2)
 
     def test_command_name_moves_when_it_does_not_fit(self):
         dat = bytearray(0x24 * 2)

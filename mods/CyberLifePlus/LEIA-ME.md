@@ -15,8 +15,9 @@ issue no repositório.
 
 ## Como usar
 
-Coloque o `CyberLifePlus.zip` da release na pasta `mods/`, ao lado do jogo, e ligue o mod na aba **Mods** do
-launcher. Para atualizar, troque o `.zip` pelo novo (com o mesmo nome, o mod continua ligado).
+Coloque o `mod-CyberLifePlus-<versão>.zip` da release na pasta `mods/`, ao lado do jogo, e ligue o mod na aba
+**Mods** do launcher. Para atualizar, adicione o `.zip` novo pelo launcher: ele apaga a versão antiga e deixa a
+nova ligada no lugar dela.
 
 O mod só traz **patches** (`.bps`, só a diferença em relação ao jogo original): ele não contém dados do jogo e
 precisa do dump retail, o mesmo que o launcher pede.
@@ -30,6 +31,12 @@ dá exatamente os arquivos do dump traduzido.
 
 ## Versões
 
+- **1.4:** os títulos das cenas da galeria de vídeos (Continuar → Gallery → Game Video) em português: 58
+  títulos, com os nomes de personagens e estádios das falas.
+  Também os nomes de quem fala em duas partidas que ainda apareciam em japonês (Hibiki, Tae, Ichinose).
+  E os menus e mensagens que ficavam no código do jogo: comunicação (DS sem fio, Wi-Fi, trocas, Passing),
+  avisos da formação, quiz, scout e itens premium (312 textos).
+  Corrige as legendas dos vídeos, que perderam os espaços entre as palavras na 1.3.
 - **1.3:** os objetivos da tela de cima (a faixa "Objetivo") em português: 102, uns 80 deles ainda estavam em
   inglês. As letras não ficam mais umas sobre as outras ("aconteceu", "averiguar"): o texto ganha espaçadores
   de 1 px onde o jogo troca de sprite.
@@ -59,9 +66,9 @@ python3 tools/text.py apply boej.pak mods/CyberLifePlus translations/CyberLifePl
 python3 tools/text.py survey boej.pak mods/CyberLifePlus     # quanto já está traduzido
 ```
 
-O `text.py` também cobre os itens (`item.dat`, `item.STR`), as táticas (`tacticscmd.STR`) e os nomes das
-técnicas (`command.dat`/`command.STR`). Para o resto
-(outras tabelas, imagens, fontes), use `tools/mod.py expand`, edite os arquivos inteiros e volte
-com `tools/mod.py patch`. Um arquivo inteiro vale mais que o patch do mesmo caminho e o substitui; um arquivo
+O `text.py` também cobre os itens (`item.dat`, `item.STR`), as táticas (`tacticscmd.STR`), os nomes das
+técnicas (`command.dat`/`command.STR`), os títulos da galeria de vídeos (`movie_view_f.dat`) e os textos dos
+overlays (menus no código). Para o resto (outras tabelas, imagens, fontes), use `tools/mod.py expand`, edite
+os arquivos inteiros e volte com `tools/mod.py patch`. Um arquivo inteiro vale mais que o patch do mesmo caminho e o substitui; um arquivo
 igual ao original é apagado. Suba o `version` no `mod.ini` a cada versão nova. As regras do texto (espaço,
 acentos, quebra de linha, nomes) estão em `docs/TRADUCAO.md`.

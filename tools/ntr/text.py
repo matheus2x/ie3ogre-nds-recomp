@@ -9,7 +9,8 @@ SSD (event scripts, eve.pkb): 0x20-byte header, the code (size in word 4) and th
 (size in word 5), records of [u16 id][u8 index][u8 size][contents]. Strings end in NUL;
 "@offset,length" points at a line of the evet entry with the same key. The code is
 instructions [u16 id][u16 size][u16 opcode][u8][u8 args]...; the strings of an instruction
-are the data records with its id. Opcode 0x201D sets the objective shown on the top screen
+are the data records with its id (ssd_opcodes). Opcode 0x3070 only prints its string to the
+debug log; 0x3019 shows who speaks (record 2, "Senhor K"). Opcode 0x201D sets the objective shown on the top screen
 (its string is record 3); the game draws it into 4 sprites 64 pixels wide, placed every 60
 pixels (objective_layout): a letter goes to the next sprite only when it does not fit in the
 64, so the last 4 pixels of a sprite show over the start of the next one (Japanese, 5
@@ -25,6 +26,11 @@ a real newline breaks the row). item.dat is 1024 records of 0x2C bytes, scramble
 (unscramble/scramble): the name in 0x00-0x1F and the index of the description at 0x2A.
 command.dat (the techniques) is 512 plain records of 0x24 bytes, the index of the name in
 command.STR at 0x18; the names there are full-width (wide), as the fan translation wrote them.
+movie_view_f.dat (the movie gallery) is 58 records of 0x74 bytes: u16 id, the movie's file name at
+0x02, its number ("ＮＯ．１") at 0x0C and its title, with furigana, from 0x1B to the end of the record.
+The gallery parses the furigana with a signed char (func_ov016_020f24e8): it copies every byte
+from 0x80 up together with the next one and drops the rest of the ASCII, so a Latin title is
+written paired (each one-byte character next to SPACER), and it draws with no pixel between letters.
 
 The translation writes Latin text: ASCII, the accents below as one byte each (where the
 half-width kana were; the font was redrawn) and \\n / \\f as two characters.
@@ -39,10 +45,13 @@ ACCENTS = {
     "ó": 0xC4, "ô": 0xC5, "õ": 0xC6, "ú": 0xCA, "ü": 0xCC,
     "À": 0xD0, "Á": 0xD1, "Â": 0xD2, "Ã": 0xD3, "Ç": 0xD7, "É": 0xD9, "Ê": 0xDA,
     "Ó": 0xAB, "Ô": 0xAC, "Õ": 0xAD, "Ú": 0xA2,
-    "\u200a": 0xCF,  # a blank of 1 pixel (fit_font) that lines objectives up
+    "\u200a": 0xDF,  # a blank of no width (fit_font): spaces objectives, pairs PAIRED text
 }
 SPACER = "\u200a"
-_FROM_BYTE = {v: k for k, v in ACCENTS.items()}
+# 0xCF is the space of the fan translation's font, 4 pixels wide: its subtitles, scripts and
+# tables write "letter, 0xCF, letter" (fit_font keeps its width).
+FAN_SPACE, FAN_SPACE_WIDTHS = 0xCF, bytes((0, 0, 3))
+_FROM_BYTE = {v: k for k, v in ACCENTS.items()} | {FAN_SPACE: " "}
 _PLAIN = {"…": "...", "“": '"', "”": '"', "‘": "'", "’": "'", "—": "-", "–": "-"}
 FURIGANA = re.compile(rb"%\d+F")
 JAPANESE = re.compile(r"[ぁ-ヿ一-鿿]")
@@ -52,6 +61,8 @@ OBJECTIVE_STEP, OBJECTIVE_WIDTH, OBJECTIVE_PARTS = 60, 64, 4  # sprites of the o
 STR_STEP, STR_READ = 32, 0x80  # a .STR string starts at index * 32; the game reads 128 bytes
 ITEM_SIZE, ITEM_NAME = 0x2C, 0x20
 COMMAND_SIZE, COMMAND_NAME = 0x24, 0x18
+MOVIE_SIZE, MOVIE_TITLE = 0x74, 0x1B  # movie_view_f.dat: a scene of the movie gallery
+MOVIE_WIDTH = 229  # px of a gallery title from x = 16 to the edge of its box (no pixel between letters)
 _SWAPS = ((2, 3), (4, 5), (6, 7), (1, 2))  # (distance, step) of the byte swaps of item.dat
 
 
@@ -153,10 +164,43 @@ def wide(text: str) -> str:
     return "".join(chr(ord(c) + 0xFEE0) if "!" <= c <= "~" else "\u3000" if c == " " else c for c in text)
 
 
-def table_bytes(text: str, full_width: bool = False) -> bytes:
+WIDE, PAIRED = "wide", "paired"  # how a table writes Latin text (table_bytes)
+
+
+def paired(data: bytes) -> bytes:
+    """Text for a reader that takes every byte from 0x80 up as the first of two and drops
+    the other ASCII (the furigana parser of the message boxes, func_ov016_020f24e8): a
+    one-byte character that would be read alone gets SPACER, which draws nothing, as its
+    pair; an accent carries the letter after it (the parser copies the second byte as is)."""
+    out = bytearray()
+    cs = list(codes(data))
+    i = 0
+    while i < len(cs):
+        c = cs[i]
+        i += 1
+        if c > 0xFF:
+            out += bytes((c >> 8, c & 0xFF))
+        elif c == 0x0A:
+            out.append(c)  # the parser keeps a newline by itself
+        elif c == 0x25 and i < len(cs) and 0x61 <= cs[i] <= 0x7A:
+            out += bytes((c, cs[i]))  # %s stays whole for sprintf, which runs before the parser
+            i += 1
+        elif c < 0x80:
+            out += bytes((ACCENTS[SPACER], c))
+        elif i < len(cs) and cs[i] <= 0xFF:
+            out += bytes((c, cs[i]))
+            i += 1
+        else:
+            out += bytes((c, ACCENTS[SPACER]))
+    return bytes(out)
+
+
+def table_bytes(text: str, form: str | None = None) -> bytes:
     """A table string: \\n of the translation is a real newline there."""
     text = text.replace("\\n", "\n")
-    return encode(wide(text) if full_width else text)
+    if form == WIDE:
+        return encode(wide(text))
+    return paired(encode(text)) if form == PAIRED else encode(text)
 
 
 def unscramble(rec: bytes) -> bytes:
@@ -205,6 +249,22 @@ def ssd_refs(d: bytes) -> dict[int, int]:
         m = re.fullmatch(rb"@(\d+),(\d+)", ssd_string(d, at, size))
         if m:
             out[int(m[1])] = int(m[2])
+    return out
+
+
+DEBUG_PRINT = 0x3070  # SSD instruction whose string goes only to the debug log ("■試合終了")
+
+
+def ssd_opcodes(d: bytes) -> dict[bytes, int]:
+    """Opcode of each instruction of an SSD script, by its id (the first 2 bytes of its records)."""
+    code = d[0x20:0x20 + struct.unpack_from("<I", d, 16)[0]] if d[:4] == b"SSD\0" else b""
+    out, i = {}, 0
+    while i + 6 <= len(code):
+        size, op = struct.unpack_from("<HH", code, i + 2)
+        if size < 4:
+            break
+        out.setdefault(code[i:i + 2], op)
+        i += size
     return out
 
 
@@ -294,16 +354,19 @@ def objective_fit(text: str, font: "Font") -> str | None:
 
 
 def fit_font(nftr: bytes) -> bytes:
-    """The font with SPACER 1 pixel wide (no ink, the game adds 1 pixel after each letter)."""
+    """The font with SPACER of no width (no ink; the game adds 1 pixel after each letter) and
+    the fan translation's space as it drew it (version 1.3 had zeroed it, and its subtitles
+    lost their spaces)."""
     font, out = Font(nftr), bytearray(nftr)
-    glyph = font.glyph[ACCENTS[SPACER]]
+    widths = {font.glyph[ACCENTS[SPACER]]: bytes(3), font.glyph[FAN_SPACE]: FAN_SPACE_WIDTHS}
     finf = struct.unpack_from("<H", nftr, 0x0C)[0]
     p = struct.unpack_from("<I", nftr, finf + 0x14)[0] - 8
     while p:
         first, last, nxt = struct.unpack_from("<HHI", nftr, p + 8)
-        if first <= glyph <= last:
-            at = p + 0x10 + 3 * (glyph - first)
-            out[at:at + 3] = bytes(3)
+        for glyph, cwdh in widths.items():
+            if first <= glyph <= last:
+                at = p + 0x10 + 3 * (glyph - first)
+                out[at:at + 3] = cwdh
         p = nxt - 8 if nxt else 0
     return bytes(out)
 
@@ -378,8 +441,9 @@ class Font:
         g = self.glyph.get(code)
         return 12 if g is None else self.width.get(g, 11) + 1
 
-    def measure(self, s: str) -> int:
-        return sum(self.advance(c) for c in codes(encode(s)))
+    def measure(self, s: str, gap: int = 1) -> int:
+        """Pixels of a row; gap is what the drawer adds after each letter (advance() has 1)."""
+        return sum(self.advance(c) - 1 + gap for c in codes(encode(s)))
 
     def wrap(self, row: str) -> list[str]:
         """The game's own word wrap: a word that does not fit goes, with its space, to a new row."""
@@ -395,12 +459,13 @@ class Font:
 
 def problems(source: bytes, text: str, capacity: int, font: Font, table: tuple | None = None) -> list[str]:
     """What keeps a translated line from fitting where the original was. A table string
-    (table = (rows, width[, full width])) is not wrapped by the game: each row must fit as written."""
+    (table = (rows, width[, WIDE or PAIRED[, pixel between letters]])) is not wrapped by the
+    game: each row must fit as written."""
     out = []
     if JAPANESE.search(text):
         out.append("still has Japanese")
     try:
-        data = table_bytes(text, len(table) > 2 and table[2]) if table else encode(text)
+        data = table_bytes(text, table[2] if len(table) > 2 else None) if table else encode(text)
     except TextError as e:
         return out + [str(e)]
     if len(data) > capacity:
@@ -412,7 +477,9 @@ def problems(source: bytes, text: str, capacity: int, font: Font, table: tuple |
         if "\\f" in text or "[" in text:
             out.append("\\f or [ (furigana) in a table string")
         for r in rows:
-            px = font.measure(wide(r) if len(table) > 2 and table[2] else r)
+            form = table[2] if len(table) > 2 else None
+            gap = table[3] if len(table) > 3 else 0 if form == PAIRED else 1
+            px = font.measure(wide(r) if form == WIDE else r, gap)
             if px > table[1]:
                 out.append(f"row of {px} px (the table's widest is {table[1]}): {r[:40]}")
     for page in text.split("\\f") if not table else ():

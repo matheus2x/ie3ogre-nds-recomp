@@ -12,16 +12,19 @@ caracteres japoneses (kana + kanji) e deixa de fora:
 
 ## Números
 
-| | v1.0 | v1.1 | v1.2 |
-|---|---:|---:|---:|
-| Tudo, com repetições (o que o jogador lê; 783 mil caracteres no original) | 29 % | 32 % | **34 %** |
-| Textos únicos (o trabalho que falta; 429 mil) | 39 % | 44 % | **47 %** |
-| História, capítulos 1–11, aberturas e capítulo 12 | 91 % | 100 % | 100 % |
-| Mensagens de campo/lojas/máquina de busca (35xx) e `mcht.pkb` | 41 % | 100 % | 100 % |
-| Descrições dos itens e táticas | 0 % | 0 % | **100 %** |
+| | v1.0 | v1.1 | v1.2 | v1.4 |
+|---|---:|---:|---:|---:|
+| Tudo, com repetições (o que o jogador lê; 782 mil caracteres no original) | 29 % | 32 % | 34 % | **35,2 %** |
+| Textos únicos (o trabalho que falta; 429 mil) | 39 % | 44 % | 47 % | **48,3 %** |
+| História, capítulos 1–11, aberturas e capítulo 12 | 91 % | 100 % | 100 % | 100 % |
+| Mensagens de campo/lojas/máquina de busca (35xx) e `mcht.pkb` | 41 % | 100 % | 100 % | 100 % |
+| Descrições dos itens e táticas | 0 % | 0 % | 100 % | 100 % |
+| Títulos da galeria de vídeos | 0 % | 0 % | 0 % | **100 %** |
+| Menus no código (overlays) | 28 % | 28 % | 28 % | **95 %** |
 
 Desde a v1.2 a conta inclui os nomes dos itens (o `item.dat` é embaralhado e o levantamento antigo não o lia), o
-que subiu o total de 776 para 783 mil caracteres; as colunas v1.0 e v1.1 são da conta antiga.
+que subiu o total de 776 para 783 mil caracteres; as colunas v1.0 e v1.1 são da conta antiga. Na v1.4 os prints
+de depuração dos scripts saíram da conta (782 mil).
 
 A história está toda em português desde a v1.1, mas **ainda falta mais da metade do texto do jogo**. Quase tudo
 está em quatro blocos: falas dos jogadores nas partidas, perfis dos jogadores, subeventos e NPCs.
@@ -56,51 +59,111 @@ O diálogo fica em `script/evet.pkb`. A chave de cada entrada é o número do ev
 | Descrições de itens | `logic/item.STR` | 22 (2 textos que nenhum item usa) | 0 % → 100 % (v1.2) |
 | Nomes de jogadores (sem as leituras em kana) | `logic/unitbase*.dat` | 2.133 (quase tudo "未定") | 83 % |
 | Táticas | `logic/tacticscmd.STR` | 0 | 0 % → 100 % (v1.2) |
-| Locais e cenas da galeria | `logic/fieldinf.dat`, `movie_view_f.dat` | 1.725 | 0 % |
+| Títulos da galeria de vídeos | `logic/movie_view_f.dat` | 0 | 0 % → 100 % (v1.4) |
+| Nomes de locais (talvez só internos, ver a fase 5) | `logic/fieldinf.dat` | 984 | 0 % |
 | Blog | `script/blogpost.dat`, `blogres.dat` | 3.010 | 13 % |
 | Outras tabelas (golpes, torneios, condições…) | `logic/*` | 1.238 | 96 % |
-| Menus no código | overlays | 6.051 | 28 % |
-| Outros scripts (ações da partida, ajuda…) | `act/mch/mrobj/help.pkb` | 736 | 0 % |
+| Menus no código | overlays | 459 (senhas, nomes internos e sobras) | 28 % → 95 % (v1.4) |
+| Rótulos de quem fala nas partidas | `mch.pkb` | 0 | 0 % → 100 % (v1.4) |
 
 Fora da conta do `survey`: as leituras em kana dos nomes (`unitbase*.dat`, ~2.240 nomes ainda em kana; falta
 ver onde aparecem) e o ARM9 (15 textos).
 
-Os menus que faltam nos overlays são quase todos de comunicação (DS sem fio, troca, "すれちがい", ligação com o
-Inazuma Eleven 2) e alguns avisos (`ov057` "今はこの選手の いどうはできません。", `ov023` quiz). O ARM9 não pode ser
-mudado por um mod hoje (`from-dump`/`check` exigem o ARM9 igual ao retail).
+Nos overlays ficaram de propósito as senhas e nomes internos (ver o checklist) e três rótulos curtos que não
+cabem na forma em pares. O ARM9 não pode ser mudado por um mod hoje (`from-dump`/`check` exigem o ARM9 igual ao
+retail).
 
 Fora da conta: as legendas dos vídeos (`movie/txt`), que o levantamento não lê. A abertura ainda mostra legendas
 em japonês ("確かに大事なところでの大失敗は辛い！"), e o aviso de ficção de um jogo novo ("この作品はフィクションです…")
 também está em japonês.
 
-## Roadmap
+## Checklist
 
-**Fase 1: fechar a história. Feita na v1.1.** 1.281 falas: o que faltava nos capítulos 1–11, o capítulo 12, as
-aberturas, as mensagens de campo, lojas e máquina de busca (35xx), o `mcht.pkb` e as strings do `eve.pkb`
-(rótulos de quem fala e a máquina de recuperação). Ficaram de fora, de propósito, as strings de debug do
-`eve.pkb` e leituras de furigana sem uso (50).
+O que já foi feito e o que está previsto, por fase. Cada etapa da tradução atualiza esta lista: marca o que
+terminou (com a versão do mod) e acrescenta, na fase certa, o que descobriu no caminho. Os detalhes de cada
+etapa ficam no `docs/DIARY.md`.
 
-**Fase 2: interface e dados que aparecem o tempo todo (cerca de 1.600 únicos).**
-- **Feito na v1.2:** itens (820 descrições, 434 nomes que estavam em inglês) e táticas (43 nomes e descrições).
-  **Técnicas não se traduzem** (regra abaixo): os nomes da lista de técnicas (`command.STR`, 360) e dos
-  cadernos e táticas nos itens foram revistos para o romaji e ficaram iguais nos dois lugares. As habilidades
-  (`Keeper Plus`…) ficaram como estavam.
-- Falta: locais e cenas (194), rótulos de ação (27), menus dos overlays (264) e o que sobrou nas tabelas (48).
-- Passar para o português o que ficou em inglês: `sp_binder.STR` (207), `command.STR`, condições, `games.STR`.
-- Legendas dos vídeos e aviso de ficção (levantar primeiro).
+### Fase 1: fechar a história
 
-**Fase 3: conteúdo opcional (cerca de 4.200 únicos, 101 mil caracteres).**
-- Subeventos 3300 (2.353, incluindo as ~960 falas em inglês), scout/rotas (299), NPCs (1.343), eventos extras
-  3250/3251 (157) e blog (96).
+- [x] Capítulos 1–11: o que faltava (v1.1)
+- [x] Capítulo 12 / epílogo com o Tenma (v1.1)
+- [x] Aberturas de capítulo, 31xx (v1.1)
+- [x] Mensagens de campo, lojas e máquina de busca, 35xx (v1.1)
+- [x] Recrutar/convidar e eventos das partidas, `mcht.pkb` (v1.1)
+- [x] Strings dos scripts, `eve.pkb`: rótulos de quem fala e a máquina de recuperação (v1.1). De fora, de
+  propósito: strings de debug e 50 leituras de furigana sem uso.
 
-**Fase 4: volume (cerca de 6.500 únicos, 117 mil caracteres).**
-- Falas nas partidas (4.154; muito repetidas: 250 mil caracteres com as repetições) e perfis dos jogadores
-  (2.309). Dá para dividir por time, já que cada entrada 3700 e cada perfil é de um jogador.
+### Fase 2: interface e dados que aparecem o tempo todo (cerca de 1.600 únicos)
 
-**Fase 5: conferir no jogo.**
-- Onde as leituras em kana dos nomes aparecem (busca, ordenação?), e só então decidir se traduzir.
-- Imagens: o mod mexe em 92 dos 250 arquivos de `pic2d` e em 296 dos 567 de `pic3d`; nenhum de `obj2d` (15). Os
-  que sobraram precisam de inspeção visual para ver quais têm texto.
+- [x] Itens: 820 descrições e 434 nomes, que estavam em inglês (v1.2)
+- [x] Táticas: 43 nomes e descrições (v1.2)
+- [x] Técnicas em romaji, iguais na lista (`command.STR`, 360) e nos cadernos dos itens (v1.2). Não se
+  traduzem (regra abaixo); as habilidades (`Keeper Plus`…) ficaram como estavam.
+- [x] Objetivos da tela de cima: 102 textos, uns 80 em inglês, e as letras sobrepostas (v1.3)
+- [x] Títulos da galeria de vídeos, `movie_view_f.dat`: 58 (v1.4)
+- [x] Rótulos de quem fala nos scripts das partidas, `mch.pkb`: 19 (Hibiki, Tae, Ichinose) (v1.4). O resto
+  do que o levantamento contava em `act/mch.pkb` (24 textos do `act.pkb`, "PK GK左ボール左×", "ブロック 成功")
+  são prints de depuração e ficam como estão.
+- [x] Menus e mensagens nos overlays: 312 de 321 strings, em 34 overlays (v1.4). Quase todos de comunicação
+  (DS sem fio, Wi-Fi Connection, troca, Passing, ligação com o Inazuma Eleven 2 e o Spark/Bomber), além dos
+  avisos da formação (`ov057`), do quiz do `ov023` e das janelas de scout e itens premium.
+- [ ] Rótulos curtos dos overlays sem tradução, porque em pares não cabem e não se sabe o desenhista: "そうび"
+  (`ov053`), "かう"/"うる" (`ov062`), "カップ" (`ov072`), "ファイター" (`ov082`, contexto desconhecido). Ver no jogo
+  se usam o leitor de furigana; se não usarem, entram em `PLAIN_LABELS`.
+- [ ] Nomes de jogador em meia largura ("Kanon") somem nas mensagens com `%s` que passam pelo leitor de furigana
+  (ele descarta o ASCII depois do `sprintf`). Vale também para as mensagens do CyberLife. Precisa de correção
+  no port (o leitor) ou nomes em largura cheia.
+- [ ] O que sobrou nas outras tabelas (48)
+- [ ] Do inglês para o português: `sp_binder.STR` (207 de 376), `command.STR`, `ClearCondition.dat`,
+  `OpenCondition.dat`, `games.STR`
+- [ ] Menu da galeria em inglês ("Gallery", "Game Video", "Web Identifiant", "Choose the video you want to
+  replay.", "Play", "Quit", "Back"); ver primeiro se é imagem ou texto
+- [ ] Aviso sobre saves alterados, em inglês, que aparece ao carregar ("There is a possibility…"); idem
+- [ ] Menus do jogo que ainda dizem "Kick", "Guard" etc.: seguir o glossário dos itens (Chute, Defesa…)
+- [ ] Legendas dos vídeos (`movie/txt`): levantar e traduzir ("確かに大事なところでの大失敗は辛い！")
+- [ ] Aviso de ficção de um jogo novo ("この作品はフィクションです…")
+
+### Fase 3: conteúdo opcional (cerca de 4.200 únicos, 101 mil caracteres)
+
+- [ ] Subeventos 3300: 2.353, incluindo as ~960 falas em inglês
+- [ ] Scout e rotas de batalha, 3611/3613/3618 (299)
+- [ ] NPCs das cidades, 36xx (1.343)
+- [ ] Eventos extras 3250/3251 (157)
+- [ ] Blog, `blogpost.dat`/`blogres.dat` (96)
+
+### Fase 4: volume (cerca de 6.500 únicos, 117 mil caracteres)
+
+- [ ] Falas dos jogadores nas partidas, 3700 (4.154; 250 mil caracteres com as repetições). Dá para dividir
+  por time: cada entrada é de um jogador.
+- [ ] Perfis dos jogadores, `unitbase.STR` (2.309), também por time
+
+### Fase 5: conferir no jogo
+
+- [x] Galeria de vídeos: título nº 1 e o mais largo vistos no jogo (v1.4)
+- [ ] Itens e lista de técnicas: ainda não vistos no jogo (acentos de meia largura nas janelas; o jogo quebra
+  linhas longas?)
+- [ ] Os outros 101 objetivos (só simulados; seis desenhados no jogo)
+- [ ] Os outros 57 títulos da galeria (bloqueados no save de teste)
+- [ ] Mensagens dos overlays: nenhuma vista no jogo (a forma em pares foi conferida na galeria, que usa o
+  mesmo leitor). A formação do save de teste não deixou provocar os avisos do `ov057`.
+- [ ] Rótulos de quem fala nas partidas 34010007 e 34010022 (`mch.pkb`)
+- [ ] Onde as leituras em kana dos nomes aparecem (busca, ordenação?), e só então decidir se traduzir
+- [ ] Se os nomes do `fieldinf.dat` aparecem para o jogador. São 149 locais em registros de 0x180 bytes, com
+  o nome em +0x90 (no máximo 20 bytes; `func_0206f834` lê o registro). Parecem rótulos internos: vários estão
+  cortados no meio da palavra ("…グラウン"), há nomes de treinos e minibatalhas, e nem o patch em inglês os
+  traduziu.
+- [ ] Imagens: o mod mexe em 92 dos 250 arquivos de `pic2d` e em 296 dos 567 de `pic3d`, e em nenhum dos 15
+  de `obj2d`. Os que sobraram precisam de inspeção visual para ver quais têm texto.
+
+### Fora do mod (precisa de mudança no port)
+
+- [ ] ARM9 (15 textos): um mod não pode mudá-lo hoje (`from-dump`/`check` exigem o ARM9 do retail)
+- [ ] Saves de antes do mod mostram o lugar e o objetivo gravados em japonês (card do save e faixa de cima) até
+  salvar de novo
+
+### Créditos e pacote
+
+- [ ] Créditos do CyberLife com os nomes dos membros, links e a versão da tradução
 
 ## Padrão da tradução
 
@@ -177,20 +240,45 @@ etc. (vieram do patch em inglês) e devem seguir esta lista quando forem traduzi
   "aconteceu"). O espaço de 1 px entre letras vem antes de cada letra, menos da primeira de um sprite.
   O `text.py` reconhece esses objetivos, simula o desenho (`objective_layout`) e, ao gravar, põe espaçadores
   de 1 px junto dos espaços para que nenhuma letra fique por cima de outra e o vão entre palavras continue com
-  pelo menos 4 px (`objective_fit`). O espaçador é o código 0xCF da `FONT12`, que o `apply` deixa sem largura.
+  pelo menos 4 px (`objective_fit`). O espaçador é o código 0xDF da `FONT12` (nenhum texto o usa), que o
+  `apply` deixa sem largura. O 0xCF é o espaço do CyberLife (4 px), usado nas legendas, scripts e tabelas dele
+  como "letra, 0xCF, letra": não mexer.
   Escreva o objetivo normalmente no `.json`; se o `check` recusar, troque palavras (os espaçadores também
-  ocupam bytes). Cada sprite ainda desce 1 px em relação ao anterior, como no jogo original.
+  ocupam bytes). No jogo original cada sprite mostra o texto 1 px abaixo do anterior; o port corrige isso (hook
+  do `Font_DrawString`, ver o diário de 2026-10-24).
+- **Galeria de vídeos (`movie_view_f.dat`):** 58 registros de 0x74 bytes; o título fica em +0x1B (88 bytes
+  úteis) e o número ("ＮＯ．１") em +0x0C. O jogo lê o furigana do título com um `char` com sinal
+  (`func_ov016_020f24e8`): todo byte de 0x80 para cima é tratado como o primeiro de dois e copiado com o seguinte,
+  e o resto do ASCII é jogado fora. Por isso o `text.py` grava cada caractere de 1 byte (letra, espaço, acento)
+  em par com o espaçador 0xDF, que não desenha nada: o título ocupa o dobro de bytes (cerca de 44 letras). A
+  caixa não põe o pixel entre as letras, e o título vai de x = 16 até 229 px de largura.
+- **Overlays (menus e mensagens no código):** o código recompilado guarda o endereço de cada string, então a
+  tradução fica no mesmo lugar e cabe até o NUL e o alinhamento de 4 bytes da original (as palavras zeradas
+  seguintes podem ser dados). O `text.py` só pega as strings para as quais a overlay tem um ponteiro e que estão
+  fora do código (`tools/mod.py code_ranges`). As mensagens vão para as janelas do `ov016`, que passam pelo mesmo
+  leitor de furigana da galeria: são gravadas em pares (`PAIRED`). Um acento carrega a letra seguinte no par, e
+  `%s` fica inteiro para o `sprintf`. Por isso o CyberLife escreveu as mensagens dele em largura cheia. Regras:
+  as linhas e a largura (com 1 px entre letras) das mensagens originais do mesmo overlay. Os rótulos de botão
+  com vizinhos em meia largura (`PLAIN_LABELS` no `text.py`) vão como texto comum, com 12 px por letra do
+  original. Lugar: `ovNNN:0xdeslocamento` (`overlays.json`). Senhas comparadas com o que o jogador digita
+  ficam em japonês (`""`): "ゆうきがあれば" (`ov055`), "なつみぶか"/"ぜうすくろ" (`ov016`), "てんま" (`ov028`),
+  "トンコツ" (`ov131`).
 - `%s` (nome) precisa continuar na fala. Os marcadores de furigana (`%1F`…) saem na tradução.
-- `evet.pkb` e `mcht.pkb` não são comprimidos; o `eve.pkb` é LZ10 por entrada, e ao mudar uma entrada é preciso
-  recomprimir e refazer os deslocamentos do `.pkh` (alinhados em 16; o campo 0x1C do `.pkh` é o maior tamanho
-  guardado).
+- **Strings dos scripts (`eve.pkb`, `mch.pkb`):** cada uma pertence a uma instrução, e o comando diz o que ela é.
+  0x3019 mostra quem fala ("Senhor K", "Hibiki"); 0x201D é o objetivo; 0x3070 só escreve no log de depuração
+  ("■試合終了", "PK GK左ボール左×") e o `text.py` deixa essas de fora, também no levantamento.
+- `evet.pkb` e `mcht.pkb` não são comprimidos; o `eve.pkb` e o `mch.pkb` são LZ10 por entrada, e ao mudar uma
+  entrada é preciso recomprimir e refazer os deslocamentos do `.pkh` (alinhados em 16; o campo 0x1C do `.pkh` é
+  o maior tamanho guardado).
 
 ## Como continuar a tradução
 
 As traduções ficam em `translations/CyberLifePlus/<grupo>.json`, um arquivo por grupo de eventos
 (`3300.json`, `mcht.json`…), como `{"evet:33000301:4": "Alô?\\nÉ do Super Onze?"}`: o lugar da fala (arquivo,
 entrada, deslocamento do texto) e o português. Nas tabelas o lugar é `item.STR:deslocamento`, `item.dat:registro`
-`tacticscmd.STR:deslocamento` ou `command.dat:registro` (`item.json`, `tacticscmd.json`, `command.json`); `extract --redo` lista também o que o mod já
+`tacticscmd.STR:deslocamento`, `command.dat:registro` ou `movie_view_f.dat:registro` (`item.json`,
+`tacticscmd.json`, `command.json`, `movie_view_f.json`); nos overlays, `ov057:0xa4dc` (`overlays.json`, e
+`extract --only ov` lista o que falta); `extract --redo` lista também o que o mod já
 tem em outra língua (os nomes em inglês). **Nada do texto japonês vai para o repositório**: o `text.py`
 recusa traduções com japonês, só escreve listas com o texto do jogo dentro de `build/` (ignorada pelo git), e um
 teste (`tools/tests/test_text.py`) confere a pasta `translations/`. `""` marca uma linha pulada de propósito.
@@ -215,8 +303,8 @@ python3 tools/text.py survey boej.pak mods/CyberLifePlus
 O `check` recusa a fala que não cabe no espaço, que passa de 3 linhas na caixa (com a quebra automática do
 jogo), que perde um `%s` ou que usa um caractere fora da fonte. O `apply` escreve as falas sobre o que o mod já
 tem e regrava só os patches que mudaram. O `text.py` cobre o diálogo (`evet`, `mcht`) e as strings dos scripts
-(`eve`), os itens (`item.dat`, `item.STR`) e as táticas (`tacticscmd.STR`); as outras tabelas, os menus e as
-imagens ainda são editados com `tools/mod.py expand`/`patch`.
+(`eve`, `mch`), os itens (`item.dat`, `item.STR`), as táticas (`tacticscmd.STR`), as técnicas (`command.dat`) e a
+galeria de vídeos (`movie_view_f.dat`) e as strings dos overlays; as outras tabelas e as imagens ainda são editados com `tools/mod.py expand`/`patch`.
 
 ## Limites do levantamento
 

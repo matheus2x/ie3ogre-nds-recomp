@@ -31,17 +31,27 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import mod as modtool  # noqa: E402
 from ntr import bps, lz10  # noqa: E402
 from ntr.text import (COMMAND_NAME, COMMAND_SIZE, FURIGANA, ITEM_NAME, ITEM_SIZE, JAPANESE,  # noqa: E402
+                      MOVIE_SIZE, MOVIE_TITLE, MOVIE_WIDTH, PAIRED, SPACER, WIDE,
                       OBJECTIVE_PARTS, STR_READ, STR_STEP, fit_font, objective_fit, ssd_objectives, Font, TextError, codes, decode, encode, japanese_count, lines, problems, read_pack, scramble, ssd_records,
-                      ssd_refs, ssd_string, str_strings, table_bytes, unscramble, write_pack)
+                      ssd_refs, ssd_string, str_strings, table_bytes, unscramble, write_pack,
+                      DEBUG_PRINT, ssd_opcodes)
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = "data_iz/script"
 LOGIC = "data_iz/logic"
 FONT = "data_iz/font/FONT12.NFTR"
-PACKS = ("evet", "mcht", "eve")  # text lists, then the event scripts
-TABLES = ("item.dat", "tacticscmd.STR", "command.dat")  # item.dat brings item.STR (names, then descriptions)
-ID = re.compile(r"(evet|mcht|eve):(\d+):(\d+)|(item\.dat|item\.STR|tacticscmd\.STR|command\.dat):(\d+)")
+SCRIPTS = ("eve", "mch")  # event and match scripts (SSD, LZ10)
+PACKS = ("evet", "mcht") + SCRIPTS  # text lists, then the scripts
+# item.dat brings item.STR (names, then descriptions); "ov" is the strings of the overlays
+TABLES = ("item.dat", "tacticscmd.STR", "command.dat", "movie_view_f.dat", "ov")
+ID = re.compile(r"(evet|mcht|eve|mch):(\d+):(\d+)"
+                r"|(item\.dat|item\.STR|tacticscmd\.STR|command\.dat|movie_view_f\.dat):(\d+)"
+                r"|(ov\d{3}):(0x[0-9a-f]+)")
 COMMAND_WIDTH = 124  # px of the widest technique name of the fan translation ("Honoo no Kazamidori")
+# Overlay strings written as plain text: button labels whose neighbours the fan translation wrote
+# so ("Defend", "Look for other"); the messages go through the furigana parser and are PAIRED.
+PLAIN_LABELS = {"ov050:0x46c4", "ov050:0x46cc", "ov050:0x46d4", "ov050:0x46dc", "ov050:0x46e8",
+                "ov057:0xa4dc"}
 
 
 class Game:
@@ -51,6 +61,7 @@ class Game:
         self.rom = modtool.load_image(image)
         self.mod = mod
         self._packs: dict[tuple[str, bool], dict[int, bytes]] = {}
+        self.overlays = {ov.id: ov for ov in self.rom.overlays9() if ov.id not in modtool.PROTECTED_OVERLAYS}
 
     def retail(self, rel: str) -> bytes:
         data = modtool.original(self.rom, "files/" + rel)
@@ -75,6 +86,15 @@ class Game:
                                          for k, d in entries}
         return self._packs[name, modded]
 
+    def overlay(self, oid: int, modded: bool) -> bytes:
+        """An overlay as it is in RAM (decompressed)."""
+        data = self.rom.overlay_decompressed(self.overlays[oid])
+        patch = self.mod / "overlays" / f"ov{oid:03d}.bin{modtool.PATCH}"
+        whole = patch.with_name(f"ov{oid:03d}.bin")
+        if modded and whole.exists():
+            return whole.read_bytes()
+        return bps.apply(patch.read_bytes(), data) if modded and patch.exists() else data
+
     def font(self) -> Font:
         return Font(fit_font(self.modded(FONT)))
 
@@ -88,7 +108,7 @@ class Slot:
         self.id, self.capacity, self.source, self.current, self.context = sid, capacity, source, current, context
         self.table, self.objective = table, objective
         name, *key, offset = sid.split(":")
-        self.file, self.key, self.offset = name, int(key[0]) if key else 0, int(offset)
+        self.file, self.key, self.offset = name, int(key[0]) if key else 0, int(offset, 0)
         self.group = name.split(".")[0] if table else name if name != "evet" else key[0][:4]
 
 
@@ -103,8 +123,8 @@ def slots(game: Game, names=PACKS + TABLES):
         if name in TABLES:
             yield from table_slots(game, name)
             continue
-        if name == "eve":
-            yield from eve_slots(game)
+        if name in SCRIPTS:
+            yield from script_slots(game, name)
             continue
         retail, modded = game.pack(name, False), game.pack(name, True)
         scripts = game.pack("eve", True) if name == "evet" else {}
@@ -126,17 +146,18 @@ def slots(game: Game, names=PACKS + TABLES):
                     context = context + [decode(text)]
 
 
-def eve_slots(game: Game):
-    retail, modded = game.pack("eve", False), game.pack("eve", True)
+def script_slots(game: Game, name: str):
+    """Strings of the scripts' data, but the "@offset,length" pointers and the debug prints."""
+    retail, modded = game.pack(name, False), game.pack(name, True)
     for key, cur in modded.items():
         base = retail[key]
-        objectives = ssd_objectives(cur)
+        objectives, ops = ssd_objectives(cur), ssd_opcodes(cur)
         for at, size in ssd_records(cur):
             text = ssd_string(cur, at, size)
-            if not text or text.startswith(b"@") or text[:1] < b" ":
+            if not text or text.startswith(b"@") or text[:1] < b" " or ops.get(cur[at:at + 2]) == DEBUG_PRINT:
                 continue
             source = ssd_string(base, at, size) if len(base) == len(cur) else text
-            yield Slot(f"eve:{key}:{at + 4}", size - 5, FURIGANA.sub(b"", source), text, [],
+            yield Slot(f"{name}:{key}:{at + 4}", size - 5, FURIGANA.sub(b"", source), text, [],
                        objective=at in objectives)
 
 
@@ -144,8 +165,8 @@ RUBY = re.compile(r"\[([^/\]]*)/[^\]]*\]")
 
 
 def visible(raw: bytes) -> str:
-    """A table string as the game shows it: no furigana, \\n for the newline."""
-    return RUBY.sub(r"\1", decode(raw)).replace("\n", "\\n")
+    """A table string as the game shows it: no furigana or SPACER, \\n for the newline."""
+    return RUBY.sub(r"\1", decode(raw)).replace("\n", "\\n").replace(SPACER, "")
 
 
 def table_rules(font: Font, sources: list[bytes]) -> tuple[int, int]:
@@ -184,7 +205,19 @@ def table_slots(game: Game, name: str):
             if source:
                 yield Slot(f"command.dat:{k}", STR_READ - 1, source,
                            text_at(sc, struct.unpack_from("<H", dc, at)[0] * STR_STEP), [],
-                           (1, COMMAND_WIDTH, True))
+                           (1, COMMAND_WIDTH, WIDE))
+        return
+    if name == "ov":
+        yield from overlay_slots(game, font)
+        return
+    if name == "movie_view_f.dat":
+        dr, dc = game.retail(f"{LOGIC}/{name}"), game.modded(f"{LOGIC}/{name}")
+        recs = range(len(dr) // MOVIE_SIZE)
+        at = lambda k: k * MOVIE_SIZE + MOVIE_TITLE  # noqa: E731
+        rules = (table_rules(font, [text_at(dr, at(k)) for k in recs])[0], MOVIE_WIDTH, PAIRED)
+        for k in recs:
+            yield Slot(f"{name}:{k}", MOVIE_SIZE - MOVIE_TITLE - 1, text_at(dr, at(k)), text_at(dc, at(k)),
+                       [decode(text_at(dr, k * MOVIE_SIZE + 0x0C))], rules)
         return
     retail, cur = game.retail(f"{LOGIC}/{name}"), game.modded(f"{LOGIC}/{name}")
     strs = str_strings(retail)
@@ -194,6 +227,43 @@ def table_slots(game: Game, name: str):
         text = text_at(cur, at)
         yield Slot(f"{name}:{at}", room - 1, text_at(retail, at), text, context[-2:], rules)
         context = context + [visible(text)]
+
+
+def overlay_strings(game: Game, oid: int):
+    """(offset, room) of the strings of an overlay's data that its code points at (a 32-bit word
+    with the address): the code was recompiled with those addresses, so a translation stays in
+    place. The room is the string's own, up to its NUL and the padding to 4 bytes (the zero
+    words after that could be data)."""
+    ov, data = game.overlays[oid], game.overlay(oid, False)
+    code = [(a - ov.ram_address, b - ov.ram_address) for a, b in modtool.code_ranges(ov)]
+    in_code = lambda at: any(a <= at < b for a, b in code)  # noqa: E731
+    targets = sorted({w - ov.ram_address for w in struct.unpack_from(f"<{len(data) // 4}I", data)
+                      if 0 <= w - ov.ram_address < len(data)})
+    out = []
+    for k, at in enumerate(targets):
+        source = text_at(data, at)
+        if in_code(at) or not jp_text(source):
+            continue
+        limit = targets[k + 1] if k + 1 < len(targets) else len(data)
+        out.append((at, min((at + len(source) + 4) & ~3, limit) - at))
+    return out
+
+
+def overlay_slots(game: Game, font: Font):
+    """Strings of the overlays (menus and messages). A message goes through the furigana parser
+    of the message boxes and is written PAIRED, with the rows and width of the overlay's own
+    messages; a plain label (PLAIN_LABELS) fits the width of its original letters."""
+    for oid in sorted(game.overlays):
+        retail, cur = game.overlay(oid, False), game.overlay(oid, True)
+        places = overlay_strings(game, oid)
+        sids = {at: f"ov{oid:03d}:{at:#x}" for at, _ in places}
+        messages = [text_at(retail, at) for at, _ in places if sids[at] not in PLAIN_LABELS]
+        rules = (table_rules(font, messages) if messages else (1, 0)) + (PAIRED, 1)
+        for at, room in places:
+            source = text_at(retail, at)
+            # a label's button was made for Japanese letters of 12 pixels
+            table = (1, 12 * len(visible(source))) if sids[at] in PLAIN_LABELS else rules
+            yield Slot(sids[at], room - 1, source, text_at(cur, at), [], table)
 
 
 def under_build(path: Path):
@@ -208,8 +278,8 @@ def load_translations(folder: Path) -> dict[str, str]:
     for f in sorted(folder.glob("*.json")):
         for sid, text in json.loads(f.read_text(encoding="utf-8")).items():
             if not ID.fullmatch(sid):
-                sys.exit(f"error: {f.name}: {sid!r} is not a place (evet|mcht|eve:entry:offset, "
-                         "item.STR:offset, item.dat:record…)")
+                sys.exit(f"error: {f.name}: {sid!r} is not a place (evet|mcht|eve|mch:entry:offset, "
+                         "item.STR:offset, item.dat:record, movie_view_f.dat:record…)")
             if JAPANESE.search(text):
                 sys.exit(f"error: {f.name}: {sid} has Japanese; translations carry only Portuguese")
             if sid in out and out[sid] != text:
@@ -289,6 +359,8 @@ AREAS = [  # (group or file, name)
     ("36", "NPCs das cidades (evet 36xx)"),
     ("3700", "Falas dos jogadores nas partidas (evet 3700)"),
     ("mcht", "Recrutar/convidar e eventos das partidas (mcht.pkb)"),
+    ("mch", "Outros scripts (ações da partida, ajuda…)"),
+    ("ov", "Menus no código (overlays)"),
     ("eve", "Strings dos scripts de evento (eve.pkb)"),
 ]
 FILES = [
@@ -296,8 +368,8 @@ FILES = [
     ("data_iz/logic/item.STR", "Descrições de itens (item.STR)"),
     ("data_iz/logic/unitbase", "Nomes de jogadores (unitbase*.dat, sem as leituras em kana)"),
     ("data_iz/logic/tacticscmd", "Táticas (tacticscmd.STR)"),
-    ("data_iz/logic/fieldinf", "Locais e cenas da galeria (fieldinf/movie_view_f)"),
-    ("data_iz/logic/movie_view_f", "Locais e cenas da galeria (fieldinf/movie_view_f)"),
+    ("data_iz/logic/fieldinf", "Nomes de locais (fieldinf)"),
+    ("data_iz/logic/movie_view_f", "Títulos da galeria de vídeos (movie_view_f)"),
     ("data_iz/logic/usearch", None),  # "未定" placeholders
     ("data_iz/logic/", "Outras tabelas (golpes, torneios, condições…)"),
     ("data_iz/script/blog", "Blog (blogpost/blogres)"),
@@ -341,7 +413,9 @@ def cmd_survey(args) -> int:
             continue
         for side, get in ((0, game.retail), (1, game.modded)):
             for blob in blobs(get, path):
-                for raw in (ssd_string(blob, at, size) for at, size in ssd_records(blob)) \
+                ops = ssd_opcodes(blob)
+                for raw in (ssd_string(blob, at, size) for at, size in ssd_records(blob)
+                            if ops.get(blob[at:at + 2]) != DEBUG_PRINT) \
                         if blob[:4] == b"SSD\0" else strings(blob):
                     if (got := jp_text(raw)) and not (area.startswith("Nomes") and KANA_ONLY.match(got[0])):
                         found[area][side][got[0]] += 1
@@ -393,7 +467,7 @@ def cmd_extract(args) -> int:
             pairs.append([s.id, show(s.source), show(s.current)])
         # --redo also lists what the mod has in another language (the tables came from an English patch)
         redo = args.redo and s.current != s.source and japanese_count(s.source)
-        if not (jp or redo) or s.id in done or (only and s.group not in only and s.file not in only):
+        if not (jp or redo) or s.id in done or (only and not {s.group, s.file, s.group[:2]} & only):
             continue
         items.append({"id": s.id, "group": s.group, "capacity": s.capacity, "jp": show(s.source),
                       "now": "" if jp else show(s.current), "context": s.context})
@@ -448,7 +522,8 @@ def cmd_lookup(args) -> int:
 
 def checked(game: Game, folder: Path) -> tuple[dict[str, Slot], dict[str, str], int]:
     tr = load_translations(folder)
-    wanted = {"item.dat" if sid.startswith("item.") else sid.split(":")[0] for sid in tr}
+    wanted = {"item.dat" if sid.startswith("item.") else "ov" if sid.startswith("ov")
+              else sid.split(":")[0] for sid in tr}
     by_id = {s.id: s for s in slots(game, [n for n in PACKS + TABLES if n in wanted])}
     font = game.font()
     bad = 0
@@ -509,6 +584,20 @@ def write_file(mod: Path, game: Game, rel: str, data: bytes) -> bool:
     return True
 
 
+def write_overlay(mod: Path, game: Game, oid: int, data: bytes) -> bool:
+    """An overlay of the mod as a patch, like write_file."""
+    dst = mod / "overlays" / f"ov{oid:03d}.bin"
+    patch = dst.with_name(dst.name + modtool.PATCH)
+    if data == game.overlay(oid, True) and not dst.exists():
+        return False
+    dst.unlink(missing_ok=True)
+    if data == game.overlay(oid, False):
+        patch.unlink(missing_ok=True)
+    else:
+        modtool.write(dst, game.overlay(oid, False), data, True)
+    return True
+
+
 def cmd_apply(args) -> int:
     game = Game(args.image, args.dir)
     by_id, tr, bad = checked(game, args.translations)
@@ -518,17 +607,27 @@ def cmd_apply(args) -> int:
     font = game.font()
     changed: dict[str, dict[int, bytearray]] = collections.defaultdict(dict)
     tables: dict[str, bytearray] = {}
+    overlays: dict[int, bytearray] = {}
     for sid, text in tr.items():
         if not text:
             continue
         s = by_id[sid]
         room = s.capacity + 1
+        if s.file.startswith("ov"):
+            oid = int(s.file[2:])
+            d = overlays.setdefault(oid, bytearray(game.overlay(oid, True)))
+            data = table_bytes(text, s.table[2] if len(s.table) > 2 else None) + b"\0"
+            d[s.offset:s.offset + room] = data + bytes(room - len(data))
+            continue
         if s.table:
             rel = f"{LOGIC}/{s.file}"
             d = tables.setdefault(rel, bytearray(game.modded(rel)))
-            data = table_bytes(text, len(s.table) > 2) + b"\0"
+            data = table_bytes(text, s.table[2] if len(s.table) > 2 else None) + b"\0"
             if s.file == "command.dat":
                 put_command_name(tables, game, s.offset, data)
+            elif s.file == "movie_view_f.dat":
+                at = s.offset * MOVIE_SIZE + MOVIE_TITLE
+                d[at:at + room] = data + bytes(room - len(data))
             elif s.file == "item.dat":
                 at = s.offset * ITEM_SIZE
                 rec = bytearray(unscramble(d[at:at + ITEM_SIZE]))
@@ -540,11 +639,14 @@ def cmd_apply(args) -> int:
         d = changed[s.file].setdefault(s.key, bytearray(game.pack(s.file, True)[s.key]))
         data = encode(placed(s, text, font)) + b"\0"
         d[s.offset:s.offset + room] = data + bytes(room - len(data))
-    if any(by_id[sid].objective for sid, text in tr.items() if text):
-        tables[FONT] = bytearray(fit_font(game.modded(FONT)))  # the 1-pixel SPACER
+    if any(by_id[sid].objective or (by_id[sid].table or ())[2:] == (PAIRED,) for sid, text in tr.items() if text):
+        tables[FONT] = bytearray(fit_font(game.modded(FONT)))  # the SPACER without ink
     for rel, data in tables.items():
         if write_file(args.dir, game, rel, bytes(data)):
             print(f"{rel}: changed")
+    for oid, data in overlays.items():
+        if write_overlay(args.dir, game, oid, bytes(data)):
+            print(f"overlay {oid}: changed")
     for name, entries in changed.items():
         pkh = game.modded(f"{SCRIPT}/{name}.pkh")
         stored = read_pack(pkh, game.modded(f"{SCRIPT}/{name}.pkb"))
@@ -552,7 +654,7 @@ def cmd_apply(args) -> int:
         updated = 0
         for key, data in stored:
             if key in entries and bytes(entries[key]) != game.pack(name, True)[key]:
-                data = lz10.compress(bytes(entries[key])) if name == "eve" else bytes(entries[key])
+                data = lz10.compress(bytes(entries[key])) if data[:1] == b"\x10" else bytes(entries[key])
                 updated += 1
             new.append((key, data))
         if not updated:
@@ -579,7 +681,7 @@ def main() -> int:
     p.add_argument("image", type=Path)
     p.add_argument("dir", type=Path)
     p.add_argument("out", type=Path, help="a folder under build/")
-    p.add_argument("--only", help="groups, e.g. 3300,3611,mcht,eve")
+    p.add_argument("--only", help="groups, e.g. 3300,3611,mcht,eve, ov057 or ov (all the overlays)")
     p.add_argument("--translations", type=Path, help="leave out the lines this translation already has")
     p.add_argument("--redo", action="store_true", help="also the lines the mod has in another language")
     p.set_defaults(fn=cmd_extract)
