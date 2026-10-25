@@ -31,6 +31,11 @@ dá exatamente os arquivos do dump traduzido.
 
 ## Versões
 
+- **1.6:** os textos das imagens da galeria em português: o botão "Extras" (antes "Gallery") no menu de
+  continuar, a lista (Vídeos, Gerar senha, Ligação com celular, Ligação com o filme, Coleção, Surpresa), a
+  tela dos vídeos ("Escolha o vídeo que quer ver.", Ver, Sair), a tela de gerar senha e a da ligação com o
+  filme (botões, perguntas e Sim/Não). Também o aviso sobre saves alterados que aparece ao carregar o jogo
+  ("Alterar os dados salvos com ferramentas de modificação..."), que estava em inglês.
 - **1.5:** o que ainda estava em japonês nas tabelas do jogo: os objetivos das minipartidas ("Roube a bola
   do adversário!", agora todos em português, antes metade em inglês), as descrições das quatro técnicas que
   mudam o elemento do jogador (Kaze/Hayashi/Hi/Yama no Gotoshi), os prêmios do mapa dos jogos-treino, os
@@ -77,7 +82,10 @@ python3 tools/text.py survey boej.pak mods/CyberLifePlus     # quanto já está 
 
 O `text.py` também cobre os itens (`item.dat`, `item.STR`), as táticas (`tacticscmd.STR`), os nomes das
 técnicas (`command.dat`/`command.STR`), os títulos da galeria de vídeos (`movie_view_f.dat`) e os textos dos
-overlays (menus no código). Para o resto (outras tabelas, imagens, fontes), use `tools/mod.py expand`, edite
+overlays (menus no código). O texto desenhado nas imagens fica em `translations/CyberLifePlus/images.json`
+(o que apagar e o que escrever, com a fonte do jogo) e vai para o mod com o `tools/image.py` (`export` mostra as
+imagens em PNG, só em `build/`; `check` e `apply` como os do `text.py`). Para o resto (outras tabelas, fontes),
+use `tools/mod.py expand`, edite
 os arquivos inteiros e volte com `tools/mod.py patch`. Um arquivo inteiro vale mais que o patch do mesmo caminho e o substitui; um arquivo
 igual ao original é apagado. Suba o `version` no `mod.ini` a cada versão nova. As regras do texto (espaço,
 acentos, quebra de linha, nomes) estão em `docs/TRADUCAO.md`.

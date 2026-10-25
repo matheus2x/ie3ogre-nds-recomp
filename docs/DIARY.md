@@ -2012,3 +2012,53 @@ passando (novos: descrição que muda para o fim uma vez só, `sp_binder` refeit
 objetivo da batalha e descrição de técnica (acima). Não vistos: descrições de itens e táticas (a bolsa da sessão
 está vazia, mas é a mesma janela e o mesmo leitor), o fichário (`ov112`) e as condições das rotas (`ov104`).
 O teste deixou o savestate da pasta `build/cmake-rel/game/savestates/` (slot 1) no quadro 44000 da sessão `bug4`.
+
+## 2026-10-25 — CyberLifePlus 1.6: imagens da galeria e o aviso de saves (`tools/image.py`)
+
+- Pedido: seguir com a próxima etapa da tradução. Pelo checklist, o menu da galeria em inglês ("ver primeiro
+  se é imagem ou texto") e o aviso de saves alterados.
+- **É imagem.** Nenhuma das strings ("Gallery", "Game Video", "Choose the video…") existe como texto em
+  overlays, tabelas ou scripts, nem em largura cheia ou em pares. Rodando o jogo sem janela com o save do teste
+  (Continuar → botão de baixo), o log mostrou o `ov028` (que carrega `pic3d/option`) e depois o `ov037`
+  (`menu_MovieView`) e o `ov025` (`password` + `pic2d/menu/pwup_bg00.pac_`). O botão "Gallery" é o
+  `SFDN_B02/B03` do `pic2d/menu/MMSlot.SPF_` (no original "オプション"); o aviso, `pic2d/title/atdn_03/04.pac_`.
+- **Formatos** (`tools/ntr/image.py`, documentados no cabeçalho):
+  - SFP: "SFP\0", tamanho em 0x10, entradas (nome, tamanho, deslocamento / 0x20) a partir de 0x20; os dados
+    num segundo bloco SFP com as entradas a partir de 0x400. pic3d separa índice (`.SPL`) e dados (`.SPD`);
+    pic2d junta os dois num `.SPF_` comprimido (os dados logo depois do índice, cujo tamanho é o 0x10), menos o
+    `MASTutorial.SPF_`, sem compressão.
+  - PAC: contagem, (deslocamento, tamanho) de cada seção, e o fim − 0x20; seções alinhadas em 0x20. 3D (`.PAC_`,
+    LZ10): textura linear de 4 bpp, paleta, e parâmetros (contagem de quadros, log2 da largura e da altura − 3,
+    e (x, y, w, h) de cada quadro). 2D: paleta, mapa de células 8×8 (tile, espelhos, banco de paleta) e tiles de
+    4 bpp (8 bpp com paleta de 256). O mapa não guarda a largura: `guess_width` escolhe a que tem menos
+    trocas de cor nas emendas (acertou em todos os menus vistos).
+  - Ida e volta (ler → gravar → ler) igual em 1.700 imagens do mod. Ficam de fora as texturas de 1, 2 e 8 bpp
+    (~210, quase todas dos mapas `gmapNN`) e os pacotes de imagens com nome em hash (`pic3d/common.pkb`: 16 bytes
+    por entrada, hash, deslocamento, tamanho e o cabeçalho LZ10).
+- **`tools/image.py`:** `export` (PNG indexado de cada imagem, só em `build/`), `check` (com `--png` para a
+  prévia) e `apply`. As edições ficam em `translations/CyberLifePlus/images.json` (arquivo → entrada → lista)
+  e partem da imagem retail; o arquivo do mod só troca as entradas editadas e é refeito em ordem (o tamanho dos
+  `.SPD`/`.SPF_` muda). `erase` apaga o texto (cores de tinta trocadas pelo pixel não-tinta mais perto na linha,
+  linhas com a cor de uma coluna limpa, ou `under`: o pixel de outra imagem com o mesmo fundo — as duas telas do
+  aviso têm o mesmo fundo com os textos em lugares diferentes, e uma limpa a outra sem estragar a bola e a
+  silhueta). `text` desenha com os glifos da `FONT12` do mod (CGLP de 1 bpp, 11×12), com sombra à direita e
+  abaixo ou contorno, nas cores dos rótulos originais; `frames` repete nos quadros (normal, selecionado,
+  apagado). O `text.py` pula o `images.json`.
+- **Traduzido do japonês** (o CyberLife tinha trocado sentidos): オプション → "Extras"; アニメーション → "Vídeos";
+  ケータイ連動 → "Ligação com celular"; パスワード発行 → "Gerar senha" (era "Web Identifiant"); 劇場版イナズマイレブン連動
+  → "Ligação com o filme" (era "Wifi secret code"); コレクション → "Coleção"; おたのしみ → "Surpresa"; みる/もどる →
+  "Ver"/"Sair" (nos botões B de 48 px "Voltar" não cabe com sombra; nos de 96 px ficou "Voltar"); けってい →
+  "Confirmar"; キャラクター A/B → "Personagem A/B"; ひでんしょ → "Caderno de técnica"; はい/いいえ → Sim/Não; o painel
+  da senha, "Esta é a sua senha.", "Escolha o que você quer.", "Responda à pergunta da tela de cima!" e os
+  dois avisos de dados alterados. 25 imagens em 8 arquivos. Mod na 1.6.
+- **Achado:** muito mais texto em imagem do que o checklist dizia, quase tudo em inglês do CyberLife: mensagens
+  de erro do menu de slots, a coleção, os menus de comunicação, os letreiros da partida (Half Time, Full Time…).
+  Ficaram listados no checklist do `TRADUCAO.md`.
+
+**Verificação:** no jogo (Linux, `build/cmake-rel`, sem janela, save do teste do Windows, mod `clp-dev`):
+botão "Extras", a lista, a tela dos vídeos ("Escolha o vídeo que quer ver.", Ver, Sair), o aviso ao carregar e
+a tela de gerar senha (painel, "Avançar", "Gerar a senha?" com Sim/Não, "Esta é a sua senha." e OK) aparecem
+em português, sem resto do texto antigo. Não vistos: a ligação com o filme e a com celular ("???" nesse save).
+Nos arquivos, só as entradas editadas mudaram (comparado com o mod do HEAD), e um segundo `apply` não muda nada.
+Testes Python: 49, todos passando (novos: PAC 3D/2D ida e volta, tiles espelhados reaproveitados, largura do
+mapa, SFP refeito, quadros e `erase`). `text.py check`, `image.py check` e `mod.py check`: ok.

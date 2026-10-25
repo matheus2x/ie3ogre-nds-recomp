@@ -1,0 +1,165 @@
+{
+"pic3d/option": {
+  "OPDN_B00.PAC_": [
+    {"frames": [0], "erase": [18, 4, 27, 14], "ink": [15, 3]},
+    {"frames": [0], "text": "Sair", "box": [18, 4, 27, 14], "colour": 15, "shadow": 3},
+    {"frames": [1], "erase": [18, 4, 26, 14], "from": 44},
+    {"frames": [1], "text": "Sair", "box": [18, 4, 27, 14], "colour": 15, "shadow": 13}
+  ],
+  "OPDN_B01.PAC_": [
+    {"frames": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], "erase": [19, 2, 140, 20], "from": 162},
+    {"frames": [0, 1], "text": "Vídeos", "box": [19, 5, 138, 14], "colour": 15, "shadow": 7},
+    {"frames": [2], "text": "Vídeos", "box": [19, 5, 138, 14], "colour": 15, "shadow": 11},
+    {"frames": [3, 4], "text": "Ligação com celular", "box": [19, 5, 138, 14], "colour": 15, "shadow": 7},
+    {"frames": [5], "text": "Ligação com celular", "box": [19, 5, 138, 14], "colour": 15, "shadow": 11},
+    {"frames": [6, 7], "text": "Gerar senha", "box": [19, 5, 138, 14], "colour": 15, "shadow": 7},
+    {"frames": [8], "text": "Gerar senha", "box": [19, 5, 138, 14], "colour": 15, "shadow": 11},
+    {"frames": [9, 10], "text": "Ligação com o filme", "box": [19, 5, 138, 14], "colour": 15, "shadow": 7},
+    {"frames": [11], "text": "Ligação com o filme", "box": [19, 5, 138, 14], "colour": 15, "shadow": 11}
+  ],
+  "OPDN_B02.PAC_": [
+    {"frames": [0, 1, 2, 3, 4, 5], "erase": [19, 2, 140, 20], "from": 162},
+    {"frames": [0, 1], "text": "Coleção", "box": [19, 5, 138, 14], "colour": 15, "shadow": 7},
+    {"frames": [2], "text": "Coleção", "box": [19, 5, 138, 14], "colour": 15, "shadow": 11},
+    {"frames": [3, 4], "text": "Surpresa", "box": [19, 5, 138, 14], "colour": 15, "shadow": 7},
+    {"frames": [5], "text": "Surpresa", "box": [19, 5, 138, 14], "colour": 15, "shadow": 11}
+  ]
+},
+"pic3d/movielink": {
+  "ELDN_B01.PAC_": [
+    {"frames": [0, 1, 2, 3], "erase": [18, 7, 56, 14], "from": 70},
+    {"frames": [0], "text": "Confirmar", "box": [18, 6, 56, 14], "colour": 15, "shadow": 3},
+    {"frames": [1], "text": "Confirmar", "box": [18, 6, 56, 14], "colour": 15, "shadow": 13},
+    {"frames": [2], "text": "Voltar", "box": [18, 6, 56, 14], "colour": 15, "shadow": 3},
+    {"frames": [3], "text": "Voltar", "box": [18, 6, 56, 14], "colour": 15, "shadow": 13},
+    {"frames": [4], "erase": [18, 4, 27, 14], "ink": [15, 3]},
+    {"frames": [4], "text": "Sair", "box": [18, 4, 27, 14], "colour": 15, "shadow": 3},
+    {"frames": [5], "erase": [18, 4, 26, 14], "from": 44},
+    {"frames": [5], "text": "Sair", "box": [18, 4, 27, 14], "colour": 15, "shadow": 13}
+  ],
+  "ELDN_B02.PAC_": [
+    {"frames": [0, 1, 2, 3, 4, 5, 6, 7, 8], "erase": [6, 9, 140, 14], "from": 150},
+    {"frames": [0, 1], "text": "Personagem A", "box": [6, 10, 148, 12], "colour": 15, "shadow": 10},
+    {"frames": [2], "text": "Personagem A", "box": [6, 10, 148, 12], "colour": 15, "shadow": 12},
+    {"frames": [3, 4], "text": "Personagem B", "box": [6, 10, 148, 12], "colour": 15, "shadow": 10},
+    {"frames": [5], "text": "Personagem B", "box": [6, 10, 148, 12], "colour": 15, "shadow": 12},
+    {"frames": [6, 7], "text": "Caderno de técnica", "box": [6, 10, 148, 12], "colour": 15, "shadow": 10},
+    {"frames": [8], "text": "Caderno de técnica", "box": [6, 10, 148, 12], "colour": 15, "shadow": 12}
+  ],
+  "ELDN_B04.PAC_": [
+    {"frames": [0, 2, 4], "erase": [3, 6, 41, 13], "from": 44},
+    {"frames": [1, 3], "erase": [3, 5, 40, 14], "from": 43},
+    {"frames": [0], "text": "OK", "box": [3, 6, 42, 12], "colour": 15, "outline": 13},
+    {"frames": [1], "text": "Sim", "box": [3, 6, 42, 12], "colour": 15, "outline": 7},
+    {"frames": [2], "text": "Sim", "box": [3, 6, 42, 12], "colour": 15, "outline": 13},
+    {"frames": [3], "text": "Não", "box": [3, 6, 42, 12], "colour": 15, "outline": 7},
+    {"frames": [4], "text": "Não", "box": [3, 6, 42, 12], "colour": 15, "outline": 13}
+  ],
+  "ELDN_W00.PAC_": [
+    {"frames": [1], "erase": [3, 4, 40, 15], "from": 43},
+    {"frames": [1], "text": "OK", "box": [3, 6, 42, 12], "colour": 15, "outline": 4}
+  ],
+  "ELDN_W01.PAC_": [
+    {"frames": [1], "erase": [3, 4, 40, 15], "from": 43},
+    {"frames": [1], "text": "OK", "box": [3, 6, 42, 12], "colour": 15, "outline": 4}
+  ],
+  "ELDN_W02.PAC_": [
+    {"frames": [1, 2], "erase": [3, 4, 40, 15], "from": 43},
+    {"frames": [1], "text": "Sim", "box": [3, 6, 42, 12], "colour": 15, "outline": 4},
+    {"frames": [2], "text": "Não", "box": [3, 6, 42, 12], "colour": 15, "outline": 4}
+  ],
+  "ELDN_W03.PAC_": [
+    {"frames": [1, 2], "erase": [3, 4, 40, 15], "from": 43},
+    {"frames": [1], "text": "Sim", "box": [3, 6, 42, 12], "colour": 15, "outline": 4},
+    {"frames": [2], "text": "Não", "box": [3, 6, 42, 12], "colour": 15, "outline": 4}
+  ],
+  "ELDN_W04.PAC_": [
+    {"frames": [0], "erase": [40, 0, 200, 16], "from": 250},
+    {"frames": [0], "text": "Escolha o que você quer.", "box": [50, 1, 190, 14], "align": "left", "colour": 15},
+    {"frames": [1], "erase": [40, 0, 200, 24], "from": 250},
+    {"frames": [1], "text": "Responda à pergunta da tela de cima!", "box": [46, 6, 200, 14], "align": "left", "colour": 15}
+  ]
+},
+"pic3d/menu_MovieView": {
+  "MVDN_B01.PAC_": [
+    {"frames": [0], "erase": [18, 4, 30, 15], "ink": [15, 1]},
+    {"frames": [0], "text": "Ver", "box": [19, 4, 24, 14], "colour": 15, "shadow": 1},
+    {"frames": [1], "erase": [18, 4, 30, 15], "from": 50},
+    {"frames": [1], "text": "Ver", "box": [19, 4, 24, 14], "colour": 15, "shadow": 13},
+    {"frames": [2], "erase": [18, 4, 26, 15], "ink": [15, 1]},
+    {"frames": [2], "text": "Sair", "box": [18, 4, 27, 14], "colour": 15, "shadow": 1},
+    {"frames": [3], "erase": [18, 4, 26, 15], "from": 44},
+    {"frames": [3], "text": "Sair", "box": [18, 4, 27, 14], "colour": 15, "shadow": 13}
+  ],
+  "MVDN_BG1.PAC_": [
+    {"erase": [36, 3, 215, 13], "from": 252},
+    {"text": "Escolha o vídeo que quer ver.", "box": [37, 3, 210, 12], "align": "left", "colour": 15}
+  ]
+},
+"pic2d/menu/MMSlot.SPF_": {
+  "SFDN_B02.PAC": [
+    {"erase": [70, 9, 150, 15], "from": 200},
+    {"text": "Extras", "box": [40, 10, 144, 12], "colour": 15, "shadow": 3}
+  ],
+  "SFDN_B03.PAC": [
+    {"erase": [70, 9, 150, 15], "from": 200},
+    {"text": "Extras", "box": [40, 10, 144, 12], "colour": 15, "shadow": 3}
+  ]
+},
+"pic2d/title/atdn_03.pac_": {
+  "atdn_03.pac_": [
+    {"erase": [6, 8, 244, 177], "ink": [15, 2, 14], "under": "pic2d/title/atdn_04.pac_:atdn_04.pac_"},
+    {"text": "Alterar os dados salvos com\nferramentas de modificação pode\nimpedir que o jogo funcione direito.\n\nSe forem detectados dados irregulares,\num programa vai prejudicar você\nnas partidas contra outros jogadores.\nRecomendamos muito não usar\nprogramas que alteram os dados.", "box": [16, 18, 224, 160], "line": 16, "colour": 15, "shadow": 2}
+  ]
+},
+"pic2d/title/atdn_04.pac_": {
+  "atdn_04.pac_": [
+    {"erase": [6, 8, 244, 177], "ink": [15, 2, 14], "under": "pic2d/title/atdn_03.pac_:atdn_03.pac_"},
+    {"text": "Partidas com dados alterados\npor ferramentas de modificação\nsão proibidas.\n\nSe forem encontrados dados irregulares,\nvocê não poderá participar\ndos torneios oficiais do jogo.\nFique atento.", "box": [16, 18, 224, 160], "line": 16, "colour": 15, "shadow": 2}
+  ]
+},
+"pic3d/password": {
+  "PWDN_B01.PAC_": [
+    {"frames": [0, 1], "erase": [19, 5, 55, 13], "from": 74},
+    {"frames": [0], "text": "Avançar", "box": [19, 5, 56, 12], "colour": 14, "outline": 6},
+    {"frames": [1], "text": "Avançar", "box": [19, 5, 56, 12], "colour": 15, "outline": 13}
+  ],
+  "PWDN_B02.PAC_": [
+    {"frames": [0, 1], "erase": [5, 6, 38, 12], "from": 43},
+    {"frames": [0], "text": "Sim", "box": [3, 5, 42, 12], "colour": 15, "outline": 4},
+    {"frames": [1], "text": "Não", "box": [3, 5, 42, 12], "colour": 15, "outline": 4}
+  ],
+  "PWDN_B03.PAC_": [
+    {"frames": [0, 1], "erase": [5, 6, 38, 12], "from": 43},
+    {"frames": [0], "text": "Sim", "box": [3, 5, 42, 12], "colour": 15, "outline": 4},
+    {"frames": [1], "text": "Não", "box": [3, 5, 42, 12], "colour": 15, "outline": 4},
+    {"frames": [2], "erase": [5, 6, 37, 12], "from": 42},
+    {"frames": [2], "text": "OK", "box": [3, 6, 42, 12], "colour": 15, "outline": 13}
+  ],
+  "PWDN_BG00.PAC_": [
+    {"erase": [12, 62, 234, 80], "ink": [3, 8]},
+    {"text": "A senha é gerada com os 4 jogadores\ndo grupo e os níveis deles.\nComo usar a senha... é segredo!", "box": [12, 75, 234, 78], "line": 26, "colour": 3, "shadow": 8}
+  ],
+  "PWDN_W00.PAC_": [
+    {"frames": [1, 2], "erase": [3, 4, 40, 15], "from": 43},
+    {"frames": [1], "text": "Sim", "box": [3, 6, 42, 12], "colour": 15, "outline": 4},
+    {"frames": [2], "text": "Não", "box": [3, 6, 42, 12], "colour": 15, "outline": 4}
+  ],
+  "PWDN_W01.PAC_": [
+    {"erase": [8, 9, 208, 15], "ink": [8]},
+    {"text": "Esta é a sua senha.", "box": [6, 10, 212, 12], "colour": 8},
+    {"frames": [1], "erase": [3, 4, 40, 15], "from": 43},
+    {"frames": [1], "text": "OK", "box": [3, 6, 42, 12], "colour": 15, "outline": 4}
+  ],
+  "PWDN_W02.PAC_": [
+    {"frames": [1], "erase": [3, 4, 40, 15], "from": 43},
+    {"frames": [1], "text": "OK", "box": [3, 6, 42, 12], "colour": 15, "outline": 4}
+  ]
+},
+"pic2d/menu/pwup_bg00.pac_": {
+  "pwup_bg00.pac_": [
+    {"erase": [70, 69, 120, 21], "ink": [6]},
+    {"text": "Gerar senha", "box": [64, 73, 128, 14], "colour": 6}
+  ]
+}
+}

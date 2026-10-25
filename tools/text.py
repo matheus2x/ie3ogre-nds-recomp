@@ -351,6 +351,8 @@ def under_build(path: Path):
 def load_translations(folder: Path) -> dict[str, str]:
     out: dict[str, str] = {}
     for f in sorted(folder.glob("*.json")):
+        if f.name == "images.json":  # the text drawn on images (tools/image.py)
+            continue
         for sid, text in json.loads(f.read_text(encoding="utf-8")).items():
             if not ID.fullmatch(sid):
                 sys.exit(f"error: {f.name}: {sid!r} is not a place (evet|mcht|eve|mch:entry:offset, "

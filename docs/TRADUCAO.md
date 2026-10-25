@@ -8,7 +8,7 @@ caracteres japoneses (kana + kanji) e deixa de fora:
   (`%1F`, `%2F`…);
 - strings de debug (`■`, `%d`, `=`…), sobras de japonês depois do NUL de uma tradução mais curta, espaço que
   nenhum script mostra e "texto" que é só código ou gráfico lido como Shift-JIS por acaso;
-- imagens, legendas dos vídeos e o ARM9 (ver o fim).
+- imagens (a partir da v1.6 o texto delas fica no `images.json`), legendas dos vídeos e o ARM9 (ver o fim).
 
 ## Números
 
@@ -140,9 +140,25 @@ etapa ficam no `docs/DIARY.md`.
   (`sp_binder.STR`, todas escritas à mão a partir do japonês), as condições de vitória e de abertura das rotas
   (`ClearCondition.dat`, `OpenCondition.dat`). O `games.STR` não é lido pelo jogo (nenhum código tem o caminho
   dele; o objetivo da batalha vem do `gamerule.dat`) e ficou como estava.
-- [ ] Menu da galeria em inglês ("Gallery", "Game Video", "Web Identifiant", "Choose the video you want to
-  replay.", "Play", "Quit", "Back"); ver primeiro se é imagem ou texto
-- [ ] Aviso sobre saves alterados, em inglês, que aparece ao carregar ("There is a possibility…"); idem
+- [x] Menu da galeria (v1.6). Era imagem, não texto: o botão "Gallery" do menu de continuar (`MMSlot.SPF_`, no
+  original "オプション", agora "Extras"), a lista (`pic3d/option`: Vídeos, Ligação com celular, Gerar senha,
+  Ligação com o filme, Coleção, Surpresa), a tela dos vídeos (`menu_MovieView`: Ver, Sair, "Escolha o vídeo
+  que quer ver."), a de gerar senha (`password`, `pwup_bg00.pac_`) e a da ligação com o filme (`movielink`).
+  Traduzidas do japonês (o CyberLife tinha trocado sentidos: "Web Identifiant" era "Gerar senha").
+- [x] Aviso sobre saves alterados ao carregar (v1.6): imagens `pic2d/title/atdn_03.pac_` e `atdn_04.pac_`.
+- [ ] **Imagens em inglês** (levantamento desta etapa, nas imagens que o CyberLife mudou; `tools/image.py
+  export` e os textos vistos):
+  - menu de slots (`MMSlot.SPF_`): "Loading failed…", "Saving failed…", "The save data was corrupted (and has
+    been deleted)", "You can play matches via DS wireless communications from chapter 2 onwards", e o "Sair";
+  - coleção (`pic3d/collection`): Trailer IE3 Spark/Bomber, Artworks, Musics, Trailer 1/2, Players, Places,
+    Special Moves, Artwork IE GO, as abas places/action/story e Play/Stop/Back;
+  - comunicação (`MTSWfDL`, `STSWic`, `MTSWiM`, `MTSWic`, `MTSWis`, `MTSSrd`…): Match, Trade, Download,
+    Teamshare, Superlink, Premiumlink, Nintendo WFC Settings, "Communication Error", textos de download;
+  - partida (`pic3d/common.pkb`, que é um pacote com nomes em hash, ainda fora do `image.py`): Half Time, End
+    of Normal Time, Extra Time, Full Time, Penalty Shootout, Technic, Prestige, News/Member/Examine/Task,
+    Miss!/Direct/Chain/Block, Replay;
+  - e as outras ~90 imagens mudadas pelo CyberLife (lista: `export` do mod comparado com o `--retail`), além
+    das que ele deixou em japonês.
 - [ ] Menus do jogo que ainda dizem "Kick", "Guard" etc.: seguir o glossário dos itens (Chute, Defesa…)
 - [ ] Legendas dos vídeos (`movie/txt`): levantar e traduzir ("確かに大事なところでの大失敗は辛い！")
 - [ ] Aviso de ficção de um jogo novo ("この作品はフィクションです…")
@@ -187,7 +203,12 @@ etapa ficam no `docs/DIARY.md`.
   cortados no meio da palavra ("…グラウン"), há nomes de treinos e minibatalhas, e nem o patch em inglês os
   traduziu.
 - [ ] Imagens: o mod mexe em 92 dos 250 arquivos de `pic2d` e em 296 dos 567 de `pic3d`, e em nenhum dos 15
-  de `obj2d`. Os que sobraram precisam de inspeção visual para ver quais têm texto.
+  de `obj2d`. Os que sobraram precisam de inspeção visual para ver quais têm texto. O `image.py` ainda não lê
+  as texturas de 1, 2 e 8 bpp (uns 210 quadros, quase todos dos mapas `gmapNN`) nem os pacotes de imagens com
+  nome em hash (`common.pkb`, `mbv_c.pkb`, `tcv_c.pkb`…).
+- [x] Galeria no jogo (v1.6, save do teste do Windows): Extras, a lista, a tela dos vídeos, a de gerar senha
+  (pergunta, senha, OK) e o aviso de saves, vistos. Não vistos: a ligação com o filme (`movielink`) e a com
+  celular, que aparecem como "???" nesse save.
 
 ### Fora do mod (precisa de mudança no port)
 
@@ -327,6 +348,16 @@ etc. (vieram do patch em inglês) e devem seguir esta lista quando forem traduzi
   (18). `gamerule.dat`: 64 registros de 0x120 bytes, objetivo em +0x20 (64 bytes, em pares; é o "Objective" das
   batalhas de rua). `ClearCondition.dat`/`OpenCondition.dat`: 256 registros de 0x51 bytes, texto em +0x01
   (80 bytes, em pares: cerca de 39 letras).
+- **Imagens (`images.json`, `tools/image.py`):** os menus desenhados (botões, faixas, avisos) são imagens. pic3d
+  guarda as texturas num par `.SPL` (índice) + `.SPD` (dados), cada uma um PAC comprimido (LZ10) com a textura
+  de 4 bpp, a paleta e os quadros (os pedaços que o menu mostra: um botão normal, selecionado, apagado…). pic2d
+  guarda num `.SPF_` (índice e dados num arquivo só, LZ10) ou num `.pac_` sozinho, com paleta, mapa de tiles 8×8
+  e tiles; o mapa não diz a largura, que o `export` adivinha pelas emendas (`"width"` fixa). As edições partem
+  da imagem retail (japonesa) e trocam só as entradas editadas no arquivo do mod: `erase` apaga o texto
+  (cores de tinta → o pixel não-tinta mais perto na linha, ou cada linha com a cor de uma coluna limpa, ou
+  `under`: o pixel de outra imagem com o mesmo fundo), e `text` escreve com a `FONT12` do mod, centralizado, com
+  sombra (direita e abaixo) ou contorno, como os rótulos originais. `"frames"` repete a edição nos quadros de
+  uma textura. Botões B pequenos (48 px) usam "Sair": "Voltar" não cabe com a sombra.
 - `%s` (nome) precisa continuar na fala. Os marcadores de furigana (`%1F`…) saem na tradução.
 - **Strings dos scripts (`eve.pkb`, `mch.pkb`):** cada uma pertence a uma instrução, e o comando diz o que ela é.
   0x3019 mostra quem fala ("Senhor K", "Hibiki"); 0x201D é o objetivo; 0x3070 só escreve no log de depuração
@@ -371,7 +402,17 @@ jogo), que perde um `%s` ou que usa um caractere fora da fonte. O `apply` escrev
 tem e regrava só os patches que mudaram. O `text.py` cobre o diálogo (`evet`, `mcht`) e as strings dos scripts
 (`eve`, `mch`), os itens (`item.dat`, `item.STR`), as táticas (`tacticscmd.STR`), as técnicas (`command.dat`) e a
 galeria de vídeos (`movie_view_f.dat`), as tabelas de registros (`RECORDS`) e as strings dos overlays; as outras
-tabelas e as imagens ainda são editadas com `tools/mod.py expand`/`patch`.
+tabelas ainda são editadas com `tools/mod.py expand`/`patch`.
+
+O texto das imagens fica em `translations/CyberLifePlus/images.json` e vai para o mod com o `tools/image.py`:
+
+```sh
+# as imagens em PNG (índices de cor do jogo), para achar o texto e as coordenadas; só em build/
+python3 tools/image.py export boej.pak mods/CyberLifePlus build/images/retail --retail --only 'pic3d/option'
+# depois de escrever as edições: o que não cabe, e uma prévia das imagens editadas
+python3 tools/image.py check boej.pak mods/CyberLifePlus translations/CyberLifePlus --png build/images/check
+python3 tools/image.py apply boej.pak mods/CyberLifePlus translations/CyberLifePlus
+```
 
 ## Limites do levantamento
 

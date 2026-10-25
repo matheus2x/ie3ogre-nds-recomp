@@ -259,6 +259,13 @@ class TranslationsTest(unittest.TestCase):
             if f.is_file():
                 self.assertEqual(f.suffix, ".json", f)
                 data = json.loads(f.read_text(encoding="utf-8"))
+                if f.name == "images.json":  # archive -> entry -> edits; the texts are what is drawn
+                    texts = [e["text"] for entries in data.values() for edits in entries.values()
+                             for e in (edits["edits"] if isinstance(edits, dict) else edits) if "text" in e]
+                    self.assertTrue(texts)
+                    for t in texts:
+                        self.assertIsNone(JAPANESE.search(t), f"{f.name}: {t}")
+                    continue
                 for sid, t in data.items():
                     self.assertRegex(sid, texttool.ID.pattern)
                     self.assertIsNone(JAPANESE.search(t), f"{f.name}: {sid}")
