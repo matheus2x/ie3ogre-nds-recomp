@@ -30,7 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import mod as modtool  # noqa: E402
 from ntr import bps, lz10  # noqa: E402
-from ntr.text import (COMMAND_NAME, COMMAND_SIZE, FURIGANA, ITEM_NAME, ITEM_SIZE, JAPANESE,  # noqa: E402
+from ntr.text import (COMMAND_DESC, COMMAND_NAME, COMMAND_SIZE, FURIGANA, ITEM_NAME, ITEM_SIZE, JAPANESE,  # noqa: E402
                       MOVIE_SIZE, MOVIE_TITLE, MOVIE_WIDTH, PAIRED, SPACER, WIDE,
                       OBJECTIVE_PARTS, STR_READ, STR_STEP, fit_font, objective_fit, ssd_objectives, Font, TextError, codes, decode, encode, japanese_count, lines, problems, read_pack, scramble, ssd_records,
                       ssd_refs, ssd_string, str_strings, table_bytes, unscramble, write_pack,
@@ -42,11 +42,28 @@ LOGIC = "data_iz/logic"
 FONT = "data_iz/font/FONT12.NFTR"
 SCRIPTS = ("eve", "mch")  # event and match scripts (SSD, LZ10)
 PACKS = ("evet", "mcht") + SCRIPTS  # text lists, then the scripts
-# item.dat brings item.STR (names, then descriptions); "ov" is the strings of the overlays
-TABLES = ("item.dat", "tacticscmd.STR", "command.dat", "movie_view_f.dat", "ov")
+# Tables of fixed records whose strings stay in their field (place: "file:byte offset"); most are
+# labels next to the id of a team, an item or a player. file -> (record size, ((field, bytes with
+# the NUL), ...), how Latin text is written).
+RECORDS = {**{f"PracticeGame{n}F.dat": (0x4A, ((0x0C, 22), (0x26, 22)), None) for n in range(10)},
+           "premiumcondition.dat": (0x3C, ((0x04, 24),), None),
+           "premiumcondition_hurri.dat": (0x40, ((0x04, 24),), None),
+           "BinderData_O.dat": (0x1C, ((0x04, 18),), None),
+           # the goal of a match: the fan translation wrote it for the furigana parser
+           "gamerule.dat": (0x120, ((0x20, 64),), PAIRED),
+           # what wins and what opens a route of matches (ov104, the furigana parser)
+           "ClearCondition.dat": (0x51, ((0x01, 0x50),), PAIRED),
+           "OpenCondition.dat": (0x51, ((0x01, 0x50),), PAIRED)}
+# item.dat brings item.STR (names, then descriptions), command.dat the descriptions of command.STR;
+# "ov" is the strings of the overlays
+TABLES = ("item.dat", "tacticscmd.STR", "games.STR", "command.dat", "sp_binder.dat", "movie_view_f.dat", "ov") + tuple(RECORDS)
 ID = re.compile(r"(evet|mcht|eve|mch):(\d+):(\d+)"
-                r"|(item\.dat|item\.STR|tacticscmd\.STR|command\.dat|movie_view_f\.dat):(\d+)"
+                r"|(item\.dat|item\.STR|tacticscmd\.STR|games\.STR|command\.dat|command\.STR|sp_binder\.dat|movie_view_f\.dat|"
+                + "|".join(map(re.escape, RECORDS)) + r"):(\d+)"
                 r"|(ov\d{3}):(0x[0-9a-f]+)")
+ITEM_DESC = 0x2A  # item.dat (unscrambled): the index of the description in item.STR
+TACTIC_SIZE, TACTIC_DESC = 0x14, 0x0E  # tacticscmd.dat: the index of the description in tacticscmd.STR
+BINDER_SIZE, BINDER_TEXT, BINDER_READ = 12, 10, 0x100  # sp_binder.dat: u16 count, records; the copy in ov112
 COMMAND_WIDTH = 124  # px of the widest technique name of the fan translation ("Honoo no Kazamidori")
 # Overlay strings written as plain text: button labels whose neighbours the fan translation wrote
 # so ("Defend", "Look for other"); the messages go through the furigana parser and are PAIRED.
@@ -187,28 +204,77 @@ def table_slots(game: Game, name: str):
         rules = table_rules(font, [name_of(a) for _, a, _ in recs])
         sr, sc = game.retail(f"{LOGIC}/item.STR"), game.modded(f"{LOGIC}/item.STR")
         room = dict(str_strings(sr))
-        desc_rules = table_rules(font, [text_at(sr, at) for at in room])
+        # the description box draws with the furigana parser, which drops ASCII (seen in the game)
+        desc_rules = table_rules(font, [text_at(sr, at) for at in room]) + (PAIRED,)
         for k, a, b in recs:
             yield Slot(f"item.dat:{k}", ITEM_NAME - 1, name_of(a), name_of(b), [], rules)
-            at = struct.unpack_from("<H", a, 0x2A)[0] * 32
-            if at in room:
-                yield Slot(f"item.STR:{at}", room[at] - 1, text_at(sr, at), text_at(sc, at),
+            at = struct.unpack_from("<H", a, ITEM_DESC)[0] * STR_STEP
+            if at in room:  # the place is the original's; apply may move the text (put_description)
+                yield Slot(f"item.STR:{at}", STR_READ - 1, text_at(sr, at),
+                           text_at(sc, struct.unpack_from("<H", b, ITEM_DESC)[0] * STR_STEP),
                            [visible(name_of(b))], desc_rules)
         return
     if name == "command.dat":
-        # A technique's name may outgrow its place: apply moves it to the end of command.STR.
+        # A technique's name or description may outgrow its place: apply moves it to the end of
+        # command.STR (the fan translation reordered it). A description's place is its offset in
+        # the original; the game reads it into the box of the item descriptions (ov109).
         dr, dc = game.retail(f"{LOGIC}/command.dat"), game.modded(f"{LOGIC}/command.dat")
         sr, sc = game.retail(f"{LOGIC}/command.STR"), game.modded(f"{LOGIC}/command.STR")
-        for k in range(len(dr) // COMMAND_SIZE):
-            at = k * COMMAND_SIZE + COMMAND_NAME
-            source = text_at(sr, struct.unpack_from("<H", dr, at)[0] * STR_STEP)
+        index = lambda d, k, field: struct.unpack_from("<H", d, k * COMMAND_SIZE + field)[0] * STR_STEP  # noqa: E731
+        recs = range(len(dr) // COMMAND_SIZE)
+        descs = {index(dr, k, COMMAND_DESC): text_at(sr, index(dr, k, COMMAND_DESC)) for k in recs}
+        # the box of the item descriptions: the widest of both tables
+        items = game.retail(f"{LOGIC}/item.STR")
+        desc_rules = table_rules(font, [t for t in descs.values() if t] + [text_at(items, at) for at, _ in str_strings(items)])
+        desc_rules += (PAIRED,)
+        for k in recs:
+            source = text_at(sr, index(dr, k, COMMAND_NAME))
             if source:
-                yield Slot(f"command.dat:{k}", STR_READ - 1, source,
-                           text_at(sc, struct.unpack_from("<H", dc, at)[0] * STR_STEP), [],
-                           (1, COMMAND_WIDTH, WIDE))
+                yield Slot(f"command.dat:{k}", STR_READ - 1, source, text_at(sc, index(dc, k, COMMAND_NAME)),
+                           [], (1, COMMAND_WIDTH, WIDE))
+            at = index(dr, k, COMMAND_DESC)
+            if descs.pop(at, None):
+                yield Slot(f"command.STR:{at}", STR_READ - 1, text_at(sr, at), text_at(sc, index(dc, k, COMMAND_DESC)),
+                           [visible(text_at(sc, index(dc, k, COMMAND_NAME)))], desc_rules)
+        return
+    if name in RECORDS:
+        size, fields, form = RECORDS[name]
+        dr, dc = game.retail(f"{LOGIC}/{name}"), game.modded(f"{LOGIC}/{name}")
+        recs = range(len(dr) // size)
+        # the rows and width of the fields in all the tables of the same kind (PracticeGame0F–9F)
+        kind = [game.retail(f"{LOGIC}/{n}") for n, spec in RECORDS.items() if spec == RECORDS[name]]
+        rules = table_rules(font, [text_at(d, at) for d in kind for f, _ in fields
+                                   for at in range(f, len(d), size) if japanese_count(text_at(d, at))])
+        rules += (form, 1) if form else ()
+        for field, room in fields:
+            # the original's Shift-JIS strings (a name of full-width letters too), not the "0" of an empty field
+            places = [k * size + field for k in recs if max(text_at(dr, k * size + field), default=0) >= 0x81]
+            if not places:
+                continue
+            for at in places:
+                base = at - field
+                yield Slot(f"{name}:{at}", room - 1, text_at(dr, at), text_at(dc, at),
+                           [visible(text_at(dc, base + f)) for f, _ in fields if f != field], rules)
         return
     if name == "ov":
         yield from overlay_slots(game, font)
+        return
+    if name == "sp_binder.dat":
+        # The text of the binder of techniques (ov112): sp_binder.dat points at each string of
+        # sp_binder.STR by its byte offset, and the game copies it into 0x100 bytes and draws it
+        # with the furigana parser (PAIRED). apply writes sp_binder.STR again, string after string.
+        dr, dc = game.retail(f"{LOGIC}/{name}"), game.modded(f"{LOGIC}/{name}")
+        sr, sc = game.retail(f"{LOGIC}/sp_binder.STR"), game.modded(f"{LOGIC}/sp_binder.STR")
+        recs = range(struct.unpack_from("<H", dr, 0)[0])
+        source = lambda k: text_at(sr, struct.unpack_from("<H", dr, 2 + k * BINDER_SIZE + BINDER_TEXT)[0])  # noqa: E731
+        rules = table_rules(font, [source(k) for k in recs]) + (PAIRED,)
+        items = game.modded(f"{LOGIC}/item.dat")
+        for k in recs:
+            item = struct.unpack_from("<H", dr, 2 + k * BINDER_SIZE + 2)[0]
+            yield Slot(f"{name}:{k}", BINDER_READ - 1, source(k),
+                       text_at(sc, struct.unpack_from("<H", dc, 2 + k * BINDER_SIZE + BINDER_TEXT)[0]),
+                       [visible(unscramble(items[item * ITEM_SIZE:(item + 1) * ITEM_SIZE])[:ITEM_NAME].split(b"\0")[0])],
+                       rules)
         return
     if name == "movie_view_f.dat":
         dr, dc = game.retail(f"{LOGIC}/{name}"), game.modded(f"{LOGIC}/{name}")
@@ -221,11 +287,20 @@ def table_slots(game: Game, name: str):
         return
     retail, cur = game.retail(f"{LOGIC}/{name}"), game.modded(f"{LOGIC}/{name}")
     strs = str_strings(retail)
-    rules = table_rules(font, [text_at(retail, at) for at, _ in strs])
+    rules = table_rules(font, [text_at(retail, at) for at, _ in strs if not DEBUG.search(visible(text_at(retail, at)))])
+    # the descriptions of the tactics go to the box of the item descriptions (PAIRED)
+    descs: dict[int, int] = {}  # original place -> where the mod has it
+    if name == "tacticscmd.STR":
+        dat, mdat = game.retail(f"{LOGIC}/tacticscmd.dat"), game.modded(f"{LOGIC}/tacticscmd.dat")
+        descs = {struct.unpack_from("<H", dat, k + TACTIC_DESC)[0] * STR_STEP:
+                 struct.unpack_from("<H", mdat, k + TACTIC_DESC)[0] * STR_STEP for k in range(0, len(dat), TACTIC_SIZE)}
+        desc_rules = table_rules(font, [text_at(retail, at) for at, _ in strs if at in descs]) + (PAIRED,)
+        rules = table_rules(font, [text_at(retail, at) for at, _ in strs if at not in descs])
     context: list[str] = []
     for at, room in strs:
-        text = text_at(cur, at)
-        yield Slot(f"{name}:{at}", room - 1, text_at(retail, at), text, context[-2:], rules)
+        text = text_at(cur, descs.get(at, at))
+        yield Slot(f"{name}:{at}", STR_READ - 1 if at in descs else room - 1, text_at(retail, at), text,
+                   context[-2:], desc_rules if at in descs else rules)
         context = context + [visible(text)]
 
 
@@ -292,12 +367,17 @@ def load_translations(folder: Path) -> dict[str, str]:
 
 def strings(d: bytes):
     """Runs of valid Shift-JIS that end in NUL, with 2+ Japanese characters."""
+    return (raw for _, raw in string_runs(d))
+
+
+def string_runs(d: bytes):
+    """(offset, run) of strings()."""
     i = start = 0
     while i < len(d):
         c = d[i]
         if c == 0:
             if i > start and japanese_count(d[start:i]) >= 2:
-                yield d[start:i]
+                yield start, d[start:i]
             i += 1
             start = i
         elif (0x81 <= c <= 0x9F or 0xE0 <= c <= 0xFC) and i + 1 < len(d) and 0x40 <= d[i + 1] <= 0xFC \
@@ -310,7 +390,8 @@ def strings(d: bytes):
             start = i
 
 
-DEBUG = re.compile(r"[■★⇒◆●]|%d|%x|%\d|ERROR|-----|＝|=|\.SAD|sCmd|dbg|DEBUG|デバッグ|テスト|ダミー")
+# (a dated note of a developer: "…2010/4/8 j_kuramoto")
+DEBUG = re.compile(r"[■★⇒◆●]|%d|%x|%\d|ERROR|-----|＝|=|\.SAD|sCmd|dbg|DEBUG|デバッグ|テスト|ダミー|\d{4}/\d{1,2}/\d{1,2}")
 
 
 def plausible(t: str) -> bool:
@@ -391,6 +472,23 @@ def blobs(get, path: str):
         yield (lz10.try_decompress(d) if d[:1] == b"\x10" else None) or d
 
 
+def leftover(retail: bytes, cur: bytes, at: int) -> bool:
+    """A run of the mod that starts in the middle of an original string, after the NUL of a
+    shorter translation: what is left of the original (sometimes touched by an older, longer
+    translation), which the game never shows."""
+    return 0 < at and len(retail) == len(cur) and retail[at - 1] != 0 and retail[at] != 0
+
+
+def shown(get, path: str) -> set[int] | None:
+    """The strings of a table that the game reads, when another table says which (None: all).
+    command.STR keeps the Japanese names the fan translation moved away from, unused."""
+    if path != f"{LOGIC}/command.STR":
+        return None
+    dat = get(f"{LOGIC}/command.dat")
+    return {struct.unpack_from("<H", dat, k + f)[0] * STR_STEP
+            for k in range(0, len(dat), COMMAND_SIZE) for f in (COMMAND_NAME, COMMAND_DESC)}
+
+
 def area_of_group(group: str) -> str:
     return next((name for prefix, name in AREAS if group.startswith(prefix)), "Outros eventos")
 
@@ -411,12 +509,19 @@ def cmd_survey(args) -> int:
         area = next((name for prefix, name in FILES if path.startswith(prefix)), None)
         if area is None or path in packs or path.endswith(".pkh"):
             continue
+        retail = list(blobs(game.retail, path))
         for side, get in ((0, game.retail), (1, game.modded)):
-            for blob in blobs(get, path):
-                ops = ssd_opcodes(blob)
-                for raw in (ssd_string(blob, at, size) for at, size in ssd_records(blob)
-                            if ops.get(blob[at:at + 2]) != DEBUG_PRINT) \
-                        if blob[:4] == b"SSD\0" else strings(blob):
+            used = shown(get, path)
+            for k, blob in enumerate(blobs(get, path)):
+                base = retail[k] if k < len(retail) else b""
+                if blob[:4] == b"SSD\0":
+                    ops = ssd_opcodes(blob)
+                    runs = [(at, ssd_string(blob, at, size)) for at, size in ssd_records(blob)
+                            if ops.get(blob[at:at + 2]) != DEBUG_PRINT]
+                else:
+                    runs = [(at, raw) for at, raw in string_runs(blob)
+                            if (used is None or at in used) and not (side and leftover(base, blob, at))]
+                for _, raw in runs:
                     if (got := jp_text(raw)) and not (area.startswith("Nomes") and KANA_ONLY.match(got[0])):
                         found[area][side][got[0]] += 1
 
@@ -522,8 +627,8 @@ def cmd_lookup(args) -> int:
 
 def checked(game: Game, folder: Path) -> tuple[dict[str, Slot], dict[str, str], int]:
     tr = load_translations(folder)
-    wanted = {"item.dat" if sid.startswith("item.") else "ov" if sid.startswith("ov")
-              else sid.split(":")[0] for sid in tr}
+    wanted = {"item.dat" if sid.startswith("item.") else "command.dat" if sid.startswith("command.")
+              else "ov" if sid.startswith("ov") else sid.split(":")[0] for sid in tr}
     by_id = {s.id: s for s in slots(game, [n for n in PACKS + TABLES if n in wanted])}
     font = game.font()
     bad = 0
@@ -570,6 +675,56 @@ def put_command_name(tables: dict[str, bytearray], game: Game, record: int, data
     strs[off:off + room] = data + bytes(room - len(data))
 
 
+# A table of descriptions -> the table that points at them: (file, record size, field of the index, scrambled)
+DESCRIPTIONS = {"item.STR": ("item.dat", ITEM_SIZE, ITEM_DESC, True),
+                "command.STR": ("command.dat", COMMAND_SIZE, COMMAND_DESC, False),
+                "tacticscmd.STR": ("tacticscmd.dat", TACTIC_SIZE, TACTIC_DESC, False)}
+
+
+def put_description(tables: dict[str, bytearray], game: Game, name: str, at: int, data: bytes):
+    """A description (its place is the original's offset), where the mod has it or, if it does
+    not fit there, at the end of the .STR, the records that point at it changed to match."""
+    dat_name, size, field, scrambled = DESCRIPTIONS[name]
+    for rel in (name, dat_name):
+        if f"{LOGIC}/{rel}" not in tables:
+            tables[f"{LOGIC}/{rel}"] = bytearray(game.modded(f"{LOGIC}/{rel}"))
+    strs, dat = tables[f"{LOGIC}/{name}"], tables[f"{LOGIC}/{dat_name}"]
+    retail = game.retail(f"{LOGIC}/{dat_name}")
+    read = (lambda d, k: unscramble(bytes(d[k * size:(k + 1) * size]))) if scrambled else \
+        (lambda d, k: bytes(d[k * size:(k + 1) * size]))  # noqa: E731
+    recs = [k for k in range(len(retail) // size) if struct.unpack_from("<H", read(retail, k), field)[0] * STR_STEP == at]
+    now = {struct.unpack_from("<H", read(dat, k), field)[0] * STR_STEP for k in recs}
+    off = now.pop() if len(now) == 1 else at
+    room = dict(str_strings(bytes(strs))).get(off, 0)
+    if len(data) > room:
+        strs += bytes(-len(strs) % STR_STEP)
+        off, room = len(strs), (len(data) + STR_STEP - 1) // STR_STEP * STR_STEP
+        strs += bytes(room)
+        for k in recs:
+            rec = bytearray(read(dat, k))
+            struct.pack_into("<H", rec, field, off // STR_STEP)
+            dat[k * size:(k + 1) * size] = scramble(bytes(rec)) if scrambled else rec
+    strs[off:off + room] = data + bytes(room - len(data))
+
+
+def put_binder(tables: dict[str, bytearray], game: Game, new: dict[int, bytes]):
+    """sp_binder.STR written again with the new strings (NUL included), each record of
+    sp_binder.dat pointing at its own."""
+    if f"{LOGIC}/sp_binder.dat" not in tables:
+        tables[f"{LOGIC}/sp_binder.dat"] = bytearray(game.modded(f"{LOGIC}/sp_binder.dat"))
+    dat = tables[f"{LOGIC}/sp_binder.dat"]
+    old = game.modded(f"{LOGIC}/sp_binder.STR")
+    out = bytearray()
+    for k in range(struct.unpack_from("<H", dat, 0)[0]):
+        at = 2 + k * BINDER_SIZE + BINDER_TEXT
+        data = new.get(k) or text_at(old, struct.unpack_from("<H", dat, at)[0]) + b"\0"
+        if len(out) > 0xFFFF:
+            raise TextError("sp_binder.STR grew past the 16-bit offsets of sp_binder.dat")
+        struct.pack_into("<H", dat, at, len(out))
+        out += data
+    tables[f"{LOGIC}/sp_binder.STR"] = out
+
+
 def write_file(mod: Path, game: Game, rel: str, data: bytes) -> bool:
     """A file of the mod as a patch (none if it is the retail file); False if it was already so."""
     dst = mod / "files" / rel
@@ -608,6 +763,7 @@ def cmd_apply(args) -> int:
     changed: dict[str, dict[int, bytearray]] = collections.defaultdict(dict)
     tables: dict[str, bytearray] = {}
     overlays: dict[int, bytearray] = {}
+    binder: dict[int, bytes] = {}  # record of sp_binder.dat -> its new string
     for sid, text in tr.items():
         if not text:
             continue
@@ -625,6 +781,10 @@ def cmd_apply(args) -> int:
             data = table_bytes(text, s.table[2] if len(s.table) > 2 else None) + b"\0"
             if s.file == "command.dat":
                 put_command_name(tables, game, s.offset, data)
+            elif s.file in DESCRIPTIONS and PAIRED in s.table[2:3]:
+                put_description(tables, game, s.file, s.offset, data)
+            elif s.file == "sp_binder.dat":
+                binder[s.offset] = data
             elif s.file == "movie_view_f.dat":
                 at = s.offset * MOVIE_SIZE + MOVIE_TITLE
                 d[at:at + room] = data + bytes(room - len(data))
@@ -639,8 +799,10 @@ def cmd_apply(args) -> int:
         d = changed[s.file].setdefault(s.key, bytearray(game.pack(s.file, True)[s.key]))
         data = encode(placed(s, text, font)) + b"\0"
         d[s.offset:s.offset + room] = data + bytes(room - len(data))
-    if any(by_id[sid].objective or (by_id[sid].table or ())[2:] == (PAIRED,) for sid, text in tr.items() if text):
+    if any(by_id[sid].objective or PAIRED in (by_id[sid].table or ())[2:3] for sid, text in tr.items() if text):
         tables[FONT] = bytearray(fit_font(game.modded(FONT)))  # the SPACER without ink
+    if binder:
+        put_binder(tables, game, binder)
     for rel, data in tables.items():
         if write_file(args.dir, game, rel, bytes(data)):
             print(f"{rel}: changed")

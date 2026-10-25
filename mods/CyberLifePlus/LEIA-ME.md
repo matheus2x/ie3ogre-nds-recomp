@@ -31,6 +31,15 @@ dá exatamente os arquivos do dump traduzido.
 
 ## Versões
 
+- **1.5:** o que ainda estava em japonês nas tabelas do jogo: os objetivos das minipartidas ("Roube a bola
+  do adversário!", agora todos em português, antes metade em inglês), as descrições das quatro técnicas que
+  mudam o elemento do jogador (Kaze/Hayashi/Hi/Yama no Gotoshi), os prêmios do mapa dos jogos-treino, os
+  times das condições dos jogadores premium e um nome de time do fichário (Kasamino).
+  Também os nomes de time e de prêmio dessas tabelas que estavam em inglês ("Neo Japan" → "Novo Japão",
+  "Women Selection" → "Seleção Feminina", "Benchers" → "Reservas"), seguindo os nomes do diálogo.
+  As descrições das técnicas (lista de técnicas e fichário) e as condições das rotas de batalha em português.
+  **Corrige as descrições de itens e táticas da 1.2, que não apareciam no jogo**: a janela só mostrava os
+  acentos. Agora elas são gravadas na forma que a janela lê.
 - **1.4:** os títulos das cenas da galeria de vídeos (Continuar → Gallery → Game Video) em português: 58
   títulos, com os nomes de personagens e estádios das falas.
   Também os nomes de quem fala em duas partidas que ainda apareciam em japonês (Hibiki, Tae, Ichinose).

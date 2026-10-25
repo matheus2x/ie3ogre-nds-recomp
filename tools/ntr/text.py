@@ -60,7 +60,7 @@ BOX_ROWS = 3     # rows shown in a dialogue box (a 4th one is not drawn)
 OBJECTIVE_STEP, OBJECTIVE_WIDTH, OBJECTIVE_PARTS = 60, 64, 4  # sprites of the objective
 STR_STEP, STR_READ = 32, 0x80  # a .STR string starts at index * 32; the game reads 128 bytes
 ITEM_SIZE, ITEM_NAME = 0x2C, 0x20
-COMMAND_SIZE, COMMAND_NAME = 0x24, 0x18
+COMMAND_SIZE, COMMAND_NAME, COMMAND_DESC = 0x24, 0x18, 0x1A
 MOVIE_SIZE, MOVIE_TITLE = 0x74, 0x1B  # movie_view_f.dat: a scene of the movie gallery
 MOVIE_WIDTH = 229  # px of a gallery title from x = 16 to the edge of its box (no pixel between letters)
 _SWAPS = ((2, 3), (4, 5), (6, 7), (1, 2))  # (distance, step) of the byte swaps of item.dat

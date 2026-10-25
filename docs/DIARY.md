@@ -1890,3 +1890,125 @@ técnica.
 `saves/` (inclusive `boej.ini`, `boej.pak`, `cache/`, `toolchain/` e os replays) e pus a release 0.1.10 gerada
 deste código (`tools/release.py`, já com a correção do edge marking). O launcher vai baixar o toolchain de novo,
 refazer o `boej.pak` a partir da ROM e recompilar o jogo.
+
+## 2026-10-25 — CyberLifePlus 1.5: o que sobrou nas outras tabelas
+
+- Pedido: seguir com o próximo item da fase 2 da tradução ("O que sobrou nas outras tabelas").
+- **Quase tudo era sobra.** Dos 1.268 caracteres que o `survey` contava em "outras tabelas", ~1.200 eram o fim de
+  strings originais depois do NUL de uma tradução mais curta (373 sequências, 234 só no `games.STR`: "Marque um
+  gol!\0ばえ！"), que o jogo nunca mostra. Mais 7 eram nomes de técnica em japonês que o CyberLife deixou no
+  `command.STR` ao reorganizá-lo e que nenhum registro do `command.dat` aponta.
+- **`survey`:** uma sequência do mod que começa no meio de uma string original não conta mais (`leftover`; o
+  critério não exige bytes iguais ao original porque 11 sobras do `games.STR` têm o "！" trocado por "!" por
+  uma tradução antiga mais longa). No `command.STR` só contam as strings apontadas pelo `command.dat`
+  (`shown`). Com isso caíram também os nomes de jogadores (2.135 → 1.947) e os perfis (60.390 → 60.378). A 1.4
+  medida assim dá 35,4 % e 48,4 %.
+- **O que faltava de verdade, e os formatos:**
+  - `command.STR`: as descrições das 4 técnicas que mudam o elemento (registros 78–81 do `command.dat`). As
+    outras 383 descrições estão em inglês. O `ov109` lê a descrição do item (+0x2A), da técnica (+0x1A) e da
+    tática (+0x0E) no mesmo buffer (0x80 bytes de índice × 32), então vão em texto comum, como as dos itens.
+  - `gamerule.dat`: 64 registros de 0x120 bytes (carregados inteiros por `func_0206f950`), com o objetivo da
+    minipartida em +0x20. 10 objetivos, 4 em japonês e 6 em inglês, em largura cheia com "0xCF + letra" no
+    lugar do espaço, a forma que o CyberLife usava para o leitor de furigana. Gravei todos em pares (`PAIRED`),
+    que funciona nos dois leitores.
+  - `PracticeGame0F`–`9F.dat` (o mapa dos jogos-treino): 34 registros de 0x4A bytes, sem cabeçalho; posição no
+    mapa, e dois nomes de 22 bytes em +0x0C e +0x26, cada um depois de um id (+0x0A, +0x24). São times
+    adversários e prêmios: os ids batem com o `item.dat` (78 = chave do ginásio, 894 = Circle Play Drive, 214 =
+    Heaven Drive…) e com jogadores (9 = Kuusuke Matsuno, record 0x68 do `unitbase.dat`). O CyberLife traduziu
+    o primeiro nome (em inglês) e deixou o segundo em japonês. Os nomes vieram do que o mod já tem no
+    `item.dat`/`unitbase.dat`; "なし" virou "Nenhum" nos dois campos.
+  - `premiumcondition_hurri.dat`: 200 registros de 0x40 bytes, condição do jogador premium com o time em +0x04.
+    O `ov089` lê este ou o `premiumcondition.dat` (traduzido pelo CyberLife) conforme o byte 0x020A0640+0x89.
+    76 times: Raimon, Imperial, Ogre e Berryz (como "PistonBerryz" no `team.pkb`).
+  - `BinderData_O.dat` (lido pelo `ov052`): registros de 0x1C bytes, nome em +0x04; faltava o Kasamino.
+  - `ScoutSpCode.dat` (`ov131`): id do jogador + palavra que o jogador digita. Senhas, ficam em japonês.
+- **`text.py`:** lugares novos `command.STR:deslocamento` (descrição, onde o mod a tem, com o espaço até a string
+  seguinte e as regras das descrições originais: 2 linhas) e as tabelas de registros (`RECORDS`:
+  `arquivo:deslocamento do campo`, a string no campo dela, a largura medida em todos os campos das tabelas do
+  mesmo tipo). O `apply` agora ajusta a fonte para qualquer tabela em pares (a condição antiga só pegava a
+  galeria, não os overlays nem o `gamerule`; a fonte já estava ajustada desde a 1.3).
+- **Traduzido:** `gamerule.json` (10), `PracticeGame.json` (60), `premiumcondition_hurri.json` (76),
+  `BinderData_O.json` (1) e 4 descrições em `command.json`. Mod na versão 1.5.
+
+**Verificação:** `text.py check`: 3.932 linhas ok. Byte a byte, o `apply` só mudou os campos pretendidos (as
+descrições terminam antes da string seguinte; os nomes ficam nos 22 bytes do campo). Testes Python: 39, todos
+passando (novos: sobras e strings não usadas fora da conta, lugares das tabelas de registros). `mod.py check`:
+ok. "Outras tabelas" no `survey`: 1.268 → 4 (a senha); total 35,4 % e 48,4 %. Nada disso foi visto no jogo:
+falta um save num jogo-treino ou numa minipartida, e não se sabe se os nomes do mapa e das condições premium
+aparecem (ficaram no checklist da fase 5).
+
+## 2026-10-25 — Nomes de time das tabelas de registros, do inglês para o português (ainda 1.5)
+
+- Pedido: seguir com o próximo item da fase 2 (o que acrescentei na etapa anterior: os nomes em inglês do mapa
+  dos jogos-treino, do fichário e das condições premium).
+- **`premiumcondition.dat`** entrou nas tabelas de registros: 200 registros de 0x3C bytes (o `_hurri` tem 0x40),
+  time em +0x04. Antes eu tinha medido com 0x40, e os "nomes" pareciam cortados.
+- **Regra dos nomes** (glossário do `TRADUCAO.md`): conferi no diálogo (`text.py lookup`) como cada time aparece.
+  O diálogo deixa quase todos com o nome próprio (Senbayama, Epsilon, Gemini Storm, Dark Emperors) e traduz uns
+  poucos (Novo Japão, Cavaleiros da Rainha, O Reino, Império, Time K, Time Garshield, Anjos Caídos, Leões do
+  Deserto, Mensageiros do Céu, Exército Infernal Z, Instituto Alien). Fiquei com: katakana do inglês em inglês,
+  nome japonês em romaji, os da dublagem como no diálogo, e as descrições do patch em inglês em português
+  (代表 = Seleção, 選抜 = Combinado, ベンチーズ = Reservas, キャッピキャピ = Patricinhas, ○メガネ○ = Quatro Olhos). Corrigi
+  erros do CyberLife no caminho ("Diamon dust", "Trus Pirates", "NAtional", "Osaka Gals Kai" num registro
+  que é o Osaka Gals, "Team Zoolan" no lugar do Time Garshield, "Absolute Cero" para 絶・世路死苦 = Zetsu Yoroshiku).
+- **Prêmios do mapa:** nos registros de tipo 2 (byte baixo do primeiro u16), o nome vem do `item.dat` do mod pelo
+  id em +0x0A, para não divergir dos itens.
+- **Largura:** não achei no `ov047` (a tela do mapa, que também lê o `PracticeGameCursor.dat`) onde o nome do
+  registro seria desenhado; os campos são lidos por endereços calculados. Mantive a regra do `check` (a largura
+  do nome japonês mais largo: 93 px no mapa, 90 no fichário) e abreviei o que passava ("Cav. da Rainha", "Peq.
+  Gigantes", "Comb. Grupo A", "Perfect Zone P.", "Chave do laborat.", "Mensag. do Céu"). O fichário tem só 18
+  bytes por nome, por isso "Exérc. Infernal Z".
+- Traduzido: 162 nomes no `PracticeGame.json`, 71 no `BinderData_O.json` (69 + "Reservado" nos registros
+  vazios) e 200 no novo `premiumcondition.json`. O mod continua na 1.5 (ainda não lançada).
+
+**Verificação:** `text.py check`: 4.365 linhas ok. Comparado com o mod antes desta etapa, nenhum byte mudou fora
+dos campos de nome. Testes Python: 39, todos passando. `mod.py check`: ok. O `survey` não muda (ele só conta
+japonês). Não visto no jogo. Ficou de fora "ＬＥＶＥＬ－ＧＯ", que o CyberLife escreveu "Level 5": sem kana nem kanji, o
+`text.py` não cria lugar para ele (no checklist).
+
+## 2026-10-25 — Tabelas do inglês para o português, e as descrições que nunca apareceram no jogo (ainda 1.5)
+
+- Pedido: seguir com o próximo item da fase 2 ("do inglês para o português": `sp_binder.STR`, descrições das
+  técnicas, `ClearCondition.dat`, `OpenCondition.dat`, `games.STR`).
+- **LEVEL-GO:** as tabelas de registros aceitam também nomes só com letras de largura cheia (antes só os com
+  kana/kanji); "ＬＥＶＥＬ－ＧＯ" estava "Level 5" no mapa dos jogos-treino.
+- **`games.STR` não é lido pelo jogo.** São 262 objetivos de batalha (205 "Score the first goal!"), mas nenhum
+  overlay nem o ARM9 tem o caminho dele. Para saber de onde vem o objetivo da batalha, repeti a sessão `bug3`
+  com o mod (quadro 35300, a batalha contra os que importunavam o Toramaru) trocando, numa cópia do mod, os
+  textos do `games.STR` por "GAMES ação" e os do `gamerule.dat` por "RULE ação": aparece "RULE ação", em pares e
+  com acento. Isso confirma no jogo a forma escolhida para o `gamerule.dat`. As anotações de desenvolvedor do
+  `games.STR` ("…2010/4/8 j_kuramoto") passaram a contar como debug (fora da largura e do levantamento).
+- **Descrições das técnicas (`command.STR`):** 343 seguem a fórmula dos cadernos e saíram iguais à primeira linha
+  do caderno da mesma técnica no `item.json` (3 pela mesma regra); as 27 habilidades usam a frase da descrição
+  do item; 10 que citam outra técnica viraram "Chute com Fire Tornado" etc.
+- **Fichário de técnicas (`sp_binder`):** o `sp_binder.dat` (2 bytes de contagem, 378 registros de 12 bytes)
+  aponta cada descrição pelo deslocamento em bytes (+10) no `sp_binder.STR`, com as strings coladas. O CyberLife
+  só mudou esses deslocamentos. O `ov112` copia a descrição para 0x100 bytes e a desenha com `0x020F2184`, o
+  leitor de furigana da galeria, que descarta ASCII: por isso o CyberLife escreveu tudo em largura cheia. Lugar
+  novo `sp_binder.dat:registro`, em pares; o `apply` refaz o `.STR` e os deslocamentos (`put_binder`). As 378
+  descrições foram escritas à mão a partir do japonês.
+- **O bug da 1.2:** o `ov109`/`ov110` (telas de itens e técnicas) também chamam `0x020F2184`. Para ver no jogo,
+  repeti a sessão `bug4` até o quadro 44000 (no campo), salvei um savestate e abri menu → Bag → Técnicas com
+  entradas roteirizadas: a descrição do Seigi no Tekken aparecia como **"éc"**, só o acento com a letra colada
+  nele. A janela de descrição usa o leitor de furigana, e as descrições em texto comum (itens e táticas desde a
+  1.2, técnicas desta etapa) perdiam todo o ASCII. Com as descrições em pares, a mesma tela mostra "Vento TP 37
+  1 jog. Soco 2 / Técnica de goleiro", sem pixel entre as letras.
+- **Correção no `text.py`:** as descrições de `item.STR`, `command.STR` e `tacticscmd.STR` (índice em 0x0E do
+  `tacticscmd.dat`, registros de 0x14) vão em pares. Em pares elas ocupam o dobro, então a que não cabe no
+  lugar vai para o fim do `.STR` e os registros que apontam para ela mudam (`put_description`; o jogo lê 128
+  bytes do arquivo, e o CyberLife já tinha feito o `command.STR` crescer). O lugar de uma descrição passa a ser
+  o deslocamento no original (o `command.json` foi convertido) e o texto atual é lido onde o `.dat` do mod
+  aponta, para que um segundo `apply` não mova de novo. A largura das descrições de técnica é a da janela das
+  descrições de itens (200 px). Sete descrições de itens foram encurtadas para caber em 127 bytes.
+  `item.STR` 79 → 129 KiB, `command.STR` 47 → 68 KiB, `tacticscmd.STR` 5,5 → 7,3 KiB.
+- **`ClearCondition.dat`/`OpenCondition.dat`** (lidos pelo `ov104`, que também usa o leitor de furigana): 256
+  registros de 0x51 bytes com o texto em +1 (80 bytes). Em pares cabem ~39 letras: "Vença com time de
+  Fogo!", "Vença!\nNa Ilha Hidra!", "Ilha do Lince?\nPrecisa de um item!". Corrigi uma troca do CyberLife
+  ("With only men!" para 女の子のキャラで勝て！, que pede só garotas). Lugares conforme o diálogo (Colina Oculta,
+  Monte Magnitude, Ilha Hidra, Estádio Ogre).
+
+**Verificação:** `text.py check`: 5.197 linhas ok; um segundo `apply` não muda nada. Testes Python: 41, todos
+passando (novos: descrição que muda para o fim uma vez só, `sp_binder` refeito). `mod.py check`: ok. No jogo:
+objetivo da batalha e descrição de técnica (acima). Não vistos: descrições de itens e táticas (a bolsa da sessão
+está vazia, mas é a mesma janela e o mesmo leitor), o fichário (`ov112`) e as condições das rotas (`ov104`).
+O teste deixou o savestate da pasta `build/cmake-rel/game/savestates/` (slot 1) no quadro 44000 da sessão `bug4`.

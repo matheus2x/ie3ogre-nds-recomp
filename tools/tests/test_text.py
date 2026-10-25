@@ -142,6 +142,60 @@ class TableTest(unittest.TestCase):
         self.assertEqual(bytes(strs[96:137]), b"x" * 40 + b"\0")
         self.assertEqual(bytes(strs[64:67]), b"xyz")  # the next string is intact
 
+    def test_leftovers_and_unused_strings_are_not_counted(self):
+        # "Oi" over "abcdef": the "ef" after its NUL is the end of the original, never shown
+        retail, cur = b"\0abcdef\0", b"\0Oi\0\0ef\0"
+        self.assertEqual(list(texttool.string_runs(b"\0" + "円堂".encode("cp932") + b"\0")),
+                         [(1, "円堂".encode("cp932"))])
+        self.assertTrue(texttool.leftover(retail, cur, 5))
+        self.assertFalse(texttool.leftover(retail, cur, 1))
+        self.assertFalse(texttool.leftover(b"\0abcd\0ef\0", b"\0Oi\0\0\0ef\0", 6))  # its own string
+        dat = bytearray(0x24 * 2)
+        struct.pack_into("<HH", dat, 0x24 + 0x18, 3, 4)  # record 1: name at index 3, description at 4
+        files = {"data_iz/logic/command.dat": bytes(dat)}
+        self.assertEqual(texttool.shown(files.get, "data_iz/logic/command.STR"), {0, 96, 128})
+        self.assertIsNone(texttool.shown(files.get, "data_iz/logic/item.STR"))
+
+    def test_record_tables(self):
+        self.assertRegex("PracticeGame3F.dat:1518", texttool.ID.pattern)
+        self.assertRegex("command.STR:7232", texttool.ID.pattern)
+        self.assertNotRegex("PracticeGameF.dat:1", texttool.ID.pattern)
+        for name, (size, fields, _) in texttool.RECORDS.items():
+            self.assertTrue(all(f + n <= size for f, n in fields), name)
+
+    def test_description_moves_when_it_does_not_fit(self):
+        class Fake:  # the retail tables; the mod's are already in `tables`
+            def __init__(self, files):
+                self.files = files
+
+            def retail(self, rel):
+                return self.files[rel]
+        dat = bytearray(0x14 * 2)
+        struct.pack_into("<H", dat, 0x14 + 0x0E, 1)  # tactic 1: description at index 1
+        strs = bytearray(32 * 3)
+        strs[32:35], strs[64:67] = b"abc", b"xyz"
+        tables = {"data_iz/logic/tacticscmd.dat": dat, "data_iz/logic/tacticscmd.STR": strs}
+        game = Fake({"data_iz/logic/tacticscmd.dat": bytes(dat)})
+        texttool.put_description(tables, game, "tacticscmd.STR", 32, b"short\0")
+        self.assertEqual(bytes(strs[32:38]), b"short\0")
+        texttool.put_description(tables, game, "tacticscmd.STR", 32, b"y" * 50 + b"\0")
+        self.assertEqual(struct.unpack_from("<H", dat, 0x14 + 0x0E)[0], 3)  # moved to the end
+        self.assertEqual(bytes(strs[96:147]), b"y" * 50 + b"\0")
+        texttool.put_description(tables, game, "tacticscmd.STR", 32, b"z" * 50 + b"\0")
+        self.assertEqual((struct.unpack_from("<H", dat, 0x14 + 0x0E)[0], len(strs)), (3, 160))  # moved once
+
+    def test_binder_is_written_again(self):
+        class Fake:
+            def modded(self, rel):
+                return b"one\0two\0"
+        dat = bytearray(2 + 12 * 2)
+        struct.pack_into("<H", dat, 0, 2)
+        struct.pack_into("<H", dat, 2 + 12 + 10, 4)  # record 1 at "two"
+        tables = {"data_iz/logic/sp_binder.dat": dat}
+        texttool.put_binder(tables, Fake(), {0: b"longer one\0"})
+        self.assertEqual(bytes(tables["data_iz/logic/sp_binder.STR"]), b"longer one\0two\0")
+        self.assertEqual(struct.unpack_from("<H", dat, 2 + 12 + 10)[0], 11)
+
     def test_table_problems(self):
         font = FixedFont()
         self.assertEqual(problems(b"", "Leite\\nRecupera GP.", 40, font, (2, 120)), [])
