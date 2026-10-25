@@ -1634,3 +1634,259 @@ lugar da 1.4, que fica desligada. Não testado: adicionar pelo botão e arrastar
   comentário do `release.yml`, `docs/MODS.md` e `docs/DESENVOLVIMENTO.md`.
 - Verificação: `tools/release.py` gera o `assets.txt` sem rótulos. Na release 0.1.10 já publicada, tirei o rótulo
   do asset pela API (`PATCH releases/assets/<id>`, `label` vazio); agora ela mostra só `mod-CyberLifePlus-1.3.zip`.
+
+## 2026-10-24 — CyberLifePlus 1.4: títulos da galeria de vídeos
+
+- Pedido: seguir com os próximos passos da tradução. Pelo roadmap, o resto da fase 2, a começar por "locais e
+  cenas" (`fieldinf.dat`, `movie_view_f.dat`).
+- **`movie_view_f.dat`** (galeria de vídeos: Continuar → Gallery → Game Video): 58 registros de 0x74 bytes, com
+  id, nome do vídeo em +0x02, número ("ＮＯ．１") em +0x0C e título com furigana em +0x1B. Confirmado em
+  `ov037` (`0x0211BA84`/`0x0211BA88` somam 0x0C e 0x1B ao registro).
+- **`fieldinf.dat`** ficou de fora: 149 nomes de locais em registros de 0x180 bytes (nome em +0x90, até 20
+  bytes; `func_0206f834` lê o registro). Parecem rótulos internos: nomes cortados no meio ("…グラウン"), treinos
+  e minibatalhas, e o patch em inglês também não os traduziu. Fica na fase 5 (ver no jogo antes).
+- **Galeria em branco:** com os títulos em ASCII, a caixa mostrava só o "NO.1". Testes no jogo (save do teste
+  do Windows, sessão headless até a galeria) e a leitura do código explicaram o problema. O furigana é lido por
+  `func_ov016_020f24e8` com `char` com sinal: todo byte ≥ 0x80 conta como primeiro de dois e é copiado junto com
+  o seguinte, e o resto do ASCII é jogado fora. Achei a função cruzando o `NTR_PROFILE` (build com
+  `NTR_TRACE`) com as funções que comparam com `[` e `/`. Um acento de 1 byte desalinha os pares, e então a
+  segunda metade de "Ａ" (0x60) cai como ASCII e some. Isso explica o "：Ａ" que virou outros símbolos num
+  dos testes.
+- **Correção no `text.py`:** nova forma de tabela `PAIRED` (`paired()` em `tools/ntr/text.py`). Cada caractere
+  de 1 byte vai em par com o espaçador 0xCF, que não desenha nada: ASCII vira `CF c`, acento vira `b CF`. O
+  `Font_DrawString` desenha o resultado normalmente, com espaço e pontuação de meia largura. A flag de largura
+  cheia das tabelas virou `WIDE` (a lista de técnicas). O `apply` também grava a `FONT12` com o espaçador sem
+  tinta quando há títulos da galeria. Lugar novo: `movie_view_f.dat:registro`.
+- A caixa não põe o pixel entre as letras (`Font.measure(s, gap)`), e um título de teste de 229 px, de x = 16
+  até perto da borda, apareceu inteiro: esse é o limite do `check`. Como os pares dobram os bytes, cabem umas
+  44 letras nos 88 bytes. As letras ficam coladas, como o "NO.1" do CyberLife. Pensei num segundo espaçador de
+  1 px, mas exigiria mais um código de 1 byte na fonte, e não dá para garantir que nenhum texto o use.
+- **Traduzido:** os 58 títulos (`translations/CyberLifePlus/movie_view_f.json`). Os nomes seguem as falas em
+  português: Estádio Hidra, Yamaneko, Pavão, Condor, Tartaruga e Titanic, Ilha Liocott, Ogros, Senhor K,
+  Hidetoshi Nakata, Michiya Kudou. Técnicas em romaji/inglês, como na lista: Tiger Drive, Snow Angel,
+  Tatsumaki Otoshi, Grand Fire, Pegasus Shot, Strike Samba.
+- `survey`: as duas áreas foram separadas. Títulos da galeria: 100 %. Nomes de locais: 0 % (984 caracteres).
+  Total: 34,5 % com repetições e 47,3 % dos textos únicos.
+- `mod.ini` 1.4. O `LEIA-ME.md` do mod ganhou a versão e o nome novo do zip (`mod-CyberLifePlus-<versão>.zip`,
+  pendente desde a entrada da release 0.1.10). Também atualizei o `docs/TRADUCAO.md`.
+
+**Verificação:**
+- No jogo (Linux, `build/cmake-rel`, save do teste do Windows), o título nº 1 aparece como "Inazuma Eleven 3:
+  abertura". O título mais largo ("As lágrimas de Kageyama e os óculos de Kido") e um texto de 229 px foram
+  postos no registro 0 para teste: aparecem inteiros, com os acentos. Os outros 57 títulos estão bloqueados
+  nesse save (capítulo 1); não foram vistos, mas seguem as mesmas regras.
+- No arquivo, só os títulos mudaram (o cabeçalho dos 58 registros está igual ao original).
+- `text.py check`: 3.451 linhas sem problema. Testes Python: 36, todos passando (novo: a forma `PAIRED`).
+  `mod.py check`: ok.
+- Pasta de teste do Windows: `mods\mod-CyberLifePlus-1.4.zip` ao lado do `CyberLifePlus.zip` (1.3). Pela
+  regra do launcher, a 1.4 fica ligada no lugar da 1.3.
+
+**Achados para depois:** o menu da galeria está em inglês ("Gallery", "Game Video", "Web Identifiant", "Choose
+the video you want to replay.", "Play", "Quit", "Back"), assim como o aviso sobre saves alterados que aparece
+ao carregar. Com um save de antes do mod, a faixa de cima do jogo mostra o lugar e o objetivo gravados em
+japonês ("?? ストリート"), como o card do save.
+
+## 2026-10-24 — `TRADUCAO.md`: checklist da tradução
+
+- Pedido: o `docs/TRADUCAO.md` deve ter um checklist do que já foi feito e do que está previsto, e ganhar itens
+  novos conforme as etapas revelam coisas.
+- A seção "Roadmap" virou "Checklist", em listas `- [x]`/`- [ ]` por fase (1 a 5). O que estava espalhado
+  também entrou: as notas "não testado" do diário (itens, técnicas, objetivos, galeria), os textos em inglês
+  achados (menu da galeria, aviso de saves), os menus "Kick"/"Guard", as legendas e o aviso de ficção. Duas
+  seções novas: "Fora do mod" (ARM9, saves antigos com o lugar e o objetivo em japonês) e "Créditos e pacote"
+  (nomes dos membros do CyberLife, pendente desde a 1.0).
+- A partir de agora, cada etapa da tradução marca o que terminou (com a versão do mod) e acrescenta o que
+  descobriu.
+
+## 2026-10-24 — CyberLifePlus 1.4: rótulos de quem fala nas partidas (`mch.pkb`)
+
+- Pedido: o próximo item da fase 2, "rótulos de ação (27)". O número vinha do grupo "Outros scripts" do
+  levantamento (`act/mch/mrobj/help.pkb`): 24 textos do `act.pkb` e 3 do `mch.pkb`.
+- **O que cada string é**, pelo comando da instrução a que pertence (novo `ssd_opcodes` em `tools/ntr/text.py`):
+  - 0x3070 escreve só no log de depuração. São todas as do `act.pkb` ("PK GK左ボール左×", "ブロック 成功",
+    "■たくてぃくす1") e as "■■■ゲーム勝利■■■", "=%d" e "2009/7/" do `mch.pkb`. Ficam como estão;
+  - 0x3019, registro 2, é o rótulo de quem fala, o mesmo que a fase 1 traduziu no `eve.pkb` ("Senhor K",
+    "Daisuke?"). No `mch.pkb` sobravam ひびき, たえ e イチノセ, em 19 lugares das partidas 34010007 e 34010022.
+- **`text.py`:** os scripts do `mch.pkb` entram como os do `eve.pkb` (`script_slots`, lugar
+  `mch:entrada:deslocamento`). As strings do 0x3070 saem das listas e também do `survey`. As 45 linhas que o
+  `eve.json` pulava com `""` eram todas desse comando e foram tiradas do arquivo. O `apply` recomprime a entrada
+  quando ela era LZ10 (83 das 84 do `mch.pkb`), em vez de olhar o nome do pacote.
+- **Traduzido:** Hibiki, Tae e Ichinose (`translations/CyberLifePlus/mch.json`), como no diálogo e no `eve.json`.
+  Entra na 1.4, ainda não lançada.
+
+**Verificação:** comparadas com o mod do último commit, só as duas entradas mudaram no `mch.pkb`. Nelas, só os
+19 rótulos; o resto dos bytes descomprimidos está igual. Rodar o `apply` de novo não muda nada. `text.py check`:
+3.470 linhas sem problema e 5 puladas (furigana sem uso). Testes Python: 37, todos passando (novo:
+`ssd_opcodes`). `mod.py check`: ok. `survey`: "Outros scripts" 100 %; total 34,5 % com repetições e 47,3 % dos
+textos únicos (os prints de depuração saíram da conta). O zip 1.4 da pasta de teste do Windows foi refeito.
+
+**Não testado:** as duas partidas não foram vistas no jogo. O rótulo é desenhado como o do `eve.pkb`, que já
+aparece em português.
+
+## 2026-10-24 — CyberLifePlus 1.4: menus e mensagens nos overlays
+
+- Pedido: o próximo item da fase 2, os menus nos overlays.
+- **O que faltava:** 321 strings em japonês (236 diferentes) em 38 overlays, contando só as que estão fora do
+  código e para as quais a própria overlay tem um ponteiro (o resto era código lido como texto). Quase tudo de
+  comunicação (DS sem fio, Wi-Fi Connection, trocas, すれちがい, ligação com o Inazuma Eleven 2 e o
+  Spark/Bomber), mais os avisos da formação (`ov057`), o quiz do `ov023` e as janelas de scout e itens premium.
+- **Onde a tradução pode ficar:** o código recompilado guarda o endereço de cada string, então a tradução fica no
+  lugar e cabe até o NUL e o alinhamento de 4 bytes da original. Só 4 traduções precisavam das palavras zeradas
+  seguintes. Não usei esse espaço, porque essas palavras podem ser dados, e encurtei as 4.
+- **Como as mensagens são desenhadas:** as janelas de mensagem dos overlays usam a classe do `ov016`
+  (`func_ov016_020f2ab4` → `020f2184`/`020f2304` → `020f24e8`), o mesmo leitor de furigana da galeria, que
+  descarta o ASCII. A prova veio das 76 strings que o CyberLife traduziu nos overlays: as mensagens ele sempre
+  escreveu em largura cheia ("Ｅｑｕｉｐ　ｎｏｗ？"), os rótulos de botão em meia largura ("Defend"). A análise
+  estática (de quem usa cada endereço até o leitor) não fechou, porque as strings passam por tabelas e objetos.
+- **`text.py`:** novo grupo `ov` (lugar `ovNNN:0xdeslocamento`, `overlays.json`, `extract --only ov`).
+  - As mensagens são gravadas em pares (`PAIRED`), com as linhas e a largura das mensagens originais do mesmo
+    overlay (com 1 px entre letras, por segurança).
+  - `paired()` ficou mais econômico: um acento carrega a letra seguinte no mesmo par. O `%s` fica inteiro para o
+    `sprintf`, que roda antes do leitor.
+  - Os rótulos com vizinhos em meia largura do CyberLife (`PLAIN_LABELS`: os botões do `ov050` e o "せめろ" do
+    `ov057`) vão como texto comum, com 12 px por letra do original.
+  - O `apply` grava os overlays como patches (`write_overlay`).
+- **Traduzido:** 312 strings em 34 overlays. Sem tradução, de propósito:
+  - senhas comparadas com o que o jogador digita: "ゆうきがあれば" (`ov055`), "なつみぶか"/"ぜうすくろ"
+    (`ov016`), "てんま" (`ov028`), "トンコツ" (`ov131`);
+  - rótulos curtos que não cabem em pares e cujo desenhista não sei: "そうび" (`ov053`), "かう"/"うる" (`ov062`),
+    "カップ" (`ov072`), "ファイター" (`ov082`).
+
+  Termos: Spark/Bomber, Inazuma Eleven 2, DS sem fio, Wi-Fi Connection, Passing (como o menu do CyberLife),
+  troca, recrutar/scout, pontos de amizade, Mistre, Escaba, God Cannon. Os textos são curtos porque os pares dobram
+  os bytes.
+
+**Verificação:**
+- No jogo, a galeria com um título de teste cheio de acentos e um `%s` ("Prenúncio às três: açúcar, é %s
+  ônibus") aparece certa: os acentos que carregam letra e o alinhamento depois do `%s` funcionam. Nenhuma
+  mensagem de overlay foi vista: na formação do save de teste (um jogador, sem formações para escolher) não deu
+  para provocar os avisos do `ov057`; o menu do Y mostra os rótulos do CyberLife.
+- Comparados com o mod do último commit, os 34 overlays só mudaram dentro dos espaços das strings traduzidas.
+  Rodar o `apply` de novo não muda nada. `mod.py check`: ok (nenhum byte de código mudou).
+- `text.py check`: 3.781 linhas sem problema e 15 puladas. Testes Python: 37, todos passando. `survey`: menus
+  no código 95 %; total 35,2 % com repetições e 48,3 % dos textos únicos. Zip 1.4 da pasta de teste refeito.
+
+**Achado:** nomes de jogador em meia largura ("Kanon") devem sumir nas mensagens com `%s` que passam pelo leitor
+de furigana, inclusive nas do CyberLife. Entrou no checklist; a correção seria no port (o leitor) ou com nomes em
+largura cheia.
+
+## 2026-10-24 — Launcher compila com 80% dos núcleos; sliders do menu sem piscar
+
+- Pedido: na recompilação, usar 80% dos núcleos (com todos, o PC fica lento); e o menu do Esc piscava ao mexer
+  num slider das configurações.
+- **Núcleos:** `compile_workers()` em `launcher/prepare.cpp` é 80% de `hardware_concurrency()`, no mínimo 1. Vale
+  para as threads de compilação e para a mensagem "Compilando o jogo (N arquivos, M núcleos)".
+- **Piscada:** a cada passo do arraste, o slider chamava `set()`, que grava o `boej.ini` e roda
+  `apply_settings()`. Essa função refazia a apresentação lógica do SDL (o que perde um quadro) e, no tamanho da
+  janela, redimensionava e recentralizava a janela a cada valor. Correção nos dois lados:
+  - `slider_setting` (`runtime/ui/ui.cpp`): o slider mostra o próprio valor enquanto se move e só grava e
+    aplica ao ser solto (`IsItemDeactivatedAfterEdit`). Usado no tamanho da janela e no volume;
+  - `apply_presentation` (`runtime/src/host.cpp`) só chama `SDL_SetRenderLogicalPresentation` quando a
+    largura, a altura ou o modo mudaram. Assim as outras opções (caixas de marcar, combos) também não perdem
+    quadro.
+
+**Verificação:** Linux (`build/cmake-rel`) e o pacote de Windows (`tools/release.py`) compilam sem avisos; o
+`sdk/` do zip tem as duas mudanças. Não testado: o menu do Esc com a janela de verdade (o roteiro sem janela não
+abre o menu) e a compilação no launcher com o número novo de núcleos. O zip foi copiado para a pasta de teste
+do Windows, mas o jogo estava aberto e a instalação não foi atualizada.
+
+## 2026-10-24 — Objetivo da tela de cima alinhado (hook no runtime)
+
+- Pedido: no objetivo ("Hibiki está esperando! Vá à Raimon!"), a parte da direita descia um pouco e o texto
+  ficava torto.
+- **Causa (do jogo, não do mod):** a OAM mostra os 4 sprites do objetivo todos em y = 177; a escada está dentro
+  deles. O objetivo é desenhado pelo `Font_DrawString` (`lr` = `0x020C739C`, em `func_ov000_020c72d4`) num quadro
+  de 64×128 na VRAM de sprites. A função quebra a linha quando a letra não cabe nos 64 px, somando ao y a
+  altura da fonte (12) mais o espaçamento entre linhas do objeto de fonte (campo +0x18, que ali vale 5): passo de
+  17 linhas. Os sprites começam a cada 16 linhas do quadro (tiles 178/194/210/226, 512 bytes um do outro), então
+  a linha k aparece 1 px mais baixa que a anterior. No japonês original também, mas quase não se nota.
+  Achei a função pelo `NTR_PROFILE`, que agora lista todas as funções (antes parava em 1000), e por um log
+  temporário dos argumentos do `Font_DrawString`.
+- **Correção:** no hook `font_draw_string` (`runtime/src/hle.cpp`), a chamada do objetivo (retorno `0x020C739C`,
+  overlay 0 ativa e `blx r4` no lugar) roda com espaçamento 4, e o valor original volta depois. Passo de 16: as
+  linhas caem todas na mesma altura dos sprites. `hle.tsv` com a descrição nova.
+
+**Verificação:** com o save do teste, a última linha com tinta de cada sprite do objetivo passou de 19/20/21
+para 19/19/19 (comparado com o build de antes do hook). O espaçamento horizontal e os espaçadores do `text.py`
+não mudam. Não testado: um objetivo em português no jogo (o save de teste guarda um objetivo antigo, em
+japonês) e o objetivo do card do save na tela de Continuar, que pode ser outra chamada.
+
+## 2026-10-24 — 3D desenhado no início do quadro: a letra velha que piscava ao abrir um diálogo
+
+- Pedido: ao começar um diálogo, os primeiros caracteres aparecem errados e depois são trocados pelos da
+  tradução; verificar se é isso mesmo.
+- **Não é a tradução.** Quadro a quadro (sessão `story-replay.txt`): ao abrir uma caixa nova, a posição da
+  primeira letra mostra por 2 quadros a primeira letra da fala anterior ("N" de "Não dá!" antes de "O que tá
+  acontecendo?"). Quando as duas falas começam com a mesma letra, não se vê nada. Na primeira fala do jogo
+  aparece um "ー", e o jogo sem mod faz o mesmo. O texto novo já está na memória nesse quadro (procurado
+  nos savestates), então é imagem velha, não texto velho.
+- **Causa (port):** a caixa de diálogo é 3D (o BG0 da tela de baixo), com o texto numa textura que o jogo
+  atualiza no VBlank. O port desenhava o 3D no próprio comando SWAP_BUFFERS, no meio do quadro, lendo as
+  texturas naquele instante. O hardware desenha a lista trocada durante o quadro seguinte, já com o que o jogo
+  gravou no VBlank. Então toda textura atualizada no VBlank aparecia um quadro atrasada, e ao abrir a caixa
+  sobrava a letra antiga.
+- **Correção** (`runtime/src/gpu3d.cpp`, `timing.cpp`, `gpu2d.cpp`): o SWAP_BUFFERS só entrega a lista
+  (`g.drawn`). O novo `gpu3d_frame_start()`, chamado no começo da linha 0, desenha essa lista e a põe na
+  frente, no lugar do antigo `gpu3d_vblank()`. A latência de exibição é a mesma (a geometria do quadro N
+  aparece no quadro N+1). O savestate guarda a lista pendente em vez do buffer de trás já desenhado; o
+  formato mudou, mas um savestate já só vale para o mesmo build.
+- De passagem: `NTR_PROFILE` lista todas as funções (antes parava em 1000).
+
+**Verificação:** as duas aberturas de caixa testadas saem vazias e mostram direto o "O" certo. Sessão da história
+comparada com o build anterior: os quadros 9000, 10500 e 12000 são idênticos pixel a pixel. Em 13000 e 14000
+muda só o quadro da animação do personagem (textura animada, agora em dia com o hardware) e o objetivo (pela
+correção de alinhamento anterior). Savestate salvo e carregado: a mesma diferença de 157 pixels que o build
+anterior dá nesse teste (a corrida carregada não tem as entradas da sessão). Linux e Windows (MinGW) compilam
+sem avisos.
+
+## 2026-10-24 — Legendas dos vídeos sem espaço entre as palavras (regressão da 1.3)
+
+- Pedido: em algumas cinemáticas, as palavras das legendas ficam grudadas ("MechamoUtsonomiya Toramaru!",
+  "Eseeufizerisso?").
+- **Causa (o mod, desde a 1.3):** as legendas (`movie/txt`: registros `[u32 quadro inicial][u32 final][u32
+  tamanho][texto]`) passam pelo leitor de furigana, que descarta o ASCII. O CyberLife escreve as letras em
+  largura cheia e cada espaço como "0xCF + letra seguinte" ("Ｍｅ" `CF` `c` "ｈａｍｏ"): o 0xCF é o espaço da fonte
+  dele (avanço 3, 4 px com o pixel do jogo). Na 1.3 escolhi o 0xCF para o espaçador dos objetivos e o
+  `fit_font` zerou a largura dele. Isso apagou esses espaços nas legendas (617), em scripts (142) e em tabelas
+  (20).
+- **Correção:** o `SPACER` passou para o 0xDF, que nenhum texto usa (contei nas falas, scripts, `.STR`,
+  legendas e strings dos overlays). O `fit_font` zera o 0xDF e devolve ao 0xCF os valores do CyberLife
+  (0, 0, 3); o `decode` mostra o 0xCF como espaço. Com o `apply`, a `FONT12`, os 102 objetivos, os títulos da
+  galeria e os 34 overlays foram regravados com o 0xDF. Nenhuma tradução minha ficou com 0xCF. O mod continua
+  na 1.4 (ainda não lançada).
+
+**Verificação:** não achei como chegar no jogo a um vídeo com legenda do CyberLife (o da abertura usa outra
+legenda, em japonês). Então os bytes da legenda do Toramaru (`a3m05c.dat`) foram postos no título da galeria,
+que passa pelo mesmo leitor e pela mesma fonte: aparece "Me chamo Utsonomiya Toramaru!", com os espaços. O
+objetivo do quadro 14000 da sessão da história e o título da galeria saem idênticos aos de antes da troca.
+Testes Python: 37, todos passando. `text.py check` e `mod.py check`: ok.
+
+## 2026-10-24 — Imagem cortada depois de fechar o menu do Esc (regressão dos sliders)
+
+- Pedido: fora do menu do Esc, a imagem do jogo ficava maior que a janela, como se fosse preciso aumentá-la;
+  dentro do menu, tudo cabia.
+- **Causa:** o cache da apresentação lógica, que pus no `apply_presentation` para os sliders não piscarem. O
+  `draw_paused_frame` desliga a apresentação lógica para desenhar o fundo do menu, e ao fechar o menu o
+  `apply_presentation()` achava que nada tinha mudado e não a religava. O jogo ficava sem a escala.
+- **Correção:** o `draw_paused_frame` invalida o cache (`g_host.presentation[2] = -1`) quando a desliga.
+
+**Verificação:** Linux e Windows (MinGW) compilam. Não testado no jogo: o roteiro de entrada sem janela não
+abre o menu.
+
+## 2026-10-24 — Contorno preto nos efeitos translúcidos das técnicas (edge marking)
+
+- Pedido: no Dragon Crash, o jato d'água aparecia com um traçado preto nas bordas que o emulador não mostra.
+- **Causa:** o polígono translúcido gravava o próprio ID no atributo do pixel, por cima do ID do opaco. O
+  edge marking via então "IDs diferentes" nas bordas do efeito e pintava a cor de contorno ali. No hardware
+  (e no melonDS) o translúcido guarda o ID dele à parte, só para não se desenhar duas vezes no mesmo pixel.
+  O edge marking e as sombras comparam só o ID do opaco.
+- **Correção (`gpu3d.cpp`):** o ID no `g_flags` passa a ser só o do último opaco. O ID translúcido foi para um
+  plano novo, `g_translucent_id`, lido só onde há `kTranslucent` (como o `g_coverage`, não precisa limpar).
+
+**Verificação:** Linux e Windows (MinGW) compilam. Não testado no jogo: falta um save numa partida com a
+técnica.
+
+**Pasta de teste do Windows** (`C:\Games\ie3-teste\ie3ogre-recomp`): a pedido, apaguei tudo menos `mods/` e
+`saves/` (inclusive `boej.ini`, `boej.pak`, `cache/`, `toolchain/` e os replays) e pus a release 0.1.10 gerada
+deste código (`tools/release.py`, já com a correção do edge marking). O launcher vai baixar o toolchain de novo,
+refazer o `boej.pak` a partir da ROM e recompilar o jogo.

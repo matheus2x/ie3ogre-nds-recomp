@@ -189,12 +189,17 @@ struct CompileJob {
     std::string source;
 };
 
-// Runs the jobs on every core; stops at the first failure.
+// 80% of the cores (at least one): with all of them the player's PC gets sluggish while it compiles.
+unsigned compile_workers() {
+    return std::max(1u, std::thread::hardware_concurrency() * 4 / 5);
+}
+
+// Runs the jobs on compile_workers() threads; stops at the first failure.
 bool run_jobs(Job& job, const std::vector<CompileJob>& jobs, std::string& failure) {
     std::atomic<size_t> next{0}, done{0};
     std::atomic<bool> failed{false};
     std::mutex failure_mutex;
-    unsigned workers = std::max(1u, std::thread::hardware_concurrency());
+    unsigned workers = compile_workers();
     std::vector<std::thread> threads;
     for (unsigned w = 0; w < workers; w++) {
         threads.emplace_back([&] {
@@ -279,7 +284,7 @@ bool build_game(Job& job) {
     add(sdk + "game/main.cpp", "main", {"-O2", "-DNDEBUG"});
 
     job.set_step("Compilando o jogo (" + std::to_string(jobs.size()) + " arquivos, " +
-                 std::to_string(std::max(1u, std::thread::hardware_concurrency())) + " núcleos)");
+                 std::to_string(compile_workers()) + " núcleos)");
     std::string failure;
     auto compile_start = std::chrono::steady_clock::now();
     if (!run_jobs(job, jobs, failure)) {

@@ -149,6 +149,7 @@ struct Host {
     bool env_scale = false, env_scale_3d = false;  // NTR_SCALE / NTR_3D_SCALE win over boej.ini
     bool fullscreen_applied = false;
     int window_scale_applied = 0;
+    int presentation[3] = {0, 0, -1};  // logical width, height and mode last given to SDL
     bool wide = true;          // video.wide_layout
     bool stack_right = false;  // video.wide_side = right
     bool menu_requested = false;
@@ -672,9 +673,15 @@ void apply_presentation() {
     layout_size(w, h);
     // Integer scaling of the 2304x1296 wide layout would not fit most windows.
     bool integer = c.get_bool("video", "integer_scale") && !g_host.wide;
-    SDL_SetRenderLogicalPresentation(g_host.renderer, w, h,
-                                     integer ? SDL_LOGICAL_PRESENTATION_INTEGER_SCALE
-                                             : SDL_LOGICAL_PRESENTATION_LETTERBOX);
+    SDL_RendererLogicalPresentation mode = integer ? SDL_LOGICAL_PRESENTATION_INTEGER_SCALE
+                                                   : SDL_LOGICAL_PRESENTATION_LETTERBOX;
+    // Only when it changed: setting it again drops a frame, and the pause menu applies the
+    // settings after every change (the menu flickered while a slider moved).
+    int wanted[3] = {w, h, int(mode)};
+    if (!std::equal(wanted, wanted + 3, g_host.presentation)) {
+        SDL_SetRenderLogicalPresentation(g_host.renderer, w, h, mode);
+        std::copy(wanted, wanted + 3, g_host.presentation);
+    }
     g_host.linear_filter = SDL_strcasecmp(c.get("video", "filter").c_str(), "linear") == 0;
     for (SDL_Texture* t : g_host.textures) {
         if (t) SDL_SetTextureScaleMode(t, g_host.linear_filter ? SDL_SCALEMODE_LINEAR : SDL_SCALEMODE_NEAREST);
@@ -760,6 +767,7 @@ bool is_menu_input(const SDL_Event& ev) {
 void draw_paused_frame() {
     SDL_Renderer* r = g_host.renderer;
     SDL_SetRenderLogicalPresentation(r, 0, 0, SDL_LOGICAL_PRESENTATION_DISABLED);
+    g_host.presentation[2] = -1;  // apply_presentation sets it again when the menu closes
     SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
     SDL_RenderClear(r);
     int w = 0, h = 0;

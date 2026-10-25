@@ -91,7 +91,7 @@ void gpu3d_init();
 void gpu3d_write(uint32_t addr, uint32_t value);     // GX FIFO and command ports
 void gpu3d_write_gxstat(uint32_t value);
 uint32_t gpu3d_read(uint32_t addr, uint32_t stored);  // GXSTAT, RAM_COUNT, test/matrix results
-void gpu3d_vblank();                                 // shows the frame rendered at SWAP_BUFFERS
+void gpu3d_frame_start();                            // renders the list of SWAP_BUFFERS and shows it
 void gpu3d_irq_check();                              // GXSTAT FIFO IRQ
 const uint16_t* gpu3d_line_color(uint32_t line);     // BGR555, native size
 const uint8_t* gpu3d_line_alpha(uint32_t line);      // 0-31; 0 = no 3D pixel

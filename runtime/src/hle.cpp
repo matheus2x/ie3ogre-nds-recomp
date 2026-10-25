@@ -136,6 +136,22 @@ constexpr uint32_t kFontGlyphIndex = 0x020182AC;
 constexpr uint32_t kFontGlyphWidths = 0x020182F4;
 constexpr uint32_t kNoGlyph = 0xFFFF;
 
+// The objective on the top screen (overlay 0) is drawn into a 64 px wide canvas that wraps
+// a line where a letter does not fit; four sprites show it, each starting 16 rows below the
+// last. The font's line spacing there is 5, so the lines are 17 rows apart and every sprite
+// shows its line 1 px lower than the one before (Japanese too, barely seen). That call gets
+// spacing 4: the lines fall 16 rows apart, all at the same height.
+constexpr uint32_t kObjectiveOverlay = 0;
+constexpr uint32_t kObjectiveReturn = 0x020C739C;  // after "blx r4" in func_ov000_020c72d4
+constexpr uint32_t kObjectiveCall = 0xE12FFF34;
+constexpr uint32_t kObjectiveSpacing = 4;
+constexpr uint32_t kFontLineSpacing = 0x18;  // field of the font object: rows between lines
+
+bool is_objective(const Cpu& c) {
+    return c.r[14] == kObjectiveReturn && overlay_active_at(kObjectiveOverlay, kObjectiveReturn) &&
+           rd32(kObjectiveReturn - 4) == kObjectiveCall;
+}
+
 bool is_name_field(const Cpu& c) {
     return c.r[14] == kNameFieldReturn && overlay_active_at(kNameFieldOverlay, kNameFieldReturn) &&
            rd32(kNameFieldReturn - 4) == kNameFieldCall;
@@ -160,6 +176,14 @@ int letter_offset(Cpu& c, uint32_t font, uint32_t code) {
 }  // namespace
 
 void hle_font_draw_string(Cpu& c, GuestFn orig) {
+    if (is_objective(c)) {
+        const uint32_t field = c.r[0] + kFontLineSpacing, spacing = rd32(field), lr = c.r[14];
+        wr32(field, kObjectiveSpacing);
+        orig(c);
+        wr32(field, spacing);
+        c.r[14] = lr;
+        return;
+    }
     if (!is_name_field(c) || !c.r[3]) return orig(c);
     const uint32_t font = c.r[0], x = c.r[1], y = c.r[2], lr = c.r[14];
     uint32_t at = c.r[3];

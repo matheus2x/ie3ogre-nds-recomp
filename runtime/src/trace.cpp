@@ -28,7 +28,7 @@ void print_profile() {
     std::vector<std::pair<uint32_t, uint64_t>> rows(g_profile.begin(), g_profile.end());
     std::sort(rows.begin(), rows.end(), [](const auto& a, const auto& b) { return a.second > b.second; });
     NTR_LOG("[profile] frames %llu-%llu, %zu functions:\n", g_profile_first, g_profile_last, rows.size());
-    for (size_t i = 0; i < rows.size() && i < 1000; i++) {
+    for (size_t i = 0; i < rows.size(); i++) {  // all of them: the rare ones are often the ones wanted
         NTR_LOG("  %08X %llu\n", rows[i].first, (unsigned long long)rows[i].second);
     }
 }

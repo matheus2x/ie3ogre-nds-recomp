@@ -11,6 +11,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
+#include <functional>
 #include <sstream>
 #include <vector>
 
@@ -69,6 +70,25 @@ void save() {
 void set(const char* section, const char* key, const std::string& value) {
     g_config->set(section, key, value);
     save();
+}
+
+// A slider for a number in boej.ini. It saves and applies the value when it is let go: at
+// every step of a drag the window would change size and the menu flicker. While it moves,
+// it shows its own value. The label is a printf format for ImGui ("%%" for a percent sign).
+void slider_setting(const char* id, const char* section, const char* key, int lo, int hi,
+                    const std::function<std::string(int)>& label) {
+    static ImGuiID editing = 0;
+    static int moving = 0;
+    ImGuiID item = ImGui::GetID(id);
+    int value = editing == item ? moving : g_config->get_int(section, key, lo, hi);
+    ImGui::SliderInt(id, &value, lo, hi, label(value).c_str(), ImGuiSliderFlags_AlwaysClamp);
+    if (ImGui::IsItemActive()) {
+        editing = item;
+        moving = value;
+    } else if (editing == item) {
+        editing = 0;
+    }
+    if (ImGui::IsItemDeactivatedAfterEdit()) set(section, key, std::to_string(value));
 }
 
 std::vector<std::string> split(const std::string& list) {
@@ -479,10 +499,11 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
                 if (ImGui::Combo("##side", &side, kSides, 2)) set("video", "wide_side", side ? "right" : "left");
             } else {
                 row("Tamanho da janela");
-                int scale = config.get_int("video", "window_scale", 1, 16);
-                char format[48];
-                std::snprintf(format, sizeof format, "%%d× (%d×%d)", 256 * scale, 384 * scale);
-                if (ImGui::SliderInt("##scale", &scale, 1, 6, format)) set("video", "window_scale", std::to_string(scale));
+                slider_setting("##scale", "video", "window_scale", 1, 6, [](int scale) {
+                    char label[48];
+                    std::snprintf(label, sizeof label, "%d× (%d×%d)", scale, 256 * scale, 384 * scale);
+                    return std::string(label);
+                });
                 checkbox_row("Só múltiplos inteiros", "Pixels todos do mesmo tamanho; pode sobrar borda preta.", "video",
                              "integer_scale");
             }
@@ -513,8 +534,8 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
             page_title("Áudio", nullptr);
             if (!begin_rows("audio")) break;
             row("Volume");
-            int volume = config.get_int("audio", "volume", 0, 100);
-            if (ImGui::SliderInt("##volume", &volume, 0, 100, "%d%%")) set("audio", "volume", std::to_string(volume));
+            slider_setting("##volume", "audio", "volume", 0, 100,
+                           [](int volume) { return std::to_string(volume) + "%%"; });
             end_rows();
             break;
         }

@@ -77,6 +77,7 @@ void advance_time(uint64_t cycles) {
         uint64_t line_start = line * kCyclesPerLine;
         uint32_t v = uint32_t(line % kLines);
         if (line_start > start) {
+            if (v == 0) gpu3d_frame_start();  // the 3D frame drawn as the hardware does, for this frame
             if (v < 192) gpu_render_line(v);
             gpu3d_irq_check();
             if (v == 192) {

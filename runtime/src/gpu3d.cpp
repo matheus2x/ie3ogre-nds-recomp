@@ -6,9 +6,10 @@
 // clipping against the view volume, BOX/POS/VEC tests and the result registers.
 // Commands run as soon as they are written, so the FIFO is always empty and never busy.
 //
-// Rendering: SWAP_BUFFERS renders the polygon list into the back buffer, which becomes
-// visible at the next VBlank (like the hardware, which renders the swapped lists during
-// the following frame). Supported: Z and W depth buffering, all seven texture formats,
+// Rendering: SWAP_BUFFERS hands the polygon list over; it is rendered into the back buffer
+// at the start of the next frame and shown from that frame on, like the hardware, which
+// draws the swapped list during the following frame with the textures as they are then.
+// Supported: Z and W depth buffering, all seven texture formats,
 // modulate/decal/toon/highlight/shadow polygons, translucency and alpha test, polygon
 // IDs, edge marking, fog, anti-aliasing, wireframe (alpha 0) polygons and the clear
 // color/depth. Not modeled: 1-dot polygon culling and the clear bitmap (rear plane).
@@ -130,6 +131,10 @@ struct Geometry {
     // Lists.
     std::vector<Polygon> polys;
     uint32_t vertex_count = 0;
+    // The list of the last SWAP_BUFFERS. The hardware draws it during the next frame, so it
+    // samples the textures as the game left them after VBlank (where it uploads them): it is
+    // rendered at the start of that frame, not at the swap (gpu3d_frame_start).
+    std::vector<Polygon> drawn;
     bool swap_pending = false;
 
     // Packed FIFO decoding and direct ports.
@@ -632,7 +637,7 @@ void execute(uint32_t cmd, const uint32_t* p) {
             }
             g.stat_vertices = g.stat_culled = g.stat_clipped = 0;
             g.stat_cmds.clear();
-            render_frame();
+            g.drawn = std::move(g.polys);
             g.polys.clear();
             g.vertex_count = 0;
             break;
@@ -739,7 +744,7 @@ Frame g_native;         // g_front at 256x192, for the 2D engine and display cap
 // scan only the flags; the anti-aliasing plane is read only where kAntialias is set, so it
 // is never cleared.
 enum : uint16_t {
-    kIdMask = 63,
+    kIdMask = 63,            // ID of the top opaque polygon; translucent ones keep it
     kEdge = 1 << 6,          // opaque polygon pixel (edge marking source)
     kAntialias = 1 << 7,     // opaque pixel the top polygon covers only partly
     kFog = 1 << 8,
@@ -754,6 +759,7 @@ struct Coverage {
 std::vector<uint32_t> g_depth;
 std::vector<uint16_t> g_flags;
 std::vector<Coverage> g_coverage;
+std::vector<uint8_t> g_translucent_id;  // read only where kTranslucent is set
 
 // The front frame keeps its size until the next swap, so a scale change never blanks it.
 // The back frame may have another size after a swap (the buffers trade places).
@@ -765,6 +771,7 @@ void resize_buffers() {
         g_depth.assign(size_t(W) * H, 0);
         g_flags.assign(size_t(W) * H, 0);
         g_coverage.assign(size_t(W) * H, Coverage{});
+        g_translucent_id.assign(size_t(W) * H, 0);
     }
     if (g_native.color.empty()) g_native.resize(size_t(kScreenWidth) * kScreenHeight);
 }
@@ -884,7 +891,7 @@ void decode_textures(BandPool& pool) {
     };
     std::vector<Job> jobs;
     std::unordered_map<uint64_t, std::vector<Texel>> used;
-    for (Polygon& p : g.polys) {
+    for (Polygon& p : g.drawn) {
         p.texels = nullptr;
         uint32_t format = (p.tex >> 26) & 7;
         if (format == 0) continue;
@@ -1082,13 +1089,14 @@ void draw_polygon(const Polygon& p, int band, int bands) {
                 uint16_t color = pack(out);
                 if (out.a < 31) {
                     // A translucent polygon does not draw over its own ID twice.
-                    if ((flags & kTranslucent) && (flags & kIdMask) == id) continue;
+                    if ((flags & kTranslucent) && g_translucent_id[at] == id) continue;
                     uint8_t dst_a = g_back.alpha[at];
                     if (blending && dst_a > 0) {
                         color = blend_colors(color, g_back.color[at], out.a);
                         out.a = uint8_t(std::max<uint32_t>(out.a, dst_a));
                     }
                     flags = (flags | kTranslucent) & ~kAntialias;  // fully covered
+                    g_translucent_id[at] = uint8_t(id);
                 } else {
                     // Pixel centers less than half a pixel inside an outline edge are
                     // partly covered: 0.5 at the edge, 1 half a pixel in.
@@ -1096,11 +1104,14 @@ void draw_polygon(const Polygon& p, int band, int bands) {
                     uint8_t coverage = uint8_t(cover * 31 + 0.5f);
                     flags = (flags & ~(kTranslucent | kAntialias)) | kEdge | (coverage < 31 ? kAntialias : 0);
                     g_coverage[at] = {g_back.color[at], g_back.alpha[at], coverage};
+                    // Edge marking and shadows compare only opaque IDs: a translucent
+                    // polygon leaves the one below in place.
+                    flags = (flags & ~kIdMask) | id;
                 }
                 g_back.color[at] = color;
                 g_back.alpha[at] = out.a;
                 if (update_depth) pix_depth = depth;
-                flags = (flags & ~(kIdMask | kFog)) | id | ((attr >> 15) & 1 ? kFog : 0);
+                flags = (flags & ~kFog) | ((attr >> 15) & 1 ? kFog : 0);
             }
         }
     }
@@ -1232,7 +1243,7 @@ void render_frame() {
     if (g_scale >= kTextureCacheScale) {
         decode_textures(pool);
     } else {
-        for (Polygon& p : g.polys) p.texels = nullptr;
+        for (Polygon& p : g.drawn) p.texels = nullptr;
     }
     pool.run([&](int band) {
         // Each band clears the rows it draws.
@@ -1244,7 +1255,7 @@ void render_frame() {
             clear_row(g_back.alpha.data() + row, uint8_t((clear >> 16) & 31));
         }
         stream_fence();
-        for (const Polygon& p : g.polys) draw_polygon(p, band, pool.bands());
+        for (const Polygon& p : g.drawn) draw_polygon(p, band, pool.bands());
     });
     // Edge marking and anti-aliasing look at neighboring rows: all bands must be done.
     pool.run([&](int band) { post_process(band, pool.bands()); });
@@ -1297,8 +1308,8 @@ uint32_t gpu3d_read(uint32_t addr, uint32_t stored) {
 }
 
 // Geometry state, the polygon list being built, the frame on screen and, between
-// SWAP_BUFFERS and VBlank, the one rendered for the next frame. The depth and attribute
-// buffers are cleared before every render; the texture cache is rebuilt.
+// SWAP_BUFFERS and the start of the next frame, the list waiting to be rendered. The depth
+// and attribute buffers are cleared before every render; the texture cache is rebuilt.
 void gpu3d_state(StateIo& io) {
     io.section("GPU3");
     io.value(g.mode);
@@ -1344,6 +1355,7 @@ void gpu3d_state(StateIo& io) {
     io.value(g.vp_y2);
     io.vector(g.polys);
     io.value(g.vertex_count);
+    io.vector(g.drawn);
     io.value(g.swap_pending);
     io.value(g.fifo_cmds);
     io.value(g.fifo_left);
@@ -1355,6 +1367,7 @@ void gpu3d_state(StateIo& io) {
     io.value(g.vec_result);
     if (io.loading()) {
         for (Polygon& p : g.polys) p.texels = nullptr;
+        for (Polygon& p : g.drawn) p.texels = nullptr;
     }
 
     io.value(g_front_scale);
@@ -1364,17 +1377,13 @@ void gpu3d_state(StateIo& io) {
     io.vector(g_native.alpha);
     int scale = g_scale;
     io.value(scale);
-    if (g.swap_pending) {
-        io.vector(g_back.color);
-        io.vector(g_back.alpha);
-    }
     if (!io.loading() || !io.ok()) return;
     auto size_is = [](const Frame& f, int s) {
         size_t n = size_t(kScreenWidth) * kScreenHeight * s * s;
         return f.color.size() == n && f.alpha.size() == n;
     };
     if (scale < 1 || scale > kMax3dScale || g_front_scale < 1 || g_front_scale > kMax3dScale ||
-        !size_is(g_front, g_front_scale) || !size_is(g_native, 1) || (g.swap_pending && !size_is(g_back, scale))) {
+        !size_is(g_front, g_front_scale) || !size_is(g_native, 1)) {
         return io.fail("bad 3D frame sizes");
     }
     g_scale = scale;
@@ -1396,9 +1405,11 @@ void gpu3d_init() {
     mtx_identity(g.tex);
 }
 
-void gpu3d_vblank() {
+void gpu3d_frame_start() {
     if (!g.swap_pending) return;
     g.swap_pending = false;
+    render_frame();
+    g.drawn.clear();
     std::swap(g_front, g_back);  // the next frame clears and redraws all of the back buffer
     g_front_scale = g_scale;
     // One sample per native pixel, at its center.

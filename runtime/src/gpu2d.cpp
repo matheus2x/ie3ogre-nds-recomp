@@ -724,7 +724,6 @@ void gpu_vblank() {
             for (int line = band; line < kScreenHeight; line += pool.bands()) compose_hi_line(e, line, scale);
         });
     }
-    gpu3d_vblank();
     for (Engine& e : g_engines) {
         for (int idx = 0; idx < 2; idx++) {
             latch_ref(e, idx, false);
