@@ -104,6 +104,28 @@
   "SFDN_B03.PAC": [
     {"erase": [70, 9, 150, 15], "from": 200},
     {"text": "Extras", "box": [40, 10, 144, 12], "colour": 15, "shadow": 3}
+  ],
+  "SFDN_W02.PAC": [
+    {"erase": [23, 3, 164, 55], "ink": [15, 13]},
+    {"text": "Falha ao carregar.\nDesligue o console e coloque\no cartucho do jogo de novo.", "box": [8, 5, 178, 53], "line": 16, "colour": 15}
+  ],
+  "SFDN_W08.PAC": [
+    {"erase": [23, 3, 164, 55], "ink": [15, 13]},
+    {"text": "Falha ao salvar.\nDesligue o console e coloque\no cartucho do jogo de novo.", "box": [8, 5, 178, 53], "line": 16, "colour": 15}
+  ],
+  "SFDN_W09.PAC": [
+    {"erase": [23, 3, 164, 55], "ink": [15, 13]},
+    {"text": "Falha ao salvar.\nTentando salvar de novo.", "box": [8, 5, 178, 53], "line": 16, "colour": 15}
+  ],
+  "ATDN_BG00.PAC": [
+    {"erase": [26, 7, 176, 12], "ink": [15, 13]},
+    {"erase": [8, 19, 192, 37], "ink": [15, 13]},
+    {"text": "Os dados salvos do slot\nestão corrompidos. Comece\ncom \"Novo Jogo\".", "box": [8, 6, 192, 50], "line": 16, "colour": 15}
+  ],
+  "ATDN_BG01.PAC": [
+    {"erase": [26, 7, 176, 12], "ink": [15, 13]},
+    {"erase": [8, 19, 192, 37], "ink": [15, 13]},
+    {"text": "Os dados salvos do slot\nestão corrompidos. Os dados\nrecuperados podem ser antigos.", "box": [8, 6, 192, 50], "line": 16, "colour": 15}
   ]
 },
 "pic2d/title/atdn_03.pac_": {
@@ -161,5 +183,207 @@
     {"erase": [70, 69, 120, 21], "ink": [6]},
     {"text": "Gerar senha", "box": [64, 73, 128, 14], "colour": 6}
   ]
+},
+"pic3d/collection": {
+  "CLDN_B01.PAC_": [
+    {"frames": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14], "erase": [33, 5, 119, 20], "from": 33},
+    {"frames": [0, 1], "text": "Vídeo promocional", "box": [33, 6, 119, 16], "colour": 15, "shadow": 7},
+    {"frames": [2], "text": "Vídeo promocional", "box": [33, 6, 119, 16], "colour": 15, "shadow": 11},
+    {"frames": [3, 4], "text": "Ilustrações", "box": [33, 6, 119, 16], "colour": 15, "shadow": 7},
+    {"frames": [5], "text": "Ilustrações", "box": [33, 6, 119, 16], "colour": 15, "shadow": 11},
+    {"frames": [6, 7], "text": "Músicas", "box": [33, 6, 119, 16], "colour": 15, "shadow": 7},
+    {"frames": [8], "text": "Músicas", "box": [33, 6, 119, 16], "colour": 15, "shadow": 11},
+    {"frames": [9, 10], "text": "Versão 1", "box": [33, 6, 119, 16], "colour": 15, "shadow": 7},
+    {"frames": [11], "text": "Versão 1", "box": [33, 6, 119, 16], "colour": 15, "shadow": 11},
+    {"frames": [12, 13], "text": "Versão 2", "box": [33, 6, 119, 16], "colour": 15, "shadow": 7},
+    {"frames": [14], "text": "Versão 2", "box": [33, 6, 119, 16], "colour": 15, "shadow": 11}
+  ],
+  "CLDN_B04.PAC_": [
+    {"frames": [0, 1, 2, 3, 4, 5, 6, 7, 8], "erase": [33, 5, 119, 20], "from": 33},
+    {"frames": [0, 1], "text": "Personagens", "box": [33, 6, 119, 16], "colour": 15, "shadow": 7},
+    {"frames": [2], "text": "Personagens", "box": [33, 6, 119, 16], "colour": 15, "shadow": 11},
+    {"frames": [3, 4], "text": "Mapas", "box": [33, 6, 119, 16], "colour": 15, "shadow": 7},
+    {"frames": [5], "text": "Mapas", "box": [33, 6, 119, 16], "colour": 15, "shadow": 11},
+    {"frames": [6, 7], "text": "Técnicas", "box": [33, 6, 119, 16], "colour": 15, "shadow": 7},
+    {"frames": [8], "text": "Técnicas", "box": [33, 6, 119, 16], "colour": 15, "shadow": 11}
+  ],
+  "CLDN_B06.PAC_": [
+    {"frames": [0, 1, 2], "erase": [33, 8, 119, 17], "from": 33},
+    {"frames": [0, 1], "text": "Ilustração secreta", "box": [33, 6, 119, 16], "colour": 15, "outline": 5},
+    {"frames": [0, 1], "text": "Ilustração secreta", "box": [33, 6, 119, 16], "colour": 15, "shadow": 7},
+    {"frames": [2], "text": "Ilustração secreta", "box": [33, 6, 119, 16], "colour": 15, "outline": 10},
+    {"frames": [2], "text": "Ilustração secreta", "box": [33, 6, 119, 16], "colour": 15, "shadow": 11}
+  ],
+  "CLDN_B00.PAC_": [
+    {"frames": [0], "erase": [18, 4, 27, 14], "ink": [15, 3]},
+    {"frames": [0], "text": "Sair", "box": [18, 4, 27, 14], "colour": 15, "shadow": 3},
+    {"frames": [1], "erase": [18, 4, 26, 14], "from": 44},
+    {"frames": [1], "text": "Sair", "box": [18, 4, 27, 14], "colour": 15, "shadow": 13}
+  ],
+  "BGMDN_B00.PAC_": [
+    {"frames": [0], "erase": [18, 4, 34, 14], "ink": [15, 3]},
+    {"frames": [0], "text": "Tocar", "box": [18, 4, 35, 14], "colour": 15, "shadow": 3},
+    {"frames": [1], "erase": [18, 4, 34, 13], "ink": [15, 13]},
+    {"frames": [1], "erase": [18, 17, 34, 1], "ink": [15]},
+    {"frames": [1], "text": "Tocar", "box": [18, 4, 35, 14], "colour": 15, "shadow": 13},
+    {"frames": [2], "erase": [18, 4, 34, 14], "ink": [12, 2]},
+    {"frames": [2], "text": "Tocar", "box": [18, 4, 35, 14], "colour": 12, "shadow": 2},
+    {"frames": [3, 4], "erase": [18, 4, 27, 14], "ink": [15, 3]},
+    {"frames": [3, 4], "text": "Parar", "box": [18, 4, 27, 14], "gap": 0, "colour": 15, "shadow": 3}
+  ],
+  "BGMDN_BG01.PAC_": [
+    {"erase": [35, 12, 58, 10], "ink": [15, 5]},
+    {"text": "Mapas", "box": [36, 10, 56, 12], "colour": 15, "outline": 5},
+    {"erase": [100, 13, 56, 8], "ink": [5, 11]},
+    {"text": "Partidas", "box": [100, 10, 56, 12], "colour": 5, "shadow": 11},
+    {"erase": [164, 13, 56, 8], "ink": [5, 11]},
+    {"text": "Eventos", "box": [164, 10, 56, 12], "colour": 5, "shadow": 11},
+    {"erase": [36, 45, 56, 8], "ink": [5, 11]},
+    {"text": "Mapas", "box": [36, 42, 56, 12], "colour": 5, "shadow": 11},
+    {"erase": [99, 44, 58, 10], "ink": [15, 5]},
+    {"text": "Partidas", "box": [100, 42, 56, 12], "colour": 15, "outline": 5},
+    {"erase": [164, 45, 56, 8], "ink": [5, 11]},
+    {"text": "Eventos", "box": [164, 42, 56, 12], "colour": 5, "shadow": 11},
+    {"erase": [36, 77, 56, 8], "ink": [5, 11]},
+    {"text": "Mapas", "box": [36, 74, 56, 12], "colour": 5, "shadow": 11},
+    {"erase": [100, 77, 56, 8], "ink": [5, 11]},
+    {"text": "Partidas", "box": [100, 74, 56, 12], "colour": 5, "shadow": 11},
+    {"erase": [163, 76, 58, 10], "ink": [15, 5]},
+    {"text": "Eventos", "box": [164, 74, 56, 12], "colour": 15, "outline": 5}
+  ]
+},
+"pic2d/MTSWiM.SPF_": {
+  "WMD_B00.PAC": {"width": 6, "edits": [
+    {"erase": [18, 4, 27, 14], "ink": [15, 4]},
+    {"text": "Sair", "box": [18, 4, 27, 14], "colour": 15, "shadow": 4},
+    {"erase": [18, 28, 27, 13], "ink": [15, 11]},
+    {"erase": [18, 41, 27, 1], "ink": [15]},
+    {"text": "Sair", "box": [18, 28, 27, 14], "colour": 15, "shadow": 11}
+  ]},
+  "WMD_B01.PAC": [
+    {"erase": [37, 4, 147, 17], "from": 37},
+    {"text": "Partida", "box": [37, 4, 147, 14], "colour": 15, "shadow": 10},
+    {"erase": [37, 36, 147, 17], "from": 37},
+    {"text": "Partida", "box": [37, 36, 147, 14], "colour": 15, "shadow": 10},
+    {"erase": [37, 68, 147, 17], "from": 37},
+    {"text": "Partida", "box": [37, 68, 147, 14], "colour": 15, "shadow": 12},
+    {"erase": [37, 100, 147, 17], "from": 37},
+    {"text": "Desafio Passing", "box": [37, 100, 147, 14], "colour": 15, "shadow": 10},
+    {"erase": [37, 132, 147, 17], "from": 37},
+    {"text": "Desafio Passing", "box": [37, 132, 147, 14], "colour": 15, "shadow": 10},
+    {"erase": [37, 164, 147, 17], "from": 37},
+    {"text": "Desafio Passing", "box": [37, 164, 147, 14], "colour": 15, "shadow": 12},
+    {"erase": [37, 196, 147, 17], "from": 37},
+    {"text": "Troca", "box": [37, 196, 147, 14], "colour": 15, "shadow": 10},
+    {"erase": [37, 228, 147, 17], "from": 37},
+    {"text": "Troca", "box": [37, 228, 147, 14], "colour": 15, "shadow": 10},
+    {"erase": [37, 260, 147, 17], "from": 37},
+    {"text": "Troca", "box": [37, 260, 147, 14], "colour": 15, "shadow": 12},
+    {"erase": [37, 292, 147, 17], "from": 37},
+    {"text": "Download", "box": [37, 292, 147, 14], "colour": 15, "shadow": 10},
+    {"erase": [37, 324, 147, 17], "from": 37},
+    {"text": "Download", "box": [37, 324, 147, 14], "colour": 15, "shadow": 10},
+    {"erase": [37, 356, 147, 17], "from": 37},
+    {"text": "Download", "box": [37, 356, 147, 14], "colour": 15, "shadow": 12},
+    {"erase": [37, 388, 113, 17], "from": 37},
+    {"text": "Configurar Wi-Fi", "box": [37, 388, 113, 14], "colour": 15, "shadow": 10},
+    {"erase": [37, 420, 113, 17], "from": 37},
+    {"text": "Configurar Wi-Fi", "box": [37, 420, 113, 14], "colour": 15, "shadow": 10},
+    {"erase": [37, 452, 113, 17], "from": 37},
+    {"text": "Configurar Wi-Fi", "box": [37, 452, 113, 14], "colour": 15, "shadow": 12}
+  ],
+  "WMD_B02_.PAC": [
+    {"erase": [34, 8, 63, 16], "from": 34},
+    {"text": "Segredo", "box": [34, 8, 63, 15], "colour": 15, "shadow": 10},
+    {"erase": [34, 40, 63, 16], "from": 34},
+    {"text": "Segredo", "box": [34, 40, 63, 15], "colour": 15, "shadow": 10},
+    {"erase": [34, 72, 63, 16], "from": 34},
+    {"text": "Segredo", "box": [34, 72, 63, 15], "colour": 15, "shadow": 12}
+  ],
+  "WMDN_B02.PAC": [
+    {"erase": [36, 5, 172, 17], "from": 36},
+    {"text": "Baixar via Wi-Fi", "box": [36, 6, 172, 14], "colour": 15, "shadow": 9},
+    {"erase": [36, 37, 172, 17], "from": 36},
+    {"text": "Baixar via Wi-Fi", "box": [36, 38, 172, 14], "colour": 15, "shadow": 9},
+    {"erase": [36, 69, 172, 17], "from": 36},
+    {"text": "Baixar via Wi-Fi", "box": [36, 70, 172, 14], "colour": 15, "shadow": 12},
+    {"erase": [36, 101, 172, 17], "from": 36},
+    {"text": "Baixar via DS sem fio", "box": [36, 102, 172, 14], "colour": 15, "shadow": 9},
+    {"erase": [36, 133, 172, 17], "from": 36},
+    {"text": "Baixar via DS sem fio", "box": [36, 134, 172, 14], "colour": 15, "shadow": 9},
+    {"erase": [36, 165, 172, 17], "from": 36},
+    {"text": "Baixar via DS sem fio", "box": [36, 166, 172, 14], "colour": 15, "shadow": 12},
+    {"erase": [36, 197, 172, 17], "from": 36},
+    {"text": "Baixar dados de time", "box": [36, 198, 172, 14], "colour": 15, "shadow": 9},
+    {"erase": [36, 229, 172, 17], "from": 36},
+    {"text": "Baixar dados de time", "box": [36, 230, 172, 14], "colour": 15, "shadow": 9},
+    {"erase": [36, 261, 172, 17], "from": 36},
+    {"text": "Baixar dados de time", "box": [36, 262, 172, 14], "colour": 15, "shadow": 12},
+    {"erase": [36, 293, 192, 17], "from": 36},
+    {"text": "Superlink 2→3", "box": [36, 294, 192, 14], "colour": 15, "shadow": 9},
+    {"erase": [36, 325, 192, 17], "from": 36},
+    {"text": "Superlink 2→3", "box": [36, 326, 192, 14], "colour": 15, "shadow": 9},
+    {"erase": [36, 357, 192, 17], "from": 36},
+    {"text": "Superlink 2→3", "box": [36, 358, 192, 14], "colour": 15, "shadow": 12},
+    {"erase": [36, 389, 192, 17], "from": 36},
+    {"text": "Link Premium Ogre", "box": [36, 390, 192, 14], "colour": 15, "shadow": 9},
+    {"erase": [36, 421, 192, 17], "from": 36},
+    {"text": "Link Premium Ogre", "box": [36, 422, 192, 14], "colour": 15, "shadow": 9},
+    {"erase": [36, 453, 192, 17], "from": 36},
+    {"text": "Link Premium Ogre", "box": [36, 454, 192, 14], "colour": 15, "shadow": 12}
+  ],
+  "SLDN_B01.PAC": [
+    {"erase": [36, 8, 180, 16], "from": 36},
+    {"text": "Scout Premium 2→3", "box": [36, 8, 180, 15], "colour": 15, "shadow": 9},
+    {"erase": [36, 40, 180, 16], "from": 36},
+    {"text": "Scout Premium 2→3", "box": [36, 40, 180, 15], "colour": 15, "shadow": 9},
+    {"erase": [36, 72, 180, 16], "from": 36},
+    {"text": "Scout Premium 2→3", "box": [36, 72, 180, 15], "colour": 15, "shadow": 12},
+    {"erase": [36, 104, 180, 16], "from": 36},
+    {"text": "Item Premium 2→3", "box": [36, 104, 180, 15], "colour": 15, "shadow": 9},
+    {"erase": [36, 136, 180, 16], "from": 36},
+    {"text": "Item Premium 2→3", "box": [36, 136, 180, 15], "colour": 15, "shadow": 9},
+    {"erase": [36, 168, 180, 16], "from": 36},
+    {"text": "Item Premium 2→3", "box": [36, 168, 180, 15], "colour": 15, "shadow": 12}
+  ],
+  "SLDN_B02.PAC": [
+    {"erase": [36, 8, 180, 16], "from": 36},
+    {"text": "Scout Premium Ogre", "box": [36, 8, 180, 15], "colour": 15, "shadow": 9},
+    {"erase": [36, 40, 180, 16], "from": 36},
+    {"text": "Scout Premium Ogre", "box": [36, 40, 180, 15], "colour": 15, "shadow": 9},
+    {"erase": [36, 72, 180, 16], "from": 36},
+    {"text": "Scout Premium Ogre", "box": [36, 72, 180, 15], "colour": 15, "shadow": 12},
+    {"erase": [36, 104, 180, 16], "from": 36},
+    {"text": "Item Premium Ogre", "box": [36, 104, 180, 15], "colour": 15, "shadow": 9},
+    {"erase": [36, 136, 180, 16], "from": 36},
+    {"text": "Item Premium Ogre", "box": [36, 136, 180, 15], "colour": 15, "shadow": 9},
+    {"erase": [36, 168, 180, 16], "from": 36},
+    {"text": "Item Premium Ogre", "box": [36, 168, 180, 15], "colour": 15, "shadow": 12}
+  ],
+  "WLDN_W02.PAC": [
+    {"erase": [8, 8, 224, 38], "ink": [15]},
+    {"text": "Sem 11 jogadores no time,\nnão dá para jogar partidas.", "box": [8, 12, 224, 34], "line": 16, "colour": 15}
+  ],
+  "WLDN_W04.PAC": [
+    {"erase": [8, 8, 224, 38], "ink": [15]},
+    {"text": "Para trocar, o time da história\nprecisa ter 12 jogadores ou mais.", "box": [8, 12, 224, 34], "line": 16, "colour": 15}
+  ],
+  "WMDN_W06.PAC": [
+    {"erase": [8, 8, 224, 38], "ink": [15]},
+    {"text": "Esta função ainda não está liberada.\nAvance mais um pouco na história!", "box": [8, 12, 224, 34], "line": 16, "colour": 15}
+  ],
+  "WMDN_W07.PAC": [
+    {"erase": [8, 8, 224, 38], "ink": [15]},
+    {"text": "Sem 11 jogadores no time,\nnão dá para usar esta função.", "box": [8, 12, 224, 34], "line": 16, "colour": 15}
+  ]
+},
+"pic2d/MTSSrd.SPF_": {
+  "WMD_B00.PAC": {"width": 6, "edits": [
+    {"erase": [18, 4, 27, 14], "ink": [15, 4]},
+    {"text": "Sair", "box": [18, 4, 27, 14], "colour": 15, "shadow": 4},
+    {"erase": [18, 28, 27, 13], "ink": [15, 11]},
+    {"erase": [18, 41, 27, 1], "ink": [15]},
+    {"text": "Sair", "box": [18, 28, 27, 14], "colour": 15, "shadow": 11}
+  ]}
 }
 }

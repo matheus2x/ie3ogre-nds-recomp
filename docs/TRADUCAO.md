@@ -146,14 +146,28 @@ etapa ficam no `docs/DIARY.md`.
   que quer ver."), a de gerar senha (`password`, `pwup_bg00.pac_`) e a da ligação com o filme (`movielink`).
   Traduzidas do japonês (o CyberLife tinha trocado sentidos: "Web Identifiant" era "Gerar senha").
 - [x] Aviso sobre saves alterados ao carregar (v1.6): imagens `pic2d/title/atdn_03.pac_` e `atdn_04.pac_`.
+- [x] Mensagens do menu de slots (v1.7), imagens do `MMSlot.SPF_`: falha ao carregar (`SFDN_W02`), falha ao
+  salvar (`W08`), "Tentando salvar de novo" (`W09`, onde o CyberLife tinha posto um aviso sobre partidas por DS
+  sem fio que não é o do original) e os dois avisos de save corrompido (`ATDN_BG00`/`01`). O "Sair" já estava
+  em português. As outras janelas desse arquivo (carregando, salvando, perguntas, Sim/Não) já estavam.
+- [x] Coleção (v1.7), imagens do `pic3d/collection`, traduzidas do japonês: a lista (Vídeo promocional,
+  Ilustrações, Músicas, Versão 1/2, Personagens, Mapas, Técnicas, Ilustração secreta), as abas das músicas
+  (Mapas, Partidas, Eventos; o CyberLife tinha posto "places/action/story") e os botões Tocar/Parar/Sair.
+  Ficam de fora as texturas de 2 bpp (`BGMDN_I01`–`I03`), que o mod não mudou e o `image.py` não lê, e as
+  telas de dentro da coleção (`cl_bonus`, `cldnfNNN`, de 1 e 6 bpp).
+- [x] Menu "Conectar" (v1.7), `pic2d/MTSWiM.SPF_`: Partida, Desafio Passing, Troca, Download, Configurar
+  Wi-Fi, Segredo, Sair; o submenu Download (Baixar via Wi-Fi, Baixar via DS sem fio, Baixar dados de time,
+  Superlink 2→3, Link Premium Ogre), os botões premium (Scout/Item Premium 2→3 e Ogre) e as quatro janelas de
+  aviso (11 jogadores, 12 para trocar, função não liberada). O "Sair" igual do `MTSSrd` também.
 - [ ] **Imagens em inglês** (levantamento desta etapa, nas imagens que o CyberLife mudou; `tools/image.py
   export` e os textos vistos):
-  - menu de slots (`MMSlot.SPF_`): "Loading failed…", "Saving failed…", "The save data was corrupted (and has
-    been deleted)", "You can play matches via DS wireless communications from chapter 2 onwards", e o "Sair";
-  - coleção (`pic3d/collection`): Trailer IE3 Spark/Bomber, Artworks, Musics, Trailer 1/2, Players, Places,
-    Special Moves, Artwork IE GO, as abas places/action/story e Play/Stop/Back;
-  - comunicação (`MTSWfDL`, `STSWic`, `MTSWiM`, `MTSWic`, `MTSWis`, `MTSSrd`…): Match, Trade, Download,
-    Teamshare, Superlink, Premiumlink, Nintendo WFC Settings, "Communication Error", textos de download;
+  - comunicação, o resto (80 imagens mudadas pelo CyberLife em 9 arquivos): `MTSWic` (tela de partida: Host,
+    Join, Organise team, Name & emblem, Pitch & computer, COM battle, Back; a faixa "Match"), `MTSSrd` (24),
+    `MTSWfDL` (11: as faixas "Download from Nintendo WFC"/"…via DS Wireless Communications"…), `MTSWis`,
+    `MTSWip`, `MPSWip`, `MPSWic`, `MMSWic`, `STSWic`;
+  - logotipos do Superlink e do Premium Link (`MTSWiM:SLDN_T00`/`T01`): ficaram como o CyberLife deixou
+    ("Superlink", "Premium link"), mas o T00 tem um "From C3 Corp" no lugar da leitura ツー・スリー. Redesenhar
+    exige apagar sobre fundo transparente e o círculo, o que o `image.py` ainda não faz;
   - partida (`pic3d/common.pkb`, que é um pacote com nomes em hash, ainda fora do `image.py`): Half Time, End
     of Normal Time, Extra Time, Full Time, Penalty Shootout, Technic, Prestige, News/Member/Examine/Task,
     Miss!/Direct/Chain/Block, Replay;
@@ -188,6 +202,12 @@ etapa ficam no `docs/DIARY.md`.
   leitor de furigana (por isso em pares), mas as telas não foram vistas
 - [ ] Os outros 101 objetivos (só simulados; seis desenhados no jogo)
 - [ ] Os outros 57 títulos da galeria (bloqueados no save de teste)
+- [ ] Mensagens do menu de slots (v1.7): só na prévia. Estragar as duas cópias de um slot numa cópia do save
+  (bytes 0x200 e 0x8200) só faz o slot aparecer vazio, sem aviso; falta saber o que o jogo confere para
+  mostrar o `ATDN_BG00`/`01`. As de falha ao carregar/salvar dependem de erro na mídia (forçar no HLE do save?).
+- [ ] Coleção (v1.7): só na prévia. No save do teste ela aparece como "???" e não abre.
+- [x] Menu "Conectar" (v1.7): visto no jogo o menu principal, o submenu Download e a janela "Esta função
+  ainda não está liberada" (em Superlink 2→3). Não vistos: os botões premium, Segredo e as outras três janelas.
 - [ ] Mensagens dos overlays: nenhuma vista no jogo (a forma em pares foi conferida na galeria, que usa o
   mesmo leitor). A formação do save de teste não deixou provocar os avisos do `ov057`.
 - [ ] Rótulos de quem fala nas partidas 34010007 e 34010022 (`mch.pkb`)

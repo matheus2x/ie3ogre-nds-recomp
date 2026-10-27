@@ -31,6 +31,14 @@ dá exatamente os arquivos do dump traduzido.
 
 ## Versões
 
+- **1.7:** as mensagens do menu de slots que estavam em inglês: falha ao carregar e falha ao salvar, a que
+  avisa que o jogo vai tentar salvar de novo (que no CyberLife falava de partidas por DS sem fio, outra
+  coisa) e os dois avisos de save corrompido ("Os dados salvos do slot estão corrompidos..."). Também a
+  coleção: a lista (Vídeo promocional, Ilustrações, Músicas, Personagens, Mapas, Técnicas, Ilustração
+  secreta), as abas das músicas (Mapas, Partidas, Eventos) e os botões Tocar, Parar e Sair.
+  E o menu "Conectar": Partida, Desafio Passing, Troca, Download, Configurar Wi-Fi, o submenu Download
+  (Baixar via Wi-Fi, Baixar via DS sem fio, Baixar dados de time, Superlink 2→3, Link Premium Ogre), os
+  botões de Scout Premium e Item Premium e as janelas de aviso ("Sem 11 jogadores no time...").
 - **1.6:** os textos das imagens da galeria em português: o botão "Extras" (antes "Gallery") no menu de
   continuar, a lista (Vídeos, Gerar senha, Ligação com celular, Ligação com o filme, Coleção, Surpresa), a
   tela dos vídeos ("Escolha o vídeo que quer ver.", Ver, Sair), a tela de gerar senha e a da ligação com o

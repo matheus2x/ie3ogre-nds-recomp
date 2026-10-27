@@ -2062,3 +2062,92 @@ em português, sem resto do texto antigo. Não vistos: a ligação com o filme e
 Nos arquivos, só as entradas editadas mudaram (comparado com o mod do HEAD), e um segundo `apply` não muda nada.
 Testes Python: 49, todos passando (novos: PAC 3D/2D ida e volta, tiles espelhados reaproveitados, largura do
 mapa, SFP refeito, quadros e `erase`). `text.py check`, `image.py check` e `mod.py check`: ok.
+
+## 2026-10-27 — CyberLifePlus 1.7: mensagens do menu de slots
+
+- Pedido: seguir com a próxima etapa da tradução. Pelo checklist, as imagens em inglês, começando pelo menu de
+  slots (`pic2d/menu/MMSlot.SPF_`).
+- **O que estava em inglês.** Comparando o `export` do mod com o `--retail`, o CyberLife mudou 23 das 32
+  imagens do arquivo; quase todas já estavam em português (carregando, salvando, "Deseja salvar o
+  progresso?", Sim/Não, Aceitar, o card do slot, o "Sair"). Em inglês ficaram cinco: `SFDN_W02` ("Loading
+  failed…"), `SFDN_W08` ("Saving failed…"), `SFDN_W09` e os avisos de save corrompido `ATDN_BG00`/`ATDN_BG01`.
+- **O `W09` tinha outro sentido.** O CyberLife escreveu "You can play matches via DS wireless communications
+  from chapter 2 onwards", mas o original diz セーブが失敗しました。もう一度セーブを行います。 ("a gravação falhou;
+  vou gravar de novo"). Traduzi do japonês: "Falha ao salvar. / Tentando salvar de novo." O `ATDN_BG00` do
+  original também diz mais que o inglês: o save do slot está corrompido e é para começar pelo 「はじめから」, que
+  no mod é o botão "Novo Jogo" do título (`MTSIni.SPF_:STDN_I01`). O `ATDN_BG01` avisa que os dados
+  recuperados podem ser antigos.
+- **As edições** (`images.json`): nas janelas vermelhas o texto original é branco (15) sem sombra, com
+  furigana cinza (13) que passa um pouco da borda de cima; `erase` com `ink: [15, 13]` a partir da coluna 23
+  (o ícone da mão fica à esquerda, e no `ATDN` o ícone ocupa as linhas 7–18, por isso dois retângulos) e o
+  texto em três linhas de 16 px, centrado, sem sombra como no original. Mod na 1.7.
+
+**Verificação:** `image.py check` sem problemas e a prévia de cada imagem conferida (nada do texto antigo,
+nada por cima do ícone); um segundo `apply` não muda o patch; `text.py check` (5.197 linhas), `mod.py check` e
+os 49 testes Python: ok. No jogo, o menu de slots continua igual (card, "Extras", "Sair"). As mensagens novas
+não foram vistas: estragar as duas cópias de um slot numa cópia do save (bytes 0x200 e 0x8200; o save tem duas
+metades de 32 KiB) só faz o slot aparecer vazio, e estragar só a primeira não muda nada (o jogo usa a outra).
+As de falha dependem de erro na mídia. Ficou no checklist.
+
+**Próximo:** a coleção (`pic3d/collection`: Trailer, Artworks, Musics, as abas, Play/Stop/Back). Tem texturas
+de 2 bpp (`BGMDN_I01`–`I03`) que o `image.py` ainda não lê.
+
+## 2026-10-27 — Coleção em português (ainda 1.7)
+
+- Pedido: seguir com a próxima etapa (a coleção, `pic3d/collection`). A etapa anterior ainda não foi
+  commitada, então a coleção entra na mesma versão 1.7 do mod.
+- **O que o CyberLife mudou:** 6 das 20 imagens, todas de 4 bpp. As três de 2 bpp (`BGMDN_I01`–`I03`) estão
+  como no retail. Traduzi do japonês, não do inglês: プロモーション映像 → "Vídeo promocional" (era "Trailer IE3
+  Spark/Bomber"), イラスト → "Ilustrações", BGM → "Músicas", バージョン1/2 → "Versão 1/2" (era "Trailer 1/2"),
+  キャラクター → "Personagens", マップ → "Mapas", ひっさつわざ → "Técnicas", シークレットイラスト → "Ilustração
+  secreta" (era "Artwork IE GO"), さいせい/ていし → "Tocar"/"Parar", もどる → "Sair". As abas das músicas
+  (マップ/しあい/イベントBGM など) viram "Mapas", "Partidas", "Eventos" (no CyberLife, "places/action/story").
+- **As edições:** os botões da lista (`CLDN_B01`/`B04`, 160×32 por quadro, 3 quadros por item: escuro, normal e
+  claro) têm o fundo igual em cada linha, então o `erase` copia a coluna 33. O texto é branco com sombra 7
+  (11 no quadro claro). O botão vermelho (`CLDN_B06`) tem contorno 5 e sombra 7. Para fazer isso, a mesma linha
+  é desenhada duas vezes: primeiro com `outline`, depois com `shadow`. O `CLDN_B00` é idêntico ao `OPDN_B00`
+  da galeria e usa as mesmas edições ("Sair"). No "Parar" do botão de 48 px, `gap: 0`. Nas abas
+  (`BGMDN_BG01`, três faixas, uma para cada aba selecionada), o texto da aba selecionada é branco com
+  contorno 5 e o das outras é 5 com sombra 11.
+- **Teste no jogo sem janela:** o jogo só fica determinístico com `NTR_RTC` fixo (sem isso, as mesmas
+  entradas caíam em telas diferentes). Com `NTR_RTC="2010-07-01 12:00:00"` e o save do teste: START no quadro
+  400 (créditos do CyberLife, que esperam um botão), A no 900 (pula o vídeo; START não pula), menu do título no
+  ~1000, A no 1150 e menu de slots no 1200. Salvei um savestate no quadro 1500 e, a partir dele,
+  `NTR_STATE_LOAD=10` com DOWN no 60 e A no 100 abre a lista do Extras. Mas a Coleção aparece como "???"
+  nesse save e não abre. Devolvi o savestate que já estava na pasta.
+
+**Verificação:** `image.py check` sem problemas e a prévia de cada imagem conferida (as primeiras deixaram
+restos nas bordas das abas e uma linha apagada debaixo do "Tocar" claro; corrigido). Um segundo `apply` não
+muda os patches. `text.py check`, `mod.py check` e os 49 testes: ok. No jogo, não foi vista (bloqueada).
+
+**Próximo:** as imagens de comunicação (`MTSWfDL`, `STSWic`, `MTSWiM`…: Match, Trade, Download…).
+
+## 2026-10-27 — Menu "Conectar" em português (ainda 1.7)
+
+- Pedido: mais uma etapa da tradução. Das imagens de comunicação (92 mudadas pelo CyberLife em 10 arquivos),
+  peguei a que o jogador vê primeiro: o menu "Conectar" do título, `pic2d/MTSWiM.SPF_` (12 imagens).
+- **Traduzido do japonês**, seguindo os termos que os overlays já usam: たいせん → "Partida", すれちがい果たし状 →
+  "Desafio Passing" (os overlays dizem "Mande desafios pelo Passing"; o CyberLife tinha posto "Teamshare
+  mode"), トレード → "Troca", ダウンロード → "Download", Wi-Fi せってい → "Configurar Wi-Fi", シークレット →
+  "Segredo", もどる → "Sair"; Wi-Fi/ワイヤレス/チームデータ ダウンロード → "Baixar via Wi-Fi", "Baixar via DS sem fio",
+  "Baixar dados de time"; 2→3スーパーリンク → "Superlink 2→3", オーガプレミアムリンク → "Link Premium Ogre";
+  プレミアムスカウト/アイテム → "Scout Premium"/"Item Premium" (como no `ov089`/`ov090`). As quatro janelas: "Sem 11
+  jogadores no time, não dá para jogar partidas.", "Para trocar, o time da história precisa ter 12 jogadores
+  ou mais." (o original diz "na parte RPG"), "Esta função ainda não está liberada. Avance mais um pouco na
+  história!" e "...não dá para usar esta função.".
+- **As edições:** os botões são blocos de 32 linhas, 3 por item (normal, com borda branca e claro); cada linha
+  do fundo é de uma cor só, então `erase` com `from` na primeira coluna depois da bola, sem passar do ícone do
+  DS à direita. Sombra 10 (`WMD_B01`/`B02_`) ou 9 (`WMDN_B02`, `SLDN`), 12 no estado claro. O "Back" (`WMD_B00`)
+  tem 36 células que o `export` arruma como 288×8; com `"width": 6` vira o botão de 48×48 com dois quadros,
+  igual ao "Sair" da galeria. A mesma imagem está no `MTSSrd` e recebeu as mesmas edições. Os logotipos
+  (`SLDN_T00`/`T01`) ficaram como estão (ver checklist: o T00 tem um "From C3 Corp" do CyberLife).
+- **No jogo** (com `NTR_RTC` fixo): START 400, A 900, DOWN 1100 + A 1150 (Conectar), A 1550 (carregar o slot),
+  A 1700 (Aceitar), A 1850 (aviso de saves) → menu "Conectar" por volta do quadro 2000. Vistos em português:
+  o menu, o submenu Download e, ao escolher Superlink 2→3, a janela "Esta função ainda não está liberada".
+  Ainda em inglês nessas telas: as faixas de cima ("Match", "Download from Nintendo WFC", "Superlink") e a tela
+  de partida (Host, Join, Organise team…), que são do `MTSWic`/`MTSWfDL`.
+
+**Verificação:** `image.py check` sem problemas e prévias conferidas; um segundo `apply` não muda os patches;
+`text.py check`, `mod.py check` e os 49 testes: ok. O savestate da pasta foi devolvido.
+
+**Próximo:** `MTSWic` (tela de partida e a faixa "Match") e as faixas do `MTSWfDL`.
