@@ -56,9 +56,9 @@ RECORDS = {**{f"PracticeGame{n}F.dat": (0x4A, ((0x0C, 22), (0x26, 22)), None) fo
            "OpenCondition.dat": (0x51, ((0x01, 0x50),), PAIRED)}
 # item.dat brings item.STR (names, then descriptions), command.dat the descriptions of command.STR;
 # "ov" is the strings of the overlays
-TABLES = ("item.dat", "tacticscmd.STR", "games.STR", "command.dat", "sp_binder.dat", "movie_view_f.dat", "ov") + tuple(RECORDS)
+TABLES = ("item.dat", "tacticscmd.STR", "games.STR", "rpgtitle.STR", "command.dat", "sp_binder.dat", "movie_view_f.dat", "ov") + tuple(RECORDS)
 ID = re.compile(r"(evet|mcht|eve|mch):(\d+):(\d+)"
-                r"|(item\.dat|item\.STR|tacticscmd\.STR|games\.STR|command\.dat|command\.STR|sp_binder\.dat|movie_view_f\.dat|"
+                r"|(item\.dat|item\.STR|tacticscmd\.STR|games\.STR|rpgtitle\.STR|command\.dat|command\.STR|sp_binder\.dat|movie_view_f\.dat|"
                 + "|".join(map(re.escape, RECORDS)) + r"):(\d+)"
                 r"|(ov\d{3}):(0x[0-9a-f]+)")
 ITEM_DESC = 0x2A  # item.dat (unscrambled): the index of the description in item.STR

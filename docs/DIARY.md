@@ -2207,3 +2207,191 @@ Segurar um atalho (R por padrão, remapeável no menu e no `boej.ini`) volta o j
 jogo seguiu normalmente; `NTR_REWIND=250-400` esgotou o histórico e ficou no estado mais antigo, e depois o jogo
 chegou ao menu do título; savestate salvo depois de um rewind carregou em outro processo, e o rewind depois do
 load funcionou. Builds nativo e Windows sem avisos. Com janela (tecla, som, menu de Atalhos) ainda não testado.
+
+## 2026-10-27 — CyberLifePlus 1.8: telas de comunicação
+
+- Pedido: seguir com a próxima etapa da tradução. Pelo "Próximo" da etapa anterior: a tela de partida
+  (`MTSWic`) e a de download (`MTSWfDL`). No caminho apareceram as faixas de título da tela de cima, que não
+  estavam no levantamento.
+- **O que o CyberLife mudou:** 20 imagens do `MTSWic` e 10 do `MTSWfDL`, todas em inglês. Algumas com sentido
+  trocado: ユニフォームへんこう virou "Pitch & computer" e 対戦COMとグラウンド, "COM battle"; マスター, "Expert".
+- **Traduzido do japonês**, com os termos dos overlays (つうしん → "rede", COM → "CPU"): ぼしゅうする →
+  "Procurar rival" (a mensagem de cima já dizia "Procurando rival via DS sem fio"), さんかする → "Entrar",
+  チームへんせい → "Montar time", チーム名とエンブレム → "Nome e emblema", ユニフォームへんこう → "Trocar uniforme",
+  対戦COMとグラウンド → "CPU e campo", せっていをする → "Configurar", すぐにしあいをする → "Jogar agora",
+  つうしんNのチーム(で たいせん) → "(Jogar com o) Time de rede N", チームレベル → "Nível do time", A/Bチーム → "Time
+  A/B", さんか (selo) → "Joga", 自分/相手 → "Você"/"Rival", マスター → "Mestre", もどる/やめる → "Sair"/"Parar",
+  キャンセル → "Cancelar", はい/いいえ → "Sim"/"Não". Nos botões pequenos "Confirmar" e "Comandos" não cabem
+  (34 px depois do ícone): けってい → "OK", チェック → "Ver", コマンド → "Menu". Nos botões cinza do `MTSWfDL`,
+  os mesmos nomes do menu "Conectar" (Partida, Troca, Download, Configurar Wi-Fi).
+- **As faixas de cima** são o `STSWic:WMU_T00`: 16 faixas de 24 linhas, texto de uma cor só sem sombra (a de
+  erro, vermelha, com o texto branco). Achei procurando "Match" (não é texto: não existe em nenhum arquivo).
+- **As edições:** um gerador (no diretório temporário da sessão) montou as listas, já que são muitos botões
+  com o mesmo padrão; o `images.json` continua no formato de uma edição por linha. Larguras que o `export`
+  errou: `WTD_B03`/`B04` e `WMDN_B05`/`B06` (8 células), `WTD_B05` (7), `WTD_N01`/`WLDN_N02` (4),
+  `WLDN_N03` (10), `WMDN_B00` (6). Onde o texto original passa por cima da bola (`WTD_B16`, `B19`), o `from`
+  é a coluna depois do texto, não a de antes. Nos selos riscados (`WTD_B13`) o X fica e "Joga" vai por cima
+  em `FONT8`, para o X continuar visível; os blocos claros desse arquivo ficam uma linha abaixo dos outros.
+- **Imagens iguais em outros arquivos** (mesmo PNG no retail): as mesmas edições em `MTSWip`, `MPSWip`,
+  `MMSWic`, `MPSWic`, `MTSWis`, `MTSSrd` (`SRD_B18`, `WMDN_W01`, `WMDN_B05`), `MPSPrd` e `MMProfd`. O
+  `WMDN_B02` do `MTSWfDL` é igual ao do `MTSWiM` e reaproveita a lista dele.
+- **Ficaram para depois:** os painéis de download (`WMDN_BG01`/`BG02`, com ilustração e furigana) e o aviso
+  do Passing (`STSWic:SRU_W01`). No checklist.
+
+**Verificação:** `image.py check` sem problemas (92 imagens) e a prévia de cada uma conferida (corrigidos:
+linhas brancas no "CPU e campo" e no "Jogar com o time de rede", o "え" que sobrou no "Não" da janela verde,
+o traço debaixo dos selos claros). Um segundo `apply` não muda os patches. `text.py check`, `mod.py check` e
+os 49 testes: ok. No jogo (sem janela, `NTR_RTC` fixo, a partir da abertura): a tela de partida, Procurar
+rival, Montar time, o submenu Download e as faixas "Partida" e "Baixar via Wi-Fi", em português. O
+savestate gravado antes de reaplicar o mod não carregou depois (o jogo voltou para a abertura); o da pasta
+foi devolvido.
+
+**Próximo:** os painéis de download (`MTSWfDL:WMDN_BG01`/`BG02`) e o aviso do Passing (`STSWic:SRU_W01`), ou
+seguir pelo `MTSSrd`.
+
+## 2026-10-27 — Painéis de download e aviso do Passing (ainda 1.8)
+
+- Pedido: a próxima etapa. Pelo "Próximo" anterior: os painéis de download (`MTSWfDL:WMDN_BG01`/`BG02`) e o
+  aviso do Passing (`STSWic:SRU_W01`). A 1.8 ainda não foi commitada, então entram nela.
+- **Os painéis são de 8 bpp**: as cores das edições são índices da paleta de 256 (o `dump` de 4 bpp
+  enganava, mostrando só o nibble). Nada novo no `image.py`: `erase` por `ink` com as cores do texto, e o
+  pixel mais perto que não é tinta refaz o fundo, que nesses painéis varia na horizontal (faixa verde em
+  degradê, cabeçalho com o raio do "?").
+- **Traduzido do japonês**, com os termos do diálogo (procurados no `pairs.json`): 人脈システム → "mapa de
+  contatos", 商店街 → "bairro de lojas", スポーツショップ → "loja de esportes". `BG01`: ダウンロード / 新選手 →
+  "Download" / "Novos jogadores"; 人脈システムを使って配信された選手を仲間にしよう！ → "Recrute os baixados pelo
+  mapa de contatos!"; as duas caixas, "Quem vem pela Wi-Fi fica do lado de fora!" e "Quem vem pelo DS sem fio
+  fica aqui!" (o furigana つうしん de cima da caixa da direita apagado à parte, sem tocar na mão). `BG02`:
+  "Download" / "Itens", "Como conseguir itens de download" e "Os itens de download chegaram à loja de esportes
+  no fim do bairro de lojas!". O título grande fica com a `FONT12` e contorno (o mod não tem fonte maior).
+- **O aviso do Passing** (`SRU_W01`, 32 células de largura, o `export` adivinhava 64): "※No Passing, o jogo
+  pode salvar sozinho. Então, durante a conexão, não desligue o DS nem tire o cartão do jogo." Três linhas de
+  16 px, cor 15 sem sombra, como o original. Nenhuma das três imagens se repete em outro arquivo.
+
+**Verificação:** `image.py check` sem problemas (95 imagens) e prévias conferidas; um segundo `apply` não muda
+os patches; `text.py check`, `mod.py check` e os 49 testes: ok. No jogo (Conectar → Desafio Passing → A), o
+aviso aparece em português na tela de cima. Os painéis não apareceram no submenu Download nem em "Baixar dados
+de time". Vistos em inglês no caminho: o menu do Desafio Passing (`MTSSrd`: Teamshare Mode, Match, Settings,
+Connect Team 1–3, Cooperative Team, Back) e a janela "Atualizar dados?" com Yes/No.
+
+**Próximo:** o menu do Desafio Passing (`MTSSrd`) e a janela Yes/No de "Baixar dados de time".
+
+## 2026-10-27 — Desafio Passing em português (ainda 1.8)
+
+- Pedido: a próxima etapa. Pelo "Próximo" anterior: o menu do Desafio Passing (`MTSSrd`) e a janela Yes/No
+  de "Baixar dados de time". A janela é o `SRD_W21` do próprio `MTSSrd` (a tela de "Baixar dados de time"
+  usa esse arquivo, com a faixa `SRD_T21`).
+- **O que o CyberLife mudou:** 25 imagens; 4 já tinham edições da etapa das telas de comunicação. Sobraram 21.
+  Sentidos trocados: すれちがい果たし状 virou "Teamshare Mode", つうしんNのデータで果たし状 "Connect Team N" e
+  もらったデータで果たし状 "Cooperative Team".
+- **Traduzido do japonês**: 果たし状 → "desafio" (como no menu "Conectar"), つうしんNのデータで果たし状 → "Desafio com
+  os dados de rede N", もらったデータで果たし状 → "Desafio com dados recebidos", プロフィールさくせい → "Criar
+  perfil", プレイのきろく → "Registros", トーナメント → "Torneio", しあいをする → "Jogar", おわる → "Fim",
+  ほぞん → "Salvar", ストーリーのチームで対戦 → "Jogar com o time da história", すれちがい通信をはじめます。 → "Iniciar o
+  Passing?" (a janela tem Sim/Não), このチームとしあいをしますか？ → "Jogar com este time?", あなたの名前を入力してくだ
+  さい。 / セーブする場所をえらんでください。 / どのチームで果たし状をだしますか？ → "Digite o seu nome." / "Escolha onde
+  salvar." / "Com qual time vai mandar o desafio?". Os avisos de 11 jogadores e de nome e emblema seguem os do
+  `ov004`; そのチームデータは利用できません。 → "Esses dados de time não podem ser usados.".
+- **As edições:** os botões repetem os desenhos das telas de comunicação (os mesmos auxiliares do gerador). Nas
+  janelas verdes, um script achou os botões pela borda (cor 11/10) e pelo contorno do texto (cor 2), e um
+  auxiliar `green_btn` apaga e escreve a partir da borda. O `SRD_N31` é igual ao `WTD_N01` e reaproveita a
+  lista dele; ao conferir a prévia ampliada, vi que o apagamento do "Mestre" ia só até a linha 11 e deixava as
+  duas últimas linhas do texto antigo. Corrigido nos dois (e nas cópias do `MTSWip`/`MPSWip`).
+- **Achados para depois:** o cartão de perfil da tela de cima (Desafio Passing → Configurar: Team level, Play
+  Time, T. Name, Challenges, Friends) e as janelas de comunicação do `MTSWis`, `MTSWip`/`MPSWip` e
+  `MPSWic:WC_MSG` (Congratulations..., Please wait..., Communication Error...). No checklist.
+
+**Verificação:** `image.py check` sem problemas (116 imagens) e prévias conferidas; um segundo `apply` não muda
+os patches; `text.py check`, `mod.py check` e os 49 testes: ok. No jogo (sem janela, `NTR_RTC` fixo): o menu do
+Desafio Passing, os quatro desafios, a tela Configurar e a janela Sim/Não de "Baixar dados de time", em
+português. Não vistos: os avisos, Registros/Torneio e as instruções do `SRD_O60`.
+
+**Próximo:** o cartão de perfil da tela de cima e as janelas do `MTSWis`/`MTSWip`/`MPSWic`.
+
+## 2026-10-27 — Cartão de perfil do Passing e janelas de comunicação (ainda 1.8)
+
+- Pedido: a próxima etapa. Pelo "Próximo" anterior: o cartão de perfil da tela de cima e as janelas do
+  `MTSWis`/`MTSWip`/`MPSWic`.
+- **O cartão é do `SRSSru`** (tela de cima do Passing), não do `STSWic`: as janelas `WMUP_*` deste são só
+  molduras. Para achar, listei as imagens que o CyberLife mudou e que ainda não têm edição (256, a lista
+  completa fica para as próximas etapas).
+- **Traduzido do japonês**: チームレベル → "Nível do time", プレイタイム → "Tempo de jogo", 時間/分 → "h"/"min",
+  チーム名 → "Time" (o rótulo curto deixa lugar para o nome), 勝 → "V", もらった果たし状 → "Desafios recebidos",
+  なかまにした選手 → "Recrutados" (as unidades 通 e 人 depois dos números foram tiradas), あたらしいチーム → "Novo
+  time". As faixas do `SRU_T00` repetem as do `STSWic`. Janelas: クリアおめでとうございます！ → "Parabéns por zerar o
+  jogo!", "Conecte-se com um Bomber/Spark que cumpra as condições e enfrente um time novo!", 通信しますか？ →
+  "Conectar?", しばらくおまちください → "Aguarde um pouco...", 最強チームが待っている！マグニード山へ行ってみよう！
+  → "O time mais forte está esperando! Vá até o Monte Magnitude!" (o nome do diálogo), ※とうじょうするのは一度だ
+  けです。 → "※Ele só aparece uma vez.", 通信が切断されました → "A conexão caiu.", ほかの人の入力待ち →
+  "Aguardando o rival", 通信相手からのドロータイム → "O rival está traçando jogadas" (ドロー é o traçar com a caneta
+  nas partidas; o CyberLife tinha posto "Other player is in time out"), つぎへ → "Avançar".
+- **As edições:** o cartão é texto branco sem sombra sobre faixas de uma cor só, apagado por `ink` em cada
+  rótulo. As janelas do `MTSWis` têm os botões verdes de sempre, mas com contorno 6: o `green_btn` ganhou o
+  parâmetro do contorno. O `WC_MSG` é igual nos 8 arquivos (`MPSWic`, `MPSAct`, `MPSBgn`, `MPSDrw`, `MPSFrm`,
+  `MPSPIn`, `MPSPk`, `MPSPrd`) e recebeu a mesma lista. O `SRU_I01` (オーガ → "Ogre") já estava certo e ficou.
+
+**Verificação:** `image.py check` sem problemas (143 imagens) e prévias conferidas; um segundo `apply` não muda
+os patches; `text.py check`, `mod.py check` e os 49 testes: ok. No jogo, o cartão de perfil (Desafio Passing →
+Configurar) em português. Ainda em inglês nele: "Eleven rivals", que é um título do jogador vindo de
+`logic/rpgtitle.STR` (tabela em inglês; no checklist). As janelas de comunicação não foram vistas (precisam do
+Spark/Bomber ou de outro DS).
+
+**Próximo:** os títulos do jogador (`rpgtitle.STR`) ou as telas do `MTSPi`.
+
+## 2026-10-27 — Títulos do jogador, `rpgtitle.STR` (ainda 1.8)
+
+- Pedido: a próxima etapa. Pelo "Próximo" anterior: os títulos do jogador, que apareceram em inglês no cartão
+  de perfil do Passing ("Eleven rivals").
+- **A tabela:** `logic/rpgtitle.STR`, 40 títulos em passos de 32 bytes, lida pelo `ov000` (sempre carregado).
+  O CyberLife os passou para um inglês com erros: 皇帝ペンギン virou "Penguin Process", ガチムチボディ "Body
+  Continues", かれんなパッサー "Pretty pass".
+- **`tools/text.py`:** `rpgtitle.STR` entrou em `TABLES` e no padrão dos lugares (`rpgtitle.STR:deslocamento`); o
+  caminho genérico das tabelas `.STR` já cobre o resto (o texto fica no lugar do original, até o seguinte). As
+  traduções ficam em `translations/CyberLifePlus/rpgtitle.json`. Texto comum, como o CyberLife deixou (o cartão
+  o mostra assim, com acentos).
+- **Traduzido do japonês**, com イレブン → "Onze" (como em "Super Onze"): ふくつのせいしん → "Espírito
+  indomável", なんこうふらく → "Inexpugnável", こうていペンギン → "Pinguim-imperador", スッポンスタミナ → "Vigor de
+  tartaruga", たいいくかいけい → "Atleta nato", ガチムチボディ → "Corpo sarado", キックのおに → "Demônio do chute",
+  ガッツなイレブン → "Onze de garra", スピードいのち → "Vive de rapidez", ボールはともだち → "A bola é amiga",
+  ライバルイレブン → "Onze rival", うわさのイレブン → "Onze badalado", ねっけつしょうねん → "Jovem esquentado",
+  サッカーしょうねん → "Garoto do futebol", entre outros. O `check` limita à largura do título original mais
+  largo (92 px): seis foram encurtados ("Guepardo veloz", "Drible encantador", "Onze esquentado"...).
+
+**Verificação:** `text.py check` (5.237 linhas) sem problemas; um segundo `apply` não muda o patch, e o `apply`
+só mudou o `rpgtitle.STR`; `mod.py check`, `image.py check` e os 49 testes: ok. No jogo, o cartão do Passing
+mostra "Onze rival". Não sei se os títulos aparecem em outra tela (no checklist).
+
+**Próximo:** as telas do `MTSPi` ou seguir pela lista das imagens que o CyberLife mudou e que ainda não têm
+edição (256, quase todas fora da comunicação: menus do jogo, partida, título).
+
+## 2026-10-27 — Tutorial do Superlink e do Link Premium Ogre (ainda 1.8)
+
+- Pedido: a próxima etapa. Pelo "Próximo" anterior: as telas do `MTSPi`. São as oito páginas do tutorial das
+  ligações com o IE2 (Superlink 2→3, `WPD_W00`–`W03`) e com o Spark/Bomber (Link Premium Ogre, `W04`–`W07`),
+  256×192 de 8 bpp, e três botões. O CyberLife só tinha trocado o botão de cada página ("Accept", "Back"); todo
+  o texto das ilustrações estava em japonês.
+- **Cada página tem a sua paleta.** Para medir, exportei as páginas ampliadas com uma grade de coordenadas
+  (`magick -draw`), e um script listou as cores de cada retângulo. Os papéis se repetem com outros índices
+  (fundo, texto, sombra ou contorno, furigana): por exemplo, as caixas azul-claras são be/3a/9f/27 na página 1 e
+  ea/02/7d/0d na página 5; o botão A é ce/c0/22 na 1 e e7/d6/50 na 4. O gerador tem um auxiliar por tipo de
+  página (rótulos dos consoles, tela de título falsa, "para começar", o que a ligação traz) e só recebe as cores.
+- **Traduzido do japonês**: もう一台のDSシリーズ本体 / 今この画面のDSシリーズ本体 → "Outro console DS" / "Este
+  console DS"; "Prepare o Inazuma Eleven 2 (3 Spark/Bomber) no outro Nintendo DS. Quando chegar ao título...";
+  イナズマイレブン2のタイトルで → "No título do Inazuma Eleven 2"; os botões da tela falsa com os nomes do menu de
+  verdade (Conectar, Partida, Procurar, Entrar, Montar time, Nome/emblema); この画面まですすんだら… → "Chegando a
+  esta tela..."; [さんかする]をスタート！ → "[Entrar] para começar!"; 通信が始まったら… → "Quando conectar...";
+  こちらも通信を始めよう！ → "Conecte este console também!"; つうしんチーム16人 → "Time de rede (16)", com "Jogadores,
+  Nível, Técnicas etc."; a explicação ("No Superlink 2→3 / No Link Premium Ogre, você recebe jogadores e itens
+  especiais com base nos 16 jogadores do time de rede...") e "Monte o time de rede com os jogadores que você
+  treinou e faça a ligação!"; つぎへ/はじめる/もどる/やめる → Avançar/Iniciar/Sair/Parar. Os destaques coloridos de
+  選手 e アイテム no texto foram apagados com ele (o texto novo vai sem destaque).
+- **Achados nas prévias:** o rótulo azul tem uma linha clara (cor b6) no meio, que é do desenho; o texto de
+  baixo tem uma sombra na mesma cor, apagada só abaixo dessa linha. O furigana da caixa da página 8 era de outra
+  cor que o da 4 (0d, não 22, que é a moldura). O selo もどる de 2 px da tela de título falsa ficou como está.
+
+**Verificação:** `image.py check` sem problemas (154 imagens) e as oito páginas conferidas na prévia; um segundo
+`apply` não muda os patches; `text.py check`, `mod.py check` e os 49 testes: ok. No jogo não deu para ver: no
+save do teste as duas ligações estão bloqueadas.
+
+**Próximo:** a lista das imagens que o CyberLife mudou e que ainda não têm edição (quase todas fora da
+comunicação: menus do jogo, partida, título).

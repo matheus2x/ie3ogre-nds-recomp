@@ -31,6 +31,25 @@ dá exatamente os arquivos do dump traduzido.
 
 ## Versões
 
+- **1.8:** as telas de comunicação que ainda estavam em inglês: a tela de partida (Procurar rival, Entrar,
+  Montar time, Nome e emblema, Trocar uniforme, CPU e campo, Configurar, Jogar agora, os times de rede e o
+  "Nível do time"), a tela de download (Partida, Troca, Download, Configurar Wi-Fi), os botões pequenos (Sair,
+  Parar, OK, Ver, Cancelar, Sim, Não) e as 16 faixas de título da tela de cima (Partida, Baixar via Wi-Fi,
+  Erro de conexão, Superlink 2→3...). Traduzidas do japonês: o CyberLife tinha posto "Pitch & computer" no
+  botão de trocar o uniforme e "COM battle" no de escolher o time do CPU e o campo.
+  Também os painéis de download (Novos jogadores, "Recrute os baixados pelo mapa de contatos!", Itens e a
+  explicação da loja de esportes) e o aviso do Passing na tela de cima.
+  E o menu do Desafio Passing (Desafio Passing, Partida, Configurar, os desafios com os dados de rede e com
+  dados recebidos, Criar perfil, Registros, Torneio), suas janelas (Iniciar o Passing?, Jogar com este time?,
+  os avisos de 11 jogadores e de nome e emblema) e a de "Baixar dados de time".
+  Também o cartão de perfil da tela de cima do Passing (Nível do time, Tempo de jogo, Time, Desafios recebidos,
+  Recrutados), as faixas de título dele e as janelas de comunicação: Parabéns por zerar o jogo (ligação com o
+  Spark/Bomber), Aguarde um pouco, o time mais forte no Monte Magnitude, Erro de conexão, Aguardando o rival,
+  Cancelar e Avançar.
+  E os 40 títulos do jogador (Onze rival, Pinguim-imperador, Muralha de ferro...), que estavam num inglês com
+  erros.
+  E as oito páginas do tutorial do Superlink 2→3 e do Link Premium Ogre, que tinham o texto das ilustrações em
+  japonês (os rótulos dos consoles, as explicações, a tela de título do outro jogo e os botões).
 - **1.7:** as mensagens do menu de slots que estavam em inglês: falha ao carregar e falha ao salvar, a que
   avisa que o jogo vai tentar salvar de novo (que no CyberLife falava de partidas por DS sem fio, outra
   coisa) e os dois avisos de save corrompido ("Os dados salvos do slot estão corrompidos..."). Também a

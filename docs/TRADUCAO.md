@@ -159,12 +159,37 @@ etapa ficam no `docs/DIARY.md`.
   Wi-Fi, Segredo, Sair; o submenu Download (Baixar via Wi-Fi, Baixar via DS sem fio, Baixar dados de time,
   Superlink 2→3, Link Premium Ogre), os botões premium (Scout/Item Premium 2→3 e Ogre) e as quatro janelas de
   aviso (11 jogadores, 12 para trocar, função não liberada). O "Sair" igual do `MTSSrd` também.
-- [ ] **Imagens em inglês** (levantamento desta etapa, nas imagens que o CyberLife mudou; `tools/image.py
-  export` e os textos vistos):
-  - comunicação, o resto (80 imagens mudadas pelo CyberLife em 9 arquivos): `MTSWic` (tela de partida: Host,
-    Join, Organise team, Name & emblem, Pitch & computer, COM battle, Back; a faixa "Match"), `MTSSrd` (24),
-    `MTSWfDL` (11: as faixas "Download from Nintendo WFC"/"…via DS Wireless Communications"…), `MTSWis`,
-    `MTSWip`, `MPSWip`, `MPSWic`, `MMSWic`, `STSWic`;
+- [x] Telas de comunicação (v1.8), traduzidas do japonês: a tela de partida (`MTSWic`: Procurar rival,
+  Entrar, Montar time, Nome e emblema, Trocar uniforme — o CyberLife tinha posto "Pitch & computer" —, CPU e
+  campo, Configurar, Jogar agora, Time de rede 1–3, Jogar com o time de rede 1–3, Nível do time, Time A/B,
+  os selos "Joga", Você/Rival, Mestre e os botões Sair, Parar, OK, Ver, Cancelar, Menu, Sim, Não), a de
+  download (`MTSWfDL`: os botões cinza, Sim/Não, Cancelar) e as 16 faixas de título da tela de cima
+  (`STSWic:WMU_T00`, que o levantamento não tinha achado: Partida, Desafio Passing, Troca, Download, Baixar
+  via Wi-Fi, Erro de conexão, Superlink 2→3, Scout/Item Premium...). As imagens iguais no retail em
+  `MTSWip`, `MPSWip`, `MMSWic`, `MPSWic`, `MTSWis`, `MTSSrd`, `MPSPrd` e `MMProfd` receberam as mesmas edições.
+- [x] Painéis de download (v1.8, `MTSWfDL:WMDN_BG01`/`BG02`, de 8 bpp): Download / Novos jogadores, "Recrute
+  os baixados pelo mapa de contatos!", "Quem vem pela Wi-Fi fica do lado de fora!", "Quem vem pelo DS sem fio
+  fica aqui!", Download / Itens e "Os itens de download chegaram à loja de esportes no fim do bairro de
+  lojas!" (termos do diálogo: 人脈システム → mapa de contatos, 商店街 → bairro de lojas). O título grande fica
+  na fonte de 12 px: não há fonte maior no mod.
+- [x] Aviso do Passing na tela de cima (v1.8, `STSWic:SRU_W01`).
+- [x] Tela de cima do Passing (v1.8, `SRSSru`): o cartão de perfil (`SRU_W30`/`W40`: Nível do time, Tempo de
+  jogo h/min, Time, V de vitórias, Desafios recebidos, Recrutados; as unidades 通/人 tiradas), Novo time, a
+  barra do nível (`SRU_B20`), as cinco faixas (`SRU_T00`) e Mestre. O `SRU_I01` ("Ogre" por オーガ) ficou como o
+  CyberLife deixou.
+- [x] Janelas de comunicação (v1.8): `MTSWis` (Parabéns por zerar o jogo, com Bomber e com Spark; Aguarde um
+  pouco; "O time mais forte está esperando! Vá até o Monte Magnitude!"; Sim/Não; Parar), `MTSWip`/`MPSWip`
+  (Cancelar, Avançar) e o `WC_MSG` nos 8 arquivos onde se repete (Erro de conexão / A conexão caiu, Aguardando o
+  rival, "O rival está traçando jogadas" por 通信相手からのドロータイム).
+- [x] Desafio Passing (v1.8, `MTSSrd`, 21 imagens), do japonês: Desafio Passing, Partida, Configurar, Desafio
+  com os dados de rede 1–3, Desafio com dados recebidos (o CyberLife tinha "Teamshare Mode", "Connect Team",
+  "Cooperative Team"), Criar perfil, Montar time, Nome e emblema, Trocar uniforme, Jogar com o time da
+  história/de rede 1–3, Nível do time, Mestre, Registros (プレイのきろく), Torneio, Jogar, Sair, Fim (おわる),
+  OK, Salvar, Parar, Sim, Não, as três linhas de instrução (Digite o seu nome...), a faixa "Baixar dados de
+  time" e as janelas (Iniciar o Passing?, Jogar com este time?, os avisos de 11 jogadores, de nome e emblema
+  e de dados de time que não podem ser usados).
+- [ ] **Imagens em inglês** (levantamento nas imagens que o CyberLife mudou; `tools/image.py export` e os
+  textos vistos):
   - logotipos do Superlink e do Premium Link (`MTSWiM:SLDN_T00`/`T01`): ficaram como o CyberLife deixou
     ("Superlink", "Premium link"), mas o T00 tem um "From C3 Corp" no lugar da leitura ツー・スリー. Redesenhar
     exige apagar sobre fundo transparente e o círculo, o que o `image.py` ainda não faz;
@@ -173,6 +198,15 @@ etapa ficam no `docs/DIARY.md`.
     Miss!/Direct/Chain/Block, Replay;
   - e as outras ~90 imagens mudadas pelo CyberLife (lista: `export` do mod comparado com o `--retail`), além
     das que ele deixou em japonês.
+- [x] Tutorial das ligações (v1.8, `MTSPi`, 8 páginas de 8 bpp e 3 botões): as páginas do Superlink 2→3
+  (`WPD_W00`–`W03`) e do Link Premium Ogre (`W04`–`W07`), em que o CyberLife só tinha trocado o botão. Os
+  rótulos "Outro/Este console DS", as caixas de explicação, a tela de título do outro jogo (Conectar, Partida,
+  Procurar, Entrar, Montar time, Nome/emblema), "Time de rede (16)" e a lista do que se recebe, e os botões
+  Avançar, Iniciar, Sair e Parar. Ficaram de fora o selo もどる minúsculo da tela de título falsa (2 px de letra)
+  e os logotipos dos jogos.
+- [x] Títulos do jogador (v1.8, `logic/rpgtitle.STR`, 40), do japonês: o CyberLife tinha posto um inglês com
+  erros ("Penguin Process" por 皇帝ペンギン, "Body Continues" por ガチムチボディ). イレブン → "Onze", como em "Super
+  Onze". Texto comum (o cartão do Passing o mostra assim), até a largura do título original mais largo.
 - [ ] Menus do jogo que ainda dizem "Kick", "Guard" etc.: seguir o glossário dos itens (Chute, Defesa…)
 - [ ] Legendas dos vídeos (`movie/txt`): levantar e traduzir ("確かに大事なところでの大失敗は辛い！")
 - [ ] Aviso de ficção de um jogo novo ("この作品はフィクションです…")
@@ -208,6 +242,20 @@ etapa ficam no `docs/DIARY.md`.
 - [ ] Coleção (v1.7): só na prévia. No save do teste ela aparece como "???" e não abre.
 - [x] Menu "Conectar" (v1.7): visto no jogo o menu principal, o submenu Download e a janela "Esta função
   ainda não está liberada" (em Superlink 2→3). Não vistos: os botões premium, Segredo e as outras três janelas.
+- [x] Telas de comunicação (v1.8): vistas no jogo a tela de partida, Procurar rival (os três "Jogar com o
+  time de rede"), Montar time (Time de rede 1–3), o submenu Download e as faixas de cima "Partida" e "Baixar
+  via Wi-Fi". Não vistos: Nível do time, Time A/B, os selos, Você/Rival/Mestre e as janelas Sim/Não
+  (precisam de outro DS), e as cópias nos outros arquivos.
+- [ ] Tutorial das ligações (v1.8): só na prévia. No save do teste o Superlink 2→3 e o Link Premium Ogre
+  estão bloqueados ("Esta função ainda não está liberada").
+- [ ] Títulos do jogador (v1.8): vistos no cartão do Passing ("Onze rival"). Quem lê a tabela é o `ov000`,
+  carregado sempre; falta ver se aparecem em outra tela (menu de status?) e se lá o texto comum funciona.
+- [x] Cartão de perfil do Passing (v1.8): visto no jogo (Desafio Passing → Configurar). As janelas do `MTSWis`,
+  `MTSWip`/`MPSWip` e `WC_MSG` não (precisam do Spark/Bomber ou de outro DS).
+- [x] Desafio Passing (v1.8): vistos no jogo o menu, os quatro desafios, a tela Configurar e a janela Sim/Não
+  de "Baixar dados de time". Não vistos: as janelas de aviso, Registros/Torneio e as instruções do `SRD_O60`.
+- [x] Aviso do Passing (v1.8): visto no jogo (Conectar → Desafio Passing → A). Os painéis de download não:
+  não aparecem nem no submenu Download nem em "Baixar dados de time"; devem vir depois de um download.
 - [ ] Mensagens dos overlays: nenhuma vista no jogo (a forma em pares foi conferida na galeria, que usa o
   mesmo leitor). A formação do save de teste não deixou provocar os avisos do `ov057`.
 - [ ] Rótulos de quem fala nas partidas 34010007 e 34010022 (`mch.pkb`)
@@ -391,9 +439,9 @@ etc. (vieram do patch em inglês) e devem seguir esta lista quando forem traduzi
 As traduções ficam em `translations/CyberLifePlus/<grupo>.json`, um arquivo por grupo de eventos
 (`3300.json`, `mcht.json`…), como `{"evet:33000301:4": "Alô?\\nÉ do Super Onze?"}`: o lugar da fala (arquivo,
 entrada, deslocamento do texto) e o português. Nas tabelas o lugar é `item.STR:deslocamento`, `item.dat:registro`
-`tacticscmd.STR:deslocamento`, `command.dat:registro` (nome da técnica), `command.STR:deslocamento` (descrição),
+`tacticscmd.STR:deslocamento`, `rpgtitle.STR:deslocamento`, `command.dat:registro` (nome da técnica), `command.STR:deslocamento` (descrição),
 `sp_binder.dat:registro`, `movie_view_f.dat:registro` ou, nas tabelas de registros, `gamerule.dat:deslocamento`
-(`item.json`, `tacticscmd.json`, `command.json`, `sp_binder.json`, `movie_view_f.json`, `gamerule.json`,
+(`item.json`, `tacticscmd.json`, `rpgtitle.json`, `command.json`, `sp_binder.json`, `movie_view_f.json`, `gamerule.json`,
 `PracticeGame.json`, `ClearCondition.json`…); nos overlays, `ov057:0xa4dc` (`overlays.json`, e
 `extract --only ov` lista o que falta); `extract --redo` lista também o que o mod já
 tem em outra língua (os nomes em inglês). **Nada do texto japonês vai para o repositório**: o `text.py`
@@ -420,7 +468,7 @@ python3 tools/text.py survey boej.pak mods/CyberLifePlus
 O `check` recusa a fala que não cabe no espaço, que passa de 3 linhas na caixa (com a quebra automática do
 jogo), que perde um `%s` ou que usa um caractere fora da fonte. O `apply` escreve as falas sobre o que o mod já
 tem e regrava só os patches que mudaram. O `text.py` cobre o diálogo (`evet`, `mcht`) e as strings dos scripts
-(`eve`, `mch`), os itens (`item.dat`, `item.STR`), as táticas (`tacticscmd.STR`), as técnicas (`command.dat`) e a
+(`eve`, `mch`), os itens (`item.dat`, `item.STR`), as táticas (`tacticscmd.STR`), os títulos do jogador (`rpgtitle.STR`), as técnicas (`command.dat`) e a
 galeria de vídeos (`movie_view_f.dat`), as tabelas de registros (`RECORDS`) e as strings dos overlays; as outras
 tabelas ainda são editadas com `tools/mod.py expand`/`patch`.
 
