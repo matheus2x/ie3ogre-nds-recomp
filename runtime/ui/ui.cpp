@@ -49,6 +49,7 @@ const ActionInfo kShortcuts[] = {
     {"load_state", "Carregar savestate"},
     {"state_slot_prev", "Slot anterior"},
     {"state_slot_next", "Próximo slot"},
+    {"rewind", "Voltar no tempo (segurar)"},
 };
 
 // A binding being captured. It keeps its own config pointer: the capture ends in an event,
@@ -554,6 +555,18 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
                         if (ImGui::Selectable(speed_label(n).c_str(), n == speed)) set("game", "fast_forward_speed", std::to_string(n));
                     }
                     ImGui::EndCombo();
+                }
+                checkbox_row("Voltar no tempo (rewind)", "Segurar o atalho volta o jogo alguns segundos.", "game", "rewind");
+                if (config.get_bool("game", "rewind")) {
+                    row("Quanto dá para voltar", "Mais tempo usa mais memória.");
+                    int seconds = config.get_int("game", "rewind_seconds", 5, 120);
+                    auto seconds_label = [](int n) { return std::to_string(n) + " segundos"; };
+                    if (ImGui::BeginCombo("##rewind", seconds_label(seconds).c_str())) {
+                        for (int n : {10, 20, 30, 60, 120}) {
+                            if (ImGui::Selectable(seconds_label(n).c_str(), n == seconds)) set("game", "rewind_seconds", std::to_string(n));
+                        }
+                        ImGui::EndCombo();
+                    }
                 }
                 end_rows();
             }

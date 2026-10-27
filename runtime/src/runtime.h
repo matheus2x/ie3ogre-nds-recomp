@@ -303,4 +303,12 @@ std::string savestate_describe(int slot);
 extern std::string g_savestate_message;
 extern bool g_savestate_loaded;  // a load replaced the state: the host resets its pacing and sound
 
+// Rewind: states kept in memory, one every `interval` frames, up to `seconds` back.
+void rewind_configure(bool enabled, int seconds, int interval);
+bool rewind_enabled();
+void rewind_request_capture();  // skipped when another request is pending
+bool rewind_request_step();     // back one state; false at the oldest (which is loaded again)
+void rewind_clear();
+void rewind_log();              // how many states and how much memory, to the log
+
 }  // namespace ntr

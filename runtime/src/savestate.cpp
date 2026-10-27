@@ -14,9 +14,17 @@
 // the state was taken. Host stack frames between a poll and the fiber switch hold no
 // pointers to the heap, whose addresses change between runs.
 //
+// Rewind: the same payload, kept in memory every few frames while the game runs. The newest
+// one is kept whole; each older one is a reverse delta (the XOR with the next newer one,
+// with its runs of zero words left out), so most of a state that did not change costs
+// nothing. Going back loads the newest, then rebuilds and loads each older one in turn.
+//
 // File: "IE3STATE", u32 format version, u32 0, u64 build identity, u64 save time (Unix),
 // u64 payload size, u64 payload FNV-1a hash, then the payload (the modules' *_state).
+#include <algorithm>
+#include <chrono>
 #include <ctime>
+#include <deque>
 #include <filesystem>
 #include <system_error>
 
@@ -38,7 +46,7 @@ constexpr char kMagic[8] = {'I', 'E', '3', 'S', 'T', 'A', 'T', 'E'};
 constexpr uint32_t kVersion = 1;
 constexpr size_t kHeaderSize = 48;
 
-enum class Op { None, Save, Load };
+enum class Op { None, Save, Load, RewindCapture, RewindStep };
 Op g_op = Op::None;
 int g_slot = 1;
 
@@ -194,6 +202,22 @@ void save(int slot) {
     session_savestate(true, slot);
 }
 
+// Puts `payload` in place of the current state. A failure halfway leaves a mix of both
+// states: the current one goes back in.
+bool restore(std::vector<uint8_t>& payload, std::string& error) {
+    std::vector<uint8_t> backup;
+    backup.reserve(payload.size());
+    StateIo keep(backup, false);
+    all_state(keep);
+    StateIo io(payload, true);
+    all_state(io);
+    if (io.ok()) return true;
+    error = io.error();
+    StateIo undo(backup, true);
+    all_state(undo);
+    return false;
+}
+
 void load(int slot) {
     std::string name = "Slot " + std::to_string(slot);
     uint64_t saved_at = 0;
@@ -213,26 +237,177 @@ void load(int slot) {
         case Check::Ok:
             break;
     }
-    // A failure halfway leaves a mix of both states: the current one goes back in.
-    std::vector<uint8_t> backup;
-    StateIo keep(backup, false);
-    all_state(keep);
-    StateIo io(payload, true);
-    all_state(io);
-    if (!io.ok()) {
-        NTR_LOG("[state] slot %d cannot be loaded: %s\n", slot, io.error().c_str());
-        StateIo undo(backup, true);
-        all_state(undo);
+    std::string error;
+    if (!restore(payload, error)) {
+        NTR_LOG("[state] slot %d cannot be loaded: %s\n", slot, error.c_str());
         g_savestate_message = name + ": arquivo danificado";
         return;
     }
     NTR_LOG("[state] slot %d loaded (cycle %llu)\n", slot, (unsigned long long)now_cycles());
     g_savestate_message = name + " carregado";
     session_savestate(false, slot);
+    rewind_clear();
+    g_savestate_loaded = true;
+}
+
+
+// --- rewind ---------------------------------------------------------------------------
+
+constexpr size_t kRewindMaxBytes = size_t(256) << 20;  // all the deltas together
+
+struct Rewind {
+    bool enabled = false;
+    size_t max_states = 0;
+    std::vector<uint8_t> head;       // the newest state, whole
+    bool head_loaded = false;        // a step already went back to it
+    std::deque<std::vector<uint8_t>> deltas;  // older states, the oldest first
+    size_t delta_bytes = 0;
+    std::vector<uint8_t> scratch;
+    uint64_t captures = 0, capture_ns = 0;  // for the log
+} g_rewind;
+
+uint64_t word_at(const std::vector<uint8_t>& v, size_t i) {
+    uint64_t w = 0;
+    if (i + 8 <= v.size()) std::memcpy(&w, v.data() + i, 8);
+    else if (i < v.size()) std::memcpy(&w, v.data() + i, v.size() - i);
+    return w;
+}
+
+// What turns `newer` back into `older`: older's size, then (u32 zero words, u32 literal
+// words, the literal words) over the XOR of both, a missing tail counting as zeros.
+std::vector<uint8_t> delta_encode(const std::vector<uint8_t>& older, const std::vector<uint8_t>& newer) {
+    std::vector<uint8_t> out(8);
+    put64(out.data(), older.size());
+    size_t words = (older.size() + 7) / 8;
+    size_t i = 0;
+    while (i < words) {
+        size_t zeros = 0;
+        while (i < words && word_at(older, i * 8) == word_at(newer, i * 8)) i++, zeros++;
+        size_t start = i;
+        while (i < words && word_at(older, i * 8) != word_at(newer, i * 8)) i++;
+        size_t at = out.size();
+        out.resize(at + 8 + (i - start) * 8);
+        store32(out.data() + at, uint32_t(zeros));
+        store32(out.data() + at + 4, uint32_t(i - start));
+        for (size_t k = start; k < i; k++) {
+            uint64_t x = word_at(older, k * 8) ^ word_at(newer, k * 8);
+            std::memcpy(out.data() + at + 8 + (k - start) * 8, &x, 8);
+        }
+    }
+    out.shrink_to_fit();
+    return out;
+}
+
+std::vector<uint8_t> delta_decode(const std::vector<uint8_t>& delta, const std::vector<uint8_t>& newer) {
+    size_t size = size_t(get64(delta.data()));
+    std::vector<uint8_t> older((size + 7) / 8 * 8);
+    for (size_t i = 0; i < older.size(); i += 8) {
+        uint64_t v = word_at(newer, i);
+        std::memcpy(older.data() + i, &v, 8);
+    }
+    for (size_t at = 8, i = 0; at < delta.size();) {
+        i += load32(delta.data() + at);
+        uint32_t literal = load32(delta.data() + at + 4);
+        at += 8;
+        for (uint32_t k = 0; k < literal; k++, i++, at += 8) {
+            uint64_t x, v;
+            std::memcpy(&x, delta.data() + at, 8);
+            std::memcpy(&v, older.data() + i * 8, 8);
+            v ^= x;
+            std::memcpy(older.data() + i * 8, &v, 8);
+        }
+    }
+    older.resize(size);
+    return older;
+}
+
+void rewind_trim() {
+    while (!g_rewind.deltas.empty() &&
+           (g_rewind.deltas.size() > g_rewind.max_states || g_rewind.delta_bytes > kRewindMaxBytes)) {
+        g_rewind.delta_bytes -= g_rewind.deltas.front().size();
+        g_rewind.deltas.pop_front();
+    }
+}
+
+void rewind_capture() {
+    auto start = std::chrono::steady_clock::now();
+    std::vector<uint8_t>& now = g_rewind.scratch;
+    now.clear();
+    now.reserve(g_rewind.head.size() + (64u << 10));
+    StateIo io(now, false);
+    all_state(io);
+    if (!io.ok()) {
+        NTR_LOG("[rewind] state not captured: %s\n", io.error().c_str());
+        return;
+    }
+    if (!g_rewind.head.empty()) {
+        g_rewind.deltas.push_back(delta_encode(g_rewind.head, now));
+        g_rewind.delta_bytes += g_rewind.deltas.back().size();
+        rewind_trim();
+    }
+    g_rewind.head.swap(now);
+    g_rewind.head_loaded = false;
+    g_rewind.captures++;
+    g_rewind.capture_ns += uint64_t(std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                        std::chrono::steady_clock::now() - start).count());
+}
+
+void rewind_step() {
+    if (g_rewind.head_loaded && !g_rewind.deltas.empty()) {  // none left: the oldest again
+        g_rewind.head = delta_decode(g_rewind.deltas.back(), g_rewind.head);
+        g_rewind.delta_bytes -= g_rewind.deltas.back().size();
+        g_rewind.deltas.pop_back();
+    }
+    std::string error;
+    if (!restore(g_rewind.head, error)) {
+        NTR_LOG("[rewind] state cannot be loaded: %s\n", error.c_str());
+        rewind_clear();
+        return;
+    }
+    g_rewind.head_loaded = true;
     g_savestate_loaded = true;
 }
 
 }  // namespace
+
+void rewind_configure(bool enabled, int seconds, int interval) {
+    g_rewind.enabled = enabled;
+    g_rewind.max_states = size_t(std::max(1, seconds * 60 / std::max(1, interval)));
+    if (!enabled) rewind_clear();
+    rewind_trim();
+}
+
+void rewind_clear() {
+    g_rewind.head = {};
+    g_rewind.head_loaded = false;
+    g_rewind.deltas = {};
+    g_rewind.delta_bytes = 0;
+    g_rewind.scratch = {};
+}
+
+bool rewind_enabled() { return g_rewind.enabled; }
+
+void rewind_request_capture() {
+    if (!g_rewind.enabled || g_op != Op::None) return;
+    g_op = Op::RewindCapture;
+    g_savestate_pending = true;
+}
+
+bool rewind_request_step() {
+    if (!g_rewind.enabled || g_rewind.head.empty()) return false;
+    if (g_op == Op::None || g_op == Op::RewindCapture) {
+        g_op = Op::RewindStep;
+        g_savestate_pending = true;
+    }
+    return !g_rewind.head_loaded || !g_rewind.deltas.empty();
+}
+
+void rewind_log() {
+    if (!g_rewind.captures) return;
+    NTR_LOG("[rewind] %zu states back (%zu KiB of deltas, the newest %zu KiB), %.2f ms per capture\n",
+            g_rewind.deltas.size() + 1, g_rewind.delta_bytes >> 10, g_rewind.head.size() >> 10,
+            g_rewind.capture_ns / 1e6 / double(g_rewind.captures));
+}
 
 void savestate_request_save(int slot) {
     g_op = Op::Save;
@@ -275,6 +450,8 @@ void savestate_run(Fiber* game) {
         g_op = Op::None;
         if (op == Op::Save) save(g_slot);
         if (op == Op::Load) load(g_slot);
+        if (op == Op::RewindCapture) rewind_capture();
+        if (op == Op::RewindStep) rewind_step();
     }
 }
 

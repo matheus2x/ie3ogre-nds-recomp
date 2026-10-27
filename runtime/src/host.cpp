@@ -29,10 +29,13 @@
 // and keys A B X Y L R START SELECT UP DOWN LEFT RIGHT or TOUCH@x,y), NTR_PEEK
 // ("hexaddr:size", dumps guest memory every frame), NTR_REPLAY (replays a session
 // recording, see diag.cpp), NTR_RECORD (record the session even when headless or scripted),
-// NTR_STATE_SAVE / NTR_STATE_LOAD (save to / load from savestate slot 1 at that frame).
+// NTR_STATE_SAVE / NTR_STATE_LOAD (save to / load from savestate slot 1 at that frame),
+// NTR_REWIND (rewind held over "first-last" frames, with rewind on even without a window).
 //
 // Savestates (savestate.cpp): F5 saves to the chosen slot, F9 loads it, F6/F7 choose the
-// slot (1-5); the pause menu has a page for them too.
+// slot (1-5); the pause menu has a page for them too. R (held) rewinds: a state is kept
+// every kRewindInterval frames, up to game.rewind_seconds back (game.rewind turns it off).
+// Without a window it is off, unless NTR_REWIND ("first-last" frames) holds it in a test.
 #define SDL_MAIN_HANDLED  // main() is ours; SDL_SetMainReady() is called instead
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
@@ -60,6 +63,9 @@ namespace ntr {
 namespace {
 
 constexpr uint64_t kFrameNs = 1000000000ull * 263 * 2130 / 33513982;  // 355x263 dots, 6 cycles each
+// Frames between rewind states. Each step back loads the state before, and the game runs one
+// frame from it: rewinding goes back about 3 times as fast as the game runs.
+constexpr int kRewindInterval = 4;
 
 // What a key or gamepad input does: a DS button (KEYINPUT bits 0-9, X = bit 10, Y = bit 11)
 // or a frontend shortcut.
@@ -76,6 +82,7 @@ enum Action {
     kStateSlotPrev,
     kStateSlotNext,
     kMenu,
+    kRewind,
     kActionCount
 };
 constexpr uint32_t kButtonMask = 0xFFF;
@@ -90,7 +97,7 @@ constexpr float kWideStackWidth = 768;
 const char* const kActionNames[kActionCount] = {
     "A", "B", "SELECT", "START", "RIGHT", "LEFT", "UP", "DOWN", "R", "L", "X", "Y",
     "fast_forward", "fast_forward_toggle", "turbo", "turbo_toggle", "screenshot", "debug_dump", "fullscreen",
-    "save_state", "load_state", "state_slot_prev", "state_slot_next", "menu"};
+    "save_state", "load_state", "state_slot_prev", "state_slot_next", "menu", "rewind"};
 
 struct KeyBinding {
     SDL_Keycode key;
@@ -144,6 +151,10 @@ struct Host {
     bool ff_held = false, ff_toggle = false;        // fast forward
     bool turbo_held = false, turbo_toggle = false;  // auto A
     int ff_speed = 4;                               // game.fast_forward_speed
+    bool rewind_held = false;
+    bool rewinding = false;    // a step back was taken this frame
+    bool rewind_end = false;   // no state left: said once until the key is released
+    uint64_t rewind_first = 0, rewind_last = 0;  // NTR_REWIND
     bool linear_filter = false;
     std::string config_path;
     bool env_scale = false, env_scale_3d = false;  // NTR_SCALE / NTR_3D_SCALE win over boej.ini
@@ -449,6 +460,7 @@ void update_actions() {
     g_host.keys = uint16_t(now & kButtonMask);
     g_host.ff_held = now & (1u << kFastForward);
     g_host.turbo_held = now & (1u << kTurbo);
+    g_host.rewind_held = now & (1u << kRewind);
     if (pressed & (1u << kFastForwardToggle)) g_host.ff_toggle = !g_host.ff_toggle;
     if (pressed & (1u << kTurboToggle)) g_host.turbo_toggle = !g_host.turbo_toggle;
     if (pressed & (1u << kScreenshot)) g_host.f12_frame = g_host.frame + 1;
@@ -582,8 +594,8 @@ void pace() {
     if (now - g_host.fps_start >= 1000000000ull) {
         double fps = g_host.fps_frames * 1e9 / double(now - g_host.fps_start);
         char title[128];
-        std::snprintf(title, sizeof title, "Inazuma Eleven 3 - The Ogre (recomp) - %.1f fps%s%s", fps,
-                      fast_forward() ? " [>> acelerado]" : "",
+        std::snprintf(title, sizeof title, "Inazuma Eleven 3 - The Ogre (recomp) - %.1f fps%s%s%s", fps,
+                      g_host.rewinding ? " [<< voltando]" : "", fast_forward() ? " [>> acelerado]" : "",
                       turbo() ? " [A automatico]" : "");
         SDL_SetWindowTitle(g_host.window, title);
         g_host.fps_start = now;
@@ -690,6 +702,12 @@ void apply_presentation() {
     }
 }
 
+void configure_rewind() {
+    const Config& c = g_host.config;
+    bool on = c.get_bool("game", "rewind") && (!g_host.headless || g_host.rewind_last);
+    rewind_configure(on, c.get_int("game", "rewind_seconds", 5, 120), kRewindInterval);
+}
+
 // After a change in the pause menu: everything boej.ini holds takes effect at once.
 // Fullscreen and the window size only change when their own setting changed, so F11 and
 // a window resized by hand are left alone otherwise.
@@ -697,6 +715,7 @@ void apply_settings() {
     const Config& c = g_host.config;
     if (g_host.audio) SDL_SetAudioStreamGain(g_host.audio, c.get_int("audio", "volume", 0, 100) / 100.0f);
     g_host.ff_speed = c.get_int("game", "fast_forward_speed", 2, 10);
+    configure_rewind();
     bool was_wide = g_host.wide;
     apply_presentation();
     bool fullscreen = c.get_bool("video", "fullscreen");
@@ -878,6 +897,13 @@ bool host_init() {
     g_host.exit_frame = env_u64("NTR_EXIT_FRAME");
     g_host.state_save_frame = env_u64("NTR_STATE_SAVE");
     g_host.state_load_frame = env_u64("NTR_STATE_LOAD");
+    if (const char* s = std::getenv("NTR_REWIND")) {
+        unsigned long long first = 0, last = 0;
+        if (std::sscanf(s, "%llu-%llu", &first, &last) == 2 && first <= last && last) {
+            g_host.rewind_first = first;
+            g_host.rewind_last = last;
+        }
+    }
     g_host.throttle = !std::getenv("NTR_FAST");
     if (const char* s = std::getenv("NTR_INPUT")) parse_script(s);
     if (const char* path = std::getenv("NTR_REPLAY")) load_replay(path);
@@ -907,6 +933,7 @@ bool host_init() {
     if (scale_3d <= 0) scale_3d = headless && !config_env ? 1 : config.get_int("video", "resolution_3d", 1, kMax3dScale);
     gpu3d_set_scale(scale_3d);
     g_host.ff_speed = config.get_int("game", "fast_forward_speed", 2, 10);
+    configure_rewind();  // again once there is a window
     if (headless) return true;
 
     SDL_SetMainReady();
@@ -935,6 +962,7 @@ bool host_init() {
     g_host.window_scale_applied = scale;
     load_bindings();
     g_host.headless = false;
+    configure_rewind();
     open_audio();
     g_host.deadline = g_host.fps_start = SDL_GetTicksNS();
     return true;
@@ -1066,7 +1094,8 @@ void savestate_finished() {
         // can no longer be replayed from boot.
         if (g_host.audio) SDL_ClearAudioStream(g_host.audio);
         g_host.deadline = g_host.work_start = SDL_GetTicksNS();
-        if (!g_host.headless) NTR_LOG("[host] savestate loaded at frame %llu\n", (unsigned long long)g_host.frame);
+        if (!g_host.headless && !g_host.rewinding)
+            NTR_LOG("[host] savestate loaded at frame %llu\n", (unsigned long long)g_host.frame);
         replay_finish(g_host.frame);
     }
     if (!g_savestate_message.empty()) {
@@ -1075,9 +1104,36 @@ void savestate_finished() {
     }
 }
 
+// Held: a step back every frame. Otherwise a new state every kRewindInterval frames.
+void update_rewind() {
+    if (!rewind_enabled()) return;
+    bool held = g_host.rewind_held || (g_host.frame >= g_host.rewind_first && g_host.frame <= g_host.rewind_last);
+    if (!held) {
+        if (g_host.rewinding) {
+            NTR_LOG("[rewind] released at frame %llu\n", (unsigned long long)g_host.frame);
+            session_event("rewind solto");
+        }
+        g_host.rewinding = g_host.rewind_end = false;
+        if (g_host.frame % kRewindInterval == 0) rewind_request_capture();
+        return;
+    }
+    bool back = rewind_request_step();
+    if (!g_host.rewinding) {
+        NTR_LOG("[rewind] held at frame %llu\n", (unsigned long long)g_host.frame);
+        rewind_log();
+        session_event("rewind (a gravação da entrada termina aqui)");
+    }
+    g_host.rewinding = true;
+    if (!back && !g_host.rewind_end) {
+        g_host.rewind_end = true;
+        show_toast("Rewind: nada mais para voltar");
+    }
+}
+
 void host_present(const uint32_t* top, int top_scale, const uint32_t* bottom, int bottom_scale) {
     g_host.frame++;
     savestate_finished();
+    update_rewind();
     if (g_host.frame == g_host.state_save_frame) savestate_request_save(1);
     if (g_host.frame == g_host.state_load_frame) savestate_request_load(1);
     diag_frame(g_host.frame);
@@ -1159,7 +1215,7 @@ void host_audio_push(const int16_t* frames, size_t count) {
         std::fwrite(frames, 4, count, g_host.wav);
         g_host.wav_frames += uint32_t(count);
     }
-    if (!g_host.audio) return;
+    if (!g_host.audio || g_host.rewinding) return;
     // Running ahead of real time (fast forward, NTR_FAST) would only grow the latency.
     int queued = SDL_GetAudioStreamQueued(g_host.audio);
     if (queued > kSoundRate * 4 / 6) return;

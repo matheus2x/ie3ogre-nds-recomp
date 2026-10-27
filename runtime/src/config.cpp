@@ -46,6 +46,10 @@ volume = 100
 ; Velocidade do avanço rápido: 2 a 10 (vezes a normal). Se o processador não aguentar,
 ; fica no máximo que ele conseguir.
 fast_forward_speed = 4
+; Rewind: segurar o atalho "rewind" volta no tempo. Guarda até rewind_seconds segundos
+; (5 a 120) na memória; custa um pouco de processador e até uns 256 MB de RAM.
+rewind = true
+rewind_seconds = 30
 
 ; Mods da pasta mods/ que estão ligados: os nomes das pastas e dos .zip, separados por vírgula.
 ; Quando dois mods mudam o mesmo arquivo, vale o que vem depois. A aba Mods do launcher
@@ -68,7 +72,7 @@ stay_closed = false
 ; Atalhos: menu (pausa, com as configurações), fast_forward (segurar) e fast_forward_toggle
 ; (avanço rápido), turbo (segurar) e turbo_toggle (A automático), screenshot, debug_dump
 ; (estado no log da sessão, em logs), fullscreen, save_state e load_state (savestate no slot escolhido)
-; e state_slot_prev / state_slot_next (escolhem o slot, de 1 a 5).
+; e state_slot_prev / state_slot_next (escolhem o slot, de 1 a 5), rewind (segurar: volta no tempo).
 [keyboard]
 A = X
 B = Z
@@ -94,6 +98,7 @@ save_state = F5
 load_state = F9
 state_slot_prev = F6
 state_slot_next = F7
+rewind = R
 
 ; Controle: os mesmos botões e atalhos. Botões pela posição: south, east, west, north
 ; (A do DS = east, como num controle da Nintendo); também back, start, guide,
@@ -125,6 +130,7 @@ save_state =
 load_state =
 state_slot_prev =
 state_slot_next =
+rewind =
 )";
 
 std::string trim(const std::string& s) {

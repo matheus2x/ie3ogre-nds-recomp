@@ -60,5 +60,7 @@ CONTROLES PADRÃO (mude no menu do jogo ou na aba Configurações do launcher)
       no menu de pausa, em "Savestates". Só valem nesta versão do jogo:
       uma atualização recompila o jogo e os savestates antigos não abrem.
   Tab (segurar) ou F2: acelerar      C (segurar) ou F3: A automático
+  R (segurar): volta no tempo (rewind), até 30 segundos por padrão;
+      liga, desliga e muda o tempo no menu, em "Atalhos"
   F8: se algo der errado, aperte no momento e envie, da pasta logs,
       o .log da sessão (sessoes\) e o .txt e .sav de mesmo nome (replays\)

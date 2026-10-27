@@ -49,6 +49,7 @@ suportadas. Se o seu dump tiver outro SHA-1, abra uma issue com o hash.
 | Avanço rápido (segurar / ligar e desligar) | Tab / F2 |
 | A automático (segurar / ligar e desligar) | C / F3 |
 | Savestate: salvar / carregar / trocar o slot (1 a 5) | F5 / F9 / F6 e F7 |
+| Voltar no tempo (rewind, segurar; até 30 s por padrão) | R |
 | Tela cheia / captura de tela | F11 / F12 |
 
 Tudo pode ser remapeado no launcher ou no menu de pausa. As configurações ficam no `boej.ini`, na pasta do jogo.

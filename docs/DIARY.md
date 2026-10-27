@@ -2184,3 +2184,26 @@ o save em `saves/` aparece como caminho relativo. Builds nativo e Windows (jogo 
 savestate da pasta de build foi devolvido. O botão do launcher não foi testado com janela.
 
 **Próximo:** nomes para mais telas (título, slots, campo, partida) na `kScreens`.
+
+## 2026-10-27 — Rewind (voltar no tempo)
+
+Segurar um atalho (R por padrão, remapeável no menu e no `boej.ini`) volta o jogo no tempo, como no mGBA.
+
+- **Como funciona:** reaproveita os savestates (`all_state`, pilhas das fibers incluídas) e o mesmo caminho
+  `poll()` → fiber principal. A cada 4 quadros o host pede uma captura em memória; segurando o atalho, cada
+  quadro carrega o estado anterior e o jogo roda um quadro a partir dele (volta ~3× mais rápido do que anda).
+  Sem estados sobrando, fica parado no mais antigo e avisa uma vez. O som fica mudo enquanto volta.
+- **Memória:** o estado mais novo fica inteiro (~5,8 MiB); os anteriores são deltas reversos (XOR com o seguinte,
+  sem os trechos de palavras zeradas). Na abertura cada delta ficou em ~100–120 KiB; teto de 256 MiB de deltas
+  e `game.rewind_seconds` (padrão 30, 5–120). Captura levou ~1,1–1,5 ms.
+- **Interações:** carregar um slot limpa o histórico; o primeiro passo do rewind encerra a gravação da entrada
+  da sessão (como um load) e marca `[sessao] rewind` no log. Sem janela fica desligado, a não ser com
+  `NTR_REWIND=primeiro-último` (quadros em que o atalho fica "segurado"), para testes.
+- **Configuração:** `[game] rewind = true`, `rewind_seconds = 30`; atalho `rewind` em `[keyboard]` (R) e
+  `[gamepad]` (vazio). Menu → Atalhos: liga/desliga, duração (10–120 s) e a tecla.
+- Docs: README, LEIA-ME.
+
+**Verificação:** sem janela, `NTR_REWIND=700-760` voltou da tela Mobiclip/Nintendo para o logo da Level-5 e o
+jogo seguiu normalmente; `NTR_REWIND=250-400` esgotou o histórico e ficou no estado mais antigo, e depois o jogo
+chegou ao menu do título; savestate salvo depois de um rewind carregou em outro processo, e o rewind depois do
+load funcionou. Builds nativo e Windows sem avisos. Com janela (tecla, som, menu de Atalhos) ainda não testado.
