@@ -313,7 +313,7 @@ void write_wav_header(FILE* f, uint32_t frames) {
     std::fwrite(h, 1, sizeof h, f);
 }
 
-void quit() {
+void quit(const char* reason) {
     if (g_host.headless && g_host.run_frames) {
         NTR_LOG("[perf] %llu frames: %.2f ms on average, worst %.1f ms (frame %llu), %llu longer than 16.7 ms\n",
                 (unsigned long long)g_host.run_frames, g_host.run_ns / 1e6 / g_host.run_frames,
@@ -326,6 +326,7 @@ void quit() {
     }
     replay_finish(g_host.frame);
     NTR_LOG("[host] exit at frame %llu\n", (unsigned long long)g_host.frame);
+    session_end(reason);
     if (!g_host.headless) SDL_Quit();
     std::exit(0);
 }
@@ -514,7 +515,7 @@ void pump_events() {
     while (SDL_PollEvent(&ev)) {
         switch (ev.type) {
             case SDL_EVENT_QUIT:
-                quit();
+                quit("fechou a janela");
                 break;
             case SDL_EVENT_KEY_DOWN:
                 g_host.keys_down.insert(ev.key.key);
@@ -591,6 +592,7 @@ void pace() {
         if (g_host.slow_frames) {
             NTR_LOG("[perf] %u frames took longer than 16.7 ms in the last second (worst %.1f ms, frame %llu)\n",
                     g_host.slow_frames, g_host.worst_ns / 1e6, (unsigned long long)g_host.worst_frame);
+            session_slow_second();
             g_host.slow_frames = 0;
             g_host.worst_ns = 0;
         }
@@ -717,9 +719,8 @@ void apply_settings() {
 
 // --- pause menu -------------------------------------------------------------------------
 
-// "Reiniciar o jogo": the same command line in a new process, then this one exits. The
-// log and the session recording are closed first so the new game can keep them as
-// boej.old.log / boej-replay.old.*.
+// "Reiniciar o jogo": the same command line in a new process (a new session), then this
+// one exits. Its session ends and its files are closed first.
 void restart() {
     std::vector<std::string> args = g_host.args;
     if (args.empty()) {
@@ -734,6 +735,7 @@ void restart() {
     argv.push_back(nullptr);
     NTR_LOG("[host] restarting the game\n");
     replay_finish(g_host.frame);
+    session_end("reiniciou pelo menu");
     log_close();
     SDL_PropertiesID props = SDL_CreateProperties();
     SDL_SetPointerProperty(props, SDL_PROP_PROCESS_CREATE_ARGS_POINTER, argv.data());
@@ -793,7 +795,7 @@ void run_menu() {
         g_host.ui_ready = true;
     }
     if (g_host.audio) SDL_PauseAudioStreamDevice(g_host.audio);
-    NTR_LOG("[host] paused at frame %llu\n", (unsigned long long)g_host.frame);
+    session_event("menu de pausa aberto");
     ui::SettingsOptions options;
     options.in_game = true;
     options.on_change = apply_settings;
@@ -807,7 +809,7 @@ void run_menu() {
     for (bool open = true; open;) {
         SDL_Event ev;
         while (SDL_PollEvent(&ev)) {
-            if (ev.type == SDL_EVENT_QUIT) quit();
+            if (ev.type == SDL_EVENT_QUIT) quit("fechou a janela");
             if (ev.type == SDL_EVENT_GAMEPAD_ADDED || ev.type == SDL_EVENT_GAMEPAD_REMOVED) pad_connection(ev);
             bool capture_input = ev.type == SDL_EVENT_KEY_DOWN || ev.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN ||
                                  ev.type == SDL_EVENT_GAMEPAD_AXIS_MOTION;
@@ -836,7 +838,7 @@ void run_menu() {
             open = false;
         }
         if (action == ui::PauseAction::Restart) restart();
-        if (action == ui::PauseAction::Quit) quit();
+        if (action == ui::PauseAction::Quit) quit("saiu pelo menu");
         SDL_Delay(16);
     }
     apply_presentation();
@@ -845,7 +847,7 @@ void run_menu() {
     g_host.keys_down.clear();
     update_actions();
     g_host.deadline = g_host.work_start = SDL_GetTicksNS();
-    NTR_LOG("[host] resumed\n");
+    session_event("jogo retomado");
 }
 
 }  // namespace
@@ -886,7 +888,9 @@ bool host_init() {
     }
     bool headless = std::getenv("NTR_HEADLESS") != nullptr;
     bool scripted = std::getenv("NTR_INPUT") || std::getenv("NTR_REPLAY");
-    if ((!headless && !scripted) || std::getenv("NTR_RECORD")) replay_enable();
+    bool player = !headless && !scripted;
+    if (player || std::getenv("NTR_RECORD")) replay_enable();
+    if (player) session_track();
     diag_init(!headless);
     const char* config_env = std::getenv("NTR_CONFIG");
     std::string config_path = config_env ? config_env : host_base_path() + "boej.ini";
@@ -1100,7 +1104,7 @@ void host_present(const uint32_t* top, int top_scale, const uint32_t* bottom, in
     }
     if (g_host.exit_frame && g_host.frame >= g_host.exit_frame) {
         NTR_LOG("[host] exiting after %llu frames\n", (unsigned long long)g_host.frame);
-        quit();
+        quit("NTR_EXIT_FRAME");
     }
     if (g_host.headless) {
         uint64_t now = SDL_GetTicksNS();

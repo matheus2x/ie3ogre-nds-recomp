@@ -68,9 +68,10 @@ patches, sem dados do jogo:
 
 ### Relatando problemas
 
-Se algo der errado, aperte **F8** na hora, feche o jogo e envie, da pasta do jogo, o `boej.log` e os
-`boej-replay.*` (a sessão gravada, que permite repetir o problema exatamente). A sessão anterior fica nos arquivos
-`*.old.*`.
+Se algo der errado, aperte **F8** na hora, feche o jogo e envie, da pasta `logs` do jogo (botão "Abrir a pasta
+de logs" no launcher), o log da sessão em `logs/sessoes/` e o replay de mesmo nome em `logs/replays/` (`.txt` e
+`.sav`: a sessão gravada, que permite repetir o problema exatamente). Cada abertura do jogo é uma sessão com nome
+de data e hora; as 20 mais recentes ficam guardadas, e o `logs/historico.txt` resume todas.
 
 ## Funcionalidades
 

@@ -2151,3 +2151,36 @@ muda os patches. `text.py check`, `mod.py check` e os 49 testes: ok. No jogo, n�
 `text.py check`, `mod.py check` e os 49 testes: ok. O savestate da pasta foi devolvido.
 
 **Próximo:** `MTSWic` (tela de partida e a faixa "Match") e as faixas do `MTSWfDL`.
+
+## 2026-10-27 — Pasta `logs/` e sessões rastreáveis
+
+Os arquivos de diagnóstico saíram da raiz do jogo e foram para `logs/`. Cada abertura do jogo agora é uma sessão
+com nome de data e hora, com log e gravação próprios e um histórico de todas as sessões.
+
+- **Layout:** `logs/launcher.log` (+ `launcher.old.log`), `logs/historico.txt`, `logs/sessoes/<sessão>.log`,
+  `logs/replays/<sessão>.txt/.sav`. Ficam as 20 sessões mais recentes; o histórico nunca é apagado. Nome
+  repetido (reiniciar no mesmo segundo) ganha `-2`. O `.old` do jogo deixou de existir.
+- **Migração:** `logs_dir` (ntr-common, `files.cpp`), chamado pelo jogo e pelo launcher, cria a pasta e, na
+  primeira vez, move para lá o `boej.log`, `boej.old.log`, `boej-replay.*` e `launcher.log` que estavam na raiz.
+- **Log:** o prefixo de cada linha agora tem o quadro e a hora (`  1234 14:03:12| `). A hora só é formatada de
+  novo quando o segundo muda. Linhas `[sessao]` marcam: início (versão de `sdk/version.txt` ou `dev`, mods em
+  uso, save), gravação do save pelo jogo (escritas a menos de 60 quadros umas das outras contam como uma
+  gravação), savestates, menu de pausa aberto e retomado, telas conhecidas, e o fim.
+- **Histórico:** uma linha de início no primeiro quadro (quando o save e os mods já são conhecidos) e uma de
+  fim com a duração, os quadros, o motivo (fechou a janela, saiu pelo menu, reiniciou pelo menu, falha),
+  saves do jogo, savestates, segundos com queda de FPS, travamentos e a última tela. Um início sem fim
+  significa que o jogo foi fechado à força. Execuções sem janela ou roteirizadas não entram no histórico.
+- **Telas:** tabela overlay → nome em `cpu.cpp` (`kScreens`). Por enquanto só o ov028 (Extras); sem nome
+  conhecido, a "última tela" mostra os overlays ativos. Tentei mapear título, slots e campo com a sessão sem
+  janela, mas com o save de teste o jogo ficou nos créditos do CyberLife em duas de três execuções (a mesma
+  entrada às vezes passa, às vezes não). Fica para depois.
+- **Launcher:** botão "Abrir a pasta de logs"; as mensagens de erro apontam para `logs/launcher.log`.
+- Docs: README, LEIA-ME, DESENVOLVIMENTO, MODS e o comentário do `boej.ini` padrão.
+
+**Verificação:** duas sessões com janela (`NTR_EXIT_FRAME`) geraram dois logs, dois replays e quatro linhas no
+histórico; os arquivos antigos da pasta de build foram movidos. Com 22 sessões falsas sobraram 20. Um
+`NTR_REPLAY` não entrou no histórico. Com `NTR_STATE_SAVE` apareceram o marco do savestate e o resumo no fim;
+o save em `saves/` aparece como caminho relativo. Builds nativo e Windows (jogo e launcher) sem avisos. O
+savestate da pasta de build foi devolvido. O botão do launcher não foi testado com janela.
+
+**Próximo:** nomes para mais telas (título, slots, campo, partida) na `kScreens`.

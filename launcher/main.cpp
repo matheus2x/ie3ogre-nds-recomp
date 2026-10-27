@@ -17,12 +17,16 @@ namespace fs = std::filesystem;
 
 namespace ntr {
 
-// launcher.log next to the launcher, plus the terminal.
+// logs/launcher.log (the previous run's kept as launcher.old.log), plus the terminal.
 void log_printf(const char* fmt, ...) {
     static std::mutex mutex;
     static FILE* file = [] {
         const char* base = SDL_GetBasePath();
-        return open_file(fs_path(std::string(base ? base : "") + "launcher.log"), "w");
+        fs::path dir = logs_dir(base ? base : "");
+        std::error_code ec;
+        fs::remove(dir / "launcher.old.log", ec);
+        fs::rename(dir / "launcher.log", dir / "launcher.old.log", ec);
+        return open_file(dir / "launcher.log", "w");
     }();
     char buf[4096];
     va_list ap;
@@ -227,6 +231,9 @@ void play_tab(SDL_Window* window) {
             ImGui::Spacing();
             if (ImGui::Button("Abrir a pasta do jogo")) open_folder(paths().root);
             ImGui::SameLine();
+            if (ImGui::Button("Abrir a pasta de logs")) open_folder(paths().logs());
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Um registro e uma gravação por sessão de jogo, e o historico.txt com todas elas");
+            ImGui::SameLine();
             if (ImGui::Button("Recompilar")) prepare_start(g_job, "");
             if (ImGui::IsItemHovered()) ImGui::SetTooltip("Compila o jogo de novo (para testes; normalmente não é preciso)");
             break;
@@ -234,7 +241,7 @@ void play_tab(SDL_Window* window) {
 }
 
 // ie3-launcher --prepare [dump.nds]: the same preparation without a window (for tests,
-// or for players who prefer a terminal). Progress goes to the terminal and launcher.log.
+// or for players who prefer a terminal). Progress goes to the terminal and logs/launcher.log.
 int prepare_cli(const std::string& dump) {
     Readiness r = readiness();
     if (r == Readiness::NoSdk) {

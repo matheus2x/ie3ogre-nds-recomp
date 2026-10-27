@@ -67,7 +67,7 @@ stay_closed = false
 ; Botões do DS: A B X Y L R START SELECT UP DOWN LEFT RIGHT.
 ; Atalhos: menu (pausa, com as configurações), fast_forward (segurar) e fast_forward_toggle
 ; (avanço rápido), turbo (segurar) e turbo_toggle (A automático), screenshot, debug_dump
-; (estado no boej.log), fullscreen, save_state e load_state (savestate no slot escolhido)
+; (estado no log da sessão, em logs), fullscreen, save_state e load_state (savestate no slot escolhido)
 ; e state_slot_prev / state_slot_next (escolhem o slot, de 1 a 5).
 [keyboard]
 A = X

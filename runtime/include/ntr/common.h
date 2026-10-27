@@ -20,8 +20,8 @@
 
 namespace ntr {
 
-// Provided by the program: the game prints to the terminal and boej.log (diag.cpp), the
-// launcher to its own log.
+// Provided by the program: the game prints to the terminal and its session log in logs/
+// (diag.cpp), the launcher to logs/launcher.log.
 void log_printf(const char* fmt, ...) NTR_PRINTF_FORMAT;
 #define NTR_LOG(...) ::ntr::log_printf(__VA_ARGS__)
 
@@ -38,6 +38,9 @@ void unmap_file(const uint8_t* data, uint64_t size);
 std::filesystem::path fs_path(const std::string& utf8);
 std::string utf8_string(const std::filesystem::path& path);
 FILE* open_file(const std::filesystem::path& path, const char* mode);
+// <root>/logs/ (created), the folder of the logs and session recordings of the game and
+// the launcher. The first call moves the log files older releases left in <root> there.
+std::filesystem::path logs_dir(const std::string& root);
 
 // --- settings (config.cpp) ------------------------------------------------------------
 

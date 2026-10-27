@@ -76,4 +76,23 @@ FILE* open_file(const std::filesystem::path& path, const char* mode) {
 #endif
 }
 
+std::filesystem::path logs_dir(const std::string& root) {
+    namespace fs = std::filesystem;
+    fs::path dir = fs_path(root.empty() ? "." : root) / "logs";
+    std::error_code ec;
+    fs::create_directories(dir, ec);
+    static bool moved = false;
+    if (!moved) {
+        moved = true;
+        for (const char* name : {"boej.log", "boej.old.log", "boej-replay.txt", "boej-replay.sav",
+                                 "boej-replay.old.txt", "boej-replay.old.sav", "launcher.log"}) {
+            fs::path old = dir.parent_path() / name;
+            if (!fs::exists(old, ec)) continue;
+            fs::remove(dir / name, ec);
+            fs::rename(old, dir / name, ec);
+        }
+    }
+    return dir;
+}
+
 }  // namespace ntr

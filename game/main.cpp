@@ -63,7 +63,7 @@ std::string find_pak() {
 int main(int argc, char** argv) {
 #ifdef _WIN32
     // Started from Explorer, the console window is ours alone: hide it (everything also
-    // goes to boej.log). From a terminal, the output stays there. NTR_CONSOLE keeps it.
+    // goes to the session log in logs/). From a terminal, the output stays there. NTR_CONSOLE keeps it.
     DWORD processes[2];
     if (GetConsoleProcessList(processes, 2) == 1 && !std::getenv("NTR_CONSOLE")) FreeConsole();
 #endif

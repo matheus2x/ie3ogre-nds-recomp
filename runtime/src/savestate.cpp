@@ -191,6 +191,7 @@ void save(int slot) {
     NTR_LOG("[state] slot %d saved (%zu KiB, cycle %llu)\n", slot, payload.size() >> 10,
             (unsigned long long)now_cycles());
     g_savestate_message = "Slot " + std::to_string(slot) + " salvo";
+    session_savestate(true, slot);
 }
 
 void load(int slot) {
@@ -227,6 +228,7 @@ void load(int slot) {
     }
     NTR_LOG("[state] slot %d loaded (cycle %llu)\n", slot, (unsigned long long)now_cycles());
     g_savestate_message = name + " carregado";
+    session_savestate(false, slot);
     g_savestate_loaded = true;
 }
 

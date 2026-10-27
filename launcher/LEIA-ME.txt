@@ -42,7 +42,9 @@ ARQUIVOS CRIADOS NESTA PASTA
 - saves\boej.sav      o save
 - savestates\         os savestates (slots 1 a 5)
 - boej.ini            configurações (também editáveis no launcher)
-- boej.log, boej-replay.*, launcher.log   registros para relatar problemas
+- logs\               registros para relatar problemas: launcher.log,
+                      historico.txt (todas as sessões de jogo), sessoes\ e
+                      replays\ (log e gravação de cada uma das 20 últimas)
 - mods\               os mods (uma pasta ou um .zip por mod)
 
 CONTROLES PADRÃO (mude no menu do jogo ou na aba Configurações do launcher)
@@ -58,5 +60,5 @@ CONTROLES PADRÃO (mude no menu do jogo ou na aba Configurações do launcher)
       no menu de pausa, em "Savestates". Só valem nesta versão do jogo:
       uma atualização recompila o jogo e os savestates antigos não abrem.
   Tab (segurar) ou F2: acelerar      C (segurar) ou F3: A automático
-  F8: se algo der errado, aperte no momento e envie o boej.log,
-      boej-replay.txt e boej-replay.sav
+  F8: se algo der errado, aperte no momento e envie, da pasta logs,
+      o .log da sessão (sessoes\) e o .txt e .sav de mesmo nome (replays\)

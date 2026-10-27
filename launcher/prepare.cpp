@@ -110,7 +110,7 @@ bool import_dump(Job& job, const std::string& dump) {
     int code = run_process({paths().sdk() + "bin/dsd" + kExe, "rom", "extract", "--rom", dump, "--output-path", extract}, out);
     if (code != 0) {
         job.add_log(out);
-        job.error = "A extração do código (dsd) falhou. Veja os detalhes no launcher.log.";
+        job.error = "A extração do código (dsd) falhou. Veja os detalhes em logs/launcher.log.";
         NTR_LOG("[prepare] dsd failed (%d):\n%s\n", code, out.c_str());
         return false;
     }
@@ -242,7 +242,7 @@ bool build_game(Job& job) {
     int code = run_process({sdk + "bin/ntr-recomp" + kExe, work + "manifest.tsv", work + "gen"}, out);
     if (code != 0) {
         NTR_LOG("[prepare] ntr-recomp failed (%d):\n%s\n", code, out.c_str());
-        job.error = "A recompilação falhou. Veja os detalhes no launcher.log.";
+        job.error = "A recompilação falhou. Veja os detalhes em logs/launcher.log.";
         return false;
     }
     NTR_LOG("[prepare] recompiled in %.1f s\n", seconds_since(start));
@@ -291,7 +291,7 @@ bool build_game(Job& job) {
         if (job.cancel) return false;
         NTR_LOG("[prepare] compile failed:\n%s\n", failure.c_str());
         job.add_log(failure);
-        job.error = "A compilação falhou. Veja os detalhes no launcher.log.";
+        job.error = "A compilação falhou. Veja os detalhes em logs/launcher.log.";
         return false;
     }
     NTR_LOG("[prepare] compiled %zu files in %.1f s\n", jobs.size(), seconds_since(compile_start));
@@ -316,7 +316,7 @@ bool build_game(Job& job) {
     if (code != 0) {
         NTR_LOG("[prepare] link failed (%d):\n%s\n", code, out.c_str());
         job.add_log(out);
-        job.error = "A ligação do executável falhou. Veja os detalhes no launcher.log.";
+        job.error = "A ligação do executável falhou. Veja os detalhes em logs/launcher.log.";
         return false;
     }
     fs::remove(ntr::fs_path(target), ec);

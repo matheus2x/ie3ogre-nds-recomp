@@ -367,6 +367,7 @@ void mods_apply() {
     resolve(mods, files, overlays);
 
     uint64_t h = 0xCBF29CE484222325ull;
+    std::string used;
     for (const Mod& mod : mods) {
         for (const std::string& w : mod.warnings) NTR_LOG("[mods] %s: %s\n", mod.folder.c_str(), w.c_str());
         for (const std::string& e : mod.errors) NTR_LOG("[mods] %s: error: %s\n", mod.folder.c_str(), e.c_str());
@@ -377,7 +378,9 @@ void mods_apply() {
         NTR_LOG("[mods] %s%s%s: %zu files, %zu overlays\n", mod.folder.c_str(), mod.version.empty() ? "" : " v",
                 mod.version.c_str(), mod.files.size(), mod.overlays.size());
         h = fnv(h, &mod.fingerprint, sizeof mod.fingerprint);
+        used += (used.empty() ? "" : ", ") + mod.folder + (mod.version.empty() ? "" : " v" + mod.version);
     }
+    session_info("mods", used.empty() ? "nenhum" : used);
     if (files.empty() && overlays.empty()) return;
 
     const RomImage& rom = rom_image();

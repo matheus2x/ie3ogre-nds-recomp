@@ -131,6 +131,22 @@ int overlay_id(const ModuleEntry& m) {
     return std::strncmp(m.name, "ov", 2) == 0 ? std::atoi(m.name + 2) : -1;
 }
 
+// Overlays that tell which screen the game is on, for the session log.
+struct Screen {
+    uint32_t overlay;
+    const char* name;
+};
+constexpr Screen kScreens[] = {
+    {28, "Extras"},
+};
+
+const char* screen_name(uint32_t id) {
+    for (const Screen& s : kScreens) {
+        if (s.overlay == id) return s.name;
+    }
+    return nullptr;
+}
+
 }  // namespace
 
 void overlay_set_active(uint32_t id, bool active) {
@@ -141,6 +157,7 @@ void overlay_set_active(uint32_t id, bool active) {
             g_active_overlay[overlay_block(a)] = uint16_t(active ? id + 1 : 0);
         }
         NTR_LOG("[ovl] overlay %u %s\n", id, active ? "active" : "inactive");
+        if (const char* name = screen_name(id); name && active) session_event("tela: %s", name);
         return;
     }
     NTR_LOG("[ovl] overlay %u was not recompiled\n", id);
@@ -158,6 +175,18 @@ std::string overlay_active_list() {
     std::string out;
     for (uint32_t id : ids) out += (out.empty() ? "" : " ") + std::to_string(id);
     return out.empty() ? "none" : out;
+}
+
+std::string screen_now() {
+    std::set<uint32_t> ids;
+    for (uint32_t v : g_active_overlay) {
+        if (v) ids.insert(v - 1);
+    }
+    std::string out;
+    for (uint32_t id : ids) {
+        if (const char* name = screen_name(id)) out += (out.empty() ? "" : ", ") + std::string(name);
+    }
+    return out.empty() ? "overlays " + overlay_active_list() : out;
 }
 
 void call_address(Cpu& c, uint32_t target) {

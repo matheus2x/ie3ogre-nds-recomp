@@ -86,7 +86,7 @@ Os patches são aplicados ao abrir o jogo, em segundo plano, como os arquivos co
 inteira (512 arquivos, 9 MB de patches para 76 MB de arquivos) custa uns 0,1 s a mais no começo.
 
 **Mod com erro** fica de fora inteiro (o jogo abre sem ele). Arquivos com caminho que o jogo não tem são
-ignorados, com um aviso. Os erros e avisos aparecem na aba Mods e no `boej.log` (linhas `[mods]`).
+ignorados, com um aviso. Os erros e avisos aparecem na aba Mods e no log da sessão em `logs/sessoes/` (linhas `[mods]`).
 
 **Savestates** guardam quais mods estavam em uso: um slot salvo com outros mods (ou com outra versão de um
 arquivo do mod) não abre, porque o jogo já tinha lido os arquivos antigos.
@@ -140,10 +140,10 @@ jogo, que usa exatamente o que o recompilador usou.
 
 ### Descobrir qual arquivo mudar
 
-O `boej.log` registra cada arquivo que o jogo abre, com o número do quadro:
+O log da sessão (`logs/sessoes/<data e hora>.log`) registra cada arquivo que o jogo abre, com o número do quadro e a hora:
 
 ```
-  12345| [fs] open /data_iz/logic/CapsuleComment.dat
+  12345 14:03:12| [fs] open /data_iz/logic/CapsuleComment.dat
 ```
 
 Jogue até a cena que interessa, aperte **F8** (marca o momento no log) e veja os últimos arquivos abertos.
@@ -153,7 +153,7 @@ Jogue até a cena que interessa, aperte **F8** (marca o momento no log) e veja o
 1. `tools/mod.py unpack` para ter os originais; edite com as ferramentas do formato.
 2. Coloque só os arquivos alterados em `mods/<seu-mod>/files/` (mesmo caminho do jogo).
 3. Ligue o mod no launcher e abra o jogo. Não precisa recompilar nada: o mod é lido ao abrir o jogo.
-4. Confira a aba Mods (ou o `boej.log`) se algo não aparecer.
+4. Confira a aba Mods (ou o log da sessão) se algo não aparecer.
 5. `tools/mod.py patch` para trocar os arquivos inteiros por patches e `tools/mod.py pack` (ou "Compactar" no
    Windows) para gerar o `.zip` que os jogadores colocam na pasta `mods/`.
 

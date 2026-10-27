@@ -11,7 +11,9 @@
 //   toolchain/                         the compiler (Windows), downloaded on first use
 //   cache/modules/                     code modules extracted from the dump
 //   boej(.exe), boej.pak               made on the player's PC
-//   boej.ini, saves/, boej.log, mods/  settings and player data
+//   boej.ini, saves/, mods/            settings and player data
+//   logs/                              launcher.log, historico.txt (every game session),
+//                                      sessoes/ and replays/ (log and input of the last 20)
 #pragma once
 
 #include <atomic>
@@ -43,6 +45,7 @@ struct Paths {
     std::string pak() const { return root + "boej.pak"; }
     std::string config() const { return root + "boej.ini"; }
     std::string mods() const { return root + "mods/"; }
+    std::string logs() const { return root + "logs/"; }
 };
 const Paths& paths();
 std::string sdk_version();  // sdk/version.txt, or "" without an SDK

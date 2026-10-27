@@ -19,7 +19,8 @@ void mods_apply();
 // (format in mods.cpp), for the launcher. Returns the exit code.
 int mods_check(const std::string& pak_path);
 
-// log_printf (ntr/common.h) prints to the terminal and to boej.log next to the executable.
+// log_printf (ntr/common.h) prints to the terminal and to the session log in logs/ next to
+// the executable (diag.cpp).
 
 // Directory of the running executable, with a trailing separator.
 std::string host_base_path();

@@ -93,21 +93,25 @@ Ele é lido ao abrir o jogo; apague-o para voltar ao padrão.
 | `[keyboard]` | uma linha por botão do DS (`A`, `B`, ..., `UP`, `DOWN`) e por atalho (`fast_forward`, `fast_forward_toggle`, `turbo`, `turbo_toggle`, `screenshot`, `debug_dump`, `fullscreen`, `save_state`, `load_state`, `state_slot_prev`, `state_slot_next`), com nomes de tecla do SDL separados por vírgula, por exemplo `SELECT = Right Shift, Backspace`. Vazio desliga. |
 | `[gamepad]` | o mesmo, com botões pela posição (`south`, `east`, `west`, `north`), `start`, `back`, `leftshoulder`, `dpup` etc., e eixos com direção (`lefty-` = analógico para cima, `righttrigger`). Por padrão, o analógico esquerdo também move o direcional. |
 
-Valores inválidos aparecem no `boej.log` com o número da linha, e o padrão é usado no lugar.
+Valores inválidos aparecem no log da sessão (`logs/sessoes/`) com o número da linha, e o padrão é usado no lugar.
 Sem janela (`NTR_HEADLESS`), o arquivo só é lido se `NTR_CONFIG` apontar para ele, para os testes não dependerem
 das configurações de quem joga.
 
 ## Arquivos de diagnóstico
 
-O jogo grava, ao lado do executável:
+Cada abertura do jogo é uma sessão, com nome de data e hora (`2026-10-27_14-03-12`). O jogo grava, na pasta `logs/`
+ao lado do executável:
 
 | Arquivo | Conteúdo |
 |---|---|
-| `boej.log` | tudo o que aparece no terminal, com o número do quadro em cada linha, mais os arquivos que o jogo abre. Falhas e travamentos (nenhum quadro por 5 s) entram no log com o estado da máquina, e cada segundo com quadros acima de 16,7 ms (queda de FPS, som engasgando) gera uma linha `[perf]`. |
-| `boej-replay.txt` + `boej-replay.sav` | a sessão inteira (botões e toque por quadro, a hora inicial do relógio e o save de onde ela partiu). Com eles a sessão é repetida exatamente igual: `NTR_REPLAY=boej-replay.txt NTR_SAVE=<cópia do boej-replay.sav>`. |
+| `logs/sessoes/<sessão>.log` | tudo o que aparece no terminal, com o número do quadro e a hora em cada linha, mais os arquivos que o jogo abre. Linhas `[sessao]` marcam o que o jogador fez: saves do jogo, savestates, menu de pausa, telas conhecidas (tabela em `runtime/src/cpu.cpp`). Falhas e travamentos (nenhum quadro por 5 s) entram no log com o estado da máquina, e cada segundo com quadros acima de 16,7 ms (queda de FPS, som engasgando) gera uma linha `[perf]`. |
+| `logs/replays/<sessão>.txt` + `.sav` | a sessão inteira (botões e toque por quadro, a hora inicial do relógio e o save de onde ela partiu). Com eles a sessão é repetida exatamente igual: `NTR_REPLAY=logs/replays/<sessão>.txt NTR_SAVE=<cópia do .sav>`. |
+| `logs/historico.txt` | uma linha quando cada sessão de jogador começa (versão, mods, save) e outra quando termina (duração, quadros, motivo, saves, savestates, quedas de FPS, travamentos, última tela). Um início sem fim = o jogo foi fechado à força. Nunca é apagado. |
+| `logs/launcher.log` | o log do launcher (o anterior em `launcher.old.log`). |
 
-A sessão anterior fica em `boej.old.log` e `boej-replay.old.*`, então um problema não se perde ao abrir o jogo de
-novo. Se algo der errado, aperte **F8** no momento (grava o estado no log e uma captura de tela), feche o jogo e
+Ficam as 20 sessões mais recentes. Execuções roteirizadas ou sem janela (`NTR_INPUT`, `NTR_REPLAY`, `NTR_HEADLESS`)
+não entram no histórico; com `NTR_LOG_FILE` o log vai para o caminho dado e a pasta `logs/` nem é usada. Se algo
+der errado, aperte **F8** no momento (grava o estado no log e uma captura de tela), feche o jogo e
 envie esses arquivos.
 
 ## Windows (compilação cruzada a partir do WSL/Linux)
@@ -122,7 +126,7 @@ python3 tools/build.py --windows                       # build/cmake-win/game/bo
 python3 tools/build.py --windows --dist /mnt/c/Games/ie3  # e copia para C:\Games\ie3
 ```
 
-Aberto pelo Explorer, o `boej.exe` esconde a janela de console (tudo vai para o `boej.log`); aberto de um
+Aberto pelo Explorer, o `boej.exe` esconde a janela de console (tudo vai para o log da sessão em `logs/sessoes/`); aberto de um
 terminal, a saída continua nele, e `NTR_CONSOLE=1` mantém o console.
 
 ## Release (launcher + SDK)

@@ -69,6 +69,7 @@ uint32_t handle(uint32_t req) {
         case REQ_PROGRAM_BACKUP:
             for (uint32_t i = 0; i < len; i++) g_save[(dst + i) % kSaveSize] = rd8(src + i);
             save_flush();
+            session_game_saved();
             return RESULT_SUCCESS;
         case REQ_VERIFY_BACKUP:
             for (uint32_t i = 0; i < len; i++) {
@@ -142,8 +143,13 @@ void arm7_card_init(const std::string& save_path) {
     if (in) {
         in.read(reinterpret_cast<char*>(g_save.data()), g_save.size());
         NTR_LOG("[card] loaded save %s\n", shown.c_str());
+        std::error_code ec;
+        std::filesystem::path relative = std::filesystem::relative(g_save_path, fs_path(host_base_path()), ec);
+        bool inside = !ec && !relative.empty() && relative.begin()->string() != "..";
+        session_info("save", inside ? utf8_string(relative) : shown);
     } else {
         NTR_LOG("[card] no save at %s: new game\n", shown.c_str());
+        session_info("save", "jogo novo");
     }
     replay_initial_save(g_save, bool(in));
     pxi_register_service(11, on_word);

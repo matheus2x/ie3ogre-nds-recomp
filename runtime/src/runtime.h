@@ -176,7 +176,7 @@ void trace_frame(uint64_t frame);  // NTR_PROFILE window bookkeeping
 
 // Terminal and log file (diag.cpp); log_detail goes to the file only.
 void log_detail(const char* fmt, ...) NTR_PRINTF_FORMAT;
-void log_disable_file();  // terminal only (boej --check-mods must not replace boej.log)
+void log_disable_file();  // terminal only (boej --check-mods is not a session)
 
 // --- diagnostics (diag.cpp) ----------------------------------------------------------
 
@@ -184,7 +184,17 @@ void diag_init(bool windowed);  // crash handlers; the stall watchdog when windo
 void diag_frame(uint64_t frame);  // every presented frame
 void debug_dump(const char* reason);  // display/IRQ registers, overlays and threads to the log
 std::string overlay_active_list();
-// Session recording (boej-replay.txt + boej-replay.sav next to the executable).
+std::string screen_now();  // the screens of the active overlays that have a name, for the session
+// The session (logs/historico.txt and the [sessao] lines of the log). The host tracks the
+// sessions of players (windowed, not scripted); the start line goes out on the first frame.
+void session_track();
+void session_info(const std::string& key, const std::string& value);  // for the start line
+void session_event(const char* fmt, ...) NTR_PRINTF_FORMAT;            // a [sessao] line
+void session_game_saved();                                             // a backup memory write
+void session_savestate(bool saved, int slot);
+void session_slow_second();                     // a second with frames over 16.7 ms
+void session_end(const char* reason);           // the end line; once
+// Session recording (logs/replays/<session>.txt + .sav).
 void replay_enable();  // by the host, before boot; the rest are no-ops otherwise
 void replay_start(const std::string& rtc_start);
 void replay_initial_save(const std::vector<uint8_t>& data, bool existed);
