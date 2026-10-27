@@ -7,6 +7,7 @@ add_executable(ie3-launcher WIN32
     mods.cpp
     prepare.cpp
     process.cpp
+    saves.cpp
     settings.cpp
     update.cpp
 )

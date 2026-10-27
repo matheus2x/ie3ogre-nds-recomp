@@ -88,7 +88,7 @@ Ele é lido ao abrir o jogo; apague-o para voltar ao padrão.
 |---|---|
 | `[video]` | `wide_layout` (padrão `true`: janela 16:9 pela altura do monitor, as duas telas à esquerda e a de baixo ampliada à direita; `false` = telas empilhadas e centralizadas), `wide_side` (`left` ou `right`: lado das duas telas pequenas na tela larga), `window_scale` (tamanho inicial da janela, só sem `wide_layout`), `resolution_3d` (1 a 10), `fullscreen`, `filter` (`nearest` ou `linear`), `integer_scale` (ampliar só em múltiplos inteiros, só sem `wide_layout`) |
 | `[audio]` | `volume` (0 a 100) |
-| `[game]` | `fast_forward_speed`: velocidade do avanço rápido, 2 a 10 (vezes a normal; padrão 4) |
+| `[game]` | `fast_forward_speed`: velocidade do avanço rápido, 2 a 10 (vezes a normal; padrão 4); `rewind`, `rewind_seconds`; `save`: o arquivo de `saves/` que o jogo carrega e grava (padrão `boej.sav`; a aba Saves do launcher escolhe) |
 | `[mods]` | `enabled`: mods de `mods/` ligados (nomes das pastas e dos `.zip`), separados por vírgula; quando dois mods trocam o mesmo arquivo, vale o que vem depois (a aba Mods do launcher cuida disso; veja [`MODS.md`](MODS.md)) |
 | `[keyboard]` | uma linha por botão do DS (`A`, `B`, ..., `UP`, `DOWN`) e por atalho (`fast_forward`, `fast_forward_toggle`, `turbo`, `turbo_toggle`, `screenshot`, `debug_dump`, `fullscreen`, `save_state`, `load_state`, `state_slot_prev`, `state_slot_next`), com nomes de tecla do SDL separados por vírgula, por exemplo `SELECT = Right Shift, Backspace`. Vazio desliga. |
 | `[gamepad]` | o mesmo, com botões pela posição (`south`, `east`, `west`, `north`), `start`, `back`, `leftshoulder`, `dpup` etc., e eixos com direção (`lefty-` = analógico para cima, `righttrigger`). Por padrão, o analógico esquerdo também move o direcional. |
@@ -157,7 +157,7 @@ tópicos), seguido de como instalar e conferir o download. Para ver antes de cri
 
 O launcher aceita na linha de comando `--prepare [dump.nds]` (prepara sem janela), `--update` (procura, baixa e
 instala a versão nova), `--install-mod <mod.zip ou pasta>` (copia para `mods/`) e `--mod-from-dump hack.nds`. Para testes: `IE3_UPDATE_API` troca a
-URL da API de releases (aceita `file://`), `IE3_LAUNCHER_TAB=0..3` abre uma aba, `IE3_LAUNCHER_MOD=<pasta>` seleciona
+URL da API de releases (aceita `file://`), `IE3_LAUNCHER_TAB=0..4` abre uma aba (3 = Saves), `IE3_LAUNCHER_NEW_SAVE=<nome>` abre a caixa "Novo save" com esse nome, `IE3_LAUNCHER_MOD=<pasta>` seleciona
 um mod na aba Mods e `IE3_LAUNCHER_SHOT=arquivo.bmp` salva a janela e fecha. O jogo aceita `--check-mods` (a
 checagem dos mods que a aba Mods mostra).
 
@@ -166,7 +166,7 @@ ela imprime as últimas 256 funções chamadas.
 
 Variáveis de ambiente:
 
-- **Save:** `NTR_SAVE` (padrão: `saves/boej.sav` na pasta do executável; um save que só exista em `saves/` da pasta atual, onde as versões anteriores gravavam, é copiado na primeira vez).
+- **Save:** `NTR_SAVE` (padrão: `saves/<[game] save>` na pasta do executável, `saves/boej.sav` sem a chave; um save que só exista em `saves/` da pasta atual, onde as versões anteriores gravavam, é copiado na primeira vez).
 - **Configurações:** `NTR_CONFIG` (outro arquivo no lugar do `boej.ini`). As variáveis abaixo têm prioridade sobre ele.
 - **Mods:** `NTR_MODS=pasta1,mod2.zip` liga esses mods no lugar do `[mods] enabled` (útil sem janela, quando o `boej.ini` não é lido).
 - **Janela e ritmo:** `NTR_SCALE` (escala inicial; padrão do `boej.ini`, 2); `NTR_FAST` (sem limite de 60 Hz); `NTR_HEADLESS` (sem janela e sem limite).

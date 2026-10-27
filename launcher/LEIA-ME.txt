@@ -35,11 +35,28 @@ mod-CyberLifePlus-<versão>.zip, a tradução PT-BR): coloque o .zip na
 pasta "mods" sem descompactar. Para atualizar um mod, adicione o .zip novo
 na aba Mods: ele toma o lugar do antigo e continua ligado.
 
+SAVES
+Os saves ficam na pasta "saves", ao lado do boej.exe, um arquivo .sav por
+save (64 KB, o mesmo formato do save do cartucho). Na aba "Saves" do
+launcher, clique no save que o jogo vai usar; a aba mostra o nome do
+jogador, o capítulo, o nível do time, os membros, o tempo de jogo e os
+rostos dos jogadores do time de cada um. "Novo save" cria na lista um save
+em branco com o nome que você escrever: clique nele e comece um Novo Jogo;
+os outros saves não mudam. Para importar um save (dumpado do cartucho ou
+de outro emulador), coloque o .sav na pasta "saves" ou arraste-o para a
+janela do launcher (ele é copiado; o original não é mexido). Os arquivos
+ficam sempre como <nome>-<número>.sav, com o nome em minúsculas e só
+letras e números: "Segunda Jogada" vira segundajogada-1.sav, e um save
+importado como Meu Save.sav vira meusave-1.sav (com o jogo aberto, isso
+espera ele fechar). O jogo grava por cima do save escolhido: faça uma
+cópia antes de usar um save importante.
+
 ARQUIVOS CRIADOS NESTA PASTA
 - boej.exe, boej.pak  o jogo, preparado a partir do seu dump (uso pessoal:
                       não distribua)
 - cache\, toolchain\  código extraído do dump e o compilador
-- saves\boej.sav      o save
+- saves\             os saves (boej.sav no começo; o launcher dá a cada um o
+                      nome do jogador, e a aba Saves escolhe qual o jogo usa)
 - savestates\         os savestates (slots 1 a 5)
 - boej.ini            configurações (também editáveis no launcher)
 - logs\               registros para relatar problemas: launcher.log,

@@ -4,7 +4,11 @@
 
 #ifdef _WIN32
 #include <windows.h>
+// after windows.h
+#include <tlhelp32.h>
 #else
+#include <filesystem>
+#include <fstream>
 #include <spawn.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -184,5 +188,28 @@ bool start_process(const std::vector<std::string>& args, const std::string& cwd,
 std::string system_tool(const char* name) { return name; }
 
 #endif
+
+bool game_process_running() {
+#ifdef _WIN32
+    HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (snapshot == INVALID_HANDLE_VALUE) return true;  // unknown: assume it runs
+    PROCESSENTRY32W entry = {};
+    entry.dwSize = sizeof entry;
+    bool found = false;
+    for (BOOL ok = Process32FirstW(snapshot, &entry); ok && !found; ok = Process32NextW(snapshot, &entry)) {
+        found = _wcsicmp(entry.szExeFile, L"boej.exe") == 0;
+    }
+    CloseHandle(snapshot);
+    return found;
+#else
+    std::error_code ec;
+    for (const auto& entry : std::filesystem::directory_iterator("/proc", ec)) {
+        std::ifstream comm(entry.path() / "comm");
+        std::string name;
+        if (comm && std::getline(comm, name) && name == "boej") return true;
+    }
+    return false;
+#endif
+}
 
 }  // namespace launcher

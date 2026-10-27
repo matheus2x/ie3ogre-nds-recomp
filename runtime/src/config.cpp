@@ -50,6 +50,8 @@ fast_forward_speed = 4
 ; (5 a 120) na memória; custa um pouco de processador e até uns 256 MB de RAM.
 rewind = true
 rewind_seconds = 30
+; O save do jogo: um arquivo da pasta saves/ (a aba Saves do launcher escolhe).
+save = boej.sav
 
 ; Mods da pasta mods/ que estão ligados: os nomes das pastas e dos .zip, separados por vírgula.
 ; Quando dois mods mudam o mesmo arquivo, vale o que vem depois. A aba Mods do launcher

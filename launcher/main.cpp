@@ -89,6 +89,7 @@ std::mutex g_drop_mutex;
 std::string g_dropped;  // a dump from the file dialog or dropped on the window
 bool g_quit = false;
 bool g_hidden = false;          // the window waits hidden while the game runs
+int g_select_tab = -1;          // a tab to open on the next frame
 Uint32 g_game_exited_event = 0;  // pushed by the thread that waits for the game
 
 void on_dump(const std::string& path) {
@@ -224,10 +225,13 @@ void play_tab(SDL_Window* window) {
             big_button_style(true);
             if (ImGui::Button("Jogar", big)) play(window);
             big_button_style(false);
-            if (update_available()) {
-                ImGui::SameLine();
-                ImGui::TextColored(ImVec4(0.5f, 0.85f, 0.5f, 1), "Há uma versão nova (aba Atualizações).");
-            }
+            ImGui::SameLine();
+            ImGui::BeginGroup();
+            ImGui::TextDisabled("Save: %s", current_save().c_str());
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Trocar")) g_select_tab = 3;
+            if (update_available()) ImGui::TextColored(ImVec4(0.5f, 0.85f, 0.5f, 1), "Há uma versão nova (aba Atualizações).");
+            ImGui::EndGroup();
             ImGui::Spacing();
             if (ImGui::Button("Abrir a pasta do jogo")) open_folder(paths().root);
             ImGui::SameLine();
@@ -263,6 +267,25 @@ int prepare_cli(const std::string& dump) {
     }
     if (!g_job.ok) NTR_LOG("error: %s\n", g_job.error.c_str());
     return g_job.ok ? 0 : 1;
+}
+
+// Names in the Saves tab can be in Japanese: a system font with kana and kanji, merged into
+// the main one (glyphs are loaded only when shown).
+void add_japanese_font(float scale) {
+    static const char* const kFonts[] = {
+        "C:/Windows/Fonts/YuGothM.ttc",
+        "C:/Windows/Fonts/msgothic.ttc",
+        "C:/Windows/Fonts/meiryo.ttc",
+        "/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    };
+    for (const char* path : kFonts) {
+        std::error_code ec;
+        if (!fs::exists(path, ec)) continue;
+        ImFontConfig config;
+        config.MergeMode = true;
+        if (ImGui::GetIO().Fonts->AddFontFromFileTTF(path, 18.0f * scale, &config)) return;
+    }
 }
 
 }  // namespace
@@ -303,15 +326,16 @@ int main(int argc, char** argv) {
     SDL_SetRenderVSync(renderer, 1);
 
     ntr::ui::init(window, renderer, scale);
+    add_japanese_font(scale);
     g_game_exited_event = SDL_RegisterEvents(1);
 
     if (settings().get_bool("launcher", "check_updates")) update_check_start();
 
-    // Tests: IE3_LAUNCHER_TAB opens that tab (0-3), IE3_LAUNCHER_MOD selects that mod folder
+    // Tests: IE3_LAUNCHER_TAB opens that tab (0-4), IE3_LAUNCHER_MOD selects that mod folder
     // in the Mods tab and IE3_LAUNCHER_SHOT saves the window as a BMP after a second, then quits.
     const char* shot = std::getenv("IE3_LAUNCHER_SHOT");
     const char* tab_env = std::getenv("IE3_LAUNCHER_TAB");
-    int select_tab = tab_env ? std::atoi(tab_env) : -1;
+    g_select_tab = tab_env ? std::atoi(tab_env) : -1;
     int frames = 0;
 
     while (!g_quit) {
@@ -333,7 +357,10 @@ int main(int argc, char** argv) {
                 std::error_code ec;
                 if (ext == ".zip" || fs::is_directory(ntr::fs_path(path), ec)) {
                     mods_drop(path);
-                    select_tab = 2;
+                    g_select_tab = 2;
+                } else if (ext == ".sav") {
+                    saves_drop(path);
+                    g_select_tab = 3;
                 } else if (!g_job.running) {
                     on_dump(path);
                 }
@@ -346,12 +373,15 @@ int main(int argc, char** argv) {
             continue;
         }
         ntr::ui::begin_frame();
+        saves_update();
 
         const ImGuiViewport* vp = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(vp->WorkPos);
         ImGui::SetNextWindowSize(vp->WorkSize);
         ImGui::Begin("main", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings);
         if (ImGui::BeginTabBar("tabs")) {
+            int select_tab = g_select_tab;  // a tab can ask for another one (it opens on the next frame)
+            g_select_tab = -1;
             auto flags = [&](int tab) { return select_tab == tab ? ImGuiTabItemFlags_SetSelected : 0; };
             if (ImGui::BeginTabItem("Jogar", nullptr, flags(0))) {
                 play_tab(window);
@@ -365,13 +395,16 @@ int main(int argc, char** argv) {
                 mods_tab(window);
                 ImGui::EndTabItem();
             }
+            if (ImGui::BeginTabItem("Saves", nullptr, flags(3))) {
+                saves_tab(renderer);
+                ImGui::EndTabItem();
+            }
             if (ImGui::BeginTabItem(update_available() ? "Atualizações (nova!)###updates" : "Atualizações###updates",
-                                    nullptr, flags(3))) {
+                                    nullptr, flags(4))) {
                 update_ui();
                 ImGui::EndTabItem();
             }
             ImGui::EndTabBar();
-            select_tab = -1;
         }
         ImGui::End();
 

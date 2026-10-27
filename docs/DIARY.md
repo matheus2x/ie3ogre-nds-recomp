@@ -2395,3 +2395,239 @@ save do teste as duas ligações estão bloqueadas.
 
 **Próximo:** a lista das imagens que o CyberLife mudou e que ainda não têm edição (quase todas fora da
 comunicação: menus do jogo, partida, título).
+
+## 2026-10-27 — Aba Saves no launcher
+
+- Pedido: uma aba no launcher para escolher qual save o jogo usa, com dados de cada save e a orientação de que
+  os saves ficam na pasta `saves`.
+- **Escolha no `boej.ini`:** chave nova `[game] save` (padrão `boej.sav`), lida em `arm7_card_init`. O
+  `NTR_SAVE` continua com prioridade. Um nome com `/`, `\`, `:` ou `..` é recusado (log e volta ao `boej.sav`).
+  A cópia do save antigo da pasta atual continua só para o `boej.sav`. Ficou no ini, e não num `NTR_SAVE`
+  passado pelo launcher, para valer também abrindo o `boej.exe` direto e no "reiniciar" do menu de pausa.
+- **Formato do save (engenharia reversa):**
+  - Carga em `0x020617d8`: lê as duas metades de 32 KiB (`0x020634b0` → `CARDi_RequestStreamCommand`), confere
+    `INAZUMA_ELEVEN3` em +4, decifra (`0x0205ffb0`, modo 0) 0x7F80 bytes (ou só 0x80 quando 0x80–0xFF estão
+    zerados: save criado e nunca gravado) e usa a cópia mais nova pelo contador (+0x14, comparação de 8 bits).
+  - **Cifra:** LCG `x*0x5D588B65+0x269EC3`. A chave (3 palavras) fica escondida em 12 posições do próprio bloco,
+    sorteadas a partir da semente fixa `0xB5BDCF5A`; os bytes que estavam nessas posições vão para os 12 últimos.
+    Com a chave: embaralhamento por trocas (tabela de 256 valores da 1ª palavra), XOR (2ª) e rotação de 0–7 bits
+    (3ª). Os bytes 4–0x13 (o texto mágico) ficam de fora. Conferido em Python e depois em C++, nas duas cópias.
+  - **Conteúdo:** fluxo de bits gravado a partir da tabela de tipos de `/data_iz/bfmt/cnvdat.bin` (versão 0x24,
+    com os nomes dos campos), serializador em `0x02060b70`. Primeiro `SRecordInfo` (0x2E bytes; campos com a
+    marca 0x2000, como `_dummy`, não são gravados), depois `st_data`, que começa por `SRecordHeader`: o resumo
+    do card do slot (`playTime` em quadros, `chapterNo`, `Lv`, `teamMems`, `stockMems`, `money`, `username`,
+    `teamname`, `titleIdx`, `winNum`, `PartyUnitNo`). Todos inteiros em bytes, então os offsets são fixos.
+  - Conferido contra o card do slot no jogo (menu de slots, quadro 1300, save do teste): FoxPerks, nível 4,
+    22 membros (`stockMems`), 0 h 45 min (164.380 quadros / 60), capítulo 1, time "???", 0 vitórias.
+- **A aba** (`launcher/saves.cpp`, entre Mods e Atualizações): o texto sobre a pasta `saves`, "Abrir a pasta
+  saves", "Novo save..." (nome de arquivo novo; o jogo começa do zero e cria o arquivo ao salvar), "Atualizar";
+  a lista com um botão de rádio por save, nome do arquivo, "(em uso)", jogador, time, capítulo, nível, membros,
+  tempo e vitórias, e a data de modificação. Arquivo sem a assinatura: "Não parece um save deste jogo" (não pode
+  ser escolhido); save sem jogo gravado: "Vazio". A lista se refaz sozinha quando um arquivo muda. Arrastar um
+  `.sav` para a janela copia para `saves/` (com " (2)" se o nome já existe) e abre a aba. Na aba Jogar, ao lado
+  de "Jogar", "Save: <arquivo>" e um botão "Trocar". `IE3_LAUNCHER_TAB` agora vai de 0 a 4 (Saves = 3).
+- Os nomes são Shift-JIS: convertidos com `MultiByteToWideChar(932)` no Windows e `iconv` (CP932) no Linux;
+  letras e números de largura cheia viram ASCII. O launcher junta à fonte principal uma fonte japonesa do
+  sistema (Yu Gothic, MS Gothic ou Meiryo; Noto CJK no Linux), carregada sob demanda, para kana e kanji.
+
+**Verificação:** build Linux e Windows sem avisos. Pasta de teste com o save do teste, uma cópia, um arquivo
+aleatório, um save "vazio" (0x80–0x7FFF zerados) e um save com nome e time em japonês (cifrado com o inverso da
+rotina e conferido decifrando de novo): a aba mostra cada um certo, inclusive kana e kanji no launcher do Windows
+(rodado pelo WSL). O jogo sem janela com `NTR_CONFIG` apontando `save = teste aba.sav` carregou
+`saves/teste aba.sav`; com `save = ../boej.sav` recusou e usou `boej.sav`. A aba Jogar mostra o save em uso.
+**Não testado:** clicar nos botões e arrastar um arquivo de verdade (só com captura automática da janela).
+O `tools/release.py` (llvm-mingw, libc++) acusou um `std::to_string` ambíguo: lá o `count()` do relógio de
+arquivos é `__int128`; virou `int64_t`. Com a release, atualizei a pasta de teste do Windows (de 0.1.10 para
+0.1.16 com esta aba, mod CyberLifePlus 1.8), mantendo `boej.pak`, `cache/modules`, `toolchain/`, `saves/` e
+`boej.ini`; `ie3-launcher.exe --prepare` compilou o `boej.exe` em 53 s, e o `--check-mods` e a aba Saves estão ok.
+
+**Próximo:** se for útil, mostrar o título do jogador (`titleIdx`, de `rpgtitle.STR`) e os rostos do time
+(`PartyUnitNo`), como o card do jogo.
+
+## 2026-10-27 — Saves com o nome do jogador (ainda na aba Saves)
+
+- Pedido: o `.sav` deve ter o nome do save dentro do jogo, normalizado (sem acentos nem caracteres especiais).
+- **Nome:** o `username` do `SRecordHeader` (já em UTF-8): letras ASCII e números ficam, letras acentuadas perdem
+  o acento, kana vira romaji Hepburn (combinações com ゃゅょ: キャ → kya, シャ → sha, ジョ → jo; っ dobra a consoante
+  seguinte, ッチ → tchi; ー some), e o resto (espaço, símbolo, kanji) vira um `_` no máximo. Até 32 caracteres.
+  Se não sobra nada (nome só em kanji), o arquivo fica como está.
+- **Quando:** a cada vez que a lista de `saves/` muda (agora conferida a cada 1,5 s com a janela aberta, em
+  qualquer aba). Só saves com jogo gravado; vazios e inválidos ficam com o nome que têm. Nome repetido ganha
+  `_2`, `_3`...; um arquivo que já se chama `<nome>` ou `<nome>_<n>` (sem diferenciar maiúsculas, por causa do
+  Windows) não é mexido de novo. Renomeando o save em uso, o `[game] save` do `boej.ini` acompanha.
+- **Com o jogo aberto, nada é renomeado:** ele gravaria de novo no nome antigo. `game_process_running()`
+  (`process.cpp`) procura um `boej.exe` (Toolhelp32 no Windows) ou `boej` (`/proc/*/comm` no Linux), aberto pelo
+  launcher ou não; a renomeação fica para quando ele fechar.
+- **"Novo save..."** não pede mais nome: confirma e escolhe `novo.sav` (ou `novo_2.sav`...), que ganha o nome do
+  jogador depois do primeiro save no jogo.
+
+**Verificação:** pasta de teste com o save do teste, uma cópia, saves com nomes em kana (いなずま　タロウ,
+キャッチ　ひゃく, ジョー・シュート), um só em kanji (雷門), um em letras de largura cheia (Ｍａｒｋ　Ｅｖａｎｓ！), um vazio e um
+inválido, e `save = japones.sav` no ini: virou `FoxPerks.sav`, `FoxPerks_2.sav`, `inazuma_tarou.sav`,
+`kyatchi_hyaku.sav`, `jo_shuto.sav`, `Mark_Evans.sav`; `c.sav`, `vazio.sav` e `lixo.sav` ficaram; o ini passou a
+`inazuma_tarou.sav`. Uma segunda execução não renomeou nada. No Linux, com um processo `boej` aberto, um save
+novo esperou e foi renomeado (`FoxPerks_3.sav`) depois que ele fechou. Build Windows: as mesmas renomeações.
+**Não testado:** a espera com o jogo aberto no Windows.
+
+## 2026-10-27 — Nome dos saves: `<nome>-<n>.sav`
+
+- Pedido: o nome do `.sav` sempre todo em minúsculas, tudo junto, com `-<número>`; por exemplo, o save do
+  FoxPerks (o único dele) vira `foxperks-1.sav`.
+- `file_name_for` agora só junta letras e números em minúsculas (espaços, símbolos e kanji somem, sem `_`), e a
+  numeração começa em 1 e sempre aparece: `foxperks-1.sav`, `foxperks-2.sav`... Um arquivo que já está em
+  `<nome>-<n>.sav` fica como está (o número não é refeito; apagar um save pode deixar um buraco na sequência).
+  Se só as maiúsculas estão erradas (`FOXPERKS-5.sav`), vira `foxperks-5.sav`: no Windows o nome novo "já
+  existe" (o sistema de arquivos não diferencia), por isso esse caso vai direto para o rename. A comparação com
+  o `[game] save` também ignora maiúsculas no Windows.
+
+**Verificação:** Linux, na pasta de teste anterior: `FoxPerks*.sav` → `foxperks-1/2/3.sav`, `FOXPERKS-9.sav` →
+`foxperks-9.sav`, `inazuma_tarou` → `inazumatarou-1`, `Mark_Evans` → `markevans-1`, `jo_shuto` → `joshuto-1`,
+`kyatchi_hyaku` → `kyatchihyaku-1`; o ini acompanhou; a segunda execução não mudou nada. Build Windows (pelo WSL):
+o mesmo, inclusive `FOXPERKS-5.sav` → `foxperks-5.sav`, e o ini foi para `foxperks-1.sav`.
+
+## 2026-10-27 — "Novo save" cria um slot na lista
+
+- Pedido: o botão de novo save deve criar um slot na lista (um `.sav` temporário em `saves/`) para o jogador
+  escolher, em vez de já trocar o save em uso.
+- **O arquivo:** `novo-<n>.sav` (o primeiro número livre), 64 KB de `0xFF`, o mesmo conteúdo com que o runtime
+  começa sem save (`g_save` em `arm7_card.cpp`) e o de um cartucho novo. Para o jogo é igual a não ter save. O
+  primeiro save dentro do jogo o preenche, e então o launcher o renomeia com o nome do jogador.
+- **Na lista:** um arquivo todo `0xFF` é "Save novo" (válido, dá para escolher), com a dica de marcar em Usar e
+  começar um Novo Jogo. Os saves novos vêm no topo da lista, para o que acabou de ser criado aparecer. O botão
+  não abre mais janela nem troca o save em uso; a mensagem diz o nome criado.
+
+**Verificação:** a aba (build Windows) com um `novo-1.sav` em branco: aparece no topo como "Save novo" e com o
+botão de usar ativo. No jogo sem janela, o mesmo arquivo e um save inexistente dão a mesma tela no quadro 1300
+(o aviso de primeira execução), byte a byte. **Não testado:** o clique no botão (a criação do arquivo é a
+mesma escrita do teste) e jogar até salvar num save novo.
+
+## 2026-10-27 — "Novo save" com nome escolhido; texto da aba mais curto
+
+- Pedido: a caixa de texto volta para o jogador dar o nome ao criar um save; os saves criados nessa tela não são
+  renomeados com o nome do jogador; o texto do topo da aba fica curto (importar saves dumpados ou de outros
+  emuladores, e guardar um backup).
+- **"Novo save...":** abre a caixa "Nome do save" (+ `.sav`), recusa nome vazio, com `/ \ : * ? " < > | ,` ou
+  de um arquivo que já existe, e "Criar" (ou Enter) grava o save em branco (64 KB de `0xFF`) com esse nome. Não
+  troca o save em uso: ele aparece no topo da lista como "Save novo" para ser marcado em Usar.
+- **Não renomeados:** os nomes criados assim entram em `[launcher] custom_saves` no `boej.ini` (lista separada por
+  vírgula, chave nova nos padrões de `config.cpp`), e `rename_saves` pula esses arquivos (no Windows, sem
+  diferenciar maiúsculas). A lista não é limpa quando um arquivo some: o jogo grava o save num arquivo
+  temporário e troca, e nesse instante ele poderia parecer apagado.
+- **Texto do topo:** "Você pode importar saves dumpados do cartucho ou de outros emuladores: coloque o .sav na
+  pasta saves (ou arraste-o para esta janela). Guarde um backup antes, porque o jogo grava por cima."
+- Teste: `IE3_LAUNCHER_NEW_SAVE=<nome>` abre a caixa já com o nome (como `IE3_LAUNCHER_TAB`).
+
+**Verificação:** build Windows, pelo WSL: com `custom_saves = Meu Save.sav` e um `Meu Save.sav` com o jogo do
+FoxPerks, ele ficou com o nome, e um `outro.sav` igual virou `foxperks-3.sav`. A caixa com "Segunda jogada" (ok),
+"Meu Save" ("Já existe um save com esse nome.", Criar desligado) e "a/b" (aviso dos caracteres, Criar
+desligado). O texto novo do topo conferido na captura. **Não testado:** o clique em Criar (a escrita do arquivo
+é a mesma do passo anterior).
+
+## 2026-10-27 — Aba Saves: ordem dos botões, colunas e linhas clicáveis
+
+- Pedido: botões na ordem "Novo save" (sem reticências), "Abrir pasta de saves", "Atualizar"; colunas "Save",
+  "Dados do save", "Última alteração"; linhas centralizadas na vertical, clique em qualquer lugar da linha para
+  trocar o save e cursor de mãozinha no hover.
+- **Linhas:** todas com a altura da mais alta (nome do arquivo e duas linhas de dados); o botão de rádio, os
+  dados e a data são centralizados nela. Um `Selectable` com `SpanAllColumns | AllowOverlap` do tamanho da linha
+  recebe o clique (o rádio por cima continua funcionando). O destaque próprio do `Selectable` deixava de fora o
+  espaçamento da célula (uma faixa escura embaixo da linha); ficou transparente, e o destaque vem do fundo da
+  linha (`TableSetBgColor`): azul discreto no save em uso, mais claro no hover. No hover de um save válido,
+  `ImGuiMouseCursor_Hand` (o backend do SDL3 usa `SDL_SYSTEM_CURSOR_POINTER`); num arquivo inválido, a linha
+  fica desligada e mostra o aviso.
+- Os textos que falavam em "marcar em Usar" agora dizem para clicar no save (aba, mensagem de save criado e
+  LEIA-ME).
+
+**Verificação:** capturas da aba (build Windows, pelo WSL): ordem dos botões, nomes das colunas, alinhamento e o
+destaque do save em uso cobrindo a linha toda. **Não testado:** o hover e o clique de verdade (a captura
+automática não move o mouse).
+
+## 2026-10-27 — Nome dos saves: o que o jogador escreve, não o do jogo
+
+- Pedido (mudança de ideia): o `.sav` não usa mais o nome do jogador dentro do jogo; usa sempre o nome que o
+  usuário der, no formato de hoje (minúsculas, só letras e números, `-<número>`). Um save importado (de fora para
+  a pasta `saves`) é renomeado para o próprio nome dele nesse formato.
+- **Regra única:** todo arquivo de `saves/` fica como `<nome>-<n>.sav`. O nome é sanitizado como antes
+  (`file_name_for`: minúsculas, acentos tirados, kana em romaji, o resto some; se não sobra nada, `save`), e `n` é o
+  primeiro número livre para esse nome. Um arquivo que já está no formato fica como está; só as maiúsculas
+  erradas viram minúsculas, com o mesmo número.
+  - "Novo save": o nome digitado; a caixa mostra o arquivo que vai ser criado ("Arquivo: segundajogada-1.sav") e
+    desliga "Criar" quando o nome não tem letra nem número ("Use letras ou números no nome.").
+  - Arrastado para a janela: copiado direto com o nome no formato (`Meu Save.sav` → `meusave-1.sav`).
+  - Posto na pasta à mão (ou criado pelo jogo, como o `boej.sav` de uma instalação nova): renomeado na próxima
+    passada da lista. Vale para qualquer `.sav`, mesmo inválido ou vazio. Continua não renomeando com o jogo
+    aberto, e o `[game] save` acompanha.
+- Saiu a renomeação pelo nome do jogador e, com ela, o `[launcher] custom_saves` (tirado dos padrões de
+  `config.cpp`). Os saves que já tinham ganhado o nome do jogador (`foxperks-1.sav`...) já estão no formato e
+  ficam como estão.
+
+**Verificação:** Linux, pasta de teste: `Meu Save.sav` (em uso) → `meusave-1.sav` e o ini acompanhou;
+`FOXPERKS-4.sav` → `foxperks-4.sav`; `José.sav` → `jose-1.sav`; `save_antigo (2).sav` → `saveantigo2-1.sav`;
+`雷門.sav` → `save-1.sav`; `c.sav`, `lixo.sav`, `vazio.sav` → `c-1`, `lixo-1`, `vazio-1`; segunda execução sem
+mudanças. Build Windows: as mesmas renomeações, e a caixa do Novo save com "Segunda Jogada!"
+(`segundajogada-1.sav`), "FoxPerks" (`foxperks-4.sav`, o primeiro livre) e "!!!" (aviso, Criar desligado).
+**Não testado:** arrastar um arquivo de verdade e o clique em Criar.
+
+## 2026-10-27 — Aba Saves: os rostos do time
+
+- Pedido: extrair do save os ícones dos personagens do time atual (os da Mochila > Amigos) e mostrá-los na
+  coluna "Dados do save".
+- **O time no save:** passa do cabeçalho; em `st_data` os campos são bits empacotados. O serializador
+  (`0x02060b70`, modo 2 = ler) lê cada campo com a largura de bits da tabela (`cnvdat.bin`: byte alto da 4ª
+  palavra; o baixo é o tamanho em memória, bit 7 = com sinal), LSB primeiro (`0x020609e4`), sem alinhar entre
+  campos. Campos com a marca 0x2000 não são gravados; o tipo 3 (`*`) é uma struct anônima declarada em linha,
+  que vai até uma entrada de tipo 0. Um percorredor em Python do esquema bateu com os offsets já conhecidos do
+  `SRecordHeader` (`playTime` no byte 16, `username` no 28, `winNum` no 70) e com o `party_member` = `PartyUnitNo`
+  do cabeçalho, lá no bit 89.867.
+  - `TeamData.team_member[0].unitno_`: bit 89.483 de `st_data`, 16 × 12 bits (0 = vaga vazia). No save do teste,
+    11 jogadores (= `teamMems`).
+  - `UnitData.unit_save[100]`: a partir do bit 32.683, 562 bits cada; `unitNo` em +20 (12 bits) e `uniformno`
+    (o número da camisa) em +507 (5 bits). O launcher ordena o time pela camisa. A tela de amigos do jogo usa
+    outra ordem (a do `minnaSortType`, ao que parece); não foi replicada.
+- **Os ícones:** na tela de amigos o jogo abre `/data_iz/pic3d/ih.pkh`/`ih.pkb` (visto no log, chegando ao menu
+  com um savestate no campo: X abre o menu, A em "Amigos"). Esse `PackNum` tem entradas `(u32 chave, u32
+  tamanho)` de 8 bytes a partir de 0x30, e o `.pkb` guarda a entrada `i` em `i * (u32 em 0x1C)` (0x260; 2377 × 0x260
+  = o tamanho do arquivo). A chave é o número do jogador. Cada entrada é LZ10 de um PAC 3D: textura 32×32 de
+  4 bpp, 16 cores (a 0 transparente) e os tamanhos. A área usada por todos os 2.376 ícones é x 4–28, y 7–27; o
+  launcher recorta 25×23 a partir de (4, 6).
+  - Os `face2d/fac` são os retratos dos diálogos (64×64, chave `unidade*100 + expressão`), não estes ícones.
+- **No launcher:** `read_save` lê o time e as camisas; os ícones vêm do `boej.pak` da pasta (lidos uma vez,
+  decodificados sob demanda e guardados como texturas do renderer; sem o `boej.pak`, a aba fica sem eles). Uma
+  quarta linha da célula "Dados do save" mostra o time, em escala inteira (1× com a interface normal, 2× quando
+  ela é ampliada). `saves_tab` passou a receber o renderer.
+
+**Verificação:** os 11 ícones do save do teste, desenhados em Python pelas chaves, são os da tela de amigos do
+jogo (captura no quadro 300 depois do savestate). Na aba: Linux (1×) e o build Windows pelo WSL (2×), em
+todos os saves com jogo; os saves vazios ficam sem a linha. **Não testado:** um time com 16 jogadores.
+
+## 2026-10-27 — Aba Saves: menos dados, nome do arquivo discreto
+
+- Pedido: tirar dos dados do save o nome do time e o número de vitórias, e deixar o nome do arquivo mais sutil.
+- A linha dos dados ficou "jogador · Capítulo N" e "Nível do time · membros · tempo de jogo" (o launcher não lê
+  mais `teamname` nem `winNum`). O nome do arquivo e o "(em uso)" ficam em 85% do tamanho da fonte, o nome em
+  cinza; a centralização da linha desconta a diferença de altura.
+
+**Verificação:** captura da aba no build Windows (pelo WSL).
+
+## 2026-10-27 — Aba Saves: relâmpago e linhas no visual do card do slot
+
+- Pedido: no lugar do círculo azul de seleção, o quadradinho com o relâmpago do card de save do jogo; e cada
+  linha com um visual que lembre o card.
+- **Onde estão as peças:** no menu de slots o jogo abre `pic2d/menu/MMSlot.SPF_` e `pic2d/title/MTSIni.SPF_` (ids
+  752 e 823 no log, convertidos pelo FNT). O fundo do card é `MMSlot:SFDN_BG00` (as cores: corpo 49,115,230; faixa
+  do título 49,57,172; linhas e borda 16,74,172; painel do time 172,180,213 em cima e 131,148,189 embaixo). O
+  relâmpago é `MMSlot:SFDN_I00`: 12 tiles de 4 bpp com mapa linear, que o exportador mostra como 96×8, mas são
+  dois desenhos de 24×16 com 3×2 tiles (o azul e uma variante amarela/branca). O quadrado usa x 4–20, y 0–14.
+- **No launcher:**
+  - `load_icons` também lê o `MMSlot.SPF_` do `boej.pak` (SFP com LZ10; entrada `SFDN_I00.PAC`; PAC 2D: paleta,
+    mapa, tiles) e monta o relâmpago (17×15). Coluna "Save": o relâmpago em 2× (ou mais, com a interface
+    ampliada), aceso no save em uso, apagado (22%) nos outros e um pouco mais forte no hover.
+  - `card()` desenha cada save com o `ImDrawList` nas cores do card: faixa com o nome do jogador (e o nome do
+    arquivo pequeno à direita), "Nív. Equipe" / "Membros" e "Tempo de jogo … Horas … Min" com os números maiores
+    e a linha escura embaixo, e "ChNN" ao lado do painel claro com os rostos do time. O save em uso tem a borda
+    branca, como o slot escolhido no jogo. Save novo, vazio, de formato desconhecido ou inválido: o card com o
+    título e uma mensagem (o inválido em cinza).
+  - Os textos "(em uso)" e o destaque azul da linha saíram (o relâmpago e a borda branca dizem isso).
+
+**Verificação:** capturas da aba no build Windows (pelo WSL), com save novo, o save em uso e os outros.
+**Não testado:** hover e clique de verdade.

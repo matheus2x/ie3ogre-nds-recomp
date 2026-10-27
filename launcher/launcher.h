@@ -11,7 +11,8 @@
 //   toolchain/                         the compiler (Windows), downloaded on first use
 //   cache/modules/                     code modules extracted from the dump
 //   boej(.exe), boej.pak               made on the player's PC
-//   boej.ini, saves/, mods/            settings and player data
+//   boej.ini, saves/, mods/            settings and player data (saves/: one .sav per save,
+//                                      the one in use chosen in the Saves tab)
 //   logs/                              launcher.log, historico.txt (every game session),
 //                                      sessoes/ and replays/ (log and input of the last 20)
 #pragma once
@@ -24,6 +25,7 @@
 
 #include <ntr/common.h>
 
+struct SDL_Renderer;
 struct SDL_Window;
 
 namespace launcher {
@@ -45,6 +47,7 @@ struct Paths {
     std::string pak() const { return root + "boej.pak"; }
     std::string config() const { return root + "boej.ini"; }
     std::string mods() const { return root + "mods/"; }
+    std::string saves() const { return root + "saves/"; }
     std::string logs() const { return root + "logs/"; }
 };
 const Paths& paths();
@@ -58,7 +61,8 @@ int run_process(const std::vector<std::string>& args, std::string& output, const
 // Starts a program and does not wait (the game). With `on_exit`, a thread waits for the
 // program and calls it when the program ends.
 bool start_process(const std::vector<std::string>& args, const std::string& cwd, std::function<void()> on_exit = {});
-std::string system_tool(const char* name);  // curl / tar: System32 on Windows, PATH elsewhere
+std::string system_tool(const char* name);
+bool game_process_running();  // a boej(.exe) runs, started by the launcher or not  // curl / tar: System32 on Windows, PATH elsewhere
 
 // --- preparing the game (prepare.cpp) -------------------------------------------------
 
@@ -102,6 +106,13 @@ void settings_set(const std::string& section, const std::string& key, const std:
 void mods_tab(SDL_Window* window);
 void mods_drop(const std::string& path);  // a .zip or a mod folder dropped on the window: copy it to mods/
 int mods_cli(const std::string& command, const std::string& path);  // --install-mod / --mod-from-dump
+
+// --- saves (saves.cpp) ------------------------------------------------------------------
+
+void saves_tab(SDL_Renderer* renderer);  // the team icons become textures of this renderer
+void saves_update();  // every frame: lists saves/ again when it changed, renames saves after their players
+void saves_drop(const std::string& path);  // a .sav dropped on the window: copy it to saves/
+std::string current_save();                // the file in saves/ the game uses ([game] save)
 
 // --- updates (update.cpp) --------------------------------------------------------------
 

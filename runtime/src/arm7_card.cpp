@@ -124,13 +124,19 @@ void card_state(StateIo& io) {
 
 void arm7_card_init(const std::string& save_path) {
     if (save_path.empty()) {
-        // saves/boej.sav next to the executable. Older builds used the current directory;
-        // a save found only there is copied over once.
+        // saves/<[game] save> next to the executable (boej.sav unless the launcher's Saves
+        // tab chose another). Older builds used saves/boej.sav in the current directory; a
+        // save found only there is copied over once.
+        std::string name = host_config().get("game", "save");
+        if (name.empty() || name == "." || name == ".." || name.find_first_of("/\\:") != std::string::npos) {
+            if (!name.empty()) NTR_LOG("[card] [game] save = %s is not a file name in saves/: using boej.sav\n", name.c_str());
+            name = "boej.sav";
+        }
         std::string base = host_base_path();
-        g_save_path = fs_path(base.empty() ? "." : base) / "saves" / "boej.sav";
+        g_save_path = fs_path(base.empty() ? "." : base) / "saves" / fs_path(name);
         std::filesystem::path old = std::filesystem::path("saves") / "boej.sav";
         std::error_code ec;
-        if (!std::filesystem::exists(g_save_path, ec) && std::filesystem::exists(old, ec)) {
+        if (name == "boej.sav" && !std::filesystem::exists(g_save_path, ec) && std::filesystem::exists(old, ec)) {
             std::filesystem::create_directories(g_save_path.parent_path(), ec);
             std::filesystem::copy_file(old, g_save_path, ec);
             NTR_LOG("[card] copied the save from %s\n", utf8_string(std::filesystem::absolute(old, ec)).c_str());
