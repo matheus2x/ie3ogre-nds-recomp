@@ -297,6 +297,15 @@ bool build_game(Job& job) {
     NTR_LOG("[prepare] compiled %zu files in %.1f s\n", jobs.size(), seconds_since(compile_start));
 
     job.set_step("Ligando o executável", -1);
+#ifdef _WIN32
+    // The icon (game/icon.rc). The toolchain's windres sits next to its clang++; without it
+    // the game just has no icon.
+    std::string windres = tc.cxx.substr(0, tc.cxx.rfind("clang++")) + "windres" + kExe;
+    out.clear();
+    code = run_process({windres, sdk + "game/icon.rc", "-O", "coff", "-o", work + "obj/icon.o"}, out);
+    if (code == 0) objects.push_back(work + "obj/icon.o");
+    else NTR_LOG("[prepare] windres failed (%d), no icon:\n%s\n", code, out.c_str());
+#endif
     std::string rsp;
     for (std::string obj : objects) {  // the response file treats backslashes as escapes
         std::replace(obj.begin(), obj.end(), '\\', '/');

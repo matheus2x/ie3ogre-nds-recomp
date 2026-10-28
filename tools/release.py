@@ -16,7 +16,7 @@ The zip holds one folder:
     sdk/version.txt     the release version (VERSION)
     sdk/manifest.tsv    the recompiler input with {modules}/ paths (tools/analyze.py manifest --template)
     sdk/bin/            ntr-recomp and dsd (pinned release, checked by SHA-256)
-    sdk/include/ sdk/runtime/ sdk/game/   runtime and game entry sources
+    sdk/include/ sdk/runtime/ sdk/game/   runtime and game entry sources (and the icon)
     sdk/ui/ sdk/imgui/  the pause menu and Dear ImGui (with its SDL3 backends)
     sdk/sdl3/           SDL3 headers and import library (Windows)
     sdk/toolchain.txt   the llvm-mingw archive the launcher downloads (Windows)
@@ -200,7 +200,7 @@ def main() -> int:
     (sdk / "version.txt").write_text(version + "\n")
     copy_tree(ROOT / "runtime" / "include" / "ntr", sdk / "include" / "ntr", ("*.h",))
     copy_tree(ROOT / "runtime" / "src", sdk / "runtime", ("*.cpp", "*.h"))
-    copy_tree(ROOT / "game", sdk / "game", ("main.cpp",))
+    copy_tree(ROOT / "game", sdk / "game", ("main.cpp", "icon.rc", "icon.ico"))
     copy_tree(ROOT / "runtime" / "ui", sdk / "ui", ("*.cpp", "*.h"))
     imgui = out / "_deps" / "imgui-src"
     copy_tree(imgui, sdk / "imgui", ("imgui.cpp", "imgui_draw.cpp", "imgui_tables.cpp", "imgui_widgets.cpp", "*.h"))

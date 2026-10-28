@@ -30,4 +30,5 @@ elseif(UNIX AND NOT APPLE)
 endif()
 if(WIN32)
     target_link_libraries(boej PRIVATE shell32)  # CommandLineToArgvW
+    target_sources(boej PRIVATE icon.rc)  # launcher/prepare.cpp does the same
 endif()
