@@ -2631,3 +2631,81 @@ todos os saves com jogo; os saves vazios ficam sem a linha. **Não testado:** um
 
 **Verificação:** capturas da aba no build Windows (pelo WSL), com save novo, o save em uso e os outros.
 **Não testado:** hover e clique de verdade.
+
+## 2026-10-27 — Ícone do Endou no boej.exe e no ie3-launcher.exe
+
+- Pedido: usar uma arte do Endou (bandana, fundo azul) como ícone do jogo e do launcher.
+- `game/icon.ico`: recorte quadrado de 600×600 (a partir de x 115, y 10) centrado no rosto, com 256, 128, 64, 48,
+  32, 24 e 16 px (ImageMagick, `icon:auto-resize`). `game/icon.rc`: `1 ICON "icon.ico"` (o SDL3 usa o primeiro ícone
+  do exe na janela, então a barra de tarefas pega o mesmo).
+- CMake: `icon.rc` entra no `boej` e no `ie3-launcher` no Windows (o toolchain llvm-mingw já define `CMAKE_RC_COMPILER`).
+- Build no PC do jogador (`launcher/prepare.cpp:build_game`): antes de ligar, o `x86_64-w64-mingw32-windres` (ao lado
+  do clang++ do llvm-mingw) compila `sdk/game/icon.rc` para `obj/icon.o`, que entra no `objects.rsp`. Se falhar, só
+  loga e o jogo sai sem ícone. `tools/release.py` copia `icon.rc` e `icon.ico` para `sdk/game/`.
+
+**Verificação:** cross-build (llvm-mingw) do launcher e do jogo, com `llvm-readobj --coff-resources` mostrando ICON e
+GROUP_ICON nos dois; o passo do launcher simulado com o windres local, ligando um exe de teste com o `icon.o`.
+**Não testado:** o build pelo launcher no Windows de verdade e a aparência no Explorer/barra de tarefas.
+
+## 2026-10-27 — Preparação para abrir o repositório: licença, README em inglês e revisão da documentação
+
+- Pedido: revisar os `.md` e os arquivos em geral antes de deixar o repositório público, atualizar tabelas e
+  textos e pôr no README o logo de `docs/assets/`, no estilo do IsaacRecomp e do naruto-rise-recomp.
+- **Licença:** `LICENSE` com a MIT (escolha do usuário) para o código. Os READMEs deixam claro que a tradução em
+  `mods/CyberLifePlus/` e `translations/` (base do CyberLife) e a arte do jogo (logo, ícone) ficam fora dela. O
+  `tools/release.py` põe a licença em `licenses/ie3ogre-recomp.txt`; o `LEIA-ME.txt` da release ganhou o endereço do
+  repositório e a licença, e o `TERCEIROS.txt` aponta para ela.
+- **READMEs:** o README antigo virou `README.pt-BR.md` e o `README.md` agora é em inglês, os dois com o mesmo
+  conteúdo e um link para o outro no topo: logo, badges (release, Windows, Linux só compilando, "requer o seu
+  cartucho", MIT), atalhos, avisos (pré-alfa, jogo não incluído, uso de IA), tabela "no DS × neste port",
+  funcionalidades (com a aba Saves, menu de pausa, logs de sessão e a release de Linux ainda por fazer), tabela das
+  abas do launcher, como relatar problemas, tabela da documentação, contribuição, créditos e licença.
+- **Revisão:** sem caminhos pessoais nem e-mails nos arquivos (fora do diário) e sem dados do jogo no histórico (os
+  maiores blobs são os `.bps` do CyberLifePlus). `.tool-versions` (nodejs, sem uso no projeto) removido.
+  `DESENVOLVIMENTO.md`: links para os dois READMEs e o `TRADUCAO.md`, `game/icon.*`, `docs/assets/` e o CI na tabela
+  da estrutura. `TRADUCAO.md`: o `survey` da v1.8 dá os mesmos 35,4 % / 48,4 % da v1.5 (as v1.6–v1.8 traduziram
+  imagens, fora da conta); a coluna virou "v1.5–v1.8", com a nota.
+
+**Verificação:** links relativos de todos os `.md` conferidos por script; testes de `tools/tests` passando (49).
+**Não testado:** o `tools/release.py` inteiro com a cópia da licença (fica para o CI ou a próxima release).
+
+**Pasta de teste do Windows** (`C:\Games\ie3-teste\ie3ogre-recomp`): atualizada da 0.1.16 para uma release 0.1.17
+gerada deste código (`tools/release.py`, com o ícone e a licença). Troquei o launcher, o `SDL3.dll`, o `sdk/`,
+`licenses/`, `LEIA-ME.txt` e `TERCEIROS.txt`; mantive `boej.ini`, `boej.pak`, `cache/`, `toolchain/`, `saves/`, `logs/`
+e `mods/` (o `mod-CyberLifePlus-1.8.zip` de lá é idêntico ao novo, mesmo SHA-256). O `ie3-launcher.exe --prepare`
+recompilou o jogo no Windows (185 arquivos em 55 s, 63 s no total; `build.stamp` 0.1.17). O `windres.exe` do
+llvm-mingw baixado existe e funcionou: o `boej.exe` feito no Windows e o launcher têm os recursos ICON e GROUP_ICON.
+
+## 2026-10-27 — Launcher em inglês por padrão, com opção de português
+
+- Pedido: o launcher em inglês por padrão, com uma opção de idioma que deixa tudo em português, como era.
+- **Como:** `ntr-common` ganhou o idioma da interface (`ntr::Language`, `set_language`, `language()` e
+  `L("English", "Português")`, que devolve o texto do idioma atual) e o `boej.ini` a seção `[ui]` com
+  `language = en` (ou `pt`). Os textos ficam lado a lado no código; o português é exatamente o de antes. Um
+  `boej.ini` antigo, sem a chave, abre em inglês. "Restaurar o padrão" não mexe no idioma.
+- **Onde vale:** todo o launcher (abas, botões, mensagens dos passos de preparação, erros, atualizações, mods,
+  saves, os filtros das caixas de abrir arquivo e o `mod.ini` do "Criar de um dump modificado"), o painel de
+  configurações e o menu de pausa (o mesmo código, `runtime/ui/ui.cpp`), os avisos na tela do jogo (savestates,
+  slot, rewind) e as mensagens de erro que o launcher mostra vindas do `ntr-common` (dump desconhecido, zip e BPS)
+  e do `boej --check-mods` (que agora lê o idioma do `boej.ini` antes de tudo). As datas seguem o idioma
+  (`2026-10-27 22:09` / `27/10/2026 22:09`). Os logs continuam como estavam.
+- **Onde se troca:** um seletor "Language / Idioma" no canto da aba Play/Jogar (os dois nomes, para quem não lê o
+  idioma atual achar) e uma linha "Language (Idioma)" em Configurações → Launcher. A troca vale na hora. O jogo lê
+  o idioma ao abrir.
+- IDs do ImGui que dependiam do texto (abas, popups, cabeçalho "Detalhes") ganharam `###id` fixo, para a troca de
+  idioma não fechar nada nem perder o estado.
+- **Docs:** `README.txt` (inglês) na release ao lado do `LEIA-ME.txt`, que ganhou a seção IDIOMA; READMEs com os
+  nomes das abas em inglês e o aviso de como pôr em português; `[ui]` na tabela de configurações do
+  `DESENVOLVIMENTO.md`.
+
+**Verificação:** build nativo e cross-build Windows (launcher e jogo) sem avisos; testes de `tools/tests` (49).
+Capturas do launcher Windows numa pasta temporária, com as cinco abas em inglês e em português, e o seletor de
+idioma nos dois.
+**Não testado:** o menu de pausa e os avisos dentro do jogo (só compilados), e a troca pelo seletor com clique de
+verdade (as capturas usam o `boej.ini`).
+
+**Pasta de teste do Windows** (`C:\Games\ie3-teste\ie3ogre-recomp`): atualizada com uma release 0.1.17 gerada deste
+código, com o idioma do launcher e o `README.txt`. Troquei o launcher, o `SDL3.dll`, o `sdk/`, `licenses/` e os três
+`.txt`; o resto ficou (o mod 1.8 de lá é idêntico ao novo). Como a versão não mudou e o código do jogo mudou (menu de
+pausa e avisos), apaguei o `cache/build.stamp` para forçar a recompilação: `--prepare` refez o `boej.exe` em 48 s, já
+com as mensagens em inglês. O `boej.ini` de lá não tem `[ui]`, então o launcher abre em inglês.

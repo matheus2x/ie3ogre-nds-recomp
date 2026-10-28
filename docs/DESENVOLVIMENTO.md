@@ -1,10 +1,10 @@
 # Desenvolvimento
 
-Detalhes para quem compila, testa ou analisa o jogo. O resumo está no [README](../README.md); o formato dos mods,
-em [`MODS.md`](MODS.md).
+Detalhes para quem compila, testa ou analisa o jogo. O resumo está no
+[README](../README.pt-BR.md) ([em inglês](../README.md)); o formato dos mods, em [`MODS.md`](MODS.md); a tradução
+PT-BR, em [`TRADUCAO.md`](TRADUCAO.md).
 
 Requisitos: Python 3.12+, CMake 3.28+, um compilador C++20 (clang, GCC ou MSVC/clang-cl) e SDL3.
-
 
 ```sh
 # identifica o dump pelo SHA-1, extrai para build/extract/<variante>/
@@ -26,14 +26,15 @@ Dumps fora de `dumps.json` são recusados. Para experimentos, use `--allow-unkno
 |---|---|
 | `recompiler/` | `ntr-recomp` (C++20): manifesto do dsd → C++ |
 | `runtime/` | Runtime (C++20): memória, CPU, interpretador ARM, IRQ, timers, threads, PXI/ARM7 em HLE, VRAM, 2D, 3D, som, janela SDL3 |
-| `game/` | Executável `boej` |
-| `launcher/` | `ie3-launcher` (SDL3 + Dear ImGui): prepara, configura, atualiza e abre o jogo; `LEIA-ME.txt` e `TERCEIROS.txt` da release |
+| `game/` | Executável `boej` e o ícone do Windows (`icon.ico`/`icon.rc`, usado também pelo launcher) |
+| `launcher/` | `ie3-launcher` (SDL3 + Dear ImGui): prepara, configura, atualiza e abre o jogo; `README.txt`, `LEIA-ME.txt` e `TERCEIROS.txt` da release |
 | `runtime/ui/` | `ntr-ui`: telas em Dear ImGui usadas pelo jogo (menu de pausa) e pelo launcher (painel de configurações) |
 | `translations/` | Traduções do texto para os mods oficiais: o lugar de cada fala e o português, sem texto do jogo (`tools/text.py apply`) |
 | `tools/` | Ferramentas em Python (`ntr/` lê a ROM; `extract.py` extrai; `compare_dumps.py` compara dumps; `analyze.py` roda dsd/Ghidra; `mod.py` cria, confere e transforma mods em patches; `ntr/bps.py` gera e aplica patches BPS; `text.py` mede, lista e aplica a tradução do texto (formatos em `ntr/text.py`, LZ10 em `ntr/lz10.py`); `build.py` compila para desenvolvimento; `release.py` monta a release; `ghidra/` tem os scripts do Ghidra; `tests/` tem os testes) |
 | `config/boej/` | `dumps.json` (dumps conhecidos), `layout/<variante>.json` (endereços, overlays, hashes), `dsd/` (funções, seções e relocações do ds-decomp), `names.tsv` (nomes identificados, com evidência), `hle.tsv` (funções substituídas no host) e `code_blobs.tsv` (código que o dsd classifica como dados). Nenhum dado do jogo |
 | `mods/` | Mods oficiais, um por pasta, só com patches `.bps` (nenhum dado do jogo); cada um sai como `.zip` na release |
-| `docs/` | Diário (`DIARY.md`), mods (`MODS.md`) e este documento |
+| `docs/` | Diário (`DIARY.md`), mods (`MODS.md`), tradução (`TRADUCAO.md`), este documento e `assets/` (o logo do README) |
+| `.github/workflows/` | CI da release (`release.yml`) |
 | `build/` | Saída local (extração, código gerado). Ignorada pelo git |
 
 ## Análise estática
@@ -61,7 +62,7 @@ Conteúdo de `build/extract/<variante>/`:
 
 ## Recompilar e rodar
 
-No Arch, o SDL3 vem do pacote `sdl3`.
+O SDL3 vem do sistema (no Arch, o pacote `sdl3`; no Debian/Ubuntu, `libsdl3-dev` quando disponível).
 
 ```sh
 python3 tools/extract.py retail.nds          # uma vez: extração + build/boej.pak
@@ -89,6 +90,7 @@ Ele é lido ao abrir o jogo; apague-o para voltar ao padrão.
 | `[video]` | `wide_layout` (padrão `true`: janela 16:9 pela altura do monitor, as duas telas à esquerda e a de baixo ampliada à direita; `false` = telas empilhadas e centralizadas), `wide_side` (`left` ou `right`: lado das duas telas pequenas na tela larga), `window_scale` (tamanho inicial da janela, só sem `wide_layout`), `resolution_3d` (1 a 10), `fullscreen`, `filter` (`nearest` ou `linear`), `integer_scale` (ampliar só em múltiplos inteiros, só sem `wide_layout`) |
 | `[audio]` | `volume` (0 a 100) |
 | `[game]` | `fast_forward_speed`: velocidade do avanço rápido, 2 a 10 (vezes a normal; padrão 4); `rewind`, `rewind_seconds`; `save`: o arquivo de `saves/` que o jogo carrega e grava (padrão `boej.sav`; a aba Saves do launcher escolhe) |
+| `[ui]` | `language`: idioma do launcher e do menu de pausa do jogo, `en` (padrão) ou `pt`; o texto do jogo não muda. O launcher troca na aba Jogar ("Language / Idioma") ou em Configurações → Launcher |
 | `[mods]` | `enabled`: mods de `mods/` ligados (nomes das pastas e dos `.zip`), separados por vírgula; quando dois mods trocam o mesmo arquivo, vale o que vem depois (a aba Mods do launcher cuida disso; veja [`MODS.md`](MODS.md)) |
 | `[keyboard]` | uma linha por botão do DS (`A`, `B`, ..., `UP`, `DOWN`) e por atalho (`fast_forward`, `fast_forward_toggle`, `turbo`, `turbo_toggle`, `screenshot`, `debug_dump`, `fullscreen`, `save_state`, `load_state`, `state_slot_prev`, `state_slot_next`), com nomes de tecla do SDL separados por vírgula, por exemplo `SELECT = Right Shift, Backspace`. Vazio desliga. |
 | `[gamepad]` | o mesmo, com botões pela posição (`south`, `east`, `west`, `north`), `start`, `back`, `leftshoulder`, `dpup` etc., e eixos com direção (`lefty-` = analógico para cima, `righttrigger`). Por padrão, o analógico esquerdo também move o direcional. |

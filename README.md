@@ -1,120 +1,236 @@
-# ie3ogre-recomp
+<p align="center">
+  <img src="docs/assets/ie3-ogre-logo.png" alt="Inazuma Eleven 3: Sekai heno Chousen!! The Ogre" width="600">
+</p>
 
-Port nativo para PC de **Inazuma Eleven 3: Sekai heno Chousen!! The Ogre** (Nintendo DS) por
-**recompilação estática** ARM → C++.
+<h1 align="center">Inazuma Eleven 3: The Ogre — Recomp</h1>
 
-O código do jogo não é emulado: o ARM9 e as overlays viram C++ e são compilados para x86-64. O hardware do DS e o
-ARM7 são reimplementados no PC.
+<p align="center">
+  <b>English</b> · <a href="README.pt-BR.md">Português</a>
+</p>
 
-> **Estado: pré-alfa.** O jogo roda com vídeo 2D/3D, som, vídeos e controles, e a história já foi jogada até
-> depois da primeira partida. Ainda há bugs. O histórico está em [`docs/DIARY.md`](docs/DIARY.md).
+<p align="center">
+  <a href="../../releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/matheus2x/ie3ogre-nds-recomp?style=for-the-badge&color=e8590c"></a>
+  <img alt="Windows x64" src="https://img.shields.io/badge/Windows-x64-1c5fd6?style=for-the-badge">
+  <img alt="Linux (from source)" src="https://img.shields.io/badge/Linux-from_source-1c5fd6?style=for-the-badge">
+  <img alt="Requires your own cartridge" src="https://img.shields.io/badge/requires-your_own_cartridge-f4c430?style=for-the-badge&labelColor=1b1b2f">
+  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-555?style=for-the-badge"></a>
+</p>
 
-## Como jogar
+<p align="center">
+  A native PC port of <b>Inazuma Eleven 3: Sekai heno Chousen!! The Ogre</b> (Nintendo DS)<br>
+  through <b>static recompilation</b> from ARM to C++. No emulator: the game's code becomes a PC program.<br>
+  <b>3D up to 10× • 16:9 widescreen • savestates and rewind • controllers • mods • Brazilian Portuguese translation</b>
+</p>
 
-As releases não trazem nenhum dado nem código do jogo: o launcher prepara tudo no seu PC a partir do dump do
-**seu** cartucho.
+<p align="center">
+  <a href="#how-to-play">How to play</a> ·
+  <a href="#controls">Controls</a> ·
+  <a href="#mods-and-the-pt-br-translation">Mods</a> ·
+  <a href="#building">Building</a> ·
+  <a href="docs/DESENVOLVIMENTO.md">Development</a> ·
+  <a href="#reporting-problems">Problems</a>
+</p>
 
-1. Baixe o `ie3ogre-recomp-<versão>-windows.zip` da [última release](../../releases/latest) e descompacte numa
-   pasta em que dê para gravar.
-2. Abra o `ie3-launcher.exe` e escolha o dump (ou arraste o `.nds` para a janela).
-3. O launcher confere o dump, cria o `boej.pak` (os dados do jogo), baixa uma vez o compilador
-   [llvm-mingw](https://github.com/mstorsjo/llvm-mingw) (~190 MB) e compila o `boej.exe`. Leva de 1 a alguns
-   minutos, conforme o processador. Depois é só clicar em **Jogar**: o dump não é mais necessário.
+> [!WARNING]
+> **Pre-alpha.** The game runs with 2D/3D graphics, sound, videos and controls, and the story has been played past
+> the first match, but there are still bugs. Back up your saves and report problems on the [issues](../../issues)
+> page.
 
-Outras abas do launcher: **Configurações** (vídeo, áudio e controles), **Mods** e **Atualizações** (baixa a versão
-nova e recompila sem pedir o dump; saves, configurações e mods ficam como estão).
+> [!IMPORTANT]
+> **The game is not included.** Releases carry no game data or code: the launcher prepares everything on your PC
+> from a dump of **your own** cartridge. This is a non-profit fan project with no affiliation to LEVEL-5 or
+> Nintendo.
 
-### Dump suportado
+> [!NOTE]
+> AI tools assist the development of this project. Its direction, technical decisions and testing are the
+> maintainer's, who reviews every change before publishing it.
 
-| Jogo | Código | SHA-1 do `.nds` |
+> [!NOTE]
+> The game itself is the Japanese version. The launcher and the in-game pause menu are in English by default, with
+> Brazilian Portuguese as an option ("Language / Idioma" in the Play tab). The documentation in `docs/` is in
+> Brazilian Portuguese; this README is the English overview.
+
+## About
+
+The game's ARM9 and its 133 overlays are translated to C++ by `ntr-recomp` (16,057 functions) and compiled for
+x86-64. What used to be DS hardware (2D and 3D graphics, sound, touch, cartridge) and the ARM7 are reimplemented
+on the PC, along with the parts of the BIOS and the NitroSDK the game uses.
+
+| | On the DS | In this port |
 |---|---|---|
-| Inazuma Eleven 3: Sekai heno Chousen!! The Ogre (Japão) | `BOEJ` | `9380f1d7ee75e7c6ef24f1b76c88ecdc85088957` |
+| 3D resolution | 256×192 | **1× to 10×**, with anti-aliasing |
+| Screens | two stacked 4:3 screens | **16:9**: the bottom screen large with both small screens beside it, or stacked |
+| Progress | the game's save only | the game's save, **5 savestates** and up to 30 s of **rewind** |
+| Speed | normal | **fast-forward** from 2× to 10× and auto-A |
+| Controls | DS buttons and stylus | keyboard, mouse on the touch screen and **controllers**, all remappable |
+| Content | the cartridge | **mods** as folders or `.zip` files, including the PT-BR translation |
+| Wi-Fi | Nintendo WFC (shut down) | disabled |
 
-Só o dump retail, sem modificações. As outras versões de IE3 (Bomber, Spark e a europeia, de 3DS) não são
-suportadas. Se o seu dump tiver outro SHA-1, abra uma issue com o hash.
+## Features
 
-### Controles
+- [x] ARMv5TE/Thumb → C++ recompiler (`ntr-recomp`): ARM9, ITCM and 133 overlays
+- [x] Runtime: memory, IRQs, timers, DMA, overlays and threads as fibers; BIOS, NitroSDK and ARM7 in HLE
+- [x] Software 2D and 3D rendering, with 3D from 1× to 10×, anti-aliasing and wireframe
+- [x] Audio (16 channels at 32 kHz) and Mobiclip videos
+- [x] Saves, savestates, rewind, fast-forward, 16:9 widescreen and remappable controls
+- [x] Pause menu with settings, savestates and shortcuts
+- [x] A launcher with nothing from the game: it prepares, configures, updates, picks saves and manages mods, in English
+  or Brazilian Portuguese
+- [x] Mods: replace files and overlay data, whole or as BPS patches (no game data)
+- [x] A log, replay and history of every session, for bug reports
+- [ ] Linux release (source builds only for now)
+- [ ] Mods: documented formats, high-resolution textures, a special move editor
 
-| DS | Teclado | Controle |
+## How to play
+
+**Requirements:** Windows 10 or 11 (x64), a dump of your cartridge (see below) and an internet connection the
+first time, to download the compiler.
+
+1. Download `ie3ogre-recomp-<version>-windows.zip` from the [latest release](../../releases/latest) and extract it
+   to a folder you can write to (Documents, for example; avoid "Program Files").
+2. Open `ie3-launcher.exe` and pick your dump, or drag the `.nds` onto the window.
+3. The launcher checks the dump, creates `boej.pak` (the game's data, ~450 MB), downloads the
+   [llvm-mingw](https://github.com/mstorsjo/llvm-mingw) compiler once (~190 MB) and compiles `boej.exe`. This takes
+   one to a few minutes, depending on your CPU. Then just click **Play**: the dump is no longer needed.
+
+The launcher's other tabs:
+
+| Tab | What it does |
+|---|---|
+| **Settings** | video, audio, controls and the launcher's language (also in the in-game pause menu, with Esc) |
+| **Saves** | picks the save the game uses, creates new saves and imports `.sav` files from a cartridge or emulators |
+| **Mods** | adds, enables, orders and removes mods; creates a mod from a modified dump |
+| **Updates** | downloads the new version and recompiles the game without asking for the dump; saves, settings and mods are kept |
+
+Everything stays in the launcher's folder: `saves/`, `savestates/`, `mods/`, `logs/` and `boej.ini` (settings). The
+[`README.txt`](launcher/README.txt) that ships with the release explains each one.
+
+### Supported dump
+
+| Game | Code | SHA-1 of the `.nds` |
 |---|---|---|
-| Direcional | setas | direcional ou analógico esquerdo |
-| A / B / X / Y | X / Z / S / A | botões da direita (pela posição do DS) |
-| L / R | Q / W | ombros |
-| Start / Select | Enter / Shift direito ou Backspace | Start / Back |
-| Tela de toque | mouse na tela de baixo | — |
+| Inazuma Eleven 3: Sekai heno Chousen!! The Ogre (Japan) | `BOEJ` | `9380f1d7ee75e7c6ef24f1b76c88ecdc85088957` |
 
-| Atalho | Tecla |
+Only the unmodified retail dump (for a translation shipped as an `.nds`, see
+[Mods](#mods-and-the-pt-br-translation)). The other IE3 versions (Bomber, Spark and the European 3DS release) are
+not supported. If your dump has a different SHA-1, open an issue with the hash.
+
+## Controls
+
+| DS | Keyboard | Controller |
+|---|---|---|
+| D-pad | arrow keys | D-pad or left stick |
+| A / B / X / Y | X / Z / S / A | face buttons (by DS position) |
+| L / R | Q / W | shoulders |
+| Start / Select | Enter / Right Shift or Backspace | Start / Back |
+| Touch screen | mouse on the bottom screen | — |
+
+| Shortcut | Key |
 |---|---|
-| Menu de pausa (configurações, savestates, reiniciar, sair) | Esc |
-| Avanço rápido (segurar / ligar e desligar) | Tab / F2 |
-| A automático (segurar / ligar e desligar) | C / F3 |
-| Savestate: salvar / carregar / trocar o slot (1 a 5) | F5 / F9 / F6 e F7 |
-| Voltar no tempo (rewind, segurar; até 30 s por padrão) | R |
-| Tela cheia / captura de tela | F11 / F12 |
+| Pause menu (settings, savestates, reset, quit) | Esc |
+| Fast-forward (hold / toggle) | Tab / F2 |
+| Auto-A (hold / toggle) | C / F3 |
+| Savestate: save / load / change slot (1 to 5) | F5 / F9 / F6 and F7 |
+| Rewind (hold; up to 30 s by default) | R |
+| Mark a problem in the log | F8 |
+| Fullscreen / screenshot | F11 / F12 |
 
-Tudo pode ser remapeado no launcher ou no menu de pausa. As configurações ficam no `boej.ini`, na pasta do jogo.
+Everything can be remapped in the launcher or the pause menu. Savestates also hold the running recompiled code:
+they only load in the same `boej.exe` and with the same mods (an update recompiles the game).
 
-### Mods
+## Mods and the PT-BR translation
 
-Mods trocam arquivos do jogo (textos, fontes, imagens, tabelas) sem alterar o `boej.pak`. Cada mod é uma pasta
-ou um `.zip` dentro da pasta `mods/`, ao lado do `boej.exe`: coloque o mod lá e ligue-o na aba **Mods** do
-launcher, onde também dá para ordenar e remover. Como fazer um mod: [`docs/MODS.md`](docs/MODS.md).
+Mods replace game files (text, fonts, images, tables) without touching `boej.pak`. Each mod is a folder or a
+`.zip` in the `mods/` folder: put it there (or drag it onto the launcher) and enable it in the **Mods** tab. How
+to make a mod (in Portuguese): [`docs/MODS.md`](docs/MODS.md).
 
-Mods oficiais (pasta [`mods/`](mods/) do repositório) saem como `.zip` separados em cada release. Eles só trazem
-patches, sem dados do jogo:
+Official mods live in [`mods/`](mods/) and ship as separate `.zip` files with each release, as patches only,
+with no game data:
 
-| Mod | O que é |
+| Mod | What it is |
 |---|---|
-| [`CyberLifePlus`](mods/CyberLifePlus/LEIA-ME.md) | Tradução PT-BR. Feita originalmente pelo grupo **CyberLife** e continuada aqui, completando o que faltou |
+| [`CyberLifePlus`](mods/CyberLifePlus/LEIA-ME.md) | Brazilian Portuguese translation. Originally made by the **CyberLife** group and continued here: the story is fully translated, and what is left is tracked in [`docs/TRADUCAO.md`](docs/TRADUCAO.md) |
 
-### Relatando problemas
+## Reporting problems
 
-Se algo der errado, aperte **F8** na hora, feche o jogo e envie, da pasta `logs` do jogo (botão "Abrir a pasta
-de logs" no launcher), o log da sessão em `logs/sessoes/` e o replay de mesmo nome em `logs/replays/` (`.txt` e
-`.sav`: a sessão gravada, que permite repetir o problema exatamente). Cada abertura do jogo é uma sessão com nome
-de data e hora; as 20 mais recentes ficam guardadas, e o `logs/historico.txt` resume todas.
+If something goes wrong, press **F8** right away, close the game and open an [issue](../../issues) with:
 
-## Funcionalidades
+- what happened and what you expected;
+- from the `logs` folder (the "Open the logs folder" button in the launcher): the session log in
+  `logs/sessoes/` and the replay with the same name in `logs/replays/` (the `.txt` and the `.sav`, which replay the
+  session exactly);
+- the version (Updates tab) and the enabled mods.
 
-- [x] Recompilador ARMv5TE/Thumb → C++ (`ntr-recomp`): 16.057 funções, ARM9 + ITCM + 133 overlays
-- [x] Runtime: memória, IRQ, timers, DMA, overlays, threads em fibers; BIOS, NitroSDK e ARM7 em HLE
-- [x] Vídeo 2D e 3D por software, com resolução interna do 3D de 1× a 10×, anti-aliasing e wireframe
-- [x] Áudio (16 canais a 32 kHz) e vídeos Mobiclip
-- [x] Save, savestates, avanço rápido, tela larga 16:9 e controles remapeáveis
-- [x] Launcher sem nada do jogo: prepara, configura, atualiza e gerencia mods
-- [x] Mods: troca de arquivos e dos dados das overlays, inteiros ou como patches (BPS) sem dados do jogo
-- [ ] Mods: formatos documentados, texturas em alta resolução, editor de técnicas
-- [x] Wi-Fi desativado (o Nintendo WFC foi encerrado)
+Each time the game opens is a session named after the date and time; the 20 most recent are kept, and
+`logs/historico.txt` summarizes all of them.
 
-## Desenvolvimento
+## Building
 
-Requisitos: Python 3.12+, CMake 3.28+, um compilador C++20 e SDL3.
+Requirements: Python 3.12+, CMake 3.28+, a C++20 compiler and SDL3. You also need the retail dump.
 
 ```sh
-python3 tools/extract.py retail.nds        # uma vez: confere o dump e cria build/boej.pak
-python3 tools/analyze.py dsd retail.nds    # uma vez: mapa de funções (ds-decomp)
-python3 tools/build.py                     # recompila e compila build/cmake-rel/game/boej
+python3 tools/extract.py retail.nds        # once: checks the dump and creates build/boej.pak
+python3 tools/analyze.py dsd retail.nds    # once: function map (ds-decomp)
+python3 tools/build.py                     # recompiles and builds build/cmake-rel/game/boej
 ./build/cmake-rel/game/boej
-python3 -m unittest discover -s tools/tests -t tools   # testes (não precisam da ROM)
+python3 -m unittest discover -s tools/tests -t tools   # tests (no ROM needed)
 ```
 
-Estrutura do repositório, build para Windows, release, análise com Ghidra e variáveis de ambiente para testes:
+Windows builds from Linux/WSL, releases, Ghidra analysis and the environment variables used for testing:
 [`docs/DESENVOLVIMENTO.md`](docs/DESENVOLVIMENTO.md).
 
-## Referências
+## Documentation
 
-- [FFCCEOT-Recomp](https://github.com/JonathanDC64/FFCCEOT-Recomp): recompilação estática de um jogo de DS; modelo de arquitetura deste projeto
-- [gen1recomp](https://github.com/bryanthaboi/gen1recomp): modelo das releases com launcher
-- [khdays-port](https://github.com/Yokimitsuro/khdays-port): port nativo de um jogo de DS a partir de decomp
-- [melonDS](https://github.com/melonDS-emu/melonDS) e [GBATEK](https://problemkaputt.de/gbatek.htm): referências de hardware
+All in Portuguese.
 
-## Contribuindo
+| Document | Contents |
+|---|---|
+| [Development](docs/DESENVOLVIMENTO.md) | repository layout, building, releases, static analysis, settings, logs and environment variables |
+| [Mods](docs/MODS.md) | the mod format, BPS patches, tools and how it works inside |
+| [PT-BR translation](docs/TRADUCAO.md) | what is left to translate, the checklist, naming conventions and technical text rules |
+| [CyberLifePlus](mods/CyberLifePlus/LEIA-ME.md) | credits, versions and how to continue the translation |
+| [Diary](docs/DIARY.md) | the project's step-by-step history, with what was learned about the game |
 
-- Nunca envie ROMs, dumps, arquivos extraídos ou trechos de código do jogo (o `.gitignore` bloqueia os casos comuns).
-- Registre descobertas e mudanças relevantes em `docs/DIARY.md`.
+## Contributing
 
-## Legal
+- Never commit ROMs, dumps, extracted files or snippets of the game's code (`.gitignore` blocks the common
+  cases). Mods go in as `.bps` patches, and translations in `translations/` hold only the new text.
+- Log relevant findings and changes in `docs/DIARY.md`, and translation work in the `docs/TRADUCAO.md` checklist
+  too.
+- Run the tests (`python3 -m unittest discover -s tools/tests -t tools`) before opening a pull request.
 
-Projeto de fãs, sem afiliação com LEVEL-5 ou Nintendo. *Inazuma Eleven* é marca da LEVEL-5 Inc. Para jogar, é
-preciso ter uma cópia legítima do jogo. O `boej.pak` e o `boej.exe` gerados contêm dados e código do jogo: são de
-uso pessoal e não devem ser distribuídos.
+## Credits
+
+**Translation**
+
+- The **CyberLife** group, for the PT-BR translation that the [`CyberLifePlus`](mods/CyberLifePlus/LEIA-ME.md) mod
+  is built on.
+
+**Projects and libraries**
+
+- [ds-decomp](https://github.com/AetiasHax/ds-decomp) (Aetias): the function map and the code extraction on the
+  player's PC, including the DS Protect decryption (credit to taxicat1).
+- [SDL3](https://libsdl.org), [Dear ImGui](https://github.com/ocornut/imgui) and
+  [llvm-mingw](https://github.com/mstorsjo/llvm-mingw). Licenses in [`launcher/TERCEIROS.txt`](launcher/TERCEIROS.txt).
+- [Ghidra](https://github.com/NationalSecurityAgency/ghidra), for static analysis.
+
+**References**
+
+- [FFCCEOT-Recomp](https://github.com/JonathanDC64/FFCCEOT-Recomp): static recompilation of a DS game; the
+  architectural model for this project.
+- [gen1recomp](https://github.com/bryanthaboi/gen1recomp): the model for launcher-based releases.
+- [khdays-port](https://github.com/Yokimitsuro/khdays-port): a native port of a DS game from a decompilation.
+- [melonDS](https://github.com/melonDS-emu/melonDS) and [GBATEK](https://problemkaputt.de/gbatek.htm): hardware
+  references.
+
+## License and legal notice
+
+This project's code (recompiler, runtime, launcher and tools) is licensed under the [MIT License](LICENSE).
+Third-party components keep their own licenses ([`launcher/TERCEIROS.txt`](launcher/TERCEIROS.txt)). The
+translation in `mods/CyberLifePlus/` and `translations/` builds on the CyberLife group's work and is not covered
+by the MIT License.
+
+*Inazuma Eleven* and its characters, logos and artwork, including the logo in `docs/assets/` and the icon in
+`game/icon.ico`, belong to LEVEL-5 Inc. This is a fan project with no affiliation to LEVEL-5 or Nintendo. You need
+a legitimate copy of the game to play. The generated `boej.pak` and `boej.exe` contain the game's data and code:
+they are for personal use only and must not be distributed.

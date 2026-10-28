@@ -3,6 +3,13 @@ Inazuma Eleven 3 - Sekai heno Chousen!! The Ogre (port nativo por recompilação
 
 Este pacote NÃO contém o jogo: nem dados, nem código. O launcher prepara tudo
 no seu computador a partir do dump do SEU cartucho.
+(In English: README.txt.)
+
+IDIOMA
+O launcher e o menu de pausa abrem em inglês. Para usar em português,
+escolha "Português (Brasil)" em "Language / Idioma", no canto da aba
+"Play" (Jogar), ou em Settings > Launcher. A tradução do texto do jogo é o
+mod CyberLifePlus (veja MODS).
 
 PRIMEIRA VEZ
 1. Descompacte esta pasta num lugar em que dê para gravar (Documentos, por
@@ -29,7 +36,8 @@ na aba "Mods", ligue, desligue, ordene e remova os mods. Adicionar só copia o
 mod para a pasta "mods", e Remover só apaga essa cópia: o arquivo ou a pasta
 original não é alterado. A aba também cria um mod a partir de um dump
 modificado (uma tradução, por exemplo), desde que o código dele seja o do
-jogo original. As mudanças valem na próxima vez que o jogo abrir. Como fazer um mod: veja docs/MODS.md no repositório do projeto.
+jogo original. As mudanças valem na próxima vez que o jogo abrir. Como fazer um mod: veja
+docs/MODS.md no repositório do projeto (endereço no fim deste arquivo).
 Os mods oficiais saem como .zip separados nas releases (por exemplo, o
 mod-CyberLifePlus-<versão>.zip, a tradução PT-BR): coloque o .zip na
 pasta "mods" sem descompactar. Para atualizar um mod, adicione o .zip novo
@@ -81,3 +89,10 @@ CONTROLES PADRÃO (mude no menu do jogo ou na aba Configurações do launcher)
       liga, desliga e muda o tempo no menu, em "Atalhos"
   F8: se algo der errado, aperte no momento e envie, da pasta logs,
       o .log da sessão (sessoes\) e o .txt e .sav de mesmo nome (replays\)
+
+PROJETO
+Código-fonte, documentação, issues e releases:
+  https://github.com/matheus2x/ie3ogre-nds-recomp
+O código do port está sob a licença MIT (licenses/ie3ogre-recomp.txt).
+Componentes de terceiros: TERCEIROS.txt. Inazuma Eleven é da LEVEL-5 Inc.;
+projeto de fãs, sem afiliação com a LEVEL-5 ou a Nintendo.

@@ -12,7 +12,7 @@ caracteres japoneses (kana + kanji) e deixa de fora:
 
 ## Números
 
-| | v1.0 | v1.1 | v1.2 | v1.4 | v1.5 |
+| | v1.0 | v1.1 | v1.2 | v1.4 | v1.5–v1.8 |
 |---|---:|---:|---:|---:|---:|
 | Tudo, com repetições (o que o jogador lê; 782 mil caracteres no original) | 29 % | 32 % | 34 % | 35,2 % | **35,4 %** |
 | Textos únicos (o trabalho que falta; 429 mil) | 39 % | 44 % | 47 % | 48,3 % | **48,4 %** |
@@ -28,7 +28,8 @@ que subiu o total de 776 para 783 mil caracteres; as colunas v1.0 e v1.1 são da
 de depuração dos scripts saíram da conta (782 mil). Na v1.5 saíram as sobras de japonês depois do NUL de uma
 tradução mais curta nas tabelas (o fim da string original, que o jogo nunca mostra) e os nomes de técnica que o
 CyberLife tirou do lugar no `command.STR`: só isso tira ~1.200 caracteres, e a v1.4 medida assim dá 35,4 % e
-48,4 %. Quase tudo o que o levantamento contava em "outras tabelas" era sobra.
+48,4 %. Quase tudo o que o levantamento contava em "outras tabelas" era sobra. Da v1.6 à v1.8 o trabalho foi
+no texto das imagens, que fica fora da conta: o `survey` da v1.8 dá os mesmos números da v1.5.
 
 A história está toda em português desde a v1.1, mas **ainda falta mais da metade do texto do jogo**. Quase tudo
 está em quatro blocos: falas dos jogadores nas partidas, perfis dos jogadores, subeventos e NPCs.

@@ -20,4 +20,5 @@ Baixado pelo launcher no primeiro uso (não incluído no pacote):
   licenças permissivas (mingw-w64, libc++). https://github.com/mstorsjo/llvm-mingw
   O arquivo é conferido pelo SHA-256 fixado em sdk/toolchain.txt.
 
-Os textos das licenças estão na pasta licenses/.
+Os textos das licenças estão na pasta licenses/ (o do próprio port, MIT, em
+licenses/ie3ogre-recomp.txt).
