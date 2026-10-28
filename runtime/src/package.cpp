@@ -259,16 +259,16 @@ bool bps_apply(const std::vector<uint8_t>& p, const uint8_t* source, size_t sour
     size_t at = 0;
     uint64_t want_source = 0, target = 0;
     if (!bps_header(p, at, want_source, target) || target > 0x10000000) {
-        error = "não é um patch BPS válido";
+        error = L("not a valid BPS patch", "não é um patch BPS válido");
         return false;
     }
     size_t end = p.size() - 12;
     if (crc32(p.data(), end + 8) != load32(&p[end + 8])) {
-        error = "o patch está danificado (CRC)";
+        error = L("the patch is damaged (CRC)", "o patch está danificado (CRC)");
         return false;
     }
     if (want_source != source_size || crc32(source, source_size) != load32(&p[end])) {
-        error = "o patch é para outra versão desse arquivo (o original não confere)";
+        error = L("the patch is for another version of that file (the original does not match)", "o patch é para outra versão desse arquivo (o original não confere)");
         return false;
     }
     out.reserve(size_t(target));
@@ -301,7 +301,7 @@ bool bps_apply(const std::vector<uint8_t>& p, const uint8_t* source, size_t sour
         }
     }
     if (at != end || out.size() != target || crc32(out.data(), out.size()) != load32(&p[end + 4])) {
-        error = "o patch está danificado";
+        error = L("the patch is damaged", "o patch está danificado");
         return false;
     }
     return true;
@@ -338,7 +338,7 @@ bool ModPackage::open(const std::string& path, std::string& error) {
         entries_.push_back(std::move(e));
     }
     if (ec) {
-        error = "não foi possível ler a pasta (" + ec.message() + ")";
+        error = L("could not read the folder (", "não foi possível ler a pasta (") + ec.message() + ")";
         return false;
     }
     return true;
@@ -347,7 +347,7 @@ bool ModPackage::open(const std::string& path, std::string& error) {
 bool ModPackage::open_zip(const std::string& path, std::string& error) {
     zip_ = map_file(path, zip_size_);
     if (!zip_) {
-        error = "não foi possível abrir o arquivo";
+        error = L("could not open the file", "não foi possível abrir o arquivo");
         return false;
     }
     // End of central directory: the last 22 bytes plus up to 64 KiB of comment.
@@ -357,12 +357,12 @@ bool ModPackage::open_zip(const std::string& path, std::string& error) {
         if (load32(p) == 0x06054B50) eocd = p;
     }
     if (!eocd) {
-        error = "não é um .zip válido";
+        error = L("not a valid .zip", "não é um .zip válido");
         return false;
     }
     uint32_t count = load16(eocd + 10), cd_size = load32(eocd + 12), cd_off = load32(eocd + 16);
     if (count == 0xFFFF || cd_off == 0xFFFFFFFF || uint64_t(cd_off) + cd_size > zip_size_) {
-        error = "formato de .zip não suportado (zip64) ou arquivo danificado";
+        error = L("unsupported .zip format (zip64) or damaged file", "formato de .zip não suportado (zip64) ou arquivo danificado");
         return false;
     }
     std::vector<Entry> all;
@@ -370,13 +370,13 @@ bool ModPackage::open_zip(const std::string& path, std::string& error) {
     const uint8_t* end = p + cd_size;
     for (uint32_t i = 0; i < count; i++) {
         if (p + 46 > end || load32(p) != 0x02014B50) {
-            error = "o .zip está danificado";
+            error = L("the .zip is damaged", "o .zip está danificado");
             return false;
         }
         uint16_t flags = load16(p + 8), method = load16(p + 10);
         uint16_t name_len = load16(p + 28), extra_len = load16(p + 30), comment_len = load16(p + 32);
         if (p + 46 + name_len > end) {
-            error = "o .zip está danificado";
+            error = L("the .zip is damaged", "o .zip está danificado");
             return false;
         }
         Entry e;
@@ -391,16 +391,16 @@ bool ModPackage::open_zip(const std::string& path, std::string& error) {
         std::replace(e.path.begin(), e.path.end(), '\\', '/');
         if (e.path.empty() || e.path.back() == '/') continue;  // a folder
         if (flags & 1) {
-            error = "o .zip tem senha (" + e.path + ")";
+            error = L("the .zip has a password (", "o .zip tem senha (") + e.path + ")";
             return false;
         }
         if (local + 30 > zip_size_ || load32(zip_ + local) != 0x04034B50) {
-            error = "o .zip está danificado (" + e.path + ")";
+            error = L("the .zip is damaged (", "o .zip está danificado (") + e.path + ")";
             return false;
         }
         e.offset = local + 30 + load16(zip_ + local + 26) + load16(zip_ + local + 28);
         if (e.offset + e.packed > zip_size_) {
-            error = "o .zip está danificado (" + e.path + ")";
+            error = L("the .zip is damaged (", "o .zip está danificado (") + e.path + ")";
             return false;
         }
         all.push_back(std::move(e));
@@ -441,13 +441,13 @@ bool ModPackage::read(const Entry& e, std::vector<uint8_t>& out, std::string& er
     if (!zip_) {
         FILE* f = open_file(fs_path(e.file), "rb");
         if (!f) {
-            error = "não foi possível ler " + e.path;
+            error = L("could not read ", "não foi possível ler ") + e.path;
             return false;
         }
         out.resize(e.size);
         bool ok = std::fread(out.data(), 1, out.size(), f) == out.size();
         std::fclose(f);
-        if (!ok) error = "não foi possível ler " + e.path;
+        if (!ok) error = L("could not read ", "não foi possível ler ") + e.path;
         return ok;
     }
     if (e.method == 0) {
@@ -455,15 +455,15 @@ bool ModPackage::read(const Entry& e, std::vector<uint8_t>& out, std::string& er
     } else if (e.method == 8) {
         out.reserve(e.size);
         if (!inflate(zip_ + e.offset, e.packed, out)) {
-            error = e.path + " está danificado no .zip";
+            error = e.path + L(" is damaged in the .zip", " está danificado no .zip");
             return false;
         }
     } else {
-        error = e.path + ": compressão do .zip não suportada (use \"Deflate\" ou nenhuma)";
+        error = e.path + L(": unsupported .zip compression (use \"Deflate\" or none)", ": compressão do .zip não suportada (use \"Deflate\" ou nenhuma)");
         return false;
     }
     if (out.size() != e.size || crc32(out.data(), out.size()) != e.crc) {
-        error = e.path + " está danificado no .zip (CRC)";
+        error = e.path + L(" is damaged in the .zip (CRC)", " está danificado no .zip (CRC)");
         return false;
     }
     return true;

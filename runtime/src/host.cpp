@@ -433,7 +433,7 @@ void change_slot(int delta) {
     g_host.state_slot = (g_host.state_slot - 1 + delta + kStateSlots) % kStateSlots + 1;
     std::string text = "Slot " + std::to_string(g_host.state_slot);
     std::string held = savestate_describe(g_host.state_slot);
-    if (held.empty()) text += " (vazio)";
+    if (held.empty()) text += L(" (empty)", " (vazio)");
     else if (std::isdigit(uint8_t(held[0]))) text += ": " + held;
     show_toast(text);
 }
@@ -928,6 +928,7 @@ bool host_init() {
     } else {
         config_load("", g_host.config);  // defaults only
     }
+    set_language(g_host.config);  // the pause menu's and the messages' language
     const Config& config = g_host.config;
     int scale_3d = int(env_u64("NTR_3D_SCALE"));
     if (scale_3d <= 0) scale_3d = headless && !config_env ? 1 : config.get_int("video", "resolution_3d", 1, kMax3dScale);
@@ -1126,7 +1127,7 @@ void update_rewind() {
     g_host.rewinding = true;
     if (!back && !g_host.rewind_end) {
         g_host.rewind_end = true;
-        show_toast("Rewind: nada mais para voltar");
+        show_toast(L("Rewind: nothing more to go back", "Rewind: nada mais para voltar"));
     }
 }
 

@@ -28,28 +28,30 @@ SettingsOptions g_options;
 std::string g_status;
 
 struct ActionInfo {
-    const char* key;    // in boej.ini
-    const char* label;  // for the player
+    const char* key;  // in boej.ini
+    const char* en;   // for the player, in English and in Portuguese
+    const char* pt;
+    const char* label() const { return L(en, pt); }
 };
 const ActionInfo kButtons[] = {
-    {"A", "A"}, {"B", "B"}, {"X", "X"}, {"Y", "Y"}, {"L", "L"}, {"R", "R"},
-    {"START", "Start"}, {"SELECT", "Select"}, {"UP", "Cima"}, {"DOWN", "Baixo"},
-    {"LEFT", "Esquerda"}, {"RIGHT", "Direita"},
+    {"A", "A", "A"}, {"B", "B", "B"}, {"X", "X", "X"}, {"Y", "Y", "Y"}, {"L", "L", "L"}, {"R", "R", "R"},
+    {"START", "Start", "Start"}, {"SELECT", "Select", "Select"}, {"UP", "Up", "Cima"}, {"DOWN", "Down", "Baixo"},
+    {"LEFT", "Left", "Esquerda"}, {"RIGHT", "Right", "Direita"},
 };
 const ActionInfo kShortcuts[] = {
-    {"menu", "Menu de pausa"},
-    {"fast_forward", "Acelerar (segurar)"},
-    {"fast_forward_toggle", "Acelerar (liga/desliga)"},
-    {"turbo", "A automático (segurar)"},
-    {"turbo_toggle", "A automático (liga/desliga)"},
-    {"screenshot", "Captura de tela"},
-    {"debug_dump", "Registrar problema"},
-    {"fullscreen", "Tela cheia"},
-    {"save_state", "Salvar savestate"},
-    {"load_state", "Carregar savestate"},
-    {"state_slot_prev", "Slot anterior"},
-    {"state_slot_next", "Próximo slot"},
-    {"rewind", "Voltar no tempo (segurar)"},
+    {"menu", "Pause menu", "Menu de pausa"},
+    {"fast_forward", "Fast-forward (hold)", "Acelerar (segurar)"},
+    {"fast_forward_toggle", "Fast-forward (toggle)", "Acelerar (liga/desliga)"},
+    {"turbo", "Auto-A (hold)", "A automático (segurar)"},
+    {"turbo_toggle", "Auto-A (toggle)", "A automático (liga/desliga)"},
+    {"screenshot", "Screenshot", "Captura de tela"},
+    {"debug_dump", "Report a problem", "Registrar problema"},
+    {"fullscreen", "Fullscreen", "Tela cheia"},
+    {"save_state", "Save savestate", "Salvar savestate"},
+    {"load_state", "Load savestate", "Carregar savestate"},
+    {"state_slot_prev", "Previous slot", "Slot anterior"},
+    {"state_slot_next", "Next slot", "Próximo slot"},
+    {"rewind", "Rewind (hold)", "Voltar no tempo (segurar)"},
 };
 
 // A binding being captured. It keeps its own config pointer: the capture ends in an event,
@@ -64,7 +66,8 @@ struct Capture {
 Capture g_capture;
 
 void save() {
-    g_status = config_save(g_path, *g_config) ? "Salvo no boej.ini." : "Não foi possível gravar o boej.ini.";
+    g_status = config_save(g_path, *g_config) ? L("Saved to boej.ini.", "Salvo no boej.ini.")
+                                               : L("Could not write boej.ini.", "Não foi possível gravar o boej.ini.");
     if (g_options.on_change) g_options.on_change();
 }
 
@@ -135,14 +138,20 @@ std::string pad_button_name(int button) {
 // What the position names mean, for the tooltip: "east" is the right button of the
 // diamond whatever its label.
 std::string describe_pad(const std::string& value) {
-    static const std::pair<const char*, const char*> kNames[] = {
-        {"south", "botão de baixo (A no Xbox, B no Nintendo)"}, {"east", "botão da direita (B no Xbox, A no Nintendo)"},
-        {"west", "botão da esquerda (X no Xbox, Y no Nintendo)"}, {"north", "botão de cima (Y no Xbox, X no Nintendo)"},
+    static const struct {
+        const char* name;
+        const char* en;
+        const char* pt;
+    } kNames[] = {
+        {"south", "bottom button (A on Xbox, B on Nintendo)", "botão de baixo (A no Xbox, B no Nintendo)"},
+        {"east", "right button (B on Xbox, A on Nintendo)", "botão da direita (B no Xbox, A no Nintendo)"},
+        {"west", "left button (X on Xbox, Y on Nintendo)", "botão da esquerda (X no Xbox, Y no Nintendo)"},
+        {"north", "top button (Y on Xbox, X on Nintendo)", "botão de cima (Y no Xbox, X no Nintendo)"},
     };
     std::string out;
     for (const std::string& item : split(value)) {
-        for (const auto& [name, desc] : kNames) {
-            if (SDL_strcasecmp(item.c_str(), name) == 0) out += (out.empty() ? "" : "\n") + item + ": " + desc;
+        for (const auto& n : kNames) {
+            if (SDL_strcasecmp(item.c_str(), n.name) == 0) out += (out.empty() ? "" : "\n") + item + ": " + L(n.en, n.pt);
         }
     }
     return out;
@@ -213,7 +222,7 @@ void checkbox_row(const char* label, const char* hint, const char* section, cons
     row(label, hint);
     bool value = g_config->get_bool(section, key);
     ImGui::PushID(key);
-    if (ImGui::Checkbox(value ? "Ligado" : "Desligado", &value)) set(section, key, value ? "true" : "false");
+    if (ImGui::Checkbox(value ? L("On", "Ligado") : L("Off", "Desligado"), &value)) set(section, key, value ? "true" : "false");
     ImGui::PopID();
 }
 
@@ -249,25 +258,26 @@ bool segmented(const char* a, const char* b, bool& value) {
 void binding_button(const ActionInfo& action, bool gamepad) {
     const char* section = gamepad ? "gamepad" : "keyboard";
     std::string value = g_config->get(section, action.key);
-    std::string text = value.empty() ? "(nenhuma)" : pretty_list(value);
+    std::string text = value.empty() ? L("(none)", "(nenhuma)") : pretty_list(value);
     ImGui::PushID(section);
     ImGui::PushID(action.key);
     ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0, 0.5f));
     if (value.empty()) ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-    if (ImGui::Button(text.c_str(), ImVec2(-FLT_MIN, 0))) g_capture = {true, gamepad, false, action.key, action.label};
+    if (ImGui::Button(text.c_str(), ImVec2(-FLT_MIN, 0))) g_capture = {true, gamepad, false, action.key, action.label()};
     if (value.empty()) ImGui::PopStyleColor();
     ImGui::PopStyleVar();
     if (ImGui::IsItemHovered()) {
         std::string about = gamepad ? describe_pad(value) : "";
-        ImGui::SetTooltip("%s", about.empty() ? "Clique para trocar" : (about + "\n\nClique para trocar").c_str());
+        const char* change = L("Click to change", "Clique para trocar");
+        ImGui::SetTooltip("%s", about.empty() ? change : (about + "\n\n" + change).c_str());
     }
     ImGui::PopID();
     ImGui::PopID();
 }
 
 void bindings_page(const char* id, const ActionInfo* actions, size_t count) {
-    segmented("Teclado", "Controle", g_gamepad_view);
-    const char* hint = "Clique numa ação para trocar.";
+    segmented(L("Keyboard", "Teclado"), L("Controller", "Controle"), g_gamepad_view);
+    const char* hint = L("Click an action to change it.", "Clique numa ação para trocar.");
     float right_edge = ImGui::GetCursorScreenPos().x + ImGui::GetContentRegionAvail().x;
     if (ImGui::GetItemRectMax().x + ImGui::GetStyle().ItemSpacing.x + ImGui::CalcTextSize(hint).x <= right_edge) {
         ImGui::SameLine();
@@ -277,7 +287,7 @@ void bindings_page(const char* id, const ActionInfo* actions, size_t count) {
     ImGui::Spacing();
     if (!begin_rows(id)) return;
     for (size_t i = 0; i < count; i++) {
-        row(actions[i].label);
+        row(actions[i].label());
         binding_button(actions[i], g_gamepad_view);
     }
     end_rows();
@@ -291,23 +301,25 @@ void capture_popup() {
                                ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar)) {
         const char* section = g_capture.gamepad ? "gamepad" : "keyboard";
         std::string current = g_config ? g_config->get(section, g_capture.key) : "";
-        ImGui::TextDisabled("%s  ·  %s", g_capture.gamepad ? "Controle" : "Teclado", g_capture.label.c_str());
+        ImGui::TextDisabled("%s  ·  %s", g_capture.gamepad ? L("Controller", "Controle") : L("Keyboard", "Teclado"),
+                            g_capture.label.c_str());
         ImGui::Spacing();
         push_font_size(1.25f);
-        ImGui::TextUnformatted(g_capture.gamepad ? "Aperte um botão ou mova um eixo" : "Aperte uma tecla");
+        ImGui::TextUnformatted(g_capture.gamepad ? L("Press a button or move an axis", "Aperte um botão ou mova um eixo")
+                                                  : L("Press a key", "Aperte uma tecla"));
         ImGui::PopFont();
         ImGui::Spacing();
-        ImGui::TextDisabled("Atual: %s", current.empty() ? "(nenhuma)" : pretty_list(current).c_str());
-        ImGui::Checkbox("Manter as atuais e adicionar esta", &g_capture.append);
+        ImGui::TextDisabled("%s %s", L("Current:", "Atual:"), current.empty() ? L("(none)", "(nenhuma)") : pretty_list(current).c_str());
+        ImGui::Checkbox(L("Keep the current ones and add this one", "Manter as atuais e adicionar esta"), &g_capture.append);
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
-        if (ImGui::Button("Remover todas")) {
+        if (ImGui::Button(L("Remove all", "Remover todas"))) {
             g_capture.active = false;
             set(section, g_capture.key.c_str(), "");
         }
         ImGui::SameLine();
-        if (ImGui::Button("Cancelar (Esc)")) g_capture.active = false;
+        if (ImGui::Button(L("Cancel (Esc)", "Cancelar (Esc)"))) g_capture.active = false;
         if (!g_capture.active) ImGui::CloseCurrentPopup();
         ImGui::EndPopup();
     }
@@ -330,11 +342,12 @@ void load_font(float scale) {
     io.Fonts->AddFontDefault(&config);
 }
 
-// A confirmation popup; true when confirmed.
+// A confirmation popup, opened with OpenPopup(id) and titled `yes`; true when confirmed.
 bool confirm(const char* id, const char* text, const char* yes) {
     bool ok = false;
     ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-    if (ImGui::BeginPopupModal(id, nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
+    std::string title = std::string(yes) + "###" + id;
+    if (ImGui::BeginPopupModal(title.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
         ImGui::TextUnformatted(text);
         ImGui::Spacing();
         if (ImGui::Button(yes)) {
@@ -342,7 +355,7 @@ bool confirm(const char* id, const char* text, const char* yes) {
             ImGui::CloseCurrentPopup();
         }
         ImGui::SameLine();
-        if (ImGui::Button("Cancelar")) ImGui::CloseCurrentPopup();
+        if (ImGui::Button(L("Cancel", "Cancelar"))) ImGui::CloseCurrentPopup();
         ImGui::EndPopup();
     }
     return ok;
@@ -456,13 +469,14 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
         }
         ImGui::Spacing();
     }
-    ImGui::TextDisabled("CONFIGURAÇÕES");
+    ImGui::TextDisabled("%s", L("SETTINGS", "CONFIGURAÇÕES"));
     struct Entry {
         Page page;
         const char* label;
     };
-    const Entry kPages[] = {{Page::Video, "Vídeo"}, {Page::Audio, "Áudio"}, {Page::Buttons, "Controles"},
-                            {Page::Shortcuts, "Atalhos"}, {Page::Launcher, "Launcher"}};
+    const Entry kPages[] = {{Page::Video, L("Video", "Vídeo")}, {Page::Audio, L("Audio", "Áudio")},
+                            {Page::Buttons, L("Controls", "Controles")}, {Page::Shortcuts, L("Shortcuts", "Atalhos")},
+                            {Page::Launcher, "Launcher"}};
     for (const Entry& e : kPages) {
         if (in_game && e.page == Page::Launcher) continue;
         if (ImGui::Selectable(e.label, g_page == e.page, 0, ImVec2(0, ImGui::GetFrameHeight()))) g_page = e.page;
@@ -485,36 +499,44 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
             options.draw_extra_page();
             break;
         case Page::Video: {
-            page_title("Vídeo", nullptr);
+            page_title(L("Video", "Vídeo"), nullptr);
             if (!begin_rows("video")) break;
             bool wide = config.get_bool("video", "wide_layout");
-            row("Layout", wide ? "As duas telas num canto e a de baixo ampliada ao lado."
-                               : "As duas telas uma sobre a outra, como no DS.");
+            row("Layout", wide ? L("Both screens in a corner and the bottom one enlarged beside them.",
+                                   "As duas telas num canto e a de baixo ampliada ao lado.")
+                               : L("One screen above the other, like on the DS.", "As duas telas uma sobre a outra, como no DS."));
             int layout = wide ? 0 : 1;
-            const char* kLayouts[] = {"Tela larga (16:9)", "Telas empilhadas"};
+            const char* kLayouts[] = {L("Widescreen (16:9)", "Tela larga (16:9)"), L("Stacked screens", "Telas empilhadas")};
             if (ImGui::Combo("##layout", &layout, kLayouts, 2)) set("video", "wide_layout", layout == 0 ? "true" : "false");
             if (wide) {
-                row("Telas pequenas", "De que lado ficam as duas telas; a de baixo ampliada vai para o outro.");
+                row(L("Small screens", "Telas pequenas"),
+                    L("Which side the two screens go on; the enlarged bottom screen takes the other.",
+                      "De que lado ficam as duas telas; a de baixo ampliada vai para o outro."));
                 int side = SDL_strcasecmp(config.get("video", "wide_side").c_str(), "right") == 0;
-                const char* kSides[] = {"À esquerda", "À direita"};
+                const char* kSides[] = {L("On the left", "À esquerda"), L("On the right", "À direita")};
                 if (ImGui::Combo("##side", &side, kSides, 2)) set("video", "wide_side", side ? "right" : "left");
             } else {
-                row("Tamanho da janela");
+                row(L("Window size", "Tamanho da janela"));
                 slider_setting("##scale", "video", "window_scale", 1, 6, [](int scale) {
                     char label[48];
                     std::snprintf(label, sizeof label, "%d× (%d×%d)", scale, 256 * scale, 384 * scale);
                     return std::string(label);
                 });
-                checkbox_row("Só múltiplos inteiros", "Pixels todos do mesmo tamanho; pode sobrar borda preta.", "video",
-                             "integer_scale");
+                checkbox_row(L("Integer multiples only", "Só múltiplos inteiros"),
+                             L("Every pixel the same size; may leave black borders.",
+                               "Pixels todos do mesmo tamanho; pode sobrar borda preta."),
+                             "video", "integer_scale");
             }
-            checkbox_row(in_game ? "Tela cheia" : "Abrir em tela cheia", "O atalho de tela cheia também alterna.", "video", "fullscreen");
-            row("Resolução do 3D",
-                "Mais alta fica mais nítida e pesa mais. Acima de 4× precisa de um processador com vários núcleos.");
+            checkbox_row(in_game ? L("Fullscreen", "Tela cheia") : L("Start in fullscreen", "Abrir em tela cheia"),
+                         L("The fullscreen shortcut also toggles it.", "O atalho de tela cheia também alterna."), "video",
+                         "fullscreen");
+            row(L("3D resolution", "Resolução do 3D"),
+                L("Higher is sharper and heavier. Above 4× it needs a processor with several cores.",
+                  "Mais alta fica mais nítida e pesa mais. Acima de 4× precisa de um processador com vários núcleos."));
             int res = config.get_int("video", "resolution_3d", 1, 10);
             auto res_label = [](int n) {
                 char label[32];
-                if (n == 1) std::snprintf(label, sizeof label, "1× (nativa)");
+                if (n == 1) std::snprintf(label, sizeof label, "%s", L("1× (native)", "1× (nativa)"));
                 else std::snprintf(label, sizeof label, "%d× (%d×%d)", n, 256 * n, 192 * n);
                 return std::string(label);
             };
@@ -524,15 +546,15 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
                 }
                 ImGui::EndCombo();
             }
-            row("Filtro de ampliação");
+            row(L("Scaling filter", "Filtro de ampliação"));
             int filter = SDL_strcasecmp(config.get("video", "filter").c_str(), "linear") == 0;
-            const char* kFilters[] = {"Nítido (pixels)", "Suavizado"};
+            const char* kFilters[] = {L("Sharp (pixels)", "Nítido (pixels)"), L("Smooth", "Suavizado")};
             if (ImGui::Combo("##filter", &filter, kFilters, 2)) set("video", "filter", filter ? "linear" : "nearest");
             end_rows();
             break;
         }
         case Page::Audio: {
-            page_title("Áudio", nullptr);
+            page_title(L("Audio", "Áudio"), nullptr);
             if (!begin_rows("audio")) break;
             row("Volume");
             slider_setting("##volume", "audio", "volume", 0, 100,
@@ -541,13 +563,15 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
             break;
         }
         case Page::Buttons:
-            page_title("Controles", "Os botões do DS.");
+            page_title(L("Controls", "Controles"), L("The DS buttons.", "Os botões do DS."));
             bindings_page("buttons", kButtons, std::size(kButtons));
             break;
         case Page::Shortcuts:
-            page_title("Atalhos", "Funções extras do port.");
+            page_title(L("Shortcuts", "Atalhos"), L("Extra features of the port.", "Funções extras do port."));
             if (begin_rows("speed")) {
-                row("Velocidade ao acelerar", "Se o processador não aguentar, vai o mais rápido que ele conseguir.");
+                row(L("Fast-forward speed", "Velocidade ao acelerar"),
+                    L("If the processor cannot keep up, it goes as fast as it can.",
+                      "Se o processador não aguentar, vai o mais rápido que ele conseguir."));
                 int speed = config.get_int("game", "fast_forward_speed", 2, 10);
                 auto speed_label = [](int n) { return std::to_string(n) + "×"; };
                 if (ImGui::BeginCombo("##ffspeed", speed_label(speed).c_str())) {
@@ -556,11 +580,14 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
                     }
                     ImGui::EndCombo();
                 }
-                checkbox_row("Voltar no tempo (rewind)", "Segurar o atalho volta o jogo alguns segundos.", "game", "rewind");
+                checkbox_row(L("Rewind", "Voltar no tempo (rewind)"),
+                             L("Holding the shortcut takes the game back a few seconds.",
+                               "Segurar o atalho volta o jogo alguns segundos."),
+                             "game", "rewind");
                 if (config.get_bool("game", "rewind")) {
-                    row("Quanto dá para voltar", "Mais tempo usa mais memória.");
+                    row(L("How far back", "Quanto dá para voltar"), L("More time uses more memory.", "Mais tempo usa mais memória."));
                     int seconds = config.get_int("game", "rewind_seconds", 5, 120);
-                    auto seconds_label = [](int n) { return std::to_string(n) + " segundos"; };
+                    auto seconds_label = [](int n) { return std::to_string(n) + L(" seconds", " segundos"); };
                     if (ImGui::BeginCombo("##rewind", seconds_label(seconds).c_str())) {
                         for (int n : {10, 20, 30, 60, 120}) {
                             if (ImGui::Selectable(seconds_label(n).c_str(), n == seconds)) set("game", "rewind_seconds", std::to_string(n));
@@ -576,10 +603,24 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
         case Page::Launcher:
             page_title("Launcher", nullptr);
             if (!begin_rows("launcher")) break;
-            checkbox_row("Procurar atualizações ao abrir", nullptr, "launcher", "check_updates");
-            checkbox_row("Fechar o launcher ao abrir o jogo", nullptr, "launcher", "close_on_play");
+            {
+                // Both names in both languages: someone who does not read the current one still finds it.
+                row(L("Language (Idioma)", "Idioma (Language)"),
+                    L("Of the launcher and the pause menu. The game's own text does not change.",
+                      "Do launcher e do menu de pausa. O texto do jogo não muda."));
+                int lang = language() == Language::Portuguese;
+                const char* kLanguages[] = {"English", "Português (Brasil)"};
+                if (ImGui::Combo("##language", &lang, kLanguages, 2)) {
+                    set_language(lang ? Language::Portuguese : Language::English);
+                    set("ui", "language", lang ? "pt" : "en");
+                }
+            }
+            checkbox_row(L("Check for updates on start", "Procurar atualizações ao abrir"), nullptr, "launcher", "check_updates");
+            checkbox_row(L("Close the launcher when the game starts", "Fechar o launcher ao abrir o jogo"), nullptr, "launcher",
+                         "close_on_play");
             if (config.get_bool("launcher", "close_on_play"))
-                checkbox_row("Não reabrir ao fechar o jogo", nullptr, "launcher", "stay_closed");
+                checkbox_row(L("Do not reopen when the game closes", "Não reabrir ao fechar o jogo"), nullptr, "launcher",
+                             "stay_closed");
             end_rows();
             break;
     }
@@ -589,12 +630,15 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
         ImGui::EndGroup();
         return;
     }
-    if (ImGui::Button("Restaurar o padrão")) ImGui::OpenPopup("Restaurar");
-    if (confirm("Restaurar", "Voltar todas as configurações e controles ao padrão?", "Restaurar")) {
+    if (ImGui::Button(L("Restore defaults", "Restaurar o padrão"))) ImGui::OpenPopup("restore");
+    if (confirm("restore", L("Reset all settings and controls to the defaults?", "Voltar todas as configurações e controles ao padrão?"),
+                L("Restore", "Restaurar"))) {
+        std::string lang = config.get("ui", "language");  // the language is not a setting to reset by accident
         config_load("", config);
+        config.set("ui", "language", lang);
         save();
     }
-    const char* status = g_status.empty() ? "Tudo é salvo na hora." : g_status.c_str();
+    const char* status = g_status.empty() ? L("Everything is saved right away.", "Tudo é salvo na hora.") : g_status.c_str();
     ImGui::SameLine();
     if (ImGui::CalcTextSize(status).x <= ImGui::GetContentRegionAvail().x) {  // left out when it does not fit
         ImGui::AlignTextToFramePadding();
@@ -616,55 +660,64 @@ PauseAction pause_menu(Config& config, const std::string& path, const SettingsOp
     ImVec2 size(std::min(vp->WorkSize.x * 0.92f, em * 52), std::min(vp->WorkSize.y * 0.92f, em * 36));
     ImGui::SetNextWindowPos(vp->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
     ImGui::SetNextWindowSize(size, ImGuiCond_Always);
-    ImGui::Begin("Jogo pausado", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings);
+    ImGui::Begin("pause", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings);
 
     SettingsOptions menu = options;
     menu.nav_top = [&] {
         push_font_size(1.5f);
-        ImGui::TextUnformatted("Pausado");
+        ImGui::TextUnformatted(L("Paused", "Pausado"));
         ImGui::PopFont();
         ImGui::Spacing();
         push_accent();
-        if (ImGui::Button("Continuar", ImVec2(-FLT_MIN, ImGui::GetFrameHeight() * 1.3f))) action = PauseAction::Resume;
+        if (ImGui::Button(L("Resume", "Continuar"), ImVec2(-FLT_MIN, ImGui::GetFrameHeight() * 1.3f))) action = PauseAction::Resume;
         pop_accent();
         ImGui::Spacing();
         ImGui::Spacing();
     };
     menu.nav_bottom_height = 2;
     menu.nav_bottom = [&] {
-        if (ImGui::Button("Reiniciar", ImVec2(-FLT_MIN, 0))) ImGui::OpenPopup("Reiniciar");
-        if (ImGui::Button("Sair do jogo", ImVec2(-FLT_MIN, 0))) ImGui::OpenPopup("Sair");
-        if (confirm("Reiniciar", "Voltar à tela de título? O progresso desde o último save será perdido.", "Reiniciar")) {
+        if (ImGui::Button(L("Reset", "Reiniciar"), ImVec2(-FLT_MIN, 0))) ImGui::OpenPopup("restart");
+        if (ImGui::Button(L("Quit game", "Sair do jogo"), ImVec2(-FLT_MIN, 0))) ImGui::OpenPopup("quit");
+        if (confirm("restart",
+                    L("Go back to the title screen? Progress since the last save will be lost.",
+                      "Voltar à tela de título? O progresso desde o último save será perdido."),
+                    L("Reset", "Reiniciar"))) {
             action = PauseAction::Restart;
         }
-        if (confirm("Sair", "Fechar o jogo? O progresso desde o último save será perdido.", "Sair")) action = PauseAction::Quit;
+        if (confirm("quit",
+                    L("Close the game? Progress since the last save will be lost.",
+                      "Fechar o jogo? O progresso desde o último save será perdido."),
+                    L("Quit", "Sair"))) {
+            action = PauseAction::Quit;
+        }
     };
     menu.extra_page = "Savestates";
     menu.draw_extra_page = [&] {
-        page_title("Savestates", "O jogo exatamente como está agora, para voltar a este ponto depois.");
+        page_title("Savestates", L("The game exactly as it is now, to come back to this point later.",
+                                   "O jogo exatamente como está agora, para voltar a este ponto depois."));
         if (!begin_rows("states")) return;
         for (size_t i = 0; i < states.size(); i++) {
             std::string name = "Slot " + std::to_string(i + 1);
-            row(name.c_str(), states[i].empty() ? "Vazio" : states[i].c_str());
+            row(name.c_str(), states[i].empty() ? L("Empty", "Vazio") : states[i].c_str());
             ImGui::PushID(int(i));
             float w = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) / 2;
-            if (ImGui::Button("Salvar", ImVec2(w, 0))) {
+            if (ImGui::Button(L("Save", "Salvar"), ImVec2(w, 0))) {
                 if (states[i].empty()) {
                     action = PauseAction::SaveState;
                     slot = int(i) + 1;
                 } else {
-                    ImGui::OpenPopup("Substituir");
+                    ImGui::OpenPopup("replace");
                 }
             }
             ImGui::SameLine();
             ImGui::BeginDisabled(!loadable[i]);
-            if (ImGui::Button("Carregar", ImVec2(w, 0))) {
+            if (ImGui::Button(L("Load", "Carregar"), ImVec2(w, 0))) {
                 action = PauseAction::LoadState;
                 slot = int(i) + 1;
             }
             ImGui::EndDisabled();
-            std::string question = "Substituir o savestate do " + name + "?";
-            if (confirm("Substituir", question.c_str(), "Substituir")) {
+            std::string question = L("Replace the savestate in ", "Substituir o savestate do ") + name + "?";
+            if (confirm("replace", question.c_str(), L("Replace", "Substituir"))) {
                 action = PauseAction::SaveState;
                 slot = int(i) + 1;
             }
@@ -672,8 +725,10 @@ PauseAction pause_menu(Config& config, const std::string& path, const SettingsOp
         }
         end_rows();
         ImGui::Spacing();
-        ImGui::TextWrapped("Cada slot é um arquivo na pasta savestates, ao lado do jogo. Os atalhos (em Atalhos) "
-                           "salvam e carregam no slot escolhido. O save do próprio jogo não é alterado ao carregar.");
+        ImGui::TextWrapped("%s", L("Each slot is a file in the savestates folder, next to the game. The shortcuts (under "
+                                   "Shortcuts) save and load the chosen slot. Loading does not change the game's own save.",
+                                   "Cada slot é um arquivo na pasta savestates, ao lado do jogo. Os atalhos (em Atalhos) "
+                                   "salvam e carregam no slot escolhido. O save do próprio jogo não é alterado ao carregar."));
     };
     settings_panel(config, path, menu);
     ImGui::End();

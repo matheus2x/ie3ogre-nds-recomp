@@ -295,11 +295,11 @@ void refresh() {
 void install(const std::string& source) {
     fs::path from = ntr::fs_path(source);
     std::string name = ntr::utf8_string(from.filename());
-    set_status("Adicionando " + name + "...");
+    set_status(L("Adding ", "Adicionando ") + name + "...");
     std::error_code ec;
     bool folder = fs::is_directory(from, ec);
     if (!folder && !is_zip_name(name)) {
-        set_status("Um mod é uma pasta ou um .zip.", true);
+        set_status(L("A mod is a folder or a .zip.", "Um mod é uma pasta ou um .zip."), true);
         return;
     }
     ntr::ModPackage package;
@@ -309,7 +309,7 @@ void install(const std::string& source) {
         return;
     }
     if (!package.find("mod.ini")) {
-        set_status(name + " não é um mod: falta o mod.ini (veja docs/MODS.md).", true);
+        set_status(name + L(" is not a mod: it has no mod.ini (see docs/MODS.md).", " não é um mod: falta o mod.ini (veja docs/MODS.md)."), true);
         return;
     }
     if (folder) {
@@ -319,7 +319,7 @@ void install(const std::string& source) {
     }
     fs::path mods = ntr::fs_path(paths().mods()), target = mods / ntr::fs_path(name), tmp = mods / ".copiando";
     if (fs::equivalent(from, target, ec)) {
-        set_status(name + " já está na pasta mods.");
+        set_status(name + L(" is already in the mods folder.", " já está na pasta mods."));
         return;
     }
     fs::create_directories(mods, ec);
@@ -337,7 +337,7 @@ void install(const std::string& source) {
     }
     if (ec) {
         fs::remove_all(tmp, ec);
-        set_status("Não foi possível copiar o mod para a pasta mods: " + ec.message(), true);
+        set_status(L("Could not copy the mod to the mods folder: ", "Não foi possível copiar o mod para a pasta mods: ") + ec.message(), true);
         return;
     }
     // Other copies of the same mod (another version, another file name) give it their place.
@@ -355,12 +355,16 @@ void install(const std::string& source) {
     if (!older.empty() || replaced) {
         std::string from;
         for (const std::string& folder : older) from += (from.empty() ? "" : ", ") + folder;
-        set_status("Mod atualizado: " + name + (added.version.empty() ? "" : " (versão " + added.version + ")") +
-                   (from.empty() ? "" : "; " + from + " foi apagado da pasta mods e o novo fica no lugar dele") +
-                   ". O original não foi alterado.");
+        set_status(L("Mod updated: ", "Mod atualizado: ") + name +
+                   (added.version.empty() ? "" : L(" (version ", " (versão ") + added.version + ")") +
+                   (from.empty() ? "" : "; " + from + L(" was deleted from the mods folder and the new one takes its place",
+                                                         " foi apagado da pasta mods e o novo fica no lugar dele")) +
+                   L(". The original was not changed.", ". O original não foi alterado."));
         return;
     }
-    set_status("Mod adicionado: " + name + " (copiado para a pasta mods; o original não foi alterado). Ligue-o na lista.");
+    set_status(L("Mod added: ", "Mod adicionado: ") + name +
+               L(" (copied to the mods folder; the original was not changed). Turn it on in the list.",
+                 " (copiado para a pasta mods; o original não foi alterado). Ligue-o na lista."));
 }
 
 bool write_file(const fs::path& path, const std::vector<uint8_t>& data) {
@@ -376,23 +380,25 @@ bool write_file(const fs::path& path, const std::vector<uint8_t>& data) {
 // The game's check (shown in the list) then tells whether only data changed.
 void mod_from_dump(const std::string& dump) {
     std::string stem = ntr::utf8_string(ntr::fs_path(dump).stem());
-    set_status("Comparando " + stem + " com o jogo original...");
+    set_status(L("Comparing ", "Comparando ") + stem + L(" with the original game...", " com o jogo original..."));
     ntr::RomImage retail, other;
     if (!retail.open(paths().pak())) {
-        set_status("Falta o boej.pak: prepare o jogo antes (aba Jogar).", true);
+        set_status(L("boej.pak is missing: prepare the game first (Play tab).", "Falta o boej.pak: prepare o jogo antes (aba Jogar)."), true);
         return;
     }
     if (!other.open(dump) || other.is_pak()) {
-        set_status("Não foi possível ler " + dump + ".", true);
+        set_status(L("Could not read ", "Não foi possível ler ") + dump + ".", true);
         return;
     }
     if (retail.read32(0x0C) != other.read32(0x0C)) {
-        set_status("Esse dump é de outro jogo (o código não é BOEJ).", true);
+        set_status(L("That dump is of another game (the code is not BOEJ).", "Esse dump é de outro jogo (o código não é BOEJ)."), true);
         return;
     }
     uint32_t arm9_size = retail.read32(0x2C);
     if (other.read32(0x2C) != arm9_size || retail.bytes(retail.read32(0x20), arm9_size) != other.bytes(other.read32(0x20), arm9_size)) {
-        set_status("O código principal (ARM9) desse dump é diferente do original; mods só podem mudar dados.", true);
+        set_status(L("That dump's main code (ARM9) differs from the original; mods can only change data.",
+                     "O código principal (ARM9) desse dump é diferente do original; mods só podem mudar dados."),
+                   true);
         return;
     }
     std::vector<ntr::NitroFile> base = ntr::nitro_files(retail), mine = ntr::nitro_files(other);
@@ -410,7 +416,7 @@ void mod_from_dump(const std::string& dump) {
         std::vector<uint8_t> data = other.bytes(f.start, f.end - f.start);
         if (data == retail.bytes(it->second->start, it->second->end - it->second->start)) continue;
         if (!write_file(tmp / "files" / ntr::fs_path(f.path), data)) {
-            set_status("Não foi possível gravar na pasta mods/.", true);
+            set_status(L("Could not write to the mods/ folder.", "Não foi possível gravar na pasta mods/."), true);
             return;
         }
         files++;
@@ -424,33 +430,36 @@ void mod_from_dump(const std::string& dump) {
         char name[16];
         std::snprintf(name, sizeof name, "ov%03u.bin", ovb[i].id);
         if (!write_file(tmp / "overlays" / name, b)) {
-            set_status("Não foi possível gravar na pasta mods/.", true);
+            set_status(L("Could not write to the mods/ folder.", "Não foi possível gravar na pasta mods/."), true);
             return;
         }
         overlays++;
     }
     if (files == 0 && overlays == 0) {
         fs::remove_all(tmp, ec);
-        set_status("Esse dump não muda nenhum arquivo do jogo.", true);
+        set_status(L("That dump does not change any of the game's files.", "Esse dump não muda nenhum arquivo do jogo."), true);
         return;
     }
-    std::string ini = "; Feito pelo launcher a partir de " + ntr::utf8_string(ntr::fs_path(dump).filename()) +
-                      ".\n[mod]\nname = " + folder + "\nversion = 1.0\nauthor =\ndescription = " + std::to_string(files) +
-                      " arquivos e " + std::to_string(overlays) + " overlays do dump modificado\ngame = BOEJ\n";
+    std::string ini = L("; Made by the launcher from ", "; Feito pelo launcher a partir de ") +
+                      ntr::utf8_string(ntr::fs_path(dump).filename()) + ".\n[mod]\nname = " + folder +
+                      "\nversion = 1.0\nauthor =\ndescription = " + std::to_string(files) + L(" files and ", " arquivos e ") +
+                      std::to_string(overlays) + L(" overlays of the modified dump", " overlays do dump modificado") +
+                      "\ngame = BOEJ\n";
     write_file(tmp / "mod.ini", std::vector<uint8_t>(ini.begin(), ini.end()));
     fs::remove_all(target, ec);
     fs::rename(tmp, target, ec);
     if (ec) {
-        set_status("Não foi possível criar a pasta do mod: " + ec.message(), true);
+        set_status(L("Could not create the mod's folder: ", "Não foi possível criar a pasta do mod: ") + ec.message(), true);
         return;
     }
-    set_status("Mod criado: " + folder + " (" + std::to_string(files) + " arquivos, " + std::to_string(overlays) +
-               " overlays). Ligue-o na lista.");
+    set_status(L("Mod created: ", "Mod criado: ") + folder + " (" + std::to_string(files) + L(" files, ", " arquivos, ") +
+               std::to_string(overlays) + L(" overlays). Turn it on in the list.", " overlays). Ligue-o na lista."));
 }
 
 void choose(SDL_Window* window, bool zip) {
     static const SDL_DialogFileFilter kZip[] = {{"Mod (*.zip)", "zip"}};
-    static const SDL_DialogFileFilter kNds[] = {{"Dump modificado (*.nds)", "nds"}};
+    static SDL_DialogFileFilter kNds[1];  // static: the dialog may read it after this returns
+    kNds[0] = {L("Modified dump (*.nds)", "Dump modificado (*.nds)"), "nds"};
     SDL_ShowOpenFileDialog(
         [](void* is_zip, const char* const* files, int) {
             if (!files || !files[0]) return;
@@ -462,61 +471,69 @@ void choose(SDL_Window* window, bool zip) {
 
 // --- the tab ----------------------------------------------------------------------------
 
+std::string warning_count(size_t n) {
+    return std::to_string(n) + (n == 1 ? L(" warning", " aviso") : L(" warnings", " avisos"));
+}
+
 void details(ModEntry& m) {
     ImGui::TextUnformatted(m.name.c_str());
     if (!m.version.empty()) {
         ImGui::SameLine();
-        ImGui::TextDisabled("versão %s", m.version.c_str());
+        ImGui::TextDisabled(L("version %s", "versão %s"), m.version.c_str());
     }
-    if (!m.author.empty()) ImGui::TextDisabled("por %s", m.author.c_str());
+    if (!m.author.empty()) ImGui::TextDisabled(L("by %s", "por %s"), m.author.c_str());
     if (!m.description.empty()) ImGui::TextWrapped("%s", m.description.c_str());
-    ImGui::TextDisabled("%s: mods/%s", m.zip ? "Arquivo" : "Pasta", m.folder.c_str());
-    if (m.checked) ImGui::TextDisabled("Troca %zu arquivos e %zu overlays.", m.files, m.overlays);
-    for (const std::string& e : m.errors) ImGui::TextColored(ImVec4(1, 0.45f, 0.4f, 1), "Erro: %s", e.c_str());
-    if (!m.warnings.empty() && ImGui::TreeNode("warnings", "%zu aviso%s", m.warnings.size(), m.warnings.size() == 1 ? "" : "s")) {
+    ImGui::TextDisabled("%s: mods/%s", m.zip ? L("File", "Arquivo") : L("Folder", "Pasta"), m.folder.c_str());
+    if (m.checked) ImGui::TextDisabled(L("Replaces %zu files and %zu overlays.", "Troca %zu arquivos e %zu overlays."), m.files, m.overlays);
+    for (const std::string& e : m.errors) ImGui::TextColored(ImVec4(1, 0.45f, 0.4f, 1), L("Error: %s", "Erro: %s"), e.c_str());
+    if (!m.warnings.empty() && ImGui::TreeNode("warnings", "%s", warning_count(m.warnings.size()).c_str())) {
         for (const std::string& w : m.warnings) ImGui::TextColored(ImVec4(0.95f, 0.8f, 0.4f, 1), "%s", w.c_str());
         ImGui::TreePop();
     }
     ImGui::Spacing();
-    if (ImGui::Button(m.zip ? "Mostrar na pasta mods" : "Abrir a pasta do mod"))
+    if (ImGui::Button(m.zip ? L("Show in the mods folder", "Mostrar na pasta mods") : L("Open the mod's folder", "Abrir a pasta do mod")))
         open_folder(m.zip ? paths().mods() : paths().mods() + m.folder);
     ImGui::SameLine();
-    if (ImGui::Button("Remover...")) g_remove = g_selected;
+    if (ImGui::Button(L("Remove...", "Remover..."))) g_remove = g_selected;
 }
 
 // The confirmation of "Remover" (from the list or from the details). Only the copy in mods/
 // goes: a mod added through the launcher was copied there, and its source stays as it was.
 void remove_dialog() {
     if (g_remove >= int(g_mods.size())) g_remove = -1;
-    if (g_remove >= 0 && !ImGui::IsPopupOpen("Remover mod")) ImGui::OpenPopup("Remover mod");
-    if (!ImGui::BeginPopupModal("Remover mod", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+    if (g_remove >= 0 && !ImGui::IsPopupOpen("###remove")) ImGui::OpenPopup("###remove");
+    if (!ImGui::BeginPopupModal(L("Remove mod###remove", "Remover mod###remove"), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         g_remove = -1;
         return;
     }
     ModEntry& m = g_mods[std::max(g_remove, 0)];
-    ImGui::Text("Apagar o mod \"%s\"?", m.name.c_str());
-    ImGui::TextDisabled("%s: mods/%s", m.zip ? "Arquivo" : "Pasta", m.folder.c_str());
+    ImGui::Text(L("Delete the mod \"%s\"?", "Apagar o mod \"%s\"?"), m.name.c_str());
+    ImGui::TextDisabled("%s: mods/%s", m.zip ? L("File", "Arquivo") : L("Folder", "Pasta"), m.folder.c_str());
     ImGui::Spacing();
     ImGui::PushTextWrapPos(ImGui::GetFontSize() * 34);
-    ImGui::TextWrapped("Só a cópia que está na pasta mods do jogo é apagada. Se você adicionou o mod pelo launcher, "
-                       "o arquivo ou a pasta original, de onde ele foi copiado, continua onde estava, sem mudanças.");
+    ImGui::TextWrapped("%s", L("Only the copy in the game's mods folder is deleted. If you added the mod through the launcher, "
+                               "the original file or folder it was copied from stays where it was, unchanged.",
+                               "Só a cópia que está na pasta mods do jogo é apagada. Se você adicionou o mod pelo launcher, "
+                               "o arquivo ou a pasta original, de onde ele foi copiado, continua onde estava, sem mudanças."));
     ImGui::PopTextWrapPos();
-    ImGui::TextDisabled("Os saves não mudam.");
+    ImGui::TextDisabled("%s", L("Saves do not change.", "Os saves não mudam."));
     ImGui::Spacing();
     bool close = false;
-    if (ImGui::Button("Apagar")) {
+    if (ImGui::Button(L("Delete", "Apagar"))) {
         std::error_code ec;
         fs::remove_all(ntr::fs_path(paths().mods() + m.folder), ec);
         m.enabled = false;
         save_enabled();
-        set_status(ec ? "Não foi possível apagar: " + ec.message()
-                      : "Mod removido: " + m.folder + " (só a cópia da pasta mods; o original não foi mexido).",
+        set_status(ec ? L("Could not delete: ", "Não foi possível apagar: ") + ec.message()
+                      : L("Mod removed: ", "Mod removido: ") + m.folder +
+                            L(" (only the copy in the mods folder; the original was not touched).",
+                              " (só a cópia da pasta mods; o original não foi mexido)."),
                    bool(ec));
         g_worker.refresh = true;
         close = true;
     }
     ImGui::SameLine();
-    if (ImGui::Button("Cancelar") || ImGui::IsKeyPressed(ImGuiKey_Escape)) close = true;
+    if (ImGui::Button(L("Cancel", "Cancelar")) || ImGui::IsKeyPressed(ImGuiKey_Escape)) close = true;
     if (close) {
         g_remove = -1;
         ImGui::CloseCurrentPopup();
@@ -592,27 +609,37 @@ void mods_tab(SDL_Window* window) {
         }
     }
 
-    ImGui::TextWrapped("Cada mod é uma pasta ou um .zip dentro da pasta mods, ao lado do jogo: coloque-o lá (ou use "
-                       "\"Adicionar\", ou arraste para esta janela) e ligue-o na lista. Quando dois mods mudam o mesmo "
-                       "arquivo, vale o que está mais abaixo. As mudanças valem na próxima vez que o jogo abrir.");
+    ImGui::TextWrapped("%s", L("Each mod is a folder or a .zip in the mods folder, next to the game: put it there (or use "
+                               "\"Add\", or drag it onto this window) and turn it on in the list. When two mods change the "
+                               "same file, the one further down wins. Changes apply the next time the game starts.",
+                               "Cada mod é uma pasta ou um .zip dentro da pasta mods, ao lado do jogo: coloque-o lá (ou use "
+                               "\"Adicionar\", ou arraste para esta janela) e ligue-o na lista. Quando dois mods mudam o mesmo "
+                               "arquivo, vale o que está mais abaixo. As mudanças valem na próxima vez que o jogo abrir."));
     ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-    ImGui::TextWrapped("Adicionar só copia o mod para a pasta mods do jogo, e Remover só apaga essa cópia: o arquivo ou "
-                       "a pasta original nunca é alterado.");
+    ImGui::TextWrapped("%s", L("Add only copies the mod to the game's mods folder, and Remove only deletes that copy: the "
+                               "original file or folder is never changed.",
+                               "Adicionar só copia o mod para a pasta mods do jogo, e Remover só apaga essa cópia: o arquivo ou "
+                               "a pasta original nunca é alterado."));
     ImGui::PopStyleColor();
     ImGui::Spacing();
-    if (ImGui::Button("Adicionar mod (.zip)...")) choose(window, true);
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("Copia o .zip para a pasta mods do jogo. O arquivo escolhido não é alterado nem movido.");
+    if (ImGui::Button(L("Add mod (.zip)...", "Adicionar mod (.zip)..."))) choose(window, true);
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("%s", L("Copies the .zip to the game's mods folder. The chosen file is not changed or moved.",
+                                  "Copia o .zip para a pasta mods do jogo. O arquivo escolhido não é alterado nem movido."));
+    }
     ImGui::SameLine();
-    if (ImGui::Button("Criar de um dump modificado...")) choose(window, false);
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("Uma tradução ou um hack em .nds vira um mod com os arquivos que ele muda.\n"
-                          "Só funciona se o código do dump for o do jogo original.");
+    if (ImGui::Button(L("Create from a modified dump...", "Criar de um dump modificado..."))) choose(window, false);
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("%s", L("A translation or hack as an .nds becomes a mod with the files it changes.\n"
+                                  "It only works if the dump's code is the original game's.",
+                                  "Uma tradução ou um hack em .nds vira um mod com os arquivos que ele muda.\n"
+                                  "Só funciona se o código do dump for o do jogo original."));
+    }
     ImGui::SameLine();
-    if (ImGui::Button("Abrir a pasta mods")) open_folder(paths().mods());
+    if (ImGui::Button(L("Open the mods folder", "Abrir a pasta mods"))) open_folder(paths().mods());
     ImGui::SameLine();
     ImGui::BeginDisabled(busy);
-    if (ImGui::Button("Atualizar")) g_worker.refresh = true;
+    if (ImGui::Button(L("Refresh", "Atualizar"))) g_worker.refresh = true;
     ImGui::EndDisabled();
     {
         std::lock_guard lock(g_worker.mutex);
@@ -629,9 +656,9 @@ void mods_tab(SDL_Window* window) {
     bool changed = false;
     if (ImGui::BeginTable("mods", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY,
                           ImVec2(0, list_height))) {
-        ImGui::TableSetupColumn("Ligado", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn(L("On", "Ligado"), ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableSetupColumn("Mod", ImGuiTableColumnFlags_WidthStretch);
-        ImGui::TableSetupColumn("Estado", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn(L("Status", "Estado"), ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableSetupScrollFreeze(0, 1);
         ImGui::TableHeadersRow();
         int move_from = -1, move_to = -1;
@@ -652,9 +679,9 @@ void mods_tab(SDL_Window* window) {
                 ImGui::TextDisabled("%s", m.folder.c_str());  // two mods can have the same name
             }
             ImGui::TableNextColumn();
-            if (!m.errors.empty()) ImGui::TextColored(ImVec4(1, 0.45f, 0.4f, 1), "com erro");
-            else if (!m.checked) ImGui::TextDisabled(busy ? "conferindo..." : "-");
-            else if (!m.warnings.empty()) ImGui::TextColored(ImVec4(0.95f, 0.8f, 0.4f, 1), "%zu aviso%s", m.warnings.size(), m.warnings.size() == 1 ? "" : "s");
+            if (!m.errors.empty()) ImGui::TextColored(ImVec4(1, 0.45f, 0.4f, 1), "%s", L("error", "com erro"));
+            else if (!m.checked) ImGui::TextDisabled("%s", busy ? L("checking...", "conferindo...") : "-");
+            else if (!m.warnings.empty()) ImGui::TextColored(ImVec4(0.95f, 0.8f, 0.4f, 1), "%s", warning_count(m.warnings.size()).c_str());
             else ImGui::TextColored(ImVec4(0.6f, 0.85f, 0.6f, 1), "ok");
             ImGui::SameLine();
             ImGui::BeginDisabled(i == 0);
@@ -665,16 +692,18 @@ void mods_tab(SDL_Window* window) {
             if (ImGui::ArrowButton("##down", ImGuiDir_Down)) move_from = i, move_to = i + 1;
             ImGui::EndDisabled();
             ImGui::SameLine();
-            if (ImGui::Button("Remover")) g_remove = i;
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Apaga mods/%s (pede confirmação). O original não é mexido.", m.folder.c_str());
+            if (ImGui::Button(L("Remove", "Remover"))) g_remove = i;
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(L("Deletes mods/%s (asks first). The original is not touched.",
+                                    "Apaga mods/%s (pede confirmação). O original não é mexido."), m.folder.c_str());
+            }
             ImGui::PopID();
         }
         if (g_mods.empty()) {
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::TableNextColumn();
-            ImGui::TextDisabled("Nenhum mod na pasta mods.");
+            ImGui::TextDisabled("%s", L("No mods in the mods folder.", "Nenhum mod na pasta mods."));
         }
         if (move_from >= 0) {
             std::swap(g_mods[move_from], g_mods[move_to]);
@@ -692,7 +721,8 @@ void mods_tab(SDL_Window* window) {
     if (g_selected >= 0 && g_selected < int(g_mods.size())) {
         details(g_mods[g_selected]);
     } else {
-        ImGui::TextDisabled("Escolha um mod na lista para ver os detalhes. Para fazer o seu, veja docs/MODS.md.");
+        ImGui::TextDisabled("%s", L("Pick a mod in the list to see its details. To make your own, see docs/MODS.md.",
+                                    "Escolha um mod na lista para ver os detalhes. Para fazer o seu, veja docs/MODS.md."));
     }
     remove_dialog();
 }

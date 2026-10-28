@@ -11,7 +11,10 @@ ntr::Config g_config;
 
 }  // namespace
 
-void settings_load() { ntr::config_load(paths().config(), g_config); }
+void settings_load() {
+    ntr::config_load(paths().config(), g_config);
+    ntr::set_language(g_config);
+}
 
 const ntr::Config& settings() { return g_config; }
 

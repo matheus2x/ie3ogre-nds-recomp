@@ -316,7 +316,7 @@ std::string modified_text(const fs::directory_entry& entry) {
                std::chrono::duration_cast<std::chrono::system_clock::duration>(when - fs::file_time_type::clock::now());
     std::time_t t = std::chrono::system_clock::to_time_t(sys);
     char text[64];
-    std::strftime(text, sizeof text, "%d/%m/%Y %H:%M", std::localtime(&t));
+    std::strftime(text, sizeof text, L("%Y-%m-%d %H:%M", "%d/%m/%Y %H:%M"), std::localtime(&t));
     return text;
 }
 
@@ -562,7 +562,7 @@ void set_status(const std::string& text, bool error = false) {
 
 void use(const std::string& file) {
     settings_set("game", "save", file);
-    set_status("O jogo vai usar o save " + file + ".");
+    set_status(L("The game will use the save ", "O jogo vai usar o save ") + file + ".");
 }
 
 // --- the card ------------------------------------------------------------------------------
@@ -604,7 +604,10 @@ void card(const SaveInfo& s, bool in_use, SDL_Renderer* renderer, const CardLayo
     auto text_at = [&](float x, float y, ImU32 color, const std::string& text) { dl->AddText(ImVec2(x, y), color, text.c_str()); };
     auto width = [](const std::string& text) { return ImGui::CalcTextSize(text.c_str()).x; };
     const float band_y = band0.y + (band1.y - band0.y - ImGui::GetTextLineHeight()) / 2;
-    std::string title = data ? (s.user.empty() ? "(sem nome)" : s.user) : s.blank ? "Save novo" : !s.valid ? "Arquivo inválido" : "Vazio";
+    std::string title = data       ? (s.user.empty() ? L("(no name)", "(sem nome)") : s.user)
+                        : s.blank  ? L("New save", "Save novo")
+                        : !s.valid ? L("Invalid file", "Arquivo inválido")
+                                   : L("Empty", "Vazio");
     text_at(p.x + (w - width(title)) / 2, band_y, kCardText, title);
     {
         const float small = ImGui::GetFontSize() * 0.8f;
@@ -616,10 +619,11 @@ void card(const SaveInfo& s, bool in_use, SDL_Renderer* renderer, const CardLayo
     float y = band1.y + 4;
     auto row_line = [&](float x0, float x1, float row_y) { dl->AddRectFilled(ImVec2(x0, row_y + l.line - 3), ImVec2(x1, row_y + l.line - 1), kCardDark); };
     if (!data) {
-        std::string message = s.blank ? "Clique para usar e comece um Novo Jogo."
-                              : !s.valid ? "Não parece um save deste jogo."
-                              : s.unknown ? "Save deste jogo, num formato que o launcher não conhece."
-                                          : "O jogo ainda não foi salvo nele.";
+        std::string message = s.blank     ? L("Click to use it and start a New Game.", "Clique para usar e comece um Novo Jogo.")
+                              : !s.valid  ? L("This does not look like a save of this game.", "Não parece um save deste jogo.")
+                              : s.unknown ? L("A save of this game, in a format the launcher does not know.",
+                                              "Save deste jogo, num formato que o launcher não conhece.")
+                                          : L("The game has not been saved to it yet.", "O jogo ainda não foi salvo nele.");
         text_at(p.x + pad + 4, y + l.line / 2, s.valid ? kCardSoft : IM_COL32(255, 160, 150, 255), message);
         ImGui::Dummy(ImVec2(w, l.height));
         return;
@@ -637,19 +641,20 @@ void card(const SaveInfo& s, bool in_use, SDL_Renderer* renderer, const CardLayo
         return right - size.x;
     };
     uint32_t minutes = s.play_frames / 60 / 60;
-    text_at(x0, y + row_y, kCardText, "Nív. Equipe");
+    text_at(x0, y + row_y, kCardText, L("Team Lv.", "Nív. Equipe"));
     number(mid - pad - 8, y, std::to_string(s.level));
-    text_at(mid + 8, y + row_y, kCardText, "Membros");
+    text_at(mid + 8, y + row_y, kCardText, L("Members", "Membros"));
     number(x1, y, std::to_string(s.members));
     row_line(x0 - 4, x1 + 4, y);
     y += l.line;
-    text_at(x0, y + row_y, kCardText, "Tempo de jogo");
+    text_at(x0, y + row_y, kCardText, L("Play time", "Tempo de jogo"));
     float right = x1 - width("Min");
     text_at(right, y + row_y, kCardText, "Min");
     char mm[8];
     std::snprintf(mm, sizeof mm, "%02u", minutes % 60);
-    right = number(right - 6, y, mm) - 8 - width("Horas");
-    text_at(right, y + row_y, kCardText, "Horas");
+    const char* hours = L("Hours", "Horas");
+    right = number(right - 6, y, mm) - 8 - width(hours);
+    text_at(right, y + row_y, kCardText, hours);
     number(right - 6, y, std::to_string(minutes / 60));
     row_line(x0 - 4, x1 + 4, y);
     y += l.line + 6;
@@ -686,33 +691,35 @@ bool new_save(const std::string& file) {
     bool ok = f && std::fwrite(blank.data(), 1, blank.size(), f) == blank.size();
     if (f && std::fclose(f) != 0) ok = false;
     if (!ok) {
-        set_status("Não foi possível criar " + file + " na pasta saves.", true);
+        set_status(L("Could not create ", "Não foi possível criar ") + file + L(" in the saves folder.", " na pasta saves."), true);
         return false;
     }
     NTR_LOG("[launcher] made the blank save %s\n", file.c_str());
-    set_status("Criado o save " + file + ". Clique nele na lista para usar.");
+    set_status(L("Created the save ", "Criado o save ") + file + L(". Click it in the list to use it.", ". Clique nele na lista para usar."));
     g_listing.clear();
     g_listing_time = -10;
     return true;
 }
 
 void new_save_popup() {
-    if (!ImGui::BeginPopupModal("Novo save", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) return;
-    ImGui::TextUnformatted("Nome do save:");
+    if (!ImGui::BeginPopupModal(L("New save###new_save", "Novo save###new_save"), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) return;
+    ImGui::TextUnformatted(L("Save name:", "Nome do save:"));
     if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
     bool enter = ImGui::InputText("##name", g_new_name, sizeof g_new_name, ImGuiInputTextFlags_EnterReturnsTrue);
     std::string base = file_name_for(g_new_name);
     std::string file = base.empty() ? "" : free_name(base);
-    if (!base.empty()) ImGui::TextDisabled("Arquivo: %s", file.c_str());
-    else if (g_new_name[0]) ImGui::TextColored(ImVec4(1, 0.45f, 0.4f, 1), "Use letras ou números no nome.");
-    else ImGui::TextDisabled("Arquivo: <nome>-1.sav (minúsculas, só letras e números)");
-    ImGui::TextDisabled("Cria um save em branco na lista; os outros não mudam.");
+    if (!base.empty()) ImGui::TextDisabled(L("File: %s", "Arquivo: %s"), file.c_str());
+    else if (g_new_name[0]) ImGui::TextColored(ImVec4(1, 0.45f, 0.4f, 1), "%s", L("Use letters or numbers in the name.", "Use letras ou números no nome."));
+    else ImGui::TextDisabled("%s", L("File: <name>-1.sav (lowercase, letters and numbers only)",
+                                     "Arquivo: <nome>-1.sav (minúsculas, só letras e números)"));
+    ImGui::TextDisabled("%s", L("Creates a blank save in the list; the others do not change.",
+                                "Cria um save em branco na lista; os outros não mudam."));
     ImGui::Spacing();
     ImGui::BeginDisabled(base.empty());
-    if ((ImGui::Button("Criar") || (enter && !base.empty())) && new_save(file)) ImGui::CloseCurrentPopup();
+    if ((ImGui::Button(L("Create", "Criar")) || (enter && !base.empty())) && new_save(file)) ImGui::CloseCurrentPopup();
     ImGui::EndDisabled();
     ImGui::SameLine();
-    if (ImGui::Button("Cancelar")) ImGui::CloseCurrentPopup();
+    if (ImGui::Button(L("Cancel", "Cancelar"))) ImGui::CloseCurrentPopup();
     ImGui::EndPopup();
 }
 
@@ -730,17 +737,19 @@ void saves_drop(const std::string& path) {
     fs::path folder = ntr::fs_path(paths().saves());
     fs::create_directories(folder, ec);
     if (fs::equivalent(from.parent_path(), folder, ec)) {
-        set_status(ntr::utf8_string(from.filename()) + " já está na pasta saves.");
+        set_status(ntr::utf8_string(from.filename()) + L(" is already in the saves folder.", " já está na pasta saves."));
         return;
     }
     std::string base = file_name_for(ntr::utf8_string(from.stem()));
     std::string file = free_name(base.empty() ? "save" : base);
     if (!fs::copy_file(from, folder / ntr::fs_path(file), ec)) {
-        set_status("Não foi possível copiar " + path + " para a pasta saves: " + ec.message(), true);
+        set_status(L("Could not copy ", "Não foi possível copiar ") + path + L(" to the saves folder: ", " para a pasta saves: ") +
+                       ec.message(),
+                   true);
         return;
     }
     NTR_LOG("[launcher] copied the save %s to %s\n", path.c_str(), file.c_str());
-    set_status("Importado como " + file + ". Clique nele na lista para usar.");
+    set_status(L("Imported as ", "Importado como ") + file + L(". Click it in the list to use it.", ". Clique nele na lista para usar."));
     g_listing_time = -10;
 }
 
@@ -754,21 +763,26 @@ void saves_update() {
 void saves_tab(SDL_Renderer* renderer) {
     const std::string current = current_save();
 
-    ImGui::TextWrapped("Você pode importar saves dumpados do cartucho ou de outros emuladores: coloque o .sav na pasta "
-                       "saves (ou arraste-o para esta janela). Guarde um backup antes, porque o jogo grava por cima.");
+    ImGui::TextWrapped("%s", L("You can import saves dumped from the cartridge or from other emulators: put the .sav in the "
+                               "saves folder (or drag it onto this window). Keep a backup first, because the game writes over it.",
+                               "Você pode importar saves dumpados do cartucho ou de outros emuladores: coloque o .sav na pasta "
+                               "saves (ou arraste-o para esta janela). Guarde um backup antes, porque o jogo grava por cima."));
     ImGui::Spacing();
     // Tests: IE3_LAUNCHER_NEW_SAVE=<name> opens the "Novo save" box with that name typed.
     static const char* test_name = std::getenv("IE3_LAUNCHER_NEW_SAVE");
-    if (ImGui::Button("Novo save") || test_name) {
+    if (ImGui::Button(L("New save", "Novo save")) || test_name) {
         std::snprintf(g_new_name, sizeof g_new_name, "%s", test_name ? test_name : "");
         test_name = nullptr;
-        ImGui::OpenPopup("Novo save");
+        ImGui::OpenPopup("###new_save");
     }
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Cria na lista um save em branco, com o nome que você escolher");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("%s", L("Creates a blank save in the list, with the name you choose",
+                                  "Cria na lista um save em branco, com o nome que você escolher"));
+    }
     ImGui::SameLine();
-    if (ImGui::Button("Abrir pasta de saves")) open_folder(paths().saves());
+    if (ImGui::Button(L("Open the saves folder", "Abrir pasta de saves"))) open_folder(paths().saves());
     ImGui::SameLine();
-    if (ImGui::Button("Atualizar")) {
+    if (ImGui::Button(L("Refresh", "Atualizar"))) {
         g_listing.clear();
         g_listing_time = -10;
     }
@@ -781,15 +795,17 @@ void saves_tab(SDL_Renderer* renderer) {
 
     bool current_found = std::any_of(g_saves.begin(), g_saves.end(), [&](const SaveInfo& s) { return s.file == current; });
     if (!current_found) {
-        ImGui::TextColored(ImVec4(0.95f, 0.8f, 0.4f, 1), "O save escolhido, %s, ainda não existe:", current.c_str());
-        ImGui::TextWrapped("o jogo começa do zero e cria esse arquivo quando você salvar.");
+        ImGui::TextColored(ImVec4(0.95f, 0.8f, 0.4f, 1), L("The chosen save, %s, does not exist yet:", "O save escolhido, %s, ainda não existe:"),
+                           current.c_str());
+        ImGui::TextWrapped("%s", L("the game starts from scratch and creates that file when you save.",
+                                   "o jogo começa do zero e cria esse arquivo quando você salvar."));
         ImGui::Spacing();
     }
     if (ImGui::BeginTable("saves", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY,
                           ImVec2(0, std::max(ImGui::GetContentRegionAvail().y, 120.0f)))) {
         ImGui::TableSetupColumn("Save", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableSetupColumn("Dados do save", ImGuiTableColumnFlags_WidthStretch);
-        ImGui::TableSetupColumn("Última alteração", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn(L("Save data", "Dados do save"), ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableSetupColumn(L("Last changed", "Última alteração"), ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableSetupScrollFreeze(0, 1);
         ImGui::TableHeadersRow();
         // Every row is a card of the same height, the lightning box and the date centered next to
@@ -819,7 +835,7 @@ void saves_tab(SDL_Renderer* renderer) {
             bool hovered = ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled | ImGuiHoveredFlags_AllowWhenOverlappedByItem);
             if (hovered) {
                 if (s.valid) ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
-                else ImGui::SetTooltip("Este arquivo não é um save deste jogo");
+                else ImGui::SetTooltip("%s", L("This file is not a save of this game", "Este arquivo não é um save deste jogo"));
             }
             if (hovered && s.valid) ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg1, ImGui::GetColorU32(ImVec4(0.3f, 0.34f, 0.42f, 0.35f)));
             // The lightning box: lit on the save in use, faint on the others (a bit more on hover).
@@ -846,7 +862,7 @@ void saves_tab(SDL_Renderer* renderer) {
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::TableNextColumn();
-            ImGui::TextDisabled("Nenhum save (.sav) na pasta saves.");
+            ImGui::TextDisabled("%s", L("No saves (.sav) in the saves folder.", "Nenhum save (.sav) na pasta saves."));
         }
         ImGui::EndTable();
     }

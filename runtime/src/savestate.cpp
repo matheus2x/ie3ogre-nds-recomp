@@ -193,12 +193,12 @@ void save(int slot) {
     std::string error;
     if (!io.ok() || !write_file(slot_path(slot), payload, error)) {
         NTR_LOG("[state] slot %d not saved: %s\n", slot, io.ok() ? error.c_str() : io.error().c_str());
-        g_savestate_message = "Erro ao salvar o slot " + std::to_string(slot);
+        g_savestate_message = L("Error saving slot ", "Erro ao salvar o slot ") + std::to_string(slot);
         return;
     }
     NTR_LOG("[state] slot %d saved (%zu KiB, cycle %llu)\n", slot, payload.size() >> 10,
             (unsigned long long)now_cycles());
-    g_savestate_message = "Slot " + std::to_string(slot) + " salvo";
+    g_savestate_message = "Slot " + std::to_string(slot) + L(" saved", " salvo");
     session_savestate(true, slot);
 }
 
@@ -224,15 +224,15 @@ void load(int slot) {
     std::vector<uint8_t> payload;
     switch (read_file(slot, saved_at, &payload)) {
         case Check::Missing:
-            g_savestate_message = name + " vazio";
+            g_savestate_message = name + L(" empty", " vazio");
             return;
         case Check::Invalid:
             NTR_LOG("[state] slot %d: damaged file\n", slot);
-            g_savestate_message = name + ": arquivo danificado";
+            g_savestate_message = name + L(": damaged file", ": arquivo danificado");
             return;
         case Check::OtherBuild:
             NTR_LOG("[state] slot %d was saved by another build of the game\n", slot);
-            g_savestate_message = name + ": de outra versao do jogo";
+            g_savestate_message = name + L(": from another build of the game", ": de outra versao do jogo");
             return;
         case Check::Ok:
             break;
@@ -240,11 +240,11 @@ void load(int slot) {
     std::string error;
     if (!restore(payload, error)) {
         NTR_LOG("[state] slot %d cannot be loaded: %s\n", slot, error.c_str());
-        g_savestate_message = name + ": arquivo danificado";
+        g_savestate_message = name + L(": damaged file", ": arquivo danificado");
         return;
     }
     NTR_LOG("[state] slot %d loaded (cycle %llu)\n", slot, (unsigned long long)now_cycles());
-    g_savestate_message = name + " carregado";
+    g_savestate_message = name + L(" loaded", " carregado");
     session_savestate(false, slot);
     rewind_clear();
     g_savestate_loaded = true;
@@ -425,13 +425,13 @@ std::string savestate_describe(int slot) {
     uint64_t saved_at = 0;
     switch (read_file(slot, saved_at, nullptr)) {
         case Check::Missing: return "";
-        case Check::Invalid: return "Arquivo danificado";
-        case Check::OtherBuild: return "De outra versão do jogo ou com outros mods";
+        case Check::Invalid: return L("Damaged file", "Arquivo danificado");
+        case Check::OtherBuild: return L("From another build of the game or with other mods", "De outra versão do jogo ou com outros mods");
         case Check::Ok: break;
     }
     std::time_t t = std::time_t(saved_at);
     char text[64];
-    std::strftime(text, sizeof text, "%d/%m/%Y %H:%M:%S", std::localtime(&t));
+    std::strftime(text, sizeof text, L("%Y-%m-%d %H:%M:%S", "%d/%m/%Y %H:%M:%S"), std::localtime(&t));
     return text;
 }
 

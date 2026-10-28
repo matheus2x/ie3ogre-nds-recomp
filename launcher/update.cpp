@@ -84,7 +84,8 @@ void check() {
                            out);
     if (code != 0) {
         NTR_LOG("[update] check failed (%d): %s\n", code, out.c_str());
-        set_state(State::Failed, "Não foi possível consultar as releases (sem internet, ou o repositório ainda não tem releases públicas).");
+        set_state(State::Failed, L("Could not check the releases (no internet, or the repository has no public releases yet).",
+                                  "Não foi possível consultar as releases (sem internet, ou o repositório ainda não tem releases públicas)."));
         return;
     }
     std::string version = strip_v(json_string(out, "tag_name"));
@@ -118,7 +119,8 @@ void check() {
         g_update.state = State::UpToDate;
     } else if (zip_url.empty() || sums_url.empty()) {
         g_update.state = State::Failed;
-        g_update.message = "A versão " + version + " não tem o pacote para " + kPlatform + " ou o sha256sums.txt.";
+        g_update.message = L("Version ", "A versão ") + version + L(" has no package for ", " não tem o pacote para ") + kPlatform +
+                           L(" or no sha256sums.txt.", " ou o sha256sums.txt.");
     } else {
         g_update.state = State::Available;
     }
@@ -156,13 +158,13 @@ bool install(const fs::path& from, std::string& error) {
         fs::remove_all(old, ec);
         if (fs::exists(target)) fs::rename(target, old, ec);
         if (ec) {
-            error = "não foi possível substituir " + ntr::utf8_string(target) + ": " + ec.message();
+            error = L("could not replace ", "não foi possível substituir ") + ntr::utf8_string(target) + ": " + ec.message();
             return false;
         }
         fs::rename(entry.path(), target, ec);
         if (ec) {
             fs::rename(old, target, ec);
-            error = "não foi possível instalar " + ntr::utf8_string(target);
+            error = L("could not install ", "não foi possível instalar ") + ntr::utf8_string(target);
             return false;
         }
     }
@@ -187,7 +189,7 @@ void download_and_install() {
     std::string error, zip = dir + zip_name, sums = dir + "sha256sums.txt";
     g_update.progress = 0;
     if (!download(sums_url, sums, 0, error) || !download(zip_url, zip, zip_size, error)) {
-        set_state(State::Failed, "O download falhou: " + error);
+        set_state(State::Failed, L("The download failed: ", "O download falhou: ") + error);
         return;
     }
     std::string expected;
@@ -203,7 +205,8 @@ void download_and_install() {
     std::string actual = ntr::sha256_file(zip);
     if (expected.empty() || actual != expected) {
         NTR_LOG("[update] %s: SHA-256 %s, expected %s\n", zip_name.c_str(), actual.c_str(), expected.c_str());
-        set_state(State::Failed, "O pacote baixado não confere com o sha256sums.txt. Nada foi alterado.");
+        set_state(State::Failed, L("The downloaded package does not match sha256sums.txt. Nothing was changed.",
+                                  "O pacote baixado não confere com o sha256sums.txt. Nada foi alterado."));
         return;
     }
     std::string out;
@@ -214,11 +217,11 @@ void download_and_install() {
 #endif
     fs::path unpacked = ntr::fs_path(dir) / "ie3ogre-recomp";
     if (code != 0 || !fs::is_directory(unpacked)) {
-        set_state(State::Failed, "Não foi possível extrair o pacote: " + out);
+        set_state(State::Failed, L("Could not extract the package: ", "Não foi possível extrair o pacote: ") + out);
         return;
     }
     if (!install(unpacked, error)) {
-        set_state(State::Failed, "A instalação falhou (" + error + ").");
+        set_state(State::Failed, L("The installation failed (", "A instalação falhou (") + error + ").");
         return;
     }
     fs::remove_all(ntr::fs_path(dir), ec);
@@ -277,7 +280,7 @@ bool update_available() {
 }
 
 void update_ui() {
-    ImGui::Text("Versão instalada: %s", LAUNCHER_VERSION);
+    ImGui::Text(L("Installed version: %s", "Versão instalada: %s"), LAUNCHER_VERSION);
     ImGui::TextDisabled("Releases: github.com/%s", repo().c_str());
     ImGui::Spacing();
     std::unique_lock lock(g_update.mutex);
@@ -286,10 +289,10 @@ void update_ui() {
         case State::Idle:
             break;
         case State::Checking:
-            ImGui::TextUnformatted("Procurando...");
+            ImGui::TextUnformatted(L("Checking...", "Procurando..."));
             break;
         case State::UpToDate:
-            ImGui::TextUnformatted("Você está na versão mais recente.");
+            ImGui::TextUnformatted(L("You have the latest version.", "Você está na versão mais recente."));
             break;
         case State::Failed:
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 0.45f, 0.4f, 1));
@@ -297,23 +300,28 @@ void update_ui() {
             ImGui::PopStyleColor();
             break;
         case State::Available:
-            ImGui::Text("Versão nova disponível: %s (%s)", g_update.version.c_str(), format_bytes(g_update.zip_size).c_str());
-            if (ImGui::Button("Baixar e instalar")) {
+            ImGui::Text(L("New version available: %s (%s)", "Versão nova disponível: %s (%s)"), g_update.version.c_str(),
+                        format_bytes(g_update.zip_size).c_str());
+            if (ImGui::Button(L("Download and install", "Baixar e instalar"))) {
                 g_update.state = State::Downloading;
                 std::thread(download_and_install).detach();
             }
             ImGui::SameLine();
-            if (ImGui::Button("Ver as novidades")) SDL_OpenURL(g_update.page.c_str());
-            ImGui::TextDisabled("Seus dados (boej.pak, saves, configurações) ficam como estão.");
+            if (ImGui::Button(L("What's new", "Ver as novidades"))) SDL_OpenURL(g_update.page.c_str());
+            ImGui::TextDisabled("%s", L("Your data (boej.pak, saves, settings) stays as it is.",
+                                        "Seus dados (boej.pak, saves, configurações) ficam como estão."));
             break;
         case State::Downloading:
-            ImGui::Text("Baixando a versão %s...", g_update.version.c_str());
+            ImGui::Text(L("Downloading version %s...", "Baixando a versão %s..."), g_update.version.c_str());
             ImGui::ProgressBar(float(g_update.progress.load()));
             break;
         case State::Installed:
-            ImGui::Text("A versão %s foi instalada.", g_update.version.c_str());
-            ImGui::TextWrapped("Reinicie o launcher. O jogo será compilado de novo para a versão nova (o dump não é necessário).");
-            if (ImGui::Button("Reiniciar o launcher")) {
+            ImGui::Text(L("Version %s was installed.", "A versão %s foi instalada."), g_update.version.c_str());
+            ImGui::TextWrapped("%s", L("Restart the launcher. The game will be compiled again for the new version (the dump is "
+                                       "not needed).",
+                                       "Reinicie o launcher. O jogo será compilado de novo para a versão nova (o dump não é "
+                                       "necessário)."));
+            if (ImGui::Button(L("Restart the launcher", "Reiniciar o launcher"))) {
                 lock.unlock();
                 start_process({paths().launcher()}, paths().root);
                 std::exit(0);
@@ -322,7 +330,7 @@ void update_ui() {
     }
     if (state != State::Checking && state != State::Downloading && state != State::Installed) {
         if (lock.owns_lock()) lock.unlock();
-        if (ImGui::Button("Procurar atualizações")) update_check_start();
+        if (ImGui::Button(L("Check for updates", "Procurar atualizações"))) update_check_start();
     }
 }
 

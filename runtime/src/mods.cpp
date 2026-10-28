@@ -137,10 +137,10 @@ Mod scan_mod(const std::string& folder, const std::map<std::string, const NitroF
     std::error_code ec;
     fs::path where = fs_path(mods_dir() + folder);
     if (!fs::is_directory(where, ec) && !(is_zip_name(folder) && fs::is_regular_file(where, ec))) {
-        mod.errors.push_back("não existe em mods/ (uma pasta ou um .zip)");
+        mod.errors.push_back(L("not in mods/ (a folder or a .zip)", "não existe em mods/ (uma pasta ou um .zip)"));
         return mod;
     }
-    if (folder.find(',') != std::string::npos) mod.errors.push_back("o nome não pode ter vírgula");
+    if (folder.find(',') != std::string::npos) mod.errors.push_back(L("the name cannot have a comma", "o nome não pode ter vírgula"));
     std::string error;
     if (!mod.package->open(mods_dir() + folder, error)) {
         mod.errors.push_back(error);
@@ -153,7 +153,7 @@ Mod scan_mod(const std::string& folder, const std::map<std::string, const NitroF
         mod.errors.push_back("falta o mod.ini");
     } else if (ini_parse(std::string(bytes.begin(), bytes.end()), folder + "/mod.ini", ini),
                ini.get("mod", "game") != "" && ini.get("mod", "game") != "BOEJ") {
-        mod.errors.push_back("o mod é para outro jogo (" + ini.get("mod", "game") + ")");
+        mod.errors.push_back(L("the mod is for another game (", "o mod é para outro jogo (") + ini.get("mod", "game") + ")");
     }
     mod.version = ini.get("mod", "version");
     uint64_t h = fnv(0xCBF29CE484222325ull, folder.data(), folder.size());
@@ -164,14 +164,14 @@ Mod scan_mod(const std::string& folder, const std::map<std::string, const NitroF
         bool patch = ends_with(lpath, ".bps");
         std::string target = patch ? lpath.substr(0, lpath.size() - 4) : lpath;
         if (auto [it, fresh] = targets.emplace(target, e.path); !fresh) {
-            mod.errors.push_back(it->second + " e " + e.path + " trocam o mesmo arquivo (deixe só um)");
+            mod.errors.push_back(it->second + L(" and ", " e ") + e.path + L(" replace the same file (keep only one)", " trocam o mesmo arquivo (deixe só um)"));
             continue;
         }
         if (lpath.rfind("files/", 0) == 0) {
             std::string rel = e.path.substr(6, e.path.size() - 6 - (patch ? 4 : 0));
             auto found = by_path.find(lower(rel));
             if (found == by_path.end()) {
-                mod.warnings.push_back(e.path + " não existe no jogo (ignorado)");
+                mod.warnings.push_back(e.path + L(" is not in the game (ignored)", " não existe no jogo (ignorado)"));
                 continue;
             }
             if (patch) {
@@ -183,11 +183,11 @@ Mod scan_mod(const std::string& folder, const std::map<std::string, const NitroF
                     continue;
                 }
                 if (!bps_sizes(*bytes, source, size) || size == 0 || size > 0x10000000) {
-                    mod.errors.push_back(e.path + " não é um patch BPS válido");
+                    mod.errors.push_back(e.path + L(" is not a valid BPS patch", " não é um patch BPS válido"));
                     continue;
                 }
                 if (nf.end < nf.start || source != nf.end - nf.start) {
-                    mod.errors.push_back(e.path + ": o patch é para outra versão desse arquivo");
+                    mod.errors.push_back(e.path + L(": the patch is for another version of that file", ": o patch é para outra versão desse arquivo"));
                     continue;
                 }
                 if (verify) {
@@ -204,7 +204,7 @@ Mod scan_mod(const std::string& folder, const std::map<std::string, const NitroF
                 continue;
             }
             if (e.size == 0 || e.size > 0x10000000) {
-                mod.errors.push_back(e.path + (e.size ? " é maior que 256 MiB" : " está vazio"));
+                mod.errors.push_back(e.path + (e.size ? L(" is larger than 256 MiB", " é maior que 256 MiB") : L(" is empty", " está vazio")));
                 continue;
             }
             if (verify && pkg.is_zip() && !pkg.read(e, bytes, error)) {
@@ -213,7 +213,7 @@ Mod scan_mod(const std::string& folder, const std::map<std::string, const NitroF
             }
             const uint8_t* data = pkg.direct(e);
             if (!data && !pkg.is_zip()) {
-                mod.errors.push_back("não foi possível ler " + e.path);
+                mod.errors.push_back(L("could not read ", "não foi possível ler ") + e.path);
                 continue;
             }
             mod.files.push_back({found->second->path, found->second->id, uint32_t(e.size), data, &e, nullptr});
@@ -234,29 +234,30 @@ Mod scan_mod(const std::string& folder, const std::map<std::string, const NitroF
             std::snprintf(module, sizeof module, "ov%03u", id);
             const ModuleEntry* code = module_named(module);
             if (id == kProtectedOverlay) {
-                mod.errors.push_back(e.path + ": a overlay da proteção contra cópia não pode ser trocada");
+                mod.errors.push_back(e.path + L(": the copy protection overlay cannot be replaced", ": a overlay da proteção contra cópia não pode ser trocada"));
                 continue;
             }
             if (ov == overlays.end() || !code) {
-                mod.errors.push_back(e.path + ": o jogo não tem a overlay " + std::to_string(id));
+                mod.errors.push_back(e.path + L(": the game has no overlay ", ": o jogo não tem a overlay ") + std::to_string(id));
                 continue;
             }
             std::vector<uint8_t> retail = nitro_overlay_image(rom_image(), *ov);
             std::vector<uint8_t> image;
             if (!pkg.read(e, image, error) || image.empty() || retail.empty()) {
-                mod.errors.push_back(image.empty() && error.empty() ? "não foi possível ler " + e.path : error);
+                mod.errors.push_back(image.empty() && error.empty() ? L("could not read ", "não foi possível ler ") + e.path : error);
                 continue;
             }
             if (patch) {
                 std::vector<uint8_t> bytes = std::move(image);
                 if (!bps_apply(bytes, retail.data(), retail.size(), image, error) || image.empty()) {
-                    mod.errors.push_back(e.path + ": " + (error.empty() ? "o patch não tem nada" : error));
+                    mod.errors.push_back(e.path + ": " + (error.empty() ? std::string(L("the patch is empty", "o patch não tem nada")) : error));
                     continue;
                 }
             }
             if (image.size() > retail.size() + 0x10000) {
-                mod.errors.push_back(e.path + " é bem maior que a original (" + std::to_string(image.size()) +
-                                     " bytes, a original tem " + std::to_string(retail.size()) + ")");
+                mod.errors.push_back(e.path + L(" is much larger than the original (", " é bem maior que a original (") +
+                                     std::to_string(image.size()) + L(" bytes, the original has ", " bytes, a original tem ") +
+                                     std::to_string(retail.size()) + ")");
                 continue;
             }
             uint32_t ram_size = uint32_t(std::max(image.size(), retail.size()));
@@ -273,18 +274,18 @@ Mod scan_mod(const std::string& folder, const std::map<std::string, const NitroF
                 }
             }
             if (!changed.empty()) {
-                mod.errors.push_back(e.path + " muda o código do jogo em " + changed +
-                                     " (só os dados das overlays podem mudar)");
+                mod.errors.push_back(e.path + L(" changes the game's code at ", " muda o código do jogo em ") + changed +
+                                     L(" (only the overlays' data can change)", " (só os dados das overlays podem mudar)"));
                 continue;
             }
             h = fnv(h, name.data(), name.size());
             h = fnv(h, image.data(), image.size());
             mod.overlays.push_back({size_t(ov - overlays.begin()), id, std::move(image), ram_size});
         } else if (lpath.find('/') != std::string::npos) {
-            mod.warnings.push_back(e.path + " fica fora de files/ e overlays/ (ignorado)");
+            mod.warnings.push_back(e.path + L(" is outside files/ and overlays/ (ignored)", " fica fora de files/ e overlays/ (ignorado)"));
         }  // files next to mod.ini (a readme, a picture) are not for the game
     }
-    if (mod.files.empty() && mod.overlays.empty() && mod.errors.empty()) mod.warnings.push_back("o mod não muda nada");
+    if (mod.files.empty() && mod.overlays.empty() && mod.errors.empty()) mod.warnings.push_back(L("the mod changes nothing", "o mod não muda nada"));
     mod.fingerprint = h;
     return mod;
 }
@@ -298,7 +299,8 @@ Mod scan(const std::string& folder, const std::map<std::string, const NitroFile*
     } catch (const std::exception& e) {
         Mod mod;
         mod.folder = folder;
-        mod.errors.push_back("não foi possível ler o mod (o boej.ini está em UTF-8?): " + std::string(e.what()));
+        mod.errors.push_back(L("could not read the mod (is boej.ini in UTF-8?): ", "não foi possível ler o mod (o boej.ini está em UTF-8?): ") +
+                                 std::string(e.what()));
         return mod;
     }
 }
@@ -332,15 +334,15 @@ void resolve(std::vector<Mod>& mods, std::map<uint16_t, const ModFile*>& files,
         if (!mod.errors.empty()) continue;
         for (const ModFile& f : mod.files) {
             if (auto it = file_owner.find(f.id); it != file_owner.end()) {
-                mod.warnings.push_back(f.path + " também está em " + it->second + "; vale o deste mod");
+                mod.warnings.push_back(f.path + L(" is also in ", " também está em ") + it->second + L("; this mod's wins", "; vale o deste mod"));
             }
             file_owner[f.id] = mod.folder;
             files[f.id] = &f;
         }
         for (const ModOverlay& o : mod.overlays) {
             if (auto it = overlay_owner.find(o.index); it != overlay_owner.end()) {
-                mod.warnings.push_back("a overlay " + std::to_string(o.id) + " também está em " + it->second +
-                                       "; vale a deste mod");
+                mod.warnings.push_back(L("overlay ", "a overlay ") + std::to_string(o.id) + L(" is also in ", " também está em ") +
+                                       it->second + L("; this mod's wins", "; vale a deste mod"));
             }
             overlay_owner[o.index] = mod.folder;
             overlays[o.index] = &o;
@@ -472,13 +474,14 @@ uint64_t mods_fingerprint() { return g_fingerprint; }
 //   error <folder> <message>     /    warning <folder> <message>
 int mods_check(const std::string& pak_path) {
     log_disable_file();
-    if (!rom_load(pak_path)) {
-        std::printf("fatal\t\tnão foi possível abrir %s\n", pak_path.c_str());
-        return 1;
-    }
     Config config;
     const char* config_env = std::getenv("NTR_CONFIG");
     config_load(config_env ? config_env : host_base_path() + "boej.ini", config);
+    set_language(config);  // the launcher shows these messages
+    if (!rom_load(pak_path)) {
+        std::printf("fatal\t\t%s %s\n", L("could not open", "não foi possível abrir"), pak_path.c_str());
+        return 1;
+    }
     std::vector<std::string> enabled = enabled_list(config);
     Game game = read_game();
 

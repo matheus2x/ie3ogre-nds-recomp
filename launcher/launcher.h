@@ -30,6 +30,8 @@ struct SDL_Window;
 
 namespace launcher {
 
+using ntr::L;  // the text in the launcher's language (ntr/common.h)
+
 #ifndef LAUNCHER_VERSION
 #define LAUNCHER_VERSION "0.0.0-dev"
 #endif

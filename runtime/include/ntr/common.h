@@ -70,6 +70,15 @@ bool config_write_default(const std::string& path);
 // and order kept).
 bool config_save(const std::string& path, const Config& config);
 
+// The language of the launcher and of the game's pause menu ([ui] language): English by
+// default, or Brazilian Portuguese. The game's own text is not affected.
+enum class Language { English, Portuguese };
+void set_language(Language language);
+void set_language(const Config& config);  // from [ui] language
+Language language();
+// The text in the current language: L("Play", "Jogar").
+inline const char* L(const char* en, const char* pt) { return language() == Language::Portuguese ? pt : en; }
+
 // --- hashes (hash.cpp) ----------------------------------------------------------------
 
 class Sha1 {

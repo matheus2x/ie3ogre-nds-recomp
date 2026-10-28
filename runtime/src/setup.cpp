@@ -82,7 +82,8 @@ bool write_pak(const uint8_t* rom, uint64_t size, const std::string& sha1, const
     tmp += ".tmp";
     FILE* f = open_file(tmp, "wb");
     if (!f) {
-        error = "Não foi possível criar " + utf8_string(tmp) + ". Coloque o jogo numa pasta em que dê para gravar.";
+        error = L("Could not create ", "Não foi possível criar ") + utf8_string(tmp) +
+                L(". Put the game in a folder you can write to.", ". Coloque o jogo numa pasta em que dê para gravar.");
         return false;
     }
     static const uint8_t kZeros[kAlign] = {};
@@ -104,7 +105,7 @@ bool write_pak(const uint8_t* rom, uint64_t size, const std::string& sha1, const
     if (ok) std::filesystem::rename(tmp, final_path, ec);
     if (!ok || ec) {
         std::filesystem::remove(tmp, ec);
-        error = "Não foi possível gravar " + path + " (o disco está cheio?).";
+        error = L("Could not write ", "Não foi possível gravar ") + path + L(" (is the disk full?).", " (o disco está cheio?).");
         return false;
     }
     return true;
@@ -139,13 +140,15 @@ std::string sha1_file(const std::string& path, const std::function<void(double)>
 std::string dump_problem(const std::string& sha1) {
     const KnownDump* known = find_dump(sha1);
     if (!known) {
-        return "Este arquivo não é um dump conhecido de Inazuma Eleven 3 - The Ogre (BOEJ).\n\n"
-               "SHA-1: " + sha1 + "\nEsperado: " + supported_dump().sha1 +
-               "\n\nFaça o dump do seu cartucho sem modificações.";
+        return L("This file is not a known dump of Inazuma Eleven 3 - The Ogre (BOEJ).\n\nSHA-1: ",
+                 "Este arquivo não é um dump conhecido de Inazuma Eleven 3 - The Ogre (BOEJ).\n\nSHA-1: ") +
+               sha1 + L("\nExpected: ", "\nEsperado: ") + supported_dump().sha1 +
+               L("\n\nDump your cartridge without modifications.", "\n\nFaça o dump do seu cartucho sem modificações.");
     }
     if (!known->supported) {
-        return std::string("Este dump é uma versão modificada (") + known->variant +
-               ") que ainda não é suportada.\n\nUse o dump do cartucho original, sem modificações.";
+        return std::string(L("This dump is a modified version (", "Este dump é uma versão modificada (")) + known->variant +
+               L(") that is not supported yet.\n\nUse the dump of the original cartridge, without modifications.",
+                 ") que ainda não é suportada.\n\nUse o dump do cartucho original, sem modificações.");
     }
     return "";
 }
@@ -155,7 +158,7 @@ bool pak_create(const std::string& nds_path, const std::string& pak_path, std::s
     uint64_t size = 0;
     const uint8_t* rom = map_file(nds_path, size);
     if (!rom) {
-        error = "Não foi possível ler " + nds_path + ".";
+        error = L("Could not read ", "Não foi possível ler ") + nds_path + ".";
         return false;
     }
     NTR_LOG("[setup] checking %s (%llu bytes)\n", nds_path.c_str(), (unsigned long long)size);

@@ -4,6 +4,7 @@
 // are comments. The built-in defaults below are the same text the host writes on the
 // first windowed run, and they are read first, so a file missing some keys (an older
 // version, or keys deleted by hand) still gets the defaults for those.
+#include <atomic>
 #include <cctype>
 #include <cstdio>
 #include <fstream>
@@ -58,6 +59,11 @@ save = boej.sav
 ; cuida desta lista.
 [mods]
 enabled =
+
+; Idioma do launcher e do menu de pausa do jogo: en (inglês) ou pt (português do Brasil).
+; O texto do jogo não muda (para isso, os mods de tradução).
+[ui]
+language = en
 
 ; Opções do launcher (o jogo ignora esta seção).
 [launcher]
@@ -170,6 +176,8 @@ void parse(std::istream& in, bool user, Config& out) {
     }
 }
 
+std::atomic<Language> g_language{Language::English};
+
 const Config& defaults() {
     static const Config config = [] {
         Config c;
@@ -253,6 +261,21 @@ void Config::set(const std::string& section, const std::string& key, const std::
     e.value = value;
     if (!e.line) e.line = -1;  // changed by the launcher: no longer the default
 }
+
+void set_language(Language language) { g_language = language; }
+
+void set_language(const Config& config) {
+    const Config::Entry* e = config.find("ui", "language");
+    std::string v = e ? lower(e->value) : "";
+    if (v.rfind("pt", 0) == 0 || v.rfind("por", 0) == 0) {
+        set_language(Language::Portuguese);
+        return;
+    }
+    if (e && !v.empty() && v.rfind("en", 0) != 0) config.warn(*e, "\"" + e->value + "\" is not en or pt");
+    set_language(Language::English);
+}
+
+Language language() { return g_language; }
 
 bool config_save(const std::string& path, const Config& config) {
     std::istringstream defaults(kDefaultConfig);

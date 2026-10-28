@@ -98,12 +98,14 @@ void on_dump(const std::string& path) {
 }
 
 void choose_dump(SDL_Window* window) {
-    static const SDL_DialogFileFilter kFilters[] = {{"Dump de Nintendo DS (*.nds)", "nds"}, {"Todos os arquivos", "*"}};
+    static SDL_DialogFileFilter filters[2];  // static: the dialog may read it after this returns
+    filters[0] = {L("Nintendo DS dump (*.nds)", "Dump de Nintendo DS (*.nds)"), "nds"};
+    filters[1] = {L("All files", "Todos os arquivos"), "*"};
     SDL_ShowOpenFileDialog(
         [](void*, const char* const* files, int) {
             if (files && files[0]) on_dump(files[0]);
         },
-        nullptr, window, kFilters, 2, nullptr, false);
+        nullptr, window, filters, 2, nullptr, false);
 }
 
 void play(SDL_Window* window) {
@@ -161,7 +163,7 @@ void job_view() {
         ImGui::TextWrapped("%s", g_job.error.c_str());
         ImGui::PopStyleColor();
     }
-    if (ImGui::CollapsingHeader("Detalhes")) {
+    if (ImGui::CollapsingHeader(L("Details###details", "Detalhes###details"))) {
         ImGui::BeginChild("log", ImVec2(0, 160), ImGuiChildFlags_Borders);
         for (const std::string& line : g_job.log) ImGui::TextUnformatted(line.c_str());
         if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY()) ImGui::SetScrollHereY(1.0f);
@@ -169,17 +171,38 @@ void job_view() {
     }
 }
 
+// The language, at the right of the subtitle (also under Settings > Launcher): the launcher
+// starts in English, and a player who does not read it finds the choice at once.
+void language_picker() {
+    const char* label = "Language / Idioma";
+    const char* kLanguages[] = {"English", "Português (Brasil)"};
+    float combo = ImGui::CalcTextSize(kLanguages[1]).x + ImGui::GetFrameHeight() + ImGui::GetStyle().FramePadding.x * 2;
+    float width = ImGui::CalcTextSize(label).x + ImGui::GetStyle().ItemInnerSpacing.x + combo;
+    ImGui::SameLine(std::max(ImGui::GetCursorPosX(), ImGui::GetWindowContentRegionMax().x - width));
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextDisabled("%s", label);
+    ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
+    ImGui::SetNextItemWidth(combo);
+    int lang = ntr::language() == ntr::Language::Portuguese;
+    if (ImGui::Combo("##language", &lang, kLanguages, 2)) {
+        ntr::set_language(lang ? ntr::Language::Portuguese : ntr::Language::English);
+        settings_set("ui", "language", lang ? "pt" : "en");
+    }
+}
+
 void play_tab(SDL_Window* window) {
     ImGui::PushFont(nullptr, ImGui::GetStyle().FontSizeBase * 1.5f);
     ImGui::TextUnformatted("Inazuma Eleven 3: Sekai heno Chousen!! The Ogre");
     ImGui::PopFont();
-    ImGui::TextDisabled("Port nativo por recompilação estática. Versão %s.", LAUNCHER_VERSION);
+    ImGui::TextDisabled(L("Native port through static recompilation. Version %s.",
+                          "Port nativo por recompilação estática. Versão %s."), LAUNCHER_VERSION);
+    language_picker();
     ImGui::Separator();
     ImGui::Spacing();
 
     if (g_job.running) {
         job_view();
-        if (ImGui::Button("Cancelar")) g_job.cancel = true;
+        if (ImGui::Button(L("Cancel", "Cancelar"))) g_job.cancel = true;
         return;
     }
     {
@@ -198,48 +221,66 @@ void play_tab(SDL_Window* window) {
     const ImVec2 big(260, 54);
     switch (r) {
         case Readiness::NoSdk:
-            ImGui::TextWrapped("Esta pasta não tem o sdk/. Baixe a release completa, ou gere o SDK com "
-                               "\"python3 tools/build.py --sdk\" numa cópia do código-fonte.");
+            ImGui::TextWrapped("%s", L("This folder has no sdk/. Download the full release, or make the SDK with "
+                                       "\"python3 tools/build.py --sdk\" in a copy of the source code.",
+                                       "Esta pasta não tem o sdk/. Baixe a release completa, ou gere o SDK com "
+                                       "\"python3 tools/build.py --sdk\" numa cópia do código-fonte."));
             break;
         case Readiness::NeedsDump:
-            ImGui::TextWrapped("Para jogar, o launcher precisa do dump do SEU cartucho (.nds, código BOEJ, sem modificações). "
-                               "Ele é usado só agora: o launcher confere o dump, cria o boej.pak e compila o jogo "
-                               "neste computador. Nada do jogo vem com o launcher.");
+            ImGui::TextWrapped("%s", L("To play, the launcher needs a dump of YOUR cartridge (.nds, code BOEJ, unmodified). "
+                                       "It is only used now: the launcher checks the dump, creates boej.pak and compiles the "
+                                       "game on this computer. Nothing from the game comes with the launcher.",
+                                       "Para jogar, o launcher precisa do dump do SEU cartucho (.nds, código BOEJ, sem modificações). "
+                                       "Ele é usado só agora: o launcher confere o dump, cria o boej.pak e compila o jogo "
+                                       "neste computador. Nada do jogo vem com o launcher."));
             ImGui::Spacing();
             big_button_style(true);
-            if (ImGui::Button("Escolher o dump (.nds)...", big)) choose_dump(window);
+            if (ImGui::Button(L("Choose the dump (.nds)...", "Escolher o dump (.nds)..."), big)) choose_dump(window);
             big_button_style(false);
             ImGui::SameLine();
-            ImGui::TextDisabled("ou arraste o arquivo\npara esta janela");
+            ImGui::TextDisabled("%s", L("or drag the file\nonto this window", "ou arraste o arquivo\npara esta janela"));
             ImGui::Spacing();
-            ImGui::TextDisabled("Na primeira vez, o launcher também baixa o compilador (~190 MB) e leva alguns minutos.");
+            ImGui::TextDisabled("%s", L("The first time, the launcher also downloads the compiler (~190 MB) and takes a few minutes.",
+                                        "Na primeira vez, o launcher também baixa o compilador (~190 MB) e leva alguns minutos."));
             break;
         case Readiness::NeedsBuild:
-            ImGui::TextWrapped("O jogo precisa ser compilado para esta versão do launcher (leva alguns minutos; o dump não é necessário).");
+            ImGui::TextWrapped("%s", L("The game needs to be compiled for this version of the launcher (it takes a few minutes; "
+                                       "the dump is not needed).",
+                                       "O jogo precisa ser compilado para esta versão do launcher (leva alguns minutos; o dump "
+                                       "não é necessário)."));
             ImGui::Spacing();
             big_button_style(true);
-            if (ImGui::Button("Preparar o jogo", big)) prepare_start(g_job, "");
+            if (ImGui::Button(L("Prepare the game", "Preparar o jogo"), big)) prepare_start(g_job, "");
             big_button_style(false);
             break;
         case Readiness::Ready:
             big_button_style(true);
-            if (ImGui::Button("Jogar", big)) play(window);
+            if (ImGui::Button(L("Play", "Jogar"), big)) play(window);
             big_button_style(false);
             ImGui::SameLine();
             ImGui::BeginGroup();
             ImGui::TextDisabled("Save: %s", current_save().c_str());
             ImGui::SameLine();
-            if (ImGui::SmallButton("Trocar")) g_select_tab = 3;
-            if (update_available()) ImGui::TextColored(ImVec4(0.5f, 0.85f, 0.5f, 1), "Há uma versão nova (aba Atualizações).");
+            if (ImGui::SmallButton(L("Change", "Trocar"))) g_select_tab = 3;
+            if (update_available()) {
+                ImGui::TextColored(ImVec4(0.5f, 0.85f, 0.5f, 1), "%s",
+                                   L("A new version is out (Updates tab).", "Há uma versão nova (aba Atualizações)."));
+            }
             ImGui::EndGroup();
             ImGui::Spacing();
-            if (ImGui::Button("Abrir a pasta do jogo")) open_folder(paths().root);
+            if (ImGui::Button(L("Open the game folder", "Abrir a pasta do jogo"))) open_folder(paths().root);
             ImGui::SameLine();
-            if (ImGui::Button("Abrir a pasta de logs")) open_folder(paths().logs());
-            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Um registro e uma gravação por sessão de jogo, e o historico.txt com todas elas");
+            if (ImGui::Button(L("Open the logs folder", "Abrir a pasta de logs"))) open_folder(paths().logs());
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("%s", L("A log and a recording of each game session, and historico.txt with all of them",
+                                          "Um registro e uma gravação por sessão de jogo, e o historico.txt com todas elas"));
+            }
             ImGui::SameLine();
-            if (ImGui::Button("Recompilar")) prepare_start(g_job, "");
-            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Compila o jogo de novo (para testes; normalmente não é preciso)");
+            if (ImGui::Button(L("Recompile", "Recompilar"))) prepare_start(g_job, "");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("%s", L("Compiles the game again (for testing; normally not needed)",
+                                          "Compila o jogo de novo (para testes; normalmente não é preciso)"));
+            }
             break;
     }
 }
@@ -294,12 +335,12 @@ void add_japanese_font(float scale) {
 
 int main(int argc, char** argv) {
     using namespace launcher;
+    settings_load();  // the language, for the messages of the command-line modes too
     if (argc >= 2 && std::string(argv[1]) == "--prepare") {
         NTR_LOG("[launcher] %s in %s (sdk %s)\n", LAUNCHER_VERSION, paths().root.c_str(), sdk_version().c_str());
         return prepare_cli(argc >= 3 ? argv[2] : "");
     }
     if (argc == 3 && (std::string(argv[1]) == "--install-mod" || std::string(argv[1]) == "--mod-from-dump")) {
-        settings_load();
         return mods_cli(argv[1], argv[2]);
     }
     if (argc >= 2 && std::string(argv[1]) == "--update") {
@@ -312,7 +353,6 @@ int main(int argc, char** argv) {
     }
     NTR_LOG("[launcher] %s in %s (sdk %s)\n", LAUNCHER_VERSION, paths().root.c_str(), sdk_version().c_str());
     update_cleanup();
-    settings_load();
 
     float scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
     if (scale <= 0) scale = 1;
@@ -383,11 +423,11 @@ int main(int argc, char** argv) {
             int select_tab = g_select_tab;  // a tab can ask for another one (it opens on the next frame)
             g_select_tab = -1;
             auto flags = [&](int tab) { return select_tab == tab ? ImGuiTabItemFlags_SetSelected : 0; };
-            if (ImGui::BeginTabItem("Jogar", nullptr, flags(0))) {
+            if (ImGui::BeginTabItem(L("Play###play", "Jogar###play"), nullptr, flags(0))) {
                 play_tab(window);
                 ImGui::EndTabItem();
             }
-            if (ImGui::BeginTabItem("Configurações", nullptr, flags(1))) {
+            if (ImGui::BeginTabItem(L("Settings###settings", "Configurações###settings"), nullptr, flags(1))) {
                 settings_ui();
                 ImGui::EndTabItem();
             }
@@ -399,8 +439,9 @@ int main(int argc, char** argv) {
                 saves_tab(renderer);
                 ImGui::EndTabItem();
             }
-            if (ImGui::BeginTabItem(update_available() ? "Atualizações (nova!)###updates" : "Atualizações###updates",
-                                    nullptr, flags(4))) {
+            const char* updates = update_available() ? L("Updates (new!)###updates", "Atualizações (nova!)###updates")
+                                                     : L("Updates###updates", "Atualizações###updates");
+            if (ImGui::BeginTabItem(updates, nullptr, flags(4))) {
                 update_ui();
                 ImGui::EndTabItem();
             }

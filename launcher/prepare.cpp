@@ -97,20 +97,20 @@ double seconds_since(std::chrono::steady_clock::time_point t) {
 // Dump -> boej.pak (checks the SHA-1 first) and the code modules dsd extracts, ov129
 // with its DS Protect functions decrypted.
 bool import_dump(Job& job, const std::string& dump) {
-    job.set_step("Conferindo o dump e criando o boej.pak");
+    job.set_step(L("Checking the dump and creating boej.pak", "Conferindo o dump e criando o boej.pak"));
     std::string error;
     if (!ntr::pak_create(dump, paths().pak(), error, [&](double p) { job.set_progress(p); })) {
         job.error = error;
         return false;
     }
-    job.set_step("Extraindo o código do jogo", -1);
+    job.set_step(L("Extracting the game's code", "Extraindo o código do jogo"), -1);
     std::string extract = paths().cache() + "extract";
     remove_all(extract);
     std::string out;
     int code = run_process({paths().sdk() + "bin/dsd" + kExe, "rom", "extract", "--rom", dump, "--output-path", extract}, out);
     if (code != 0) {
         job.add_log(out);
-        job.error = "A extração do código (dsd) falhou. Veja os detalhes em logs/launcher.log.";
+        job.error = std::string(L("The code extraction (dsd) failed. ", "A extração do código (dsd) falhou. ")) + L("See logs/launcher.log for details.", "Veja os detalhes em logs/launcher.log.");
         NTR_LOG("[prepare] dsd failed (%d):\n%s\n", code, out.c_str());
         return false;
     }
@@ -122,7 +122,7 @@ bool import_dump(Job& job, const std::string& dump) {
     if (!ec) fs::rename(ntr::fs_path(extract + "/arm9_overlays"), ntr::fs_path(modules + "arm9_overlays"), ec);
     remove_all(extract);  // the rest is the file system, already in boej.pak
     if (ec || !write_text(modules + "ok", sdk_version() + "\n")) {
-        job.error = "Não foi possível gravar em " + modules + ".";
+        job.error = L("Could not write to ", "Não foi possível gravar em ") + modules + ".";
         return false;
     }
     return true;
@@ -140,7 +140,8 @@ bool ensure_toolchain(Job& job) {
     std::error_code ec;
     fs::create_directories(ntr::fs_path(paths().toolchain()), ec);
     if (ntr::sha256_file(zip) != sha256) {  // a zip put there by hand is used as is
-        job.set_step("Baixando o compilador (" + format_bytes(size) + ", só na primeira vez)");
+        job.set_step(L("Downloading the compiler (", "Baixando o compilador (") + format_bytes(size) +
+                     L(", only the first time)", ", só na primeira vez)"));
         std::atomic<bool> done{false};
         std::string out;
         int code = 0;
@@ -157,18 +158,20 @@ bool ensure_toolchain(Job& job) {
         curl.join();
         if (code != 0) {
             NTR_LOG("[prepare] download failed (%d): %s\n", code, out.c_str());
-            job.error = "Não foi possível baixar o compilador:\n" + first_lines(out, 3) +
-                        "\nConfira a conexão. Sem internet, baixe " + url + " e coloque o arquivo em " + zip + ".";
+            job.error = L("Could not download the compiler:\n", "Não foi possível baixar o compilador:\n") + first_lines(out, 3) +
+                        L("\nCheck the connection. Without internet, download ", "\nConfira a conexão. Sem internet, baixe ") +
+                        url + L(" and put the file at ", " e coloque o arquivo em ") + zip + ".";
             return false;
         }
-        job.set_step("Conferindo o download", -1);
+        job.set_step(L("Checking the download", "Conferindo o download"), -1);
         if (ntr::sha256_file(zip) != sha256) {
-            job.error = "O compilador baixado está corrompido (SHA-256 diferente). Tente de novo.";
+            job.error = L("The downloaded compiler is corrupted (different SHA-256). Try again.",
+                          "O compilador baixado está corrompido (SHA-256 diferente). Tente de novo.");
             fs::remove(ntr::fs_path(zip), ec);
             return false;
         }
     }
-    job.set_step("Instalando o compilador", -1);
+    job.set_step(L("Installing the compiler", "Instalando o compilador"), -1);
     std::string out;
     // Only the x86-64 target: the other three (~210 MB) are never used.
     int code = run_process({system_tool("tar"), "-xf", zip, "-C", paths().toolchain(), "--exclude", "*/armv7-w64-mingw32/*",
@@ -176,7 +179,7 @@ bool ensure_toolchain(Job& job) {
                            out);
     if (code != 0 || !exists(tc.cxx)) {
         NTR_LOG("[prepare] tar failed (%d): %s\n", code, out.c_str());
-        job.error = "Não foi possível extrair o compilador.\n" + first_lines(out, 3);
+        job.error = L("Could not extract the compiler.\n", "Não foi possível extrair o compilador.\n") + first_lines(out, 3);
         return false;
     }
     fs::remove(ntr::fs_path(zip), ec);
@@ -237,12 +240,12 @@ bool build_game(Job& job) {
     for (size_t at; (at = manifest.find("{modules}")) != std::string::npos;) manifest.replace(at, 9, modules);
     write_text(work + "manifest.tsv", manifest);
 
-    job.set_step("Recompilando o código do jogo (ARM → C++)", -1);
+    job.set_step(L("Recompiling the game's code (ARM → C++)", "Recompilando o código do jogo (ARM → C++)"), -1);
     std::string out;
     int code = run_process({sdk + "bin/ntr-recomp" + kExe, work + "manifest.tsv", work + "gen"}, out);
     if (code != 0) {
         NTR_LOG("[prepare] ntr-recomp failed (%d):\n%s\n", code, out.c_str());
-        job.error = "A recompilação falhou. Veja os detalhes em logs/launcher.log.";
+        job.error = std::string(L("The recompilation failed. ", "A recompilação falhou. ")) + L("See logs/launcher.log for details.", "Veja os detalhes em logs/launcher.log.");
         return false;
     }
     NTR_LOG("[prepare] recompiled in %.1f s\n", seconds_since(start));
@@ -283,20 +286,20 @@ bool build_game(Job& job) {
     }
     add(sdk + "game/main.cpp", "main", {"-O2", "-DNDEBUG"});
 
-    job.set_step("Compilando o jogo (" + std::to_string(jobs.size()) + " arquivos, " +
-                 std::to_string(compile_workers()) + " núcleos)");
+    job.set_step(L("Compiling the game (", "Compilando o jogo (") + std::to_string(jobs.size()) + L(" files, ", " arquivos, ") +
+                 std::to_string(compile_workers()) + L(" cores)", " núcleos)"));
     std::string failure;
     auto compile_start = std::chrono::steady_clock::now();
     if (!run_jobs(job, jobs, failure)) {
         if (job.cancel) return false;
         NTR_LOG("[prepare] compile failed:\n%s\n", failure.c_str());
         job.add_log(failure);
-        job.error = "A compilação falhou. Veja os detalhes em logs/launcher.log.";
+        job.error = std::string(L("The compilation failed. ", "A compilação falhou. ")) + L("See logs/launcher.log for details.", "Veja os detalhes em logs/launcher.log.");
         return false;
     }
     NTR_LOG("[prepare] compiled %zu files in %.1f s\n", jobs.size(), seconds_since(compile_start));
 
-    job.set_step("Ligando o executável", -1);
+    job.set_step(L("Linking the executable", "Ligando o executável"), -1);
 #ifdef _WIN32
     // The icon (game/icon.rc). The toolchain's windres sits next to its clang++; without it
     // the game just has no icon.
@@ -325,13 +328,13 @@ bool build_game(Job& job) {
     if (code != 0) {
         NTR_LOG("[prepare] link failed (%d):\n%s\n", code, out.c_str());
         job.add_log(out);
-        job.error = "A ligação do executável falhou. Veja os detalhes em logs/launcher.log.";
+        job.error = std::string(L("Linking the executable failed. ", "A ligação do executável falhou. ")) + L("See logs/launcher.log for details.", "Veja os detalhes em logs/launcher.log.");
         return false;
     }
     fs::remove(ntr::fs_path(target), ec);
     fs::rename(ntr::fs_path(target + ".tmp"), ntr::fs_path(target), ec);
     if (ec) {
-        job.error = "Não foi possível substituir " + target + " (o jogo está aberto?).";
+        job.error = L("Could not replace ", "Não foi possível substituir ") + target + L(" (is the game open?).", " (o jogo está aberto?).");
         return false;
     }
     write_text(paths().cache() + "build.stamp", build_stamp() + "\n");
@@ -390,9 +393,9 @@ void prepare_start(Job& job, const std::string& dump) {
         if (ok) ok = ensure_toolchain(job);
 #endif
         if (ok && readiness() != Readiness::Ready) ok = build_game(job);
-        if (job.cancel && job.error.empty()) job.error = "Cancelado.";
+        if (job.cancel && job.error.empty()) job.error = L("Canceled.", "Cancelado.");
         job.ok = ok && !job.cancel;
-        job.set_step(job.ok ? "Pronto!" : "Parou: " + job.error, job.ok ? 1 : 0);
+        job.set_step(job.ok ? L("Done!", "Pronto!") : L("Stopped: ", "Parou: ") + job.error, job.ok ? 1 : 0);
         job.running = false;
         job.finished = true;
     }).detach();
