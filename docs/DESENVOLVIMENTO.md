@@ -130,6 +130,18 @@ A condição é um teste no save (`"source": "save"`, a única fonte por enquant
 `hidden: true` mostra "???" até desbloquear. Os campos vêm de `ntr/savedata.h` (a leitura do save, a mesma da aba
 Saves); condições sobre o estado ao vivo (RAM) precisam de uma fonte nova em `GameFacts`.
 
+A lista atual (36): primeiro save; capítulos 2 a 11 (o jogo tem 11, `EVENTINFO.TXT`); nível do time 10, 25, 50,
+75 e 99; 16, 30, 50 e 100 amigos; o capitão de cada time enfrentado na história (`has_unit`) e "All Stars", com
+os capitães das nove seleções. Os capitães de Team K, Team Garshield, Tenkuu no Shito, Makai Gundan Z (o mesmo
+Desta do Dark Angel) e The Ogre ficam ocultos até desbloquear, para não adiantar a história. Os ícones são
+desenhados por `tools/achievement_icons.py` (ImageMagick, sem gráficos do jogo; `first_save.png` foi feito à mão).
+
+De onde vêm os números: `logic/team.pkb` tem um time a cada 0x160 bytes (nome em +0x00, capitão em +0x2E,
+16 jogadores de 8 bytes a partir de +0x40, número da unidade no u16 de cada um); em `logic/unitbase.dat`
+(registros de 0x68 bytes, nome em +0x00) o número da unidade fica em +0x4E, não na posição do registro (os
+jogadores do mundial passam de 3000). Os times da história saem dos textos das partidas (`script/mcht`,
+chaves 3401xxxx).
+
 ## Arquivos de diagnóstico
 
 Cada abertura do jogo é uma sessão, com nome de data e hora (`2026-10-27_14-03-12`). O jogo grava, na pasta `logs/`

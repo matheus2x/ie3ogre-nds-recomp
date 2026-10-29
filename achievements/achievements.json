@@ -17,6 +17,699 @@
         "source": "save",
         "field": "saved"
       }
+    },
+    {
+      "id": "chapter_02",
+      "name": {
+        "en": "Chapter 2",
+        "pt": "Capítulo 2"
+      },
+      "description": {
+        "en": "Reach chapter 2 of the story.",
+        "pt": "Chegue ao capítulo 2 da história."
+      },
+      "icon": "icons/chapter_02.png",
+      "hidden": false,
+      "condition": {
+        "source": "save",
+        "field": "chapter",
+        "op": ">=",
+        "value": 2
+      }
+    },
+    {
+      "id": "chapter_03",
+      "name": {
+        "en": "Chapter 3",
+        "pt": "Capítulo 3"
+      },
+      "description": {
+        "en": "Reach chapter 3 of the story.",
+        "pt": "Chegue ao capítulo 3 da história."
+      },
+      "icon": "icons/chapter_03.png",
+      "hidden": false,
+      "condition": {
+        "source": "save",
+        "field": "chapter",
+        "op": ">=",
+        "value": 3
+      }
+    },
+    {
+      "id": "chapter_04",
+      "name": {
+        "en": "Chapter 4",
+        "pt": "Capítulo 4"
+      },
+      "description": {
+        "en": "Reach chapter 4 of the story.",
+        "pt": "Chegue ao capítulo 4 da história."
+      },
+      "icon": "icons/chapter_04.png",
+      "hidden": false,
+      "condition": {
+        "source": "save",
+        "field": "chapter",
+        "op": ">=",
+        "value": 4
+      }
+    },
+    {
+      "id": "chapter_05",
+      "name": {
+        "en": "Chapter 5",
+        "pt": "Capítulo 5"
+      },
+      "description": {
+        "en": "Reach chapter 5 of the story.",
+        "pt": "Chegue ao capítulo 5 da história."
+      },
+      "icon": "icons/chapter_05.png",
+      "hidden": false,
+      "condition": {
+        "source": "save",
+        "field": "chapter",
+        "op": ">=",
+        "value": 5
+      }
+    },
+    {
+      "id": "chapter_06",
+      "name": {
+        "en": "Chapter 6",
+        "pt": "Capítulo 6"
+      },
+      "description": {
+        "en": "Reach chapter 6 of the story.",
+        "pt": "Chegue ao capítulo 6 da história."
+      },
+      "icon": "icons/chapter_06.png",
+      "hidden": false,
+      "condition": {
+        "source": "save",
+        "field": "chapter",
+        "op": ">=",
+        "value": 6
+      }
+    },
+    {
+      "id": "chapter_07",
+      "name": {
+        "en": "Chapter 7",
+        "pt": "Capítulo 7"
+      },
+      "description": {
+        "en": "Reach chapter 7 of the story.",
+        "pt": "Chegue ao capítulo 7 da história."
+      },
+      "icon": "icons/chapter_07.png",
+      "hidden": false,
+      "condition": {
+        "source": "save",
+        "field": "chapter",
+        "op": ">=",
+        "value": 7
+      }
+    },
+    {
+      "id": "chapter_08",
+      "name": {
+        "en": "Chapter 8",
+        "pt": "Capítulo 8"
+      },
+      "description": {
+        "en": "Reach chapter 8 of the story.",
+        "pt": "Chegue ao capítulo 8 da história."
+      },
+      "icon": "icons/chapter_08.png",
+      "hidden": false,
+      "condition": {
+        "source": "save",
+        "field": "chapter",
+        "op": ">=",
+        "value": 8
+      }
+    },
+    {
+      "id": "chapter_09",
+      "name": {
+        "en": "Chapter 9",
+        "pt": "Capítulo 9"
+      },
+      "description": {
+        "en": "Reach chapter 9 of the story.",
+        "pt": "Chegue ao capítulo 9 da história."
+      },
+      "icon": "icons/chapter_09.png",
+      "hidden": false,
+      "condition": {
+        "source": "save",
+        "field": "chapter",
+        "op": ">=",
+        "value": 9
+      }
+    },
+    {
+      "id": "chapter_10",
+      "name": {
+        "en": "Chapter 10",
+        "pt": "Capítulo 10"
+      },
+      "description": {
+        "en": "Reach chapter 10 of the story.",
+        "pt": "Chegue ao capítulo 10 da história."
+      },
+      "icon": "icons/chapter_10.png",
+      "hidden": false,
+      "condition": {
+        "source": "save",
+        "field": "chapter",
+        "op": ">=",
+        "value": 10
+      }
+    },
+    {
+      "id": "chapter_11",
+      "name": {
+        "en": "Chapter 11",
+        "pt": "Capítulo 11"
+      },
+      "description": {
+        "en": "Reach chapter 11 of the story.",
+        "pt": "Chegue ao capítulo 11 da história."
+      },
+      "icon": "icons/chapter_11.png",
+      "hidden": false,
+      "condition": {
+        "source": "save",
+        "field": "chapter",
+        "op": ">=",
+        "value": 11
+      }
+    },
+    {
+      "id": "level_10",
+      "name": {
+        "en": "Team level 10",
+        "pt": "Time nível 10"
+      },
+      "description": {
+        "en": "Get the team to level 10.",
+        "pt": "Leve o time ao nível 10."
+      },
+      "icon": "icons/level_10.png",
+      "hidden": false,
+      "condition": {
+        "source": "save",
+        "field": "level",
+        "op": ">=",
+        "value": 10
+      }
+    },
+    {
+      "id": "level_25",
+      "name": {
+        "en": "Team level 25",
+        "pt": "Time nível 25"
+      },
+      "description": {
+        "en": "Get the team to level 25.",
+        "pt": "Leve o time ao nível 25."
+      },
+      "icon": "icons/level_25.png",
+      "hidden": false,
+      "condition": {
+        "source": "save",
+        "field": "level",
+        "op": ">=",
+        "value": 25
+      }
+    },
+    {
+      "id": "level_50",
+      "name": {
+        "en": "Team level 50",
+        "pt": "Time nível 50"
+      },
+      "description": {
+        "en": "Get the team to level 50.",
+        "pt": "Leve o time ao nível 50."
+      },
+      "icon": "icons/level_50.png",
+      "hidden": false,
+      "condition": {
+        "source": "save",
+        "field": "level",
+        "op": ">=",
+        "value": 50
+      }
+    },
+    {
+      "id": "level_75",
+      "name": {
+        "en": "Team level 75",
+        "pt": "Time nível 75"
+      },
+      "description": {
+        "en": "Get the team to level 75.",
+        "pt": "Leve o time ao nível 75."
+      },
+      "icon": "icons/level_75.png",
+      "hidden": false,
+      "condition": {
+        "source": "save",
+        "field": "level",
+        "op": ">=",
+        "value": 75
+      }
+    },
+    {
+      "id": "level_99",
+      "name": {
+        "en": "Team level 99",
+        "pt": "Time nível 99"
+      },
+      "description": {
+        "en": "Get the team to level 99.",
+        "pt": "Leve o time ao nível 99."
+      },
+      "icon": "icons/level_99.png",
+      "hidden": false,
+      "condition": {
+        "source": "save",
+        "field": "level",
+        "op": ">=",
+        "value": 99
+      }
+    },
+    {
+      "id": "members_16",
+      "name": {
+        "en": "16 teammates",
+        "pt": "16 amigos"
+      },
+      "description": {
+        "en": "Have 16 players in your roster.",
+        "pt": "Tenha 16 jogadores no elenco."
+      },
+      "icon": "icons/members_16.png",
+      "hidden": false,
+      "condition": {
+        "source": "save",
+        "field": "members",
+        "op": ">=",
+        "value": 16
+      }
+    },
+    {
+      "id": "members_30",
+      "name": {
+        "en": "30 teammates",
+        "pt": "30 amigos"
+      },
+      "description": {
+        "en": "Have 30 players in your roster.",
+        "pt": "Tenha 30 jogadores no elenco."
+      },
+      "icon": "icons/members_30.png",
+      "hidden": false,
+      "condition": {
+        "source": "save",
+        "field": "members",
+        "op": ">=",
+        "value": 30
+      }
+    },
+    {
+      "id": "members_50",
+      "name": {
+        "en": "50 teammates",
+        "pt": "50 amigos"
+      },
+      "description": {
+        "en": "Have 50 players in your roster.",
+        "pt": "Tenha 50 jogadores no elenco."
+      },
+      "icon": "icons/members_50.png",
+      "hidden": false,
+      "condition": {
+        "source": "save",
+        "field": "members",
+        "op": ">=",
+        "value": 50
+      }
+    },
+    {
+      "id": "members_100",
+      "name": {
+        "en": "100 teammates",
+        "pt": "100 amigos"
+      },
+      "description": {
+        "en": "Have 100 players in your roster.",
+        "pt": "Tenha 100 jogadores no elenco."
+      },
+      "icon": "icons/members_100.png",
+      "hidden": false,
+      "condition": {
+        "source": "save",
+        "field": "members",
+        "op": ">=",
+        "value": 100
+      }
+    },
+    {
+      "id": "captain_big_waves",
+      "name": {
+        "en": "Big Waves captain",
+        "pt": "Capitão do Big Waves"
+      },
+      "description": {
+        "en": "Recruit Nice Dolphin, captain of Big Waves.",
+        "pt": "Recrute Nice Dolphin, capitão do Big Waves."
+      },
+      "icon": "icons/captain_big_waves.png",
+      "hidden": false,
+      "condition": {
+        "source": "save",
+        "field": "has_unit",
+        "value": 3029
+      }
+    },
+    {
+      "id": "captain_desert_lion",
+      "name": {
+        "en": "Desert Lion captain",
+        "pt": "Capitão do Desert Lion"
+      },
+      "description": {
+        "en": "Recruit Kyle Bjorn, captain of Desert Lion.",
+        "pt": "Recrute Kyle Bjorn, capitão do Desert Lion."
+      },
+      "icon": "icons/captain_desert_lion.png",
+      "hidden": false,
+      "condition": {
+        "source": "save",
+        "field": "has_unit",
+        "value": 3043
+      }
+    },
+    {
+      "id": "captain_neo_japan",
+      "name": {
+        "en": "Neo Japan captain",
+        "pt": "Capitão do Neo Japan"
+      },
+      "description": {
+        "en": "Recruit Osamu Saginuma, captain of Neo Japan.",
+        "pt": "Recrute Osamu Saginuma, capitão do Neo Japan."
+      },
+      "icon": "icons/captain_neo_japan.png",
+      "hidden": false,
+      "condition": {
+        "source": "save",
+        "field": "has_unit",
+        "value": 3007
+      }
+    },
+    {
+      "id": "captain_fire_dragon",
+      "name": {
+        "en": "Fire Dragon captain",
+        "pt": "Capitão do Fire Dragon"
+      },
+      "description": {
+        "en": "Recruit Choi Chang Soo, captain of Fire Dragon.",
+        "pt": "Recrute Choi Chang Soo, capitão do Fire Dragon."
+      },
+      "icon": "icons/captain_fire_dragon.png",
+      "hidden": false,
+      "condition": {
+        "source": "save",
+        "field": "has_unit",
+        "value": 3070
+      }
+    },
+    {
+      "id": "captain_knights_of_queen",
+      "name": {
+        "en": "Knights of Queen captain",
+        "pt": "Capitão do Knights of Queen"
+      },
+      "description": {
+        "en": "Recruit Edgar Valtinas, captain of Knights of Queen.",
+        "pt": "Recrute Edgar Valtinas, capitão do Knights of Queen."
+      },
+      "icon": "icons/captain_knights_of_queen.png",
+      "hidden": false,
+      "condition": {
+        "source": "save",
+        "field": "has_unit",
+        "value": 3090
+      }
+    },
+    {
+      "id": "captain_team_k",
+      "name": {
+        "en": "Team K captain",
+        "pt": "Capitão do Team K"
+      },
+      "description": {
+        "en": "Recruit Demonio Strada, captain of Team K.",
+        "pt": "Recrute Demonio Strada, capitão do Team K."
+      },
+      "icon": "icons/captain_team_k.png",
+      "hidden": true,
+      "condition": {
+        "source": "save",
+        "field": "has_unit",
+        "value": 3110
+      }
+    },
+    {
+      "id": "captain_the_empire",
+      "name": {
+        "en": "The Empire captain",
+        "pt": "Capitão do The Empire"
+      },
+      "description": {
+        "en": "Recruit Teres Tolue, captain of The Empire.",
+        "pt": "Recrute Teres Tolue, capitão do The Empire."
+      },
+      "icon": "icons/captain_the_empire.png",
+      "hidden": false,
+      "condition": {
+        "source": "save",
+        "field": "has_unit",
+        "value": 3122
+      }
+    },
+    {
+      "id": "captain_unicorn",
+      "name": {
+        "en": "Unicorn captain",
+        "pt": "Capitão do Unicorn"
+      },
+      "description": {
+        "en": "Recruit Mark Kruger, captain of Unicorn.",
+        "pt": "Recrute Mark Kruger, capitão do Unicorn."
+      },
+      "icon": "icons/captain_unicorn.png",
+      "hidden": false,
+      "condition": {
+        "source": "save",
+        "field": "has_unit",
+        "value": 3149
+      }
+    },
+    {
+      "id": "captain_orpheus",
+      "name": {
+        "en": "Orpheus captain",
+        "pt": "Capitão do Orpheus"
+      },
+      "description": {
+        "en": "Recruit Fideo Aldena, captain of Orpheus.",
+        "pt": "Recrute Fideo Aldena, capitão do Orpheus."
+      },
+      "icon": "icons/captain_orpheus.png",
+      "hidden": false,
+      "condition": {
+        "source": "save",
+        "field": "has_unit",
+        "value": 3170
+      }
+    },
+    {
+      "id": "captain_team_garshield",
+      "name": {
+        "en": "Team Garshield captain",
+        "pt": "Capitão do Team Garshield"
+      },
+      "description": {
+        "en": "Recruit Lubbock Henktacker, captain of Team Garshield.",
+        "pt": "Recrute Lubbock Henktacker, capitão do Team Garshield."
+      },
+      "icon": "icons/captain_team_garshield.png",
+      "hidden": true,
+      "condition": {
+        "source": "save",
+        "field": "has_unit",
+        "value": 3203
+      }
+    },
+    {
+      "id": "captain_the_kingdom",
+      "name": {
+        "en": "The Kingdom captain",
+        "pt": "Capitão do The Kingdom"
+      },
+      "description": {
+        "en": "Recruit Mac Roniejo, captain of The Kingdom.",
+        "pt": "Recrute Mac Roniejo, capitão do The Kingdom."
+      },
+      "icon": "icons/captain_the_kingdom.png",
+      "hidden": false,
+      "condition": {
+        "source": "save",
+        "field": "has_unit",
+        "value": 3190
+      }
+    },
+    {
+      "id": "captain_little_gigant",
+      "name": {
+        "en": "Little Gigant captain",
+        "pt": "Capitão do Little Gigant"
+      },
+      "description": {
+        "en": "Recruit Rococo Urupa, captain of Little Gigant.",
+        "pt": "Recrute Rococo Urupa, capitão do Little Gigant."
+      },
+      "icon": "icons/captain_little_gigant.png",
+      "hidden": false,
+      "condition": {
+        "source": "save",
+        "field": "has_unit",
+        "value": 3221
+      }
+    },
+    {
+      "id": "captain_tenkuu_no_shito",
+      "name": {
+        "en": "Tenkuu no Shito captain",
+        "pt": "Capitão do Tenkuu no Shito"
+      },
+      "description": {
+        "en": "Recruit Sein, captain of Tenkuu no Shito.",
+        "pt": "Recrute Sein, capitão do Tenkuu no Shito."
+      },
+      "icon": "icons/captain_tenkuu_no_shito.png",
+      "hidden": true,
+      "condition": {
+        "source": "save",
+        "field": "has_unit",
+        "value": 3411
+      }
+    },
+    {
+      "id": "captain_makai_gundan_z",
+      "name": {
+        "en": "Makai Gundan Z captain",
+        "pt": "Capitão do Makai Gundan Z"
+      },
+      "description": {
+        "en": "Recruit Desta, captain of Makai Gundan Z (also of Dark Angel).",
+        "pt": "Recrute Desta, capitão do Makai Gundan Z (e também do Dark Angel)."
+      },
+      "icon": "icons/captain_makai_gundan_z.png",
+      "hidden": true,
+      "condition": {
+        "source": "save",
+        "field": "has_unit",
+        "value": 3431
+      }
+    },
+    {
+      "id": "captain_the_ogre",
+      "name": {
+        "en": "The Ogre captain",
+        "pt": "Capitão do The Ogre"
+      },
+      "description": {
+        "en": "Recruit Baddap Sleed, captain of The Ogre.",
+        "pt": "Recrute Baddap Sleed, capitão do The Ogre."
+      },
+      "icon": "icons/captain_the_ogre.png",
+      "hidden": true,
+      "condition": {
+        "source": "save",
+        "field": "has_unit",
+        "value": 3369
+      }
+    },
+    {
+      "id": "all_stars",
+      "name": {
+        "en": "All Stars",
+        "pt": "All Stars"
+      },
+      "description": {
+        "en": "Recruit the captains of every national team you face: Big Waves, Desert Lion, Fire Dragon, Knights of Queen, The Empire, Unicorn, Orpheus, The Kingdom and Little Gigant.",
+        "pt": "Recrute os capitães de todas as seleções que você enfrenta: Big Waves, Desert Lion, Fire Dragon, Knights of Queen, The Empire, Unicorn, Orpheus, The Kingdom e Little Gigant."
+      },
+      "icon": "icons/all_stars.png",
+      "hidden": false,
+      "condition": {
+        "all": [
+          {
+            "source": "save",
+            "field": "has_unit",
+            "value": 3029
+          },
+          {
+            "source": "save",
+            "field": "has_unit",
+            "value": 3043
+          },
+          {
+            "source": "save",
+            "field": "has_unit",
+            "value": 3070
+          },
+          {
+            "source": "save",
+            "field": "has_unit",
+            "value": 3090
+          },
+          {
+            "source": "save",
+            "field": "has_unit",
+            "value": 3122
+          },
+          {
+            "source": "save",
+            "field": "has_unit",
+            "value": 3149
+          },
+          {
+            "source": "save",
+            "field": "has_unit",
+            "value": 3170
+          },
+          {
+            "source": "save",
+            "field": "has_unit",
+            "value": 3190
+          },
+          {
+            "source": "save",
+            "field": "has_unit",
+            "value": 3221
+          }
+        ]
+      }
     }
   ]
 }

@@ -2838,3 +2838,32 @@ lista da aba do launcher).
 
 **Próximo:** aprovar a lista de conquistas; testar salvando no jogo; depois, fontes ao vivo (RAM/hooks).
 
+## 2026-10-29 — A lista de conquistas
+
+Aprovada pelo usuário: as sugeridas, sem as de tempo de jogo; nas de recrutar, o capitão de cada time
+enfrentado (se der para recrutar) e uma "All Stars" com os capitães das principais seleções.
+
+- **Capítulos:** `EVENTINFO.TXT` lista os inícios de capítulo `eve31010000`–`eve31110000`: 11 capítulos. Ficaram
+  "Capítulo 2" a "Capítulo 11". "Zerou a história" ficou de fora: o save tem só o número do capítulo, e não
+  achei um sinal de fim de jogo (o save do runmelonds está no 11).
+- **Números dos jogadores:** `unitbase.dat` tem 2.582 registros de 0x68 bytes, mas o número da unidade é o u16 em
+  +0x4E (vai até 3946; os do mundial passam de 3000). `team.pkb`: 557 times de 0x160 bytes, nome em +0x00,
+  **capitão em +0x2E** (confere: Endou, Kidou, Saginuma, Choi Chang Soo, Edgar, Mark Kruger, Fideo, Rococo,
+  Baddap), 16 jogadores de 8 bytes a partir de +0x40 (u16 unidade, …).
+- **Times enfrentados:** pelos textos das partidas (`mcht`, 3401xxxx): seleção (A × B, os nossos), Big Waves,
+  Desert Lion, Neo Japan, Fire Dragon, Knights of Queen, Team K (disfarçado de Orpheus), The Empire, Unicorn,
+  Orpheus, Team Garshield, The Kingdom, Little Gigant, Tenkuu no Shito, Makai Gundan Z, Dark Angel (capitão
+  Desta, o mesmo do Makai Gundan Z: uma conquista só) e The Ogre. Há ainda revanches (Kingdom, Orpheus com Hide
+  Nakata) que não entraram.
+- **Recrutáveis:** os 15 capitães têm rosto na lista de amigos (`ih.pkh`, que só tem quem pode entrar no time;
+  2.347 dos 2.428 jogadores com nome). `usearch.dat`/`unitno.dat` listam todos, então não ajudam. No save
+  runmelonds há Demonio Strada (3110), capitão do Team K: esse é recrutável de fato. Os outros não confirmei no
+  jogo.
+- 36 conquistas em `achievements/achievements.json`; os capitães de Team K, Garshield, Tenkuu, Makai e Ogre
+  ficam ocultos ("???"). Ícones por `tools/achievement_icons.py` (ImageMagick, Liberation Sans Bold): livro e
+  número (capítulos), estrela (nível), cabeças (amigos), "C" de capitão com a sigla do time, três estrelas (All
+  Stars).
+
+**Verificação:** núcleo nos dois saves: foxperks (cap. 1) → primeiro save e 16 amigos; runmelonds (cap. 11,
+nível 45) → capítulos 2–11, níveis 10 e 25, 16 amigos e capitão do Team K. Aba do launcher capturada com a lista.
+
