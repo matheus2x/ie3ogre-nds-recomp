@@ -159,7 +159,13 @@ struct Host {
     bool rewinding = false;    // a step back was taken this frame
     bool rewind_end = false;   // no state left: said once until the key is released
     uint64_t rewind_first = 0, rewind_last = 0;  // NTR_REWIND
-    bool linear_filter = false;
+    // video.filter. Sharp and LCD enlarge each screen by whole pixels into a texture of its
+    // own (one per place a screen is drawn) and show that with linear filtering.
+    enum class Filter { Nearest, Linear, Sharp, Lcd } filter = Filter::Nearest;
+    SDL_Texture* sharp[3] = {};      // top, bottom, enlarged bottom (wide layout)
+    uint64_t sharp_frame[3] = {};    // the frame each one holds
+    SDL_Texture* lcd_grid = nullptr;
+    std::string renderer_name;  // the API in use, for the log and the pause menu
     std::string config_path;
     bool env_scale = false, env_scale_3d = false;  // NTR_SCALE / NTR_3D_SCALE win over boej.ini
     bool fullscreen_applied = false;
@@ -627,21 +633,98 @@ void layout_size(int& w, int& h) {
     h = g_host.wide ? kWideHeight : kScreenHeight * 2;
 }
 
+// Output pixels per unit of the coordinates drawn in (the logical size, while the window
+// shows the layout letterboxed).
+float pixels_per_unit() {
+    int w = 0, h = 0;
+    SDL_RendererLogicalPresentation mode = SDL_LOGICAL_PRESENTATION_DISABLED;
+    SDL_FRect rect;
+    if (!SDL_GetRenderLogicalPresentation(g_host.renderer, &w, &h, &mode) ||
+        mode == SDL_LOGICAL_PRESENTATION_DISABLED || w <= 0 ||
+        !SDL_GetRenderLogicalPresentationRect(g_host.renderer, &rect)) {
+        return 1;
+    }
+    return rect.w / w;
+}
+
+// The LCD filter's grid, multiplied over a screen: one tile per DS pixel, darker along its
+// right and bottom edges.
+void draw_lcd_grid(const SDL_FRect& dst) {
+    constexpr int kTile = 4;
+    SDL_Renderer* r = g_host.renderer;
+    if (!g_host.lcd_grid) {
+        uint32_t pixels[kTile * kTile];
+        for (int y = 0; y < kTile; y++) {
+            for (int x = 0; x < kTile; x++) {
+                uint32_t v = x == kTile - 1 || y == kTile - 1 ? 0xB0 : 0xFF;
+                pixels[y * kTile + x] = 0xFF000000u | v << 16 | v << 8 | v;
+            }
+        }
+        g_host.lcd_grid = SDL_CreateTexture(r, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STATIC, kTile, kTile);
+        if (!g_host.lcd_grid) return;
+        SDL_UpdateTexture(g_host.lcd_grid, nullptr, pixels, kTile * 4);
+        SDL_SetTextureBlendMode(g_host.lcd_grid, SDL_BLENDMODE_MOD);
+        SDL_SetTextureScaleMode(g_host.lcd_grid, SDL_SCALEMODE_LINEAR);
+    }
+    SDL_RenderTextureTiled(r, g_host.lcd_grid, nullptr, dst.w / kScreenWidth / kTile, &dst);
+}
+
+// Sharp bilinear: the screen enlarged by whole pixels (nearest) to at least the size it is
+// shown at, then shrunk to that size with linear filtering. Every pixel comes out the
+// same size, and only the borders between them are smoothed.
+void draw_sharp(int slot, int screen, const SDL_FRect& dst) {
+    SDL_Renderer* r = g_host.renderer;
+    SDL_Texture* src = g_host.textures[screen];
+    float sw = 0, sh = 0;
+    SDL_GetTextureSize(src, &sw, &sh);
+    float px = pixels_per_unit();
+    int k = int(std::ceil(std::max(dst.w * px / sw, dst.h * px / sh)));
+    int max_size = int(SDL_GetNumberProperty(SDL_GetRendererProperties(r), SDL_PROP_RENDERER_MAX_TEXTURE_SIZE_NUMBER, 8192));
+    k = std::clamp(k, 1, std::max(1, max_size / int(sw)));  // the screens are wider than tall
+    SDL_Texture*& t = g_host.sharp[slot];
+    float tw = 0, th = 0;
+    if (t) SDL_GetTextureSize(t, &tw, &th);
+    if (!t || tw != sw * k || th != sh * k) {
+        if (t) SDL_DestroyTexture(t);
+        t = SDL_CreateTexture(r, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, int(sw) * k, int(sh) * k);
+        if (!t) {
+            SDL_RenderTexture(r, src, nullptr, &dst);
+            return;
+        }
+        SDL_SetTextureBlendMode(t, SDL_BLENDMODE_NONE);
+        SDL_SetTextureScaleMode(t, SDL_SCALEMODE_LINEAR);
+        g_host.sharp_frame[slot] = 0;
+    }
+    if (g_host.sharp_frame[slot] != g_host.frame) {  // the paused menu redraws the same frame
+        SDL_Texture* target = SDL_GetRenderTarget(r);
+        SDL_SetRenderTarget(r, t);
+        SDL_RenderTexture(r, src, nullptr, nullptr);
+        SDL_SetRenderTarget(r, target);
+        g_host.sharp_frame[slot] = g_host.frame;
+    }
+    SDL_RenderTexture(r, t, nullptr, &dst);
+    if (g_host.filter == Host::Filter::Lcd) draw_lcd_grid(dst);
+}
+
 // Draws the screen textures with the layout's logical rectangle at (x, y) scaled by s.
 void draw_screens(float x, float y, float s) {
-    auto draw = [&](int screen, const SDL_FRect& rect) {
+    auto draw = [&](int slot, int screen, const SDL_FRect& rect) {
         SDL_FRect dst = {x + rect.x * s, y + rect.y * s, rect.w * s, rect.h * s};
-        SDL_RenderTexture(g_host.renderer, g_host.textures[screen], nullptr, &dst);
+        if (g_host.filter == Host::Filter::Sharp || g_host.filter == Host::Filter::Lcd) {
+            draw_sharp(slot, screen, dst);
+        } else {
+            SDL_RenderTexture(g_host.renderer, g_host.textures[screen], nullptr, &dst);
+        }
     };
     if (!g_host.wide) {
-        draw(0, {0, 0, kScreenWidth, kScreenHeight});
-        draw(1, {0, kScreenHeight, kScreenWidth, kScreenHeight});
+        draw(0, 0, {0, 0, kScreenWidth, kScreenHeight});
+        draw(1, 1, {0, kScreenHeight, kScreenWidth, kScreenHeight});
         return;
     }
     SDL_FRect stack = wide_stack();
-    draw(0, {stack.x, stack.y, stack.w, stack.h / 2});
-    draw(1, {stack.x, stack.y + stack.h / 2, stack.w, stack.h / 2});
-    draw(1, wide_bottom());
+    draw(0, 0, {stack.x, stack.y, stack.w, stack.h / 2});
+    draw(1, 1, {stack.x, stack.y + stack.h / 2, stack.w, stack.h / 2});
+    draw(2, 1, wide_bottom());
 }
 
 // Dear ImGui, the first time the pause menu or an achievement popup needs it.
@@ -718,6 +801,12 @@ void default_window_size(int scale, int& w, int& h) {
     }
 }
 
+// The screen textures are filtered only by the linear filter: sharp and LCD enlarge them
+// by whole pixels first.
+SDL_ScaleMode screen_scale_mode() {
+    return g_host.filter == Host::Filter::Linear ? SDL_SCALEMODE_LINEAR : SDL_SCALEMODE_NEAREST;
+}
+
 void apply_presentation() {
     const Config& c = g_host.config;
     g_host.wide = c.get_bool("video", "wide_layout");
@@ -735,9 +824,13 @@ void apply_presentation() {
         SDL_SetRenderLogicalPresentation(g_host.renderer, w, h, mode);
         std::copy(wanted, wanted + 3, g_host.presentation);
     }
-    g_host.linear_filter = SDL_strcasecmp(c.get("video", "filter").c_str(), "linear") == 0;
+    std::string filter = c.get("video", "filter");
+    g_host.filter = SDL_strcasecmp(filter.c_str(), "linear") == 0  ? Host::Filter::Linear
+                    : SDL_strcasecmp(filter.c_str(), "sharp") == 0 ? Host::Filter::Sharp
+                    : SDL_strcasecmp(filter.c_str(), "lcd") == 0   ? Host::Filter::Lcd
+                                                                   : Host::Filter::Nearest;
     for (SDL_Texture* t : g_host.textures) {
-        if (t) SDL_SetTextureScaleMode(t, g_host.linear_filter ? SDL_SCALEMODE_LINEAR : SDL_SCALEMODE_NEAREST);
+        if (t) SDL_SetTextureScaleMode(t, screen_scale_mode());
     }
 }
 
@@ -855,6 +948,7 @@ void run_menu() {
     options.in_game = true;
     options.on_change = apply_settings;
     options.extra_pages.push_back({L("Achievements", "Conquistas"), [] { ui::achievements_list(achievements(), g_host.renderer); }});
+    options.active_renderer = g_host.renderer_name;
     // Saving or loading closes the menu, so the slots are read once.
     std::vector<std::string> states;
     std::vector<bool> loadable;
@@ -918,6 +1012,37 @@ std::string host_base_path() {
     const char* p = SDL_GetBasePath();
     return p ? p : "";
 }
+
+namespace {
+
+bool is_api(const std::string& api, const char* name) { return SDL_strcasecmp(api.c_str(), name) == 0; }
+
+// The window's renderer. video.api (or NTR_GPU_API): auto = SDL's default renderer
+// (Direct3D 11 on Windows, OpenGL on Linux); d3d11 and opengl = SDL's renderer on that API;
+// vulkan and d3d12 = SDL's GPU renderer (SDL_GPU) on that API. When the chosen one cannot
+// start (no driver, an old GPU), SDL's default takes over.
+SDL_Renderer* create_renderer(SDL_Window* window, const std::string& api) {
+    if (is_api(api, "vulkan") || is_api(api, "d3d12")) {
+        SDL_SetHint(SDL_HINT_GPU_DRIVER, is_api(api, "vulkan") ? "vulkan" : "direct3d12");
+        if (SDL_Renderer* r = SDL_CreateGPURenderer(nullptr, window)) {
+            g_host.renderer_name = std::string("SDL_GPU (") + SDL_GetGPUDeviceDriver(SDL_GetGPURendererDevice(r)) + ")";
+            return r;
+        }
+        NTR_LOG("[host] api = %s did not start: %s; using SDL's default\n", api.c_str(), SDL_GetError());
+        SDL_ResetHint(SDL_HINT_GPU_DRIVER);
+    } else if (is_api(api, "d3d11") || is_api(api, "opengl")) {
+        if (SDL_Renderer* r = SDL_CreateRenderer(window, is_api(api, "d3d11") ? "direct3d11" : "opengl")) {
+            g_host.renderer_name = SDL_GetRendererName(r);
+            return r;
+        }
+        NTR_LOG("[host] api = %s did not start: %s; using SDL's default\n", api.c_str(), SDL_GetError());
+    }
+    SDL_Renderer* r = SDL_CreateRenderer(window, nullptr);
+    if (r) g_host.renderer_name = SDL_GetRendererName(r);
+    return r;
+}
+
+}  // namespace
 
 bool host_init() {
     for (const char* name : {"NTR_SCREENSHOT_FRAME", "NTR_SCREENSHOT_FRAMES"}) {
@@ -990,15 +1115,22 @@ bool host_init() {
     g_host.wide = config.get_bool("video", "wide_layout");
     int win_w, win_h;
     default_window_size(scale, win_w, win_h);
-    if (!SDL_CreateWindowAndRenderer("Inazuma Eleven 3 - The Ogre (recomp)", win_w, win_h, flags, &g_host.window,
-                                     &g_host.renderer)) {
+    std::string api = config.get("video", "api");
+    bool known_api = false;
+    for (const char* name : {"auto", "d3d11", "opengl", "vulkan", "d3d12"}) known_api |= is_api(api, name);
+    if (!known_api) config.warn(*config.find("video", "api"), "\"" + api + "\" is not auto, d3d11, opengl, vulkan or d3d12");
+    if (const char* env = std::getenv("NTR_GPU_API")) api = env;
+    g_host.window = SDL_CreateWindow("Inazuma Eleven 3 - The Ogre (recomp)", win_w, win_h, flags);
+    g_host.renderer = g_host.window ? create_renderer(g_host.window, api) : nullptr;
+    if (!g_host.renderer) {
         NTR_LOG("[host] cannot create the window: %s\n", SDL_GetError());
         return false;
     }
+    NTR_LOG("[host] renderer: %s\n", g_host.renderer_name.c_str());
     std::string filter = config.get("video", "filter");
-    if (SDL_strcasecmp(filter.c_str(), "linear") != 0 && SDL_strcasecmp(filter.c_str(), "nearest") != 0) {
-        config.warn(*config.find("video", "filter"), "\"" + filter + "\" is not nearest or linear");
-    }
+    bool known = false;
+    for (const char* name : {"nearest", "linear", "sharp", "lcd"}) known |= SDL_strcasecmp(filter.c_str(), name) == 0;
+    if (!known) config.warn(*config.find("video", "filter"), "\"" + filter + "\" is not nearest, linear, sharp or lcd");
     apply_presentation();
     g_host.fullscreen_applied = config.get_bool("video", "fullscreen");
     g_host.window_scale_applied = scale;
@@ -1237,7 +1369,7 @@ void host_present(const uint32_t* top, int top_scale, const uint32_t* bottom, in
             if (t) SDL_DestroyTexture(t);
             t = SDL_CreateTexture(g_host.renderer, SDL_PIXELFORMAT_XRGB8888, SDL_TEXTUREACCESS_STREAMING,
                                   kScreenWidth * scales[i], kScreenHeight * scales[i]);
-            SDL_SetTextureScaleMode(t, g_host.linear_filter ? SDL_SCALEMODE_LINEAR : SDL_SCALEMODE_NEAREST);
+            SDL_SetTextureScaleMode(t, screen_scale_mode());
             g_host.texture_scales[i] = scales[i];
         }
         SDL_UpdateTexture(t, nullptr, pictures[i], kScreenWidth * scales[i] * 4);

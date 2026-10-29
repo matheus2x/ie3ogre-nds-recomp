@@ -2939,3 +2939,122 @@ O mod passou de CyberLifePlus 1.8 para 1.10 com `ie3-launcher.exe --install-mod`
 continua ligado no `boej.ini`. O `--prepare` recompilou o jogo no Windows (189 arquivos em 52 s, 60 s no total,
 `build.stamp` 0.1.21). O `boej.exe --check-mods` aceita o mod 1.10. A tela inicial foi capturada no Windows
 (escala de 150%, Rubik e versão 0.1.21).
+
+## 2026-10-29 — Roadmap de gráficos: GPU, AA e upscalers
+
+- **`docs/GRAFICOS.md`** (novo): plano para o jogador poder trocar o 3D por software por um renderizador na GPU
+  e, em cima dele, AA melhor, TAA, FSR e DLSS. Nada implementado ainda. Começa pelo estado atual (rasterizador
+  em bandas de `gpu3d.cpp`, `g_native` de 256×192 para o jogo e a captura, composição 2D na CPU, apresentação
+  pelo SDL_Renderer) e pelos princípios: o software segue padrão e referência, o jogo não percebe o backend,
+  tudo opcional com fallback.
+- **Fases:** 0, apresentação pela SDL_GPU (Vulkan/D3D12/Metal) com uma interface `Presenter`; 1, FXAA/SMAA e
+  FSR 1 sobre a imagem do software, com a máscara do 3D para não borrar o HUD; 2, rasterização na GPU (tabela
+  de cada recurso do DS, 3D nativo de volta por leitura assíncrona, composição 2D + 3D na GPU); 3, MSAA, SSAA e
+  contorno proporcional à escala; 4, jitter, vetores de movimento (o DS não identifica polígonos entre quadros:
+  reprojeção da câmera, depois casamento de polígonos), TAA próprio, FSR 2/3, DLSS e XeSS. Frame generation
+  fica de fora (lógica presa em 60 Hz).
+- **Formato de checklist:** o documento inteiro é uma lista de itens por fase (os que já existem marcados), com
+  as chaves previstas de `[video]` dentro de cada fase, o critério de pronto como item e as decisões em aberto
+  (SDL_GPU sem acesso ao device nativo, licença do DLSS, SDKs opcionais, dois renderizadores, testes sem janela,
+  WSL2) também como checklist.
+- Links: item novo no roadmap do `README.md` e do `README.pt-BR.md`, e uma frase na linha `[video]` do
+  `DESENVOLVIMENTO.md`.
+
+## 2026-10-29 — Fase 0 dos gráficos: SDL_GPU e os filtros sharp e LCD
+
+- **Caminho:** em vez de uma interface `Presenter` e do `imgui_impl_sdlgpu3`, o jogo usa o renderizador de GPU do
+  SDL 3.4 (`SDL_CreateGPURenderer`), que roda o SDL_Renderer por cima da SDL_GPU. As telas, os avisos e o ImGui
+  não mudam, e o `SDL_GPUDevice` fica acessível para as próximas fases. Roadmap (`GRAFICOS.md`) atualizado.
+- **`[video] api`** (`auto`, `gpu`, `vulkan`, `d3d12`; `NTR_GPU_API` tem prioridade): `create_renderer` em
+  `host.cpp`. `vulkan` e `d3d12` passam pelo `SDL_HINT_GPU_DRIVER`. Se a SDL_GPU não abrir, o log diz o motivo e o
+  jogo usa o renderizador padrão. O log diz a API em uso, e o menu de pausa mostra essa API na linha "API gráfica".
+  O padrão continua `auto`.
+- **Filtros novos:** `sharp` amplia cada tela por um múltiplo inteiro (nearest) num render target próprio (um por
+  lugar onde a tela aparece, refeito só quando o quadro muda) e reduz com linear até o tamanho mostrado. `lcd` é o
+  `sharp` com uma grade 4×4 multiplicada por cima (`SDL_BLENDMODE_MOD`), uma célula por pixel do DS. Os dois
+  funcionam em qualquer API, sem shader.
+- **Configurações:** combo "API gráfica" (Direct3D 12 só no Windows) e os quatro filtros na página Vídeo do
+  launcher e do menu de pausa. O `boej.ini` padrão ganhou `api` e os comentários novos de `filter`.
+
+**Verificação:** compila sem avisos no Linux e no cruzado para Windows; testes Python: 50 OK. No WSL2 (sem driver
+Vulkan) `api = gpu` cai para OpenGL com "No supported SDL_GPU backend found!". `sharp` e `lcd` conferidos por
+captura da janela (`NTR_WINDOW_SHOT`) no layout largo e no empilhado. No Windows, numa pasta separada em `%TEMP%`:
+D3D11, SDL_GPU/D3D12 e SDL_GPU/Vulkan abrem, e as capturas com `nearest` e com `lcd` saem idênticas pixel a pixel
+entre as três. O menu de pausa foi capturado em D3D12 e Vulkan com um gancho temporário, já removido.
+**Não testado:** a troca de layout ou de filtro com o menu aberto sobre a SDL_GPU, e o launcher, que continua no
+renderizador padrão.
+
+**Pasta de teste do Windows** (`C:\Games\ie3-teste\ie3ogre-recomp`): atualizada com uma release 0.1.22 gerada deste
+código (`tools/release.py`). Troquei o launcher, o `SDL3.dll`, o `sdk/` (o antigo apagado inteiro), `licenses/`,
+`achievements/` e os três `.txt`. Mantive `boej.ini`, `boej.pak`, `cache/`, `toolchain/`, `saves/`, `logs/` e
+`mods/`. O `--prepare` recompilou o jogo no Windows (189 arquivos em 41 s, 49 s no total). Um teste rápido com
+`NTR_GPU_API=vulkan` abriu com `SDL_GPU (vulkan)`. O `boej.ini` dela não tem a chave `api`, então vale o padrão
+(`auto`) até ela ser escolhida em Vídeo.
+
+## 2026-10-29 — Descrição das APIs gráficas e janelas mais largas
+
+- **Página Vídeo:** abaixo do combo "API gráfica", um texto curto descreve a opção escolhida (automática = Direct3D
+  11/OpenGL, a mais testada; SDL_GPU = Direct3D 12 no Windows e Vulkan no Linux; Vulkan e Direct3D 12 com o aviso
+  de que, sem suporte, o jogo usa a automática).
+- **Launcher:** janela inicial de 1040×640 (era 820×640), vezes a escala do monitor.
+- **Menu de pausa:** largura máxima de 64 em (era 52), ainda limitada a 92% da janela.
+
+**Verificação:** compila sem avisos; capturas do launcher (`IE3_LAUNCHER_SHOT`) com "SDL_GPU" e "Vulkan"
+escolhidos, rolando a página com um ajuste temporário, já removido. Pasta de teste do Windows atualizada de novo
+(launcher e `sdk/`). Como a versão não mudou, o `--prepare` achou que o jogo estava pronto: foi preciso apagar
+`cache/build.stamp` (é o que o link "Recompilar" faz) para ele recompilar (49,5 s).
+
+## 2026-10-29 — Chip "BETA" nas APIs da SDL_GPU
+
+- "SDL_GPU (a melhor disponível)" virou só "SDL_GPU": repetia a ideia da "Automática".
+- SDL_GPU, Vulkan e Direct3D 12 ganham um chip "BETA" (magenta, `draw_chip` em `ui.cpp`) no item da lista e ao
+  lado do valor escolhido no combo. Por enquanto elas só mostram a imagem; nada mais usa a GPU. O combo virou
+  `BeginCombo` + `Selectable`, e o chip é desenhado no draw list da janela depois do combo, por cima da moldura.
+  Na lista, o chip desce meio `ItemSpacing.y`, porque o `Selectable` estende a área do item para cima.
+
+**Verificação:** compila sem avisos; capturas do launcher com o combo fechado e aberto (rolagem e abertura por um
+ajuste temporário com `imgui_internal.h`, já removido). Pasta de teste do Windows atualizada (launcher, `sdk/` e
+`--prepare` depois de apagar `cache/build.stamp`, 52 s).
+
+## 2026-10-29 — Descrição das APIs mais enxuta, em itálico
+
+- Textos curtos: "Direct3D 11 no Windows, OpenGL no Linux. A mais testada." / "Direct3D 12 no Windows, Vulkan no
+  Linux." / "Precisa de um driver de vídeo atualizado." / "A API do próprio Windows 10 e 11." (e em inglês).
+- `italic_note` em `ui.cpp`: fonte a 88%, cor um pouco mais clara que as dicas (0.80, 0.84, 0.94) e itálico
+  sintético. A Rubik embutida não tem itálico, então cada glifo (quad de 4 vértices) é inclinado em 0,2 a partir da
+  base da própria linha. Assim funciona com quebra de linha, sem fonte nova.
+
+**Verificação:** compila sem avisos; capturas do launcher com "Automática" e "Vulkan" (rolagem temporária, já
+removida). Pasta de teste do Windows atualizada (launcher, `sdk/`, `--prepare` em 48 s).
+
+## 2026-10-29 — API gráfica: Direct3D 11 e OpenGL no lugar de "SDL_GPU"
+
+- A opção "SDL_GPU" (`api = gpu`) saiu: era só a SDL_GPU escolhendo entre Direct3D 12 e Vulkan, o que as opções
+  `d3d12` e `vulkan` já cobrem. Entraram `d3d11` (só Windows) e `opengl`, que fixam o renderizador clássico do SDL
+  nessa API (`SDL_CreateRenderer(window, "direct3d11"/"opengl")`).
+- Ordem no combo: Automática, Direct3D 11, OpenGL, Vulkan (BETA), Direct3D 12 (BETA). No Linux, sem as duas de
+  Direct3D. As opções viraram uma tabela (`ApiOption`: valor, nome, descrição, beta) em `ui.cpp`. Descrições:
+  "A mais compatível no Windows.", "Funciona em quase todas as placas de vídeo.", e "Pela SDL_GPU. ..." nas duas
+  em beta.
+- `create_renderer`: se a escolhida não abrir, o log diz `api = X did not start: <erro>` e o jogo usa a padrão.
+  `gpu` agora gera o aviso de valor desconhecido do `boej.ini` e vale como `auto`.
+
+**Verificação:** compila sem avisos. Linux (WSL2): `opengl` abre; `d3d11` ("direct3d11 not available") e `vulkan`
+caem para OpenGL; `gpu` gera o aviso. Windows, numa pasta separada em `%TEMP%` (já apagada): as cinco abrem
+(direct3d11, direct3d11, opengl, SDL_GPU/vulkan, SDL_GPU/direct3d12). Com `nearest`, D3D11, Vulkan e D3D12 saem
+idênticas à automática; OpenGL difere em 0,05% dos pixels. Captura do combo aberto (ajuste temporário, removido).
+
+## 2026-10-29 — Ordem das APIs gráficas
+
+- "Automática (a padrão do SDL)" virou só "Automática" (a descrição abaixo do combo já diz qual API ela usa).
+- Ordem: Automática sempre primeiro, depois as outras em ordem alfabética: Direct3D 11, Direct3D 12 (BETA),
+  OpenGL, Vulkan (BETA). No Linux: Automática, OpenGL, Vulkan.
+
+**Verificação:** compila sem avisos; pasta de teste do Windows atualizada (launcher, `sdk/`, `--prepare`).
+
+## 2026-10-29 — "Padrão" no lugar de "Automática"
+
+- A primeira opção da API gráfica passou a se chamar "Padrão" (em inglês, "Default"). O valor no `boej.ini`
+  continua `auto`.
+
+**Verificação:** compila sem avisos; pasta de teste do Windows atualizada (launcher, `sdk/`, `--prepare`).

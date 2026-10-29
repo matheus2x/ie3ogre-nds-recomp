@@ -34,8 +34,13 @@ window_scale = 2
 resolution_3d = 2
 ; Abrir em tela cheia (o atalho "fullscreen" alterna).
 fullscreen = false
-; Ampliação da imagem: nearest (pixels nítidos) ou linear (suavizada).
+; Ampliação da imagem: nearest (pixels nítidos), linear (suavizada), sharp (pixels nítidos
+; sem tamanhos desiguais, para escalas não inteiras) ou lcd (sharp com a grade da tela do DS).
 filter = nearest
+; API gráfica da janela: auto (a padrão do SDL: Direct3D 11 no Windows, OpenGL no Linux),
+; d3d11 (só Windows), opengl, ou, pela SDL_GPU (beta), vulkan e d3d12 (só Windows). Se a
+; escolhida não abrir, o jogo usa a padrão. Vale ao abrir o jogo.
+api = auto
 ; Ampliar só em múltiplos inteiros, com bordas pretas em volta (só com wide_layout = false).
 integer_scale = false
 

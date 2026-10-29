@@ -161,6 +161,7 @@ com as partes do BIOS e do NitroSDK que o jogo usa.
 - [ ] Release para Linux (hoje só compilando)
 - [ ] Conquistas pelo estado ao vivo do jogo (hoje são conferidas no save)
 - [ ] Mods: formatos documentados, texturas em alta resolução, editor de técnicas
+- [ ] Renderização opcional pela GPU (Vulkan/D3D12), anti-aliasing melhor, TAA, FSR e DLSS ([roadmap](docs/GRAFICOS.md))
 
 ## Compilando
 

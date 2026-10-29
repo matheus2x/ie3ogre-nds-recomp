@@ -58,6 +58,8 @@ struct SettingsOptions {
         std::function<void()> draw;
     };
     std::vector<Page> extra_pages;
+    // The graphics API the game window uses (pause menu only), shown beside video.api.
+    std::string active_renderer;
 };
 
 // The settings: a side list of sections (video, audio, controls...) and the chosen one

@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cfloat>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
@@ -176,6 +177,43 @@ const ImVec4 kAccent = ImGui::ColorConvertU32ToFloat4(kPrimary);
 const ImVec4 kAccentHover = ImGui::ColorConvertU32ToFloat4(kPrimaryHover);
 const ImVec4 kAccentActive = ImGui::ColorConvertU32ToFloat4(kPrimaryActive);
 const ImVec4 kYellow = ImGui::ColorConvertU32ToFloat4(kHighlight);
+
+// A small tag, like "BETA" beside an option still being tested: its left edge at `pos`,
+// centered on the line of text that starts at pos.y. Returns its width.
+float draw_chip(ImDrawList* dl, ImVec2 pos, const char* text) {
+    float line = ImGui::GetTextLineHeight();
+    push_bold(0.62f);
+    ImVec2 size = ImGui::CalcTextSize(text);
+    float pad = size.y * 0.5f, h = size.y * 1.25f;
+    ImVec2 p0(pos.x, pos.y + (line - h) / 2), p1(pos.x + size.x + pad * 2, p0.y + h);
+    ImVec4 tint = ImGui::ColorConvertU32ToFloat4(kMagenta);
+    tint.w = 0.22f;
+    dl->AddRectFilled(p0, p1, ImGui::GetColorU32(tint), h / 2);
+    dl->AddText(ImGui::GetFont(), ImGui::GetFontSize(), ImVec2(p0.x + pad, p0.y + (h - size.y) / 2), kMagenta, text);
+    ImGui::PopFont();
+    return p1.x - p0.x;
+}
+
+// A short note under a widget: smaller, slanted (the font has no italic: the glyphs'
+// vertices are sheared) and a little lighter than the hints.
+void italic_note(const char* text) {
+    constexpr float kSlant = 0.2f;
+    push_font_size(0.88f);
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.80f, 0.84f, 0.94f, 1));
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    int first = dl->VtxBuffer.Size;
+    float top = ImGui::GetCursorScreenPos().y, line = ImGui::GetTextLineHeight();
+    ImGui::TextWrapped("%s", text);
+    // Glyphs are quads of 4 vertices; each leans from its own line's bottom.
+    for (int i = first; i + 3 < dl->VtxBuffer.Size; i += 4) {
+        ImDrawVert* v = &dl->VtxBuffer[i];
+        float center = (v[0].pos.y + v[2].pos.y) / 2;
+        float bottom = top + (std::floor((center - top) / line) + 1) * line;
+        for (int k = 0; k < 4; k++) v[k].pos.x += (bottom - v[k].pos.y) * kSlant;
+    }
+    ImGui::PopStyleColor();
+    ImGui::PopFont();
+}
 
 void push_accent() {
     ImGui::PushStyleColor(ImGuiCol_Button, kAccent);
@@ -617,10 +655,72 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
                 }
                 ImGui::EndCombo();
             }
-            row(L("Scaling filter", "Filtro de ampliação"));
-            int filter = SDL_strcasecmp(config.get("video", "filter").c_str(), "linear") == 0;
-            const char* kFilters[] = {L("Sharp (pixels)", "Nítido (pixels)"), L("Smooth", "Suavizado")};
-            if (ImGui::Combo("##filter", &filter, kFilters, 2)) set("video", "filter", filter ? "linear" : "nearest");
+            row(L("Scaling filter", "Filtro de ampliação"),
+                L("Sharp smooth keeps the pixels crisp without uneven sizes; LCD adds the DS screen's grid.",
+                  "Nítido suave mantém os pixels sem tamanhos desiguais; LCD acrescenta a grade da tela do DS."));
+            const char* kFilterValues[] = {"nearest", "linear", "sharp", "lcd"};
+            const char* kFilters[] = {L("Sharp (pixels)", "Nítido (pixels)"), L("Smooth", "Suavizado"),
+                                      L("Sharp smooth", "Nítido suave"), "LCD"};
+            int filter = 0;
+            for (int i = 0; i < 4; i++) {
+                if (SDL_strcasecmp(config.get("video", "filter").c_str(), kFilterValues[i]) == 0) filter = i;
+            }
+            if (ImGui::Combo("##filter", &filter, kFilters, 4)) set("video", "filter", kFilterValues[filter]);
+            std::string api_hint = L("Takes effect when the game starts again.", "Vale quando o jogo abrir de novo.");
+            if (!options.active_renderer.empty()) api_hint += std::string(" ") + L("In use: ", "Em uso: ") + options.active_renderer;
+            row(L("Graphics API", "API gráfica"), api_hint.c_str());
+            struct ApiOption {
+                const char* value;
+                const char* name;
+                const char* hint;
+                bool beta;  // the SDL_GPU ones: nothing uses the GPU beyond showing the picture yet
+            };
+            // Default first, the others in alphabetical order.
+            const ApiOption kApiOptions[] = {
+                {"auto", L("Default", "Padrão"),
+                 L("Direct3D 11 on Windows, OpenGL on Linux. The most tested.",
+                   "Direct3D 11 no Windows, OpenGL no Linux. A mais testada."),
+                 false},
+#ifdef _WIN32
+                {"d3d11", "Direct3D 11", L("The most compatible on Windows.", "A mais compatível no Windows."), false},
+                {"d3d12", "Direct3D 12",
+                 L("Through SDL_GPU. Windows 10 and 11's own API.", "Pela SDL_GPU. A API do próprio Windows 10 e 11."), true},
+#endif
+                {"opengl", "OpenGL", L("Works on almost any video card.", "Funciona em quase todas as placas de vídeo."), false},
+                {"vulkan", "Vulkan",
+                 L("Through SDL_GPU. Needs an up-to-date video driver.", "Pela SDL_GPU. Precisa de um driver de vídeo atualizado."),
+                 true},
+            };
+            int api = 0;
+            for (int i = 0; i < int(std::size(kApiOptions)); i++) {
+                if (SDL_strcasecmp(config.get("video", "api").c_str(), kApiOptions[i].value) == 0) api = i;
+            }
+            // The chip goes into the combo's own draw list after the combo, so it is drawn over the frame.
+            const ImGuiStyle& st = ImGui::GetStyle();
+            ImDrawList* combo_dl = ImGui::GetWindowDrawList();
+            ImVec2 combo_pos = ImGui::GetCursorScreenPos();
+            bool open = ImGui::BeginCombo("##api", kApiOptions[api].name);
+            if (kApiOptions[api].beta) {
+                draw_chip(combo_dl,
+                          ImVec2(combo_pos.x + st.FramePadding.x + ImGui::CalcTextSize(kApiOptions[api].name).x +
+                                     st.ItemInnerSpacing.x * 2,
+                                 combo_pos.y + st.FramePadding.y),
+                          "BETA");
+            }
+            if (open) {
+                for (int i = 0; i < int(std::size(kApiOptions)); i++) {
+                    if (ImGui::Selectable(kApiOptions[i].name, i == api)) set("video", "api", kApiOptions[i].value);
+                    if (kApiOptions[i].beta) {
+                        draw_chip(ImGui::GetWindowDrawList(),
+                                  ImVec2(ImGui::GetItemRectMin().x + ImGui::CalcTextSize(kApiOptions[i].name).x +
+                                             st.ItemInnerSpacing.x * 2,
+                                         ImGui::GetItemRectMin().y + st.ItemSpacing.y / 2),  // the text's line
+                                  "BETA");
+                    }
+                }
+                ImGui::EndCombo();
+            }
+            italic_note(kApiOptions[api].hint);
             end_rows();
             break;
         }
@@ -728,7 +828,7 @@ PauseAction pause_menu(Config& config, const std::string& path, const SettingsOp
     ImGuiStyle& style = ImGui::GetStyle();
     style.FontScaleMain = std::clamp(vp->WorkSize.y * 0.75f / 36 / style.FontSizeBase, 1.0f, 3.0f);
     float em = ImGui::GetFontSize();
-    ImVec2 size(std::min(vp->WorkSize.x * 0.92f, em * 52), std::min(vp->WorkSize.y * 0.92f, em * 36));
+    ImVec2 size(std::min(vp->WorkSize.x * 0.92f, em * 64), std::min(vp->WorkSize.y * 0.92f, em * 36));
     ImGui::SetNextWindowPos(vp->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
     ImGui::SetNextWindowSize(size, ImGuiCond_Always);
     ImGui::Begin("pause", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings);

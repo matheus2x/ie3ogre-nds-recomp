@@ -163,6 +163,7 @@ on the PC, along with the parts of the BIOS and the NitroSDK the game uses.
 - [ ] Linux release (source builds only for now)
 - [ ] Achievements from live game state (today they are checked against the save)
 - [ ] Mods: documented formats, high-resolution textures, a special move editor
+- [ ] Optional GPU rendering (Vulkan/D3D12), better anti-aliasing, TAA, FSR and DLSS ([roadmap](docs/GRAFICOS.md), in Portuguese)
 
 ## Building
 

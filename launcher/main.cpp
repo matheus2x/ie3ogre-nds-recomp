@@ -514,7 +514,7 @@ int main(int argc, char** argv) {
     if (scale <= 0) scale = 1;
     SDL_Window* window;
     SDL_Renderer* renderer;
-    if (!SDL_CreateWindowAndRenderer("Inazuma Eleven 3 - The Ogre (launcher)", int(820 * scale), int(640 * scale),
+    if (!SDL_CreateWindowAndRenderer("Inazuma Eleven 3 - The Ogre (launcher)", int(1040 * scale), int(640 * scale),
                                      SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY, &window, &renderer)) {
         NTR_LOG("[launcher] cannot create the window: %s\n", SDL_GetError());
         return 1;
