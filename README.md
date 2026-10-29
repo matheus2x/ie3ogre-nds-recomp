@@ -56,7 +56,7 @@ Everything the cartridge does, plus:
 |---|---|---|
 | 🎨 **Graphics** | 3D at 256×192 | 3D at **1× to 10×** with anti-aliasing; **16:9** layout (the bottom screen large, the two small ones beside it) or stacked screens |
 | 💾 **Progress** | the game's save | **5 savestates** and up to 30 s of **rewind** |
-| 🏆 **Achievements** | — | **36 local achievements** per save (chapters, team level, roster, the captain of each team you face), with a popup in game, a page in the pause menu and a tab in the launcher. Nothing online: each save has a `.achievements.json` next to it |
+| 🏆 **Achievements** | — | **34 local achievements** per save (chapters, team level, roster, the captain of each team you face), with a popup in game, a page in the pause menu and a tab in the launcher. Nothing online: each save has a `.achievements.json` next to it |
 | ⏩ **Speed** | normal | **fast-forward** from 2× to 10× and auto-A |
 | 🎮 **Controls** | buttons and stylus | keyboard, mouse on the touch screen and **controllers**, all remappable |
 | ⚙️ **Interface** | — | a **pause menu** (settings, savestates, achievements) and a **launcher** that prepares, updates and manages saves and mods, in English or Portuguese |
@@ -230,7 +230,7 @@ Third-party components keep their own licenses ([`launcher/TERCEIROS.txt`](launc
 translation in `mods/CyberLifePlus/` and `translations/` builds on the CyberLife group's work and is not covered
 by the MIT License.
 
-*Inazuma Eleven* and its characters, logos and artwork, including the logo in `docs/assets/` and the icon in
-`game/icon.ico`, belong to LEVEL-5 Inc. This is a fan project with no affiliation to LEVEL-5 or Nintendo. You need
+*Inazuma Eleven* and its characters, logos and artwork, including the logo in `docs/assets/`, the icon in
+`game/icon.ico` and the captains' portraits in `achievements/icons/`, belong to LEVEL-5 Inc. This is a fan project with no affiliation to LEVEL-5 or Nintendo. You need
 a legitimate copy of the game to play. The generated `boej.pak` and `boej.exe` contain the game's data and code:
 they are for personal use only and must not be distributed.

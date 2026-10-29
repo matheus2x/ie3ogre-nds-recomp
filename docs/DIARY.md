@@ -2880,3 +2880,18 @@ nível 45) → capítulos 2–11, níveis 10 e 25, 16 amigos e capitão do Team 
   e os selos ficaram planos e cinza (`flat-square`, `labelColor=30363d`, `color=57606a`), três em vez de cinco:
   release, plataforma (Windows x64 · Linux compilando, num selo só) e licença. O "requer o seu cartucho" saiu: o
   aviso IMPORTANT já diz isso. Conferido baixando os selos do shields.io e vendo em fundo claro e escuro.
+
+## 2026-10-29 — Sem os capitães do Big Waves e do Desert Lion
+
+- O usuário tinha trocado à mão os ícones `captain_big_waves.png` e `captain_desert_lion.png`; antes do commit da
+  0.1.20 eu os vi "faltando" e rodei `tools/achievement_icons.py`, que redesenhou **todos** os ícones por cima. A
+  pedido, as duas conquistas e os dois ícones saíram (pouco relevantes); o All Stars passou a pedir os capitães
+  das sete seleções do torneio mundial (Fire Dragon, Knights of Queen, The Empire, Unicorn, Orpheus, The Kingdom,
+  Little Gigant). 34 conquistas.
+- `tools/achievement_icons.py` agora só desenha os ícones que faltam; `--force` redesenha todos. Conferido: rodar
+  sem `--force` não muda nenhum arquivo.
+
+**Verificação:** núcleo com as 34 definições nos dois saves de teste.
+- Depois, o usuário colocou os retratos dos 13 capitães nos `captain_*.png` (64×64, RGBA de 8 bits): saíram do
+  gerador, que agora só desenha capítulos, nível, amigos e All Stars. O aviso legal do README passa a citar os
+  retratos como arte da LEVEL-5, como o logo e o ícone do Endou.

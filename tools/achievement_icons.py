@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """The achievements' icons (achievements/icons/*.png), drawn with ImageMagick.
 
-  python3 tools/achievement_icons.py
+  python3 tools/achievement_icons.py            # draws the icons that are missing
+  python3 tools/achievement_icons.py --force    # draws them all again, over the existing ones
 
 64x64 PNGs with 8 bits per channel (what SDL_LoadPNG reads). Only shapes and text: no game
 graphics, so they ship with the release. The text font is Liberation Sans Bold (SIL OFL).
-first_save.png is drawn by hand and left alone.
+An icon already in the folder may have been replaced by hand: it is kept unless --force.
+first_save.png and the captains' portraits (captain_*.png) are made by hand and left alone.
 """
 
 import math
@@ -18,27 +20,12 @@ ROOT = Path(__file__).resolve().parent.parent
 ICONS = ROOT / "achievements" / "icons"
 FONT = "/usr/share/fonts/liberation/LiberationSans-Bold.ttf"
 
-# The captains' teams: file name -> (abbreviation, background, text colour).
-TEAMS = {
-    "big_waves": ("BW", "#0f766e", "#fde047"),
-    "desert_lion": ("DL", "#7f1d1d", "#fef3c7"),
-    "neo_japan": ("NJ", "#1e293b", "#e2e8f0"),
-    "fire_dragon": ("FD", "#b91c1c", "#fef2f2"),
-    "knights_of_queen": ("KQ", "#1e3a8a", "#f8fafc"),
-    "team_k": ("K", "#111827", "#ef4444"),
-    "the_empire": ("EMP", "#38bdf8", "#f8fafc"),
-    "unicorn": ("UNI", "#1d4ed8", "#fecaca"),
-    "orpheus": ("ORF", "#2563eb", "#f8fafc"),
-    "team_garshield": ("GAR", "#3b0764", "#e9d5ff"),
-    "the_kingdom": ("KDM", "#15803d", "#fde047"),
-    "little_gigant": ("LG", "#c2410c", "#fff7ed"),
-    "tenkuu_no_shito": ("TS", "#e5e7eb", "#a16207"),
-    "makai_gundan_z": ("MZ", "#450a0a", "#f87171"),
-    "the_ogre": ("OGR", "#3f3f46", "#a3e635"),
-}
+FORCE = "--force" in sys.argv[1:]
 
 
 def magick(*args: str, out: Path):
+    if out.exists() and not FORCE:
+        return
     subprocess.run(["magick", "-size", "64x64", "xc:none", *args, "-depth", "8", f"PNG32:{out}"], check=True)
 
 
@@ -82,11 +69,6 @@ def main() -> int:
                "-draw", "roundrectangle 13,25 27,36 5,5", "-draw", "roundrectangle 37,25 51,36 5,5",
                "-fill", "#ede9fe", "-draw", "roundrectangle 24,23 40,38 6,6",
                *text(str(n), 18 if n < 100 else 16, "#ffffff", 18), out=ICONS / f"members_{n}.png")
-    for team, (abbr, fill, color) in TEAMS.items():  # captains: the armband's C and the team
-        magick(*frame(fill, color),
-               "-fill", color, "-draw", "circle 32,22 32,36",
-               *text("C", 20, fill, -10), *text(abbr, 17 if len(abbr) < 3 else 14, color, 18),
-               out=ICONS / f"captain_{team}.png")
     stars = []
     for x, y in ((20, 27), (44, 27), (32, 16)):  # all stars: three stars
         stars += ["-draw", star(x, y, 9)]

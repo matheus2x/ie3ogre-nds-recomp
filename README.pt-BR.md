@@ -55,7 +55,7 @@ Tudo o que o cartucho faz, e mais:
 |---|---|---|
 | 🎨 **Gráficos** | 3D em 256×192 | 3D de **1× a 10×** com anti-aliasing; tela **16:9** (a de baixo grande e as duas pequenas ao lado) ou telas empilhadas |
 | 💾 **Progresso** | o save do jogo | **5 savestates** e **rewind** de até 30 s |
-| 🏆 **Conquistas** | — | **36 conquistas locais** por save (capítulos, nível do time, elenco, o capitão de cada time enfrentado), com aviso no jogo, página no menu de pausa e aba no launcher. Nada online: cada save tem um `.achievements.json` ao lado |
+| 🏆 **Conquistas** | — | **34 conquistas locais** por save (capítulos, nível do time, elenco, o capitão de cada time enfrentado), com aviso no jogo, página no menu de pausa e aba no launcher. Nada online: cada save tem um `.achievements.json` ao lado |
 | ⏩ **Velocidade** | normal | **avanço rápido** de 2× a 10× e A automático |
 | 🎮 **Controles** | botões e caneta | teclado, mouse na tela de toque e **controles**, tudo remapeável |
 | ⚙️ **Interface** | — | **menu de pausa** (configurações, savestates, conquistas) e um **launcher** que prepara, atualiza e cuida dos saves e mods, em português ou inglês |
@@ -225,7 +225,7 @@ componentes de terceiros mantêm as próprias licenças ([`launcher/TERCEIROS.tx
 tradução em `mods/CyberLifePlus/` e `translations/` parte do trabalho do grupo CyberLife e não está coberta pela
 licença MIT.
 
-*Inazuma Eleven* e os seus personagens, logotipos e artes, incluindo o logo em `docs/assets/` e o ícone em
-`game/icon.ico`, são da LEVEL-5 Inc. Projeto de fãs, sem afiliação com a LEVEL-5 ou a Nintendo. Para jogar, é
+*Inazuma Eleven* e os seus personagens, logotipos e artes, incluindo o logo em `docs/assets/`, o ícone em
+`game/icon.ico` e os retratos dos capitães em `achievements/icons/`, são da LEVEL-5 Inc. Projeto de fãs, sem afiliação com a LEVEL-5 ou a Nintendo. Para jogar, é
 preciso ter uma cópia legítima do jogo. O `boej.pak` e o `boej.exe` gerados contêm dados e código do jogo: são de
 uso pessoal e não devem ser distribuídos.

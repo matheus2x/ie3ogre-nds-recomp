@@ -380,42 +380,6 @@
       }
     },
     {
-      "id": "captain_big_waves",
-      "name": {
-        "en": "Big Waves captain",
-        "pt": "Capitão do Big Waves"
-      },
-      "description": {
-        "en": "Recruit Nice Dolphin, captain of Big Waves.",
-        "pt": "Recrute Nice Dolphin, capitão do Big Waves."
-      },
-      "icon": "icons/captain_big_waves.png",
-      "hidden": false,
-      "condition": {
-        "source": "save",
-        "field": "has_unit",
-        "value": 3029
-      }
-    },
-    {
-      "id": "captain_desert_lion",
-      "name": {
-        "en": "Desert Lion captain",
-        "pt": "Capitão do Desert Lion"
-      },
-      "description": {
-        "en": "Recruit Kyle Bjorn, captain of Desert Lion.",
-        "pt": "Recrute Kyle Bjorn, capitão do Desert Lion."
-      },
-      "icon": "icons/captain_desert_lion.png",
-      "hidden": false,
-      "condition": {
-        "source": "save",
-        "field": "has_unit",
-        "value": 3043
-      }
-    },
-    {
       "id": "captain_neo_japan",
       "name": {
         "en": "Neo Japan captain",
@@ -656,23 +620,13 @@
         "pt": "All Stars"
       },
       "description": {
-        "en": "Recruit the captains of every national team you face: Big Waves, Desert Lion, Fire Dragon, Knights of Queen, The Empire, Unicorn, Orpheus, The Kingdom and Little Gigant.",
-        "pt": "Recrute os capitães de todas as seleções que você enfrenta: Big Waves, Desert Lion, Fire Dragon, Knights of Queen, The Empire, Unicorn, Orpheus, The Kingdom e Little Gigant."
+        "en": "Recruit the captains of the national teams of the world tournament: Fire Dragon, Knights of Queen, The Empire, Unicorn, Orpheus, The Kingdom and Little Gigant.",
+        "pt": "Recrute os capitães das seleções do torneio mundial: Fire Dragon, Knights of Queen, The Empire, Unicorn, Orpheus, The Kingdom e Little Gigant."
       },
       "icon": "icons/all_stars.png",
       "hidden": false,
       "condition": {
         "all": [
-          {
-            "source": "save",
-            "field": "has_unit",
-            "value": 3029
-          },
-          {
-            "source": "save",
-            "field": "has_unit",
-            "value": 3043
-          },
           {
             "source": "save",
             "field": "has_unit",
