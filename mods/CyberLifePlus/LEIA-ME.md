@@ -31,6 +31,11 @@ dá exatamente os arquivos do dump traduzido.
 
 ## Versões
 
+- **1.9:** os menus do time, que estavam em inglês: Amigos (a lista, "Ordem" com os status — Chute, Físico,
+  Controle, Defesa, Velocidade, Resistência, Coragem —, Dados, Trocar, Menu, "Número da camisa"),
+  Equipamento (Chuteira, Acessório, Luvas, Mudar) e Formação (Montar time - História / Rede 1–3 -, Copiar,
+  Abrir), com os botões Fim, Sair, Parar, OK, Sim e Não. Traduzidos do japonês; o CyberLife tinha posto
+  "Unsort" no botão que volta à ordem do time e "Club" na lista dos Amigos.
 - **1.8:** as telas de comunicação que ainda estavam em inglês: a tela de partida (Procurar rival, Entrar,
   Montar time, Nome e emblema, Trocar uniforme, CPU e campo, Configurar, Jogar agora, os times de rede e o
   "Nível do time"), a tela de download (Partida, Troca, Download, Configurar Wi-Fi), os botões pequenos (Sair,

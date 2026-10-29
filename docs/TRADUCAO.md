@@ -12,7 +12,7 @@ caracteres japoneses (kana + kanji) e deixa de fora:
 
 ## Números
 
-| | v1.0 | v1.1 | v1.2 | v1.4 | v1.5–v1.8 |
+| | v1.0 | v1.1 | v1.2 | v1.4 | v1.5–v1.9 |
 |---|---:|---:|---:|---:|---:|
 | Tudo, com repetições (o que o jogador lê; 782 mil caracteres no original) | 29 % | 32 % | 34 % | 35,2 % | **35,4 %** |
 | Textos únicos (o trabalho que falta; 429 mil) | 39 % | 44 % | 47 % | 48,3 % | **48,4 %** |
@@ -28,8 +28,8 @@ que subiu o total de 776 para 783 mil caracteres; as colunas v1.0 e v1.1 são da
 de depuração dos scripts saíram da conta (782 mil). Na v1.5 saíram as sobras de japonês depois do NUL de uma
 tradução mais curta nas tabelas (o fim da string original, que o jogo nunca mostra) e os nomes de técnica que o
 CyberLife tirou do lugar no `command.STR`: só isso tira ~1.200 caracteres, e a v1.4 medida assim dá 35,4 % e
-48,4 %. Quase tudo o que o levantamento contava em "outras tabelas" era sobra. Da v1.6 à v1.8 o trabalho foi
-no texto das imagens, que fica fora da conta: o `survey` da v1.8 dá os mesmos números da v1.5.
+48,4 %. Quase tudo o que o levantamento contava em "outras tabelas" era sobra. Da v1.6 à v1.9 o trabalho foi
+no texto das imagens, que fica fora da conta: o `survey` da v1.9 dá os mesmos números da v1.5.
 
 A história está toda em português desde a v1.1, mas **ainda falta mais da metade do texto do jogo**. Quase tudo
 está em quatro blocos: falas dos jogadores nas partidas, perfis dos jogadores, subeventos e NPCs.
@@ -197,8 +197,10 @@ etapa ficam no `docs/DIARY.md`.
   - partida (`pic3d/common.pkb`, que é um pacote com nomes em hash, ainda fora do `image.py`): Half Time, End
     of Normal Time, Extra Time, Full Time, Penalty Shootout, Technic, Prestige, News/Member/Examine/Task,
     Miss!/Direct/Chain/Block, Replay;
-  - e as outras ~90 imagens mudadas pelo CyberLife (lista: `export` do mod comparado com o `--retail`), além
-    das que ele deixou em japonês.
+  - e as outras imagens mudadas pelo CyberLife: comparando o `export` do mod com o `--retail`, 597 diferiam
+    sem edição nossa antes da v1.9 e 567 depois (quase todas em `pic3d`: loja, troca, torneio, técnicas,
+    treino, scout, uniforme, fichário, Inabikari, mapa de contatos; em `pic2d`: telas da partida `MPS*`/`SPS*`,
+    menus `menu/*` e o título `MTSIni`), além das que ele deixou em japonês.
 - [x] Tutorial das ligações (v1.8, `MTSPi`, 8 páginas de 8 bpp e 3 botões): as páginas do Superlink 2→3
   (`WPD_W00`–`W03`) e do Link Premium Ogre (`W04`–`W07`), em que o CyberLife só tinha trocado o botão. Os
   rótulos "Outro/Este console DS", as caixas de explicação, a tela de título do outro jogo (Conectar, Partida,
@@ -208,7 +210,20 @@ etapa ficam no `docs/DIARY.md`.
 - [x] Títulos do jogador (v1.8, `logic/rpgtitle.STR`, 40), do japonês: o CyberLife tinha posto um inglês com
   erros ("Penguin Process" por 皇帝ペンギン, "Body Continues" por ガチムチボディ). イレブン → "Onze", como em "Super
   Onze". Texto comum (o cartão do Passing o mostra assim), até a largura do título original mais largo.
-- [ ] Menus do jogo que ainda dizem "Kick", "Guard" etc.: seguir o glossário dos itens (Chute, Defesa…)
+- [x] Menus do time (v1.9), do japonês: Amigos (`pic3d/menu_minna`: faixas Amigos/Ordem, X Dados, a lista de
+  ordenação com os status do glossário — Nome, Apelido, Nível, Chute, Físico, Controle, Defesa, Velocidade,
+  Resistência, Coragem —, Trocar, OK, Menu, Fim/Sair/Parar, Sim/Não, B Amigos e a janela "Número da camisa"),
+  Equipamento (`menu_equip`: Equipamento, Mudar, OK, Fim, Sair, X Trocar, X Dados, Chuteira/Acessório/Luvas
+  nas janelas e nas abas, de `FONT8`, e "pág") e Formação (`menu_hensei`: Time, Amigos, "pág", Montar time -
+  História / Rede 1–3 -, Trocar, OK, Copiar, Abrir, Sim/Não). 30 imagens. As edições saem de um gerador que
+  acha as cores do texto original (corpo e contorno) e, nos quadros escuros com a bola desenhada atrás,
+  apaga por tinta em vez de por coluna.
+- [ ] Menus do jogo em texto que ainda estão em inglês (vistos no jogo, v1.9): o submenu da Formação ("Story",
+  "Battle", "Time 1–3"), o menu Y dos Amigos ("Sort by", "Bib number", "Dismiss", "Equip", "Special moves",
+  "Items") e a lista de ordenação dele ("Name", "Nickname", "Level", "Ability"). Achar de onde vêm (overlay ou
+  tabela).
+- [ ] Janela "power ofEndo is ok." ao apertar A num jogador já escalado na tela dos Amigos (em inglês, e sem o
+  espaço antes do nome).
 - [ ] Legendas dos vídeos (`movie/txt`): levantar e traduzir ("確かに大事なところでの大失敗は辛い！")
 - [ ] Aviso de ficção de um jogo novo ("この作品はフィクションです…")
 
@@ -247,6 +262,10 @@ etapa ficam no `docs/DIARY.md`.
   time de rede"), Montar time (Time de rede 1–3), o submenu Download e as faixas de cima "Partida" e "Baixar
   via Wi-Fi". Não vistos: Nível do time, Time A/B, os selos, Você/Rival/Mestre e as janelas Sim/Não
   (precisam de outro DS), e as cópias nos outros arquivos.
+- [x] Menus do time (v1.9): vistos no jogo a tela dos Amigos (faixa Amigos, X Dados, Trocar, Menu, Fim, OK,
+  Sair), a ordenação (faixa Ordem/Nome, B Amigos). Não vistos: Equipamento, as telas da Formação (o save do
+  teste abre só o submenu), Copiar/Abrir e as janelas Sim/Não e "Número da camisa". O perfil do Kageto aparece
+  como "?から?まれた??の???" (kanji fora da fonte): é o `unitbase.STR` sem tradução (fase 4).
 - [ ] Tutorial das ligações (v1.8): só na prévia. No save do teste o Superlink 2→3 e o Link Premium Ogre
   estão bloqueados ("Esta função ainda não está liberada").
 - [ ] Títulos do jogador (v1.8): vistos no cartão do Passing ("Onze rival"). Quem lê a tabela é o `ov000`,

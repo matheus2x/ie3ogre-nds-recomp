@@ -2709,3 +2709,40 @@ código, com o idioma do launcher e o `README.txt`. Troquei o launcher, o `SDL3.
 `.txt`; o resto ficou (o mod 1.8 de lá é idêntico ao novo). Como a versão não mudou e o código do jogo mudou (menu de
 pausa e avisos), apaguei o `cache/build.stamp` para forçar a recompilação: `--prepare` refez o `boej.exe` em 48 s, já
 com as mensagens em inglês. O `boej.ini` de lá não tem `[ui]`, então o launcher abre em inglês.
+
+## 2026-10-29 — Menus do time: Amigos, Equipamento e Formação (mod 1.9)
+
+- Pedido: a próxima etapa da tradução. Pelo "Próximo" de 2026-10-27: a lista das imagens que o CyberLife mudou e
+  que ainda não têm edição nossa.
+- **Levantamento:** `export` do mod e do `--retail` inteiros (`build/images-diff/`) e comparação dos PNGs: 597
+  imagens diferem sem edição nossa (o checklist dizia ~90). Quase todas em `pic3d` (loja, troca, torneio,
+  técnicas, treino, scout, uniforme, fichário…) e nas telas da partida e menus de `pic2d`. Escolhi os três
+  menus do time, que se abrem o tempo todo e são o item "Kick/Guard" do checklist: `pic3d/menu_minna`,
+  `menu_equip` e `menu_hensei` (30 imagens).
+- **Gerador** (no scratchpad, como os das etapas anteriores): cada "vaga" diz o retângulo do texto antigo, a
+  coluna limpa e o texto novo; ele acha em cada quadro as cores do texto (a mais "de borda" é o contorno, e se
+  o corpo tem contorno à esquerda/acima é `outline`, senão `shadow`), escolhe `from` quando a linha é lisa e
+  `ink` quando há desenho atrás (os quadros escuros têm a bola em 9/8 atrás do texto: com `from` ela some), e
+  escreve no `images.json` no formato atual. Para achar onde está o texto, a diferença retail × CyberLife de
+  cada quadro dá os retângulos.
+- **Traduções** (do japonês; termos do diálogo e do glossário): なかま → Amigos (o diálogo já manda o jogador
+  ao menu "Amigos"), じょうほう → Dados, せいれつ → Ordem, a lista de ordenação com os status do glossário
+  (Nome, Apelido, Nível, Chute, Físico, Controle, Defesa, Velocidade, Resistência, Coragem), いれかえ → Trocar,
+  けってい → OK, コマンド → Menu, おわる/もどる/やめる → Fim/Sair/Parar, ゼッケンナンバー → Número da camisa,
+  そうび → Equipamento, へんこう → Mudar, チェンジ → Trocar, シューズ/アクセサリ/グローブ → Chuteira/Acessório/Luvas
+  (as abas de 48 px com a `FONT8`), ページ → pág, チーム → Time, チームへんせい → Montar time, ストーリー/つうしん →
+  História/Rede, コピー → Copiar, ひらく → Abrir (o CyberLife tinha "Open"; a leitura do botão não ficou clara
+  nos pixels). "Mudar", "Trocar" (X), "Copiar" e o "Amigos" do botão B usam `gap: 0` para caber.
+- **No jogo** (save `foxperks-1`, savestate no menu de campo, depois devolvido): a tela dos Amigos mostra a faixa
+  Amigos, X Dados, Trocar, Menu, Fim, OK e Sair; ordenando, a faixa "Ordem / Nome" e "B Amigos", que volta à
+  ordem do time (o CyberLife tinha posto "Unsort"). Achados em inglês que são texto, não imagem: o submenu da
+  Formação (Story, Battle, Time 1–3), o menu Y dos Amigos (Sort by, Bib number, Dismiss, Equip, Special
+  moves, Items) e a lista dele (Name, Nickname, Level, Ability), e a janela "power ofEndo is ok.". O perfil do
+  Kageto aparece com "??" (o `unitbase.STR`, fase 4). Tudo no checklist.
+
+**Verificação:** `image.py check` sem problemas (184 imagens), prévias conferidas; `mod.py check`, `text.py check`
+e os 49 testes: ok. `survey`: 35,4 % / 48,4 %, como antes (imagens ficam fora da conta).
+**Não testado no jogo:** Equipamento, as telas da Formação, Copiar/Abrir e as janelas Sim/Não e "Número da camisa".
+
+**Próximo:** os menus em texto achados agora (submenu da Formação, menu Y dos Amigos) ou seguir pelas imagens,
+começando pela loja (`pic3d/shop`) e pelo menu de técnicas (`menu_special_comand`).

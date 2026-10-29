@@ -1549,5 +1549,259 @@
     {"erase": [226, 171, 26, 15], "ink": [255, 182]},
     {"text": "Parar", "box": [225, 173, 28, 13], "colour": 255, "shadow": 182}
   ]
+},
+"pic3d/menu_minna": {
+  "MMD_B00.PAC_": [
+    {"frames": [0, 2, 4], "erase": [18, 5, 27, 13], "ink": [3, 15]},
+    {"frames": [0], "text": "Fim", "box": [18, 4, 27, 14], "colour": 15, "outline": 3},
+    {"frames": [2], "text": "Sair", "box": [18, 4, 27, 14], "colour": 15, "outline": 3},
+    {"frames": [4], "text": "Parar", "box": [18, 4, 27, 14], "colour": 15, "outline": 3},
+    {"frames": [1, 3, 5], "erase": [18, 5, 26, 13], "from": 43},
+    {"frames": [1], "text": "Fim", "box": [18, 4, 27, 14], "colour": 15, "outline": 13},
+    {"frames": [3], "text": "Sair", "box": [18, 4, 27, 14], "colour": 15, "outline": 13},
+    {"frames": [5], "text": "Parar", "box": [18, 4, 27, 14], "colour": 15, "outline": 13}
+  ],
+  "MMD_B06.PAC_": [
+    {"frames": [0, 1, 2, 3], "erase": [5, 5, 38, 13], "from": 42},
+    {"frames": [0], "text": "Sim", "box": [3, 5, 42, 14], "colour": 15, "outline": 4},
+    {"frames": [1], "text": "Sim", "box": [3, 5, 42, 14], "colour": 15, "outline": 13},
+    {"frames": [2], "text": "Não", "box": [3, 5, 42, 14], "colour": 15, "outline": 4},
+    {"frames": [3], "text": "Não", "box": [3, 5, 42, 14], "colour": 15, "outline": 13}
+  ],
+  "MMD_B08.PAC_": [
+    {"frames": [0, 1, 2], "erase": [16, 5, 28, 13], "from": 43},
+    {"frames": [0], "text": "Amigos", "box": [16, 4, 29, 14], "colour": 15, "outline": 3, "gap": 0},
+    {"frames": [1], "text": "Amigos", "box": [16, 4, 29, 14], "colour": 15, "outline": 13, "gap": 0},
+    {"frames": [2], "text": "Amigos", "box": [16, 4, 29, 14], "colour": 12, "outline": 2, "gap": 0}
+  ],
+  "MMD_B11.PAC_": [
+    {"frames": [0, 3], "erase": [18, 5, 34, 13], "ink": [3, 15]},
+    {"frames": [0], "text": "Trocar", "box": [18, 4, 34, 14], "colour": 15, "outline": 3},
+    {"frames": [3], "text": "OK", "box": [18, 4, 34, 14], "colour": 15, "outline": 3},
+    {"frames": [1, 2, 4, 5], "erase": [18, 5, 34, 13], "from": 51},
+    {"frames": [1], "text": "Trocar", "box": [18, 4, 34, 14], "colour": 15, "outline": 13},
+    {"frames": [2], "text": "Trocar", "box": [18, 4, 34, 14], "colour": 12, "outline": 2},
+    {"frames": [4], "text": "OK", "box": [18, 4, 34, 14], "colour": 15, "outline": 13},
+    {"frames": [5], "text": "OK", "box": [18, 4, 34, 14], "colour": 12, "outline": 2}
+  ],
+  "MMD_B12.PAC_": [
+    {"frames": [0], "erase": [18, 5, 34, 13], "ink": [3, 15]},
+    {"frames": [0], "text": "Menu", "box": [18, 4, 34, 14], "colour": 15, "outline": 3},
+    {"frames": [1, 2], "erase": [18, 5, 34, 13], "from": 51},
+    {"frames": [1], "text": "Menu", "box": [18, 4, 34, 14], "colour": 15, "outline": 13},
+    {"frames": [2], "text": "Menu", "box": [18, 4, 34, 14], "colour": 12, "outline": 2}
+  ],
+  "MMD_B21.PAC_": [
+    {"frames": [0, 1, 2, 3], "erase": [17, 8, 28, 16], "from": 44},
+    {"frames": [0], "text": "OK", "box": [17, 9, 28, 14], "colour": 14, "outline": 2},
+    {"frames": [1], "text": "OK", "box": [17, 9, 28, 14], "colour": 15, "outline": 13},
+    {"frames": [2], "text": "Parar", "box": [17, 9, 28, 14], "colour": 14, "outline": 2},
+    {"frames": [3], "text": "Parar", "box": [17, 9, 28, 14], "colour": 15, "outline": 13}
+  ],
+  "MMD_T00.PAC_": [
+    {"erase": [44, 1, 46, 13], "ink": [3, 15]},
+    {"text": "Amigos", "box": [4, 2, 120, 12], "colour": 15, "shadow": 3},
+    {"erase": [176, 1, 40, 13], "ink": [4, 15]},
+    {"text": "Dados", "box": [177, 1, 40, 12], "colour": 15, "outline": 4, "align": "left"}
+  ],
+  "MMD_T01.PAC_": [
+    {"erase": [23, 2, 44, 11], "ink": [3, 15]},
+    {"text": "Ordem", "box": [22, 2, 44, 12], "colour": 15, "shadow": 3},
+    {"erase": [176, 1, 40, 13], "ink": [4, 15]},
+    {"text": "Dados", "box": [177, 1, 40, 12], "colour": 15, "outline": 4, "align": "left"}
+  ],
+  "MMD_T02.PAC_": [
+    {"frames": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], "erase": [0, 0, 72, 16], "from": 0},
+    {"frames": [0], "text": "Nome", "box": [0, 2, 72, 12], "colour": 10, "outline": 2},
+    {"frames": [1], "text": "Apelido", "box": [0, 2, 72, 12], "colour": 10, "outline": 2},
+    {"frames": [2], "text": "Nível", "box": [0, 2, 72, 12], "colour": 10, "outline": 2},
+    {"frames": [3], "text": "Chute", "box": [0, 2, 72, 12], "colour": 10, "outline": 2},
+    {"frames": [4], "text": "Físico", "box": [0, 2, 72, 12], "colour": 10, "outline": 2},
+    {"frames": [5], "text": "Controle", "box": [0, 2, 72, 12], "colour": 10, "outline": 2},
+    {"frames": [6], "text": "Defesa", "box": [0, 2, 72, 12], "colour": 10, "outline": 2},
+    {"frames": [7], "text": "Velocidade", "box": [0, 2, 72, 12], "colour": 10, "outline": 2},
+    {"frames": [8], "text": "Resistência", "box": [0, 2, 72, 12], "colour": 10, "outline": 2},
+    {"frames": [9], "text": "Coragem", "box": [0, 2, 72, 12], "colour": 10, "outline": 2}
+  ],
+  "MMD_W05.PAC_": [
+    {"erase": [28, 45, 40, 13], "from": 30},
+    {"text": "Sim", "box": [26, 45, 44, 13], "colour": 14, "outline": 9},
+    {"erase": [123, 45, 42, 13], "from": 125},
+    {"text": "Não", "box": [121, 45, 46, 13], "colour": 14, "outline": 9}
+  ],
+  "MMD_W10.PAC_": [
+    {"erase": [42, 117, 32, 13], "ink": [3, 15]},
+    {"text": "Menu", "box": [42, 116, 32, 14], "colour": 15, "outline": 3}
+  ],
+  "MMD_W20.PAC_": [
+    {"erase": [55, 7, 100, 13], "ink": [2]},
+    {"text": "Número da camisa", "box": [14, 6, 180, 14], "colour": 2}
+  ]
+},
+"pic3d/menu_equip": {
+  "SBD_B00.PAC_": [
+    {"frames": [0], "erase": [18, 5, 26, 13], "ink": [3, 15]},
+    {"frames": [0], "text": "Mudar", "box": [18, 4, 27, 14], "colour": 15, "outline": 3, "gap": 0},
+    {"frames": [1], "erase": [18, 5, 26, 13], "from": 43},
+    {"frames": [1], "text": "Mudar", "box": [18, 4, 27, 14], "colour": 15, "outline": 13, "gap": 0},
+    {"frames": [2], "erase": [18, 5, 26, 13], "from": 43},
+    {"frames": [2], "text": "Mudar", "box": [18, 4, 27, 14], "colour": 12, "outline": 2, "gap": 0},
+    {"frames": [3], "erase": [18, 5, 26, 13], "ink": [3, 15]},
+    {"frames": [3], "text": "OK", "box": [18, 4, 27, 14], "colour": 15, "outline": 3},
+    {"frames": [4], "erase": [18, 5, 26, 13], "from": 43},
+    {"frames": [4], "text": "OK", "box": [18, 4, 27, 14], "colour": 15, "outline": 13},
+    {"frames": [5], "erase": [18, 5, 26, 13], "from": 43},
+    {"frames": [5], "text": "OK", "box": [18, 4, 27, 14], "colour": 12, "outline": 2},
+    {"frames": [6], "erase": [18, 5, 26, 13], "ink": [3, 15]},
+    {"frames": [6], "text": "Fim", "box": [18, 4, 27, 14], "colour": 15, "outline": 3},
+    {"frames": [7], "erase": [18, 5, 26, 13], "from": 43},
+    {"frames": [7], "text": "Fim", "box": [18, 4, 27, 14], "colour": 15, "outline": 13},
+    {"frames": [8], "erase": [18, 5, 26, 13], "ink": [3, 15]},
+    {"frames": [8], "text": "Sair", "box": [18, 4, 27, 14], "colour": 15, "outline": 3},
+    {"frames": [9], "erase": [18, 5, 26, 13], "from": 43},
+    {"frames": [9], "text": "Sair", "box": [18, 4, 27, 14], "colour": 15, "outline": 13}
+  ],
+  "SBD_A00.PAC_": [
+    {"erase": [41, 1, 52, 15], "ink": [15]},
+    {"text": "Equipamento", "box": [20, 2, 92, 12], "colour": 15}
+  ],
+  "SBD_B02.PAC_": [
+    {"frames": [0], "erase": [18, 5, 34, 13], "ink": [3, 15]},
+    {"frames": [0], "text": "Menu", "box": [18, 4, 34, 14], "colour": 15, "outline": 3},
+    {"frames": [0], "erase": [18, 29, 34, 13], "from": 51},
+    {"frames": [0], "text": "Menu", "box": [18, 28, 34, 14], "colour": 15, "outline": 13},
+    {"frames": [0], "erase": [18, 53, 34, 13], "from": 51},
+    {"frames": [0], "text": "Menu", "box": [18, 52, 34, 14], "colour": 12, "outline": 2}
+  ],
+  "SBD_B05.PAC_": [
+    {"frames": [0], "erase": [18, 5, 27, 13], "ink": [3, 15]},
+    {"frames": [0], "text": "Trocar", "box": [17, 4, 29, 14], "colour": 15, "outline": 3, "gap": 0},
+    {"frames": [1], "erase": [18, 5, 27, 13], "from": 43},
+    {"frames": [1], "text": "Trocar", "box": [17, 4, 29, 14], "colour": 15, "outline": 13, "gap": 0}
+  ],
+  "SBD_B07.PAC_": [
+    {"frames": [0, 1], "erase": [15, 1, 35, 15], "ink": [8, 15]},
+    {"frames": [0, 1], "text": "Dados", "box": [15, 1, 35, 14], "colour": 15, "outline": 8, "align": "left"}
+  ],
+  "SBD_W00.PAC_": [
+    {"erase": [16, 4, 64, 10], "from": 15},
+    {"text": "Chuteira", "box": [17, 2, 70, 12], "colour": 14, "align": "left"},
+    {"erase": [16, 35, 64, 10], "from": 15},
+    {"text": "Acessório", "box": [17, 33, 70, 12], "colour": 14, "align": "left"}
+  ],
+  "SBD_W01.PAC_": [
+    {"erase": [16, 4, 64, 10], "from": 15},
+    {"text": "Chuteira", "box": [17, 2, 70, 12], "colour": 14, "align": "left"},
+    {"erase": [16, 35, 64, 10], "from": 15},
+    {"text": "Acessório", "box": [17, 33, 70, 12], "colour": 14, "align": "left"},
+    {"erase": [16, 83, 64, 10], "from": 15},
+    {"text": "Luvas", "box": [17, 81, 70, 12], "colour": 14, "align": "left"}
+  ],
+  "SBD_W10.PAC_": [
+    {"erase": [120, 4, 17, 10], "from": 119},
+    {"text": "pág", "box": [120, 3, 24, 12], "colour": 15, "align": "left"}
+  ],
+  "SBD_W11.PAC_": [
+    {"frames": [0, 1, 2], "erase": [1, 3, 44, 10], "from": 0},
+    {"frames": [0], "text": "Chuteira", "box": [0, 2, 46, 12], "colour": 14, "font": "FONT8"},
+    {"frames": [1], "text": "Acessório", "box": [0, 2, 46, 12], "colour": 14, "font": "FONT8"},
+    {"frames": [2], "text": "Luvas", "box": [0, 2, 46, 12], "colour": 14, "font": "FONT8"}
+  ],
+  "SBD_W20.PAC_": [
+    {"erase": [42, 85, 32, 13], "ink": [3, 15]},
+    {"text": "Menu", "box": [42, 84, 32, 14], "colour": 15, "outline": 3}
+  ]
+},
+"pic3d/menu_hensei": {
+  "HMD_B00.PAC_": [
+    {"frames": [0], "erase": [18, 5, 26, 13], "ink": [3, 15]},
+    {"frames": [0], "text": "Fim", "box": [18, 4, 27, 14], "colour": 15, "outline": 3},
+    {"frames": [1], "erase": [18, 5, 26, 13], "from": 43},
+    {"frames": [1], "text": "Fim", "box": [18, 4, 27, 14], "colour": 15, "outline": 13},
+    {"frames": [2], "erase": [18, 5, 26, 13], "ink": [3, 15]},
+    {"frames": [2], "text": "Sair", "box": [18, 4, 27, 14], "colour": 15, "outline": 3},
+    {"frames": [3], "erase": [18, 5, 26, 13], "from": 43},
+    {"frames": [3], "text": "Sair", "box": [18, 4, 27, 14], "colour": 15, "outline": 13},
+    {"frames": [4], "erase": [18, 5, 26, 13], "ink": [3, 15]},
+    {"frames": [4], "text": "Parar", "box": [18, 4, 27, 14], "colour": 15, "outline": 3},
+    {"frames": [5], "erase": [18, 5, 26, 13], "from": 43},
+    {"frames": [5], "text": "Parar", "box": [18, 4, 27, 14], "colour": 15, "outline": 13}
+  ],
+  "HMD_B01.PAC_": [
+    {"frames": [0], "erase": [18, 5, 34, 13], "ink": [3, 15]},
+    {"frames": [0], "text": "Trocar", "box": [18, 4, 34, 14], "colour": 15, "outline": 3},
+    {"frames": [1], "erase": [18, 5, 34, 13], "from": 51},
+    {"frames": [1], "text": "Trocar", "box": [18, 4, 34, 14], "colour": 15, "outline": 13},
+    {"frames": [2], "erase": [18, 5, 34, 13], "from": 51},
+    {"frames": [2], "text": "Trocar", "box": [18, 4, 34, 14], "colour": 12, "outline": 2},
+    {"frames": [3], "erase": [18, 5, 34, 13], "ink": [3, 15]},
+    {"frames": [3], "text": "OK", "box": [18, 4, 34, 14], "colour": 15, "outline": 3},
+    {"frames": [4], "erase": [18, 5, 34, 13], "from": 51},
+    {"frames": [4], "text": "OK", "box": [18, 4, 34, 14], "colour": 15, "outline": 13}
+  ],
+  "HMD_B02.PAC_": [
+    {"frames": [0], "erase": [18, 5, 26, 14], "ink": [3, 15]},
+    {"frames": [0], "text": "Copiar", "box": [17, 4, 29, 14], "colour": 15, "outline": 3, "gap": 0},
+    {"frames": [1], "erase": [18, 5, 26, 14], "from": 43},
+    {"frames": [1], "text": "Copiar", "box": [17, 4, 29, 14], "colour": 15, "outline": 13, "gap": 0},
+    {"frames": [2], "erase": [18, 5, 26, 14], "from": 43},
+    {"frames": [2], "text": "Copiar", "box": [17, 4, 29, 14], "colour": 12, "outline": 2, "gap": 0}
+  ],
+  "HMD_B07.PAC_": [
+    {"frames": [0], "erase": [5, 5, 38, 13], "from": 42},
+    {"frames": [0], "text": "Sim", "box": [3, 5, 42, 14], "colour": 15, "outline": 4},
+    {"frames": [1], "erase": [5, 5, 38, 13], "from": 42},
+    {"frames": [1], "text": "Sim", "box": [3, 5, 42, 14], "colour": 15, "outline": 13},
+    {"frames": [2], "erase": [5, 5, 38, 13], "from": 42},
+    {"frames": [2], "text": "Não", "box": [3, 5, 42, 14], "colour": 15, "outline": 4},
+    {"frames": [3], "erase": [5, 5, 38, 13], "from": 42},
+    {"frames": [3], "text": "Não", "box": [3, 5, 42, 14], "colour": 15, "outline": 13}
+  ],
+  "HMD_B08.PAC_": [
+    {"frames": [0], "erase": [18, 5, 26, 14], "ink": [3, 15]},
+    {"frames": [0], "text": "Abrir", "box": [18, 4, 27, 14], "colour": 15, "outline": 3},
+    {"frames": [1], "erase": [18, 5, 26, 14], "from": 43},
+    {"frames": [1], "text": "Abrir", "box": [18, 4, 27, 14], "colour": 15, "outline": 13}
+  ],
+  "HMD_A00.PAC_": [
+    {"erase": [4, 22, 27, 10], "from": 2},
+    {"text": "Time", "box": [5, 20, 40, 12], "colour": 15, "align": "left"},
+    {"erase": [141, 20, 30, 10], "from": 140},
+    {"text": "Amigos", "box": [142, 18, 40, 12], "colour": 10, "align": "left"},
+    {"erase": [224, 20, 15, 9], "from": 223},
+    {"text": "pág", "box": [224, 18, 17, 12], "colour": 15, "align": "left"}
+  ],
+  "HMD_T00.PAC_": [
+    {"frames": [0], "erase": [7, 2, 72, 12], "from": 82},
+    {"frames": [0], "text": "Montar time", "box": [7, 2, 76, 12], "colour": 15, "shadow": 3},
+    {"frames": [0], "erase": [86, 2, 58, 13], "from": 84},
+    {"frames": [0], "text": "- História -", "box": [84, 2, 64, 12], "colour": 8, "shadow": 7},
+    {"frames": [0], "erase": [175, 1, 40, 13], "ink": [4, 15]},
+    {"frames": [0], "text": "Dados", "box": [176, 1, 40, 12], "colour": 15, "outline": 4, "align": "left"},
+    {"frames": [1], "erase": [7, 2, 72, 12], "from": 82},
+    {"frames": [1], "text": "Montar time", "box": [7, 2, 76, 12], "colour": 15, "shadow": 3},
+    {"frames": [1], "erase": [86, 2, 58, 13], "from": 84},
+    {"frames": [1], "text": "- Rede 1 -", "box": [84, 2, 64, 12], "colour": 8, "shadow": 7},
+    {"frames": [1], "erase": [175, 1, 40, 13], "ink": [4, 15]},
+    {"frames": [1], "text": "Dados", "box": [176, 1, 40, 12], "colour": 15, "outline": 4, "align": "left"},
+    {"frames": [2], "erase": [7, 2, 72, 12], "from": 82},
+    {"frames": [2], "text": "Montar time", "box": [7, 2, 76, 12], "colour": 15, "shadow": 3},
+    {"frames": [2], "erase": [86, 2, 58, 13], "from": 84},
+    {"frames": [2], "text": "- Rede 2 -", "box": [84, 2, 64, 12], "colour": 8, "shadow": 7},
+    {"frames": [2], "erase": [175, 1, 40, 13], "ink": [4, 15]},
+    {"frames": [2], "text": "Dados", "box": [176, 1, 40, 12], "colour": 15, "outline": 4, "align": "left"},
+    {"frames": [3], "erase": [7, 2, 72, 12], "from": 82},
+    {"frames": [3], "text": "Montar time", "box": [7, 2, 76, 12], "colour": 15, "shadow": 3},
+    {"frames": [3], "erase": [86, 2, 58, 13], "from": 84},
+    {"frames": [3], "text": "- Rede 3 -", "box": [84, 2, 64, 12], "colour": 8, "shadow": 7},
+    {"frames": [3], "erase": [175, 1, 40, 13], "ink": [4, 15]},
+    {"frames": [3], "text": "Dados", "box": [176, 1, 40, 12], "colour": 15, "outline": 4, "align": "left"}
+  ],
+  "HMD_W01.PAC_": [
+    {"erase": [30, 61, 36, 14], "from": 28},
+    {"text": "Sim", "box": [26, 61, 44, 13], "colour": 14, "outline": 9},
+    {"erase": [124, 62, 40, 12], "from": 125},
+    {"text": "Não", "box": [121, 61, 46, 13], "colour": 14, "outline": 9}
+  ]
 }
 }
