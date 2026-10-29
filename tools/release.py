@@ -13,6 +13,7 @@ The zip holds one folder:
 
   ie3ogre-recomp/
     ie3-launcher(.exe)  SDL3.dll (Windows)  README.txt  LEIA-ME.txt  TERCEIROS.txt  licenses/ (MIT + third parties)
+    achievements/       the local achievements' definitions and icons (ntr/achievements.h)
     sdk/version.txt     the release version (VERSION)
     sdk/manifest.tsv    the recompiler input with {modules}/ paths (tools/analyze.py manifest --template)
     sdk/bin/            ntr-recomp and dsd (pinned release, checked by SHA-256)
@@ -214,6 +215,7 @@ def main() -> int:
         (sdk / "toolchain.txt").write_text(f"url={t['url']}\nsha256={t['sha256']}\nsize={t['size']}\ndir={t['dir']}\n")
     for doc in ("README.txt", "LEIA-ME.txt", "TERCEIROS.txt"):
         shutil.copy2(ROOT / "launcher" / doc, top)
+    shutil.copytree(ROOT / "achievements", top / "achievements")
     licenses = top / "licenses"
     licenses.mkdir()
     shutil.copy2(ROOT / "LICENSE", licenses / "ie3ogre-recomp.txt")

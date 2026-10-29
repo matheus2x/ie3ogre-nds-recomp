@@ -30,7 +30,9 @@
 // ("hexaddr:size", dumps guest memory every frame), NTR_REPLAY (replays a session
 // recording, see diag.cpp), NTR_RECORD (record the session even when headless or scripted),
 // NTR_STATE_SAVE / NTR_STATE_LOAD (save to / load from savestate slot 1 at that frame),
-// NTR_REWIND (rewind held over "first-last" frames, with rewind on even without a window).
+// NTR_REWIND (rewind held over "first-last" frames, with rewind on even without a window),
+// NTR_WINDOW_SHOT ("frame:path", saves the whole window at that frame as a BMP, overlays
+// such as an achievement popup included).
 //
 // Savestates (savestate.cpp): F5 saves to the chosen slot, F9 loads it, F6/F7 choose the
 // slot (1-5); the pause menu has a page for them too. R (held) rewinds: a state is kept
@@ -137,6 +139,8 @@ struct Host {
     std::set<uint64_t> screenshot_frames;
     std::string screenshot_path = "boej-%d.bmp";  // %d = frame number
     uint64_t f12_frame = 0, exit_frame = 0;
+    uint64_t window_shot_frame = 0;  // NTR_WINDOW_SHOT
+    std::string window_shot_path;
 
     Config config;
     std::vector<KeyBinding> key_bindings;
@@ -169,6 +173,8 @@ struct Host {
     uint64_t state_save_frame = 0, state_load_frame = 0;  // NTR_STATE_SAVE / NTR_STATE_LOAD
     std::string toast;      // a short message over the picture (ASCII: SDL's debug font)
     uint64_t toast_until = 0;
+    const Achievement* popup = nullptr;  // the achievement being announced
+    uint64_t popup_start = 0;
     std::vector<std::string> args;  // for restarting
     std::vector<ScriptedInput> script;
     uint16_t script_keys = 0;
@@ -336,6 +342,7 @@ void quit(const char* reason) {
         std::fclose(g_host.wav);
     }
     replay_finish(g_host.frame);
+    achievements_flush();
     NTR_LOG("[host] exit at frame %llu\n", (unsigned long long)g_host.frame);
     session_end(reason);
     if (!g_host.headless) SDL_Quit();
@@ -637,6 +644,14 @@ void draw_screens(float x, float y, float s) {
     draw(1, wide_bottom());
 }
 
+// Dear ImGui, the first time the pause menu or an achievement popup needs it.
+void start_ui() {
+    if (g_host.ui_ready) return;
+    float scale = SDL_GetWindowDisplayScale(g_host.window);
+    ui::init(g_host.window, g_host.renderer, scale > 0 ? scale : 1);
+    g_host.ui_ready = true;
+}
+
 // The message of the last savestate action or slot change, in the top corner on the
 // side of the small screens (the left one in the stacked layout).
 void draw_toast() {
@@ -658,6 +673,30 @@ void draw_toast() {
     SDL_SetRenderDrawColor(r, 255, 255, 255, 255);
     SDL_RenderDebugText(r, box.x + 4, 8, g_host.toast.c_str());
     SDL_SetRenderScale(r, 1, 1);
+}
+
+// The achievements unlocked since the last frame, one at a time, each for a few seconds
+// (sliding in and out), in the top right corner of the picture.
+void draw_achievement_popup() {
+    constexpr double kShow = 4.5, kSlide = 0.35;  // seconds
+    uint64_t now = SDL_GetTicksNS();
+    if (g_host.popup && (now - g_host.popup_start) / 1e9 > kShow) g_host.popup = nullptr;
+    if (!g_host.popup) {
+        g_host.popup = achievements_take_unlocked();
+        if (!g_host.popup) return;
+        g_host.popup_start = now;
+        if (!g_host.config.get_bool("ui", "achievement_popups")) {
+            g_host.popup = nullptr;
+            return;
+        }
+    }
+    double t = (now - g_host.popup_start) / 1e9;
+    float shown = float(std::clamp(std::min(t, kShow - t) / kSlide, 0.0, 1.0));
+    shown = 1 - (1 - shown) * (1 - shown);  // eases out
+    start_ui();
+    ui::begin_overlay_frame(g_host.renderer);
+    ui::achievement_popup(*g_host.popup, g_host.renderer, achievements().icon_path(*g_host.popup), shown);
+    ui::end_overlay_frame(g_host.renderer);
 }
 
 // A window size for the layout: wide is 16:9 at most 85% of the monitor's usable
@@ -754,6 +793,7 @@ void restart() {
     argv.push_back(nullptr);
     NTR_LOG("[host] restarting the game\n");
     replay_finish(g_host.frame);
+    achievements_flush();
     session_end("reiniciou pelo menu");
     log_close();
     SDL_PropertiesID props = SDL_CreateProperties();
@@ -808,16 +848,13 @@ void draw_paused_frame() {
 // advances (the clock included) and the sound is paused.
 void run_menu() {
     g_host.menu_requested = false;
-    if (!g_host.ui_ready) {
-        float scale = SDL_GetWindowDisplayScale(g_host.window);
-        ui::init(g_host.window, g_host.renderer, scale > 0 ? scale : 1);
-        g_host.ui_ready = true;
-    }
+    start_ui();
     if (g_host.audio) SDL_PauseAudioStreamDevice(g_host.audio);
     session_event("menu de pausa aberto");
     ui::SettingsOptions options;
     options.in_game = true;
     options.on_change = apply_settings;
+    options.extra_pages.push_back({L("Achievements", "Conquistas"), [] { ui::achievements_list(achievements(), g_host.renderer); }});
     // Saving or loading closes the menu, so the slots are read once.
     std::vector<std::string> states;
     std::vector<bool> loadable;
@@ -895,6 +932,10 @@ bool host_init() {
     }
     if (const char* p = std::getenv("NTR_SCREENSHOT")) g_host.screenshot_path = p;
     g_host.exit_frame = env_u64("NTR_EXIT_FRAME");
+    if (const char* shot = std::getenv("NTR_WINDOW_SHOT"); shot && std::strchr(shot, ':')) {
+        g_host.window_shot_frame = std::strtoull(shot, nullptr, 10);
+        g_host.window_shot_path = std::strchr(shot, ':') + 1;
+    }
     g_host.state_save_frame = env_u64("NTR_STATE_SAVE");
     g_host.state_load_frame = env_u64("NTR_STATE_LOAD");
     if (const char* s = std::getenv("NTR_REWIND")) {
@@ -1135,6 +1176,7 @@ void host_present(const uint32_t* top, int top_scale, const uint32_t* bottom, in
     g_host.frame++;
     savestate_finished();
     update_rewind();
+    achievements_frame();
     if (g_host.frame == g_host.state_save_frame) savestate_request_save(1);
     if (g_host.frame == g_host.state_load_frame) savestate_request_load(1);
     diag_frame(g_host.frame);
@@ -1204,6 +1246,13 @@ void host_present(const uint32_t* top, int top_scale, const uint32_t* bottom, in
     SDL_RenderClear(g_host.renderer);
     draw_screens(0, 0, 1);
     draw_toast();
+    draw_achievement_popup();
+    if (g_host.frame == g_host.window_shot_frame) {
+        if (SDL_Surface* shot = SDL_RenderReadPixels(g_host.renderer, nullptr)) {
+            SDL_SaveBMP(shot, g_host.window_shot_path.c_str());
+            SDL_DestroySurface(shot);
+        }
+    }
     SDL_RenderPresent(g_host.renderer);
     pump_events();
     record_input();

@@ -64,6 +64,9 @@ enabled =
 ; O texto do jogo não muda (para isso, os mods de tradução).
 [ui]
 language = en
+; Aviso no canto da tela quando uma conquista é desbloqueada (a lista fica no menu de pausa
+; e na aba Conquistas do launcher).
+achievement_popups = true
 
 ; Opções do launcher (o jogo ignora esta seção).
 [launcher]

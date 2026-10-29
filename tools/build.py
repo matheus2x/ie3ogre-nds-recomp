@@ -85,6 +85,9 @@ def main() -> int:
     else:
         print("warning: build/boej.pak not found; run tools/extract.py on the retail dump to create it")
 
+    # The achievements' definitions and icons, read next to the executable.
+    shutil.copytree(ROOT / "achievements", exe.parent / "achievements", dirs_exist_ok=True)
+
     # SDL3.dll from the SDL3-devel-*-mingw package fetched by CMake
     sdl_dll = list((game_build / "_deps").glob("sdl3_mingw-src/x86_64-w64-mingw32/bin/SDL3.dll")) if args.windows else []
     if args.dist:
@@ -96,6 +99,7 @@ def main() -> int:
                 continue  # unchanged (the package is large)
             shutil.copy2(f, dst)
             print(f"copied to: {dst}")
+        shutil.copytree(ROOT / "achievements", args.dist / "achievements", dirs_exist_ok=True)
     return 0
 
 

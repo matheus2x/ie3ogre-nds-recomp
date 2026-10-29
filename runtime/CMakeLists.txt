@@ -1,10 +1,13 @@
 # Shared with the launcher: files, settings, hashes, dumps and the game data package.
 add_library(ntr-common STATIC
+    src/achievements.cpp
     src/config.cpp
     src/files.cpp
     src/hash.cpp
+    src/json.cpp
     src/nitro.cpp
     src/package.cpp
+    src/savedata.cpp
     src/setup.cpp
 )
 target_include_directories(ntr-common PUBLIC include)
@@ -31,6 +34,7 @@ target_include_directories(ntr-ui PUBLIC include ${imgui_SOURCE_DIR} ${imgui_SOU
 target_link_libraries(ntr-ui PUBLIC ntr-common SDL3::SDL3)
 
 add_library(ntr-runtime STATIC
+    src/achievements_game.cpp
     src/arm7_card.cpp
     src/arm7_input.cpp
     src/arm7_rtc.cpp

@@ -58,13 +58,24 @@ imported as My Save.sav becomes mysave-1.sav (with the game open, this
 waits for it to close). The game writes over the chosen save: make a copy
 before using an important one.
 
+ACHIEVEMENTS
+Each save has its own achievements, on your PC only (nothing online). The
+game checks them when it starts and every time you save; a new one shows
+up in the corner of the screen (turn that off in boej.ini with
+[ui] achievement_popups = false). The list is in the pause menu, under
+"Achievements", and in the launcher's "Achievements" tab, which can also
+check an older or imported save ("Check this save"). They are kept in
+saves\<save>.achievements.json, next to the .sav: each achievement,
+whether it was unlocked, when, and its icon.
+
 FILES CREATED IN THIS FOLDER
 - boej.exe, boej.pak  the game, prepared from your dump (personal use only:
                       do not distribute)
 - cache\, toolchain\  code extracted from the dump, and the compiler
 - saves\              the saves (boej.sav at first; the launcher names each
                       one after its player, and the Saves tab picks the one
-                      the game uses)
+                      the game uses) and each one's achievements
+                      (.achievements.json)
 - savestates\         the savestates (slots 1 to 5)
 - boej.ini            settings (also editable in the launcher)
 - logs\               records for reporting problems: launcher.log,

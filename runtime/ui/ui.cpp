@@ -12,9 +12,11 @@
 #include <cstdlib>
 #include <filesystem>
 #include <functional>
+#include <map>
 #include <sstream>
 #include <vector>
 
+#include <ntr/achievements.h>
 #include <ntr/ui.h>
 
 namespace ntr::ui {
@@ -185,6 +187,7 @@ std::string pretty_list(const std::string& value) {
 // The page being shown; kept between frames and between the launcher's tabs.
 enum class Page { Extra, Video, Audio, Buttons, Shortcuts, Launcher };
 Page g_page = Page::Video;
+size_t g_extra = 0;  // which of the caller's pages, with Page::Extra
 bool g_gamepad_view = false;  // the controls pages show the keyboard or the gamepad bindings
 
 // A settings row: the label (and a short hint under it) on the left, the widget on the
@@ -429,6 +432,33 @@ void end_frame(SDL_Renderer* renderer) {
     SDL_SetRenderScale(renderer, 1, 1);
 }
 
+// The output pixels per logical unit, from begin_overlay_frame to its end.
+float g_overlay_fit = 1;
+
+void begin_overlay_frame(SDL_Renderer* renderer) {
+    int lw = 0, lh = 0;
+    SDL_RendererLogicalPresentation mode;
+    SDL_FRect rect{};
+    SDL_GetRenderLogicalPresentation(renderer, &lw, &lh, &mode);
+    SDL_GetRenderLogicalPresentationRect(renderer, &rect);
+    g_overlay_fit = lw > 0 && rect.w > 0 ? rect.w / float(lw) : 1;
+    ImGui_ImplSDLRenderer3_NewFrame();
+    ImGui_ImplSDL3_NewFrame();
+    // In output pixels over the game's picture: the render scale 1 / fit undoes the
+    // logical presentation's.
+    ImGuiIO& io = ImGui::GetIO();
+    if (lw > 0) io.DisplaySize = ImVec2(rect.w, rect.h);
+    io.DisplayFramebufferScale = ImVec2(1, 1);
+    ImGui::NewFrame();
+}
+
+void end_overlay_frame(SDL_Renderer* renderer) {
+    ImGui::Render();
+    SDL_SetRenderScale(renderer, 1 / g_overlay_fit, 1 / g_overlay_fit);
+    ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
+    SDL_SetRenderScale(renderer, 1, 1);
+}
+
 bool capturing() { return g_capture.active; }
 
 void capture_event(const SDL_Event& ev) {
@@ -453,7 +483,7 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
     g_path = path;
     g_options = options;
     bool in_game = options.in_game;
-    if ((in_game && g_page == Page::Launcher) || (g_page == Page::Extra && !options.extra_page)) g_page = Page::Video;
+    if ((in_game && g_page == Page::Launcher) || (g_page == Page::Extra && g_extra >= options.extra_pages.size())) g_page = Page::Video;
     const ImGuiStyle& style = ImGui::GetStyle();
 
     // Left: the sections (plus the caller's own items, e.g. the pause menu's actions).
@@ -463,12 +493,14 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
     ImGui::PopStyleColor();
     if (options.nav_top) options.nav_top();
     ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0, 0.5f));
-    if (options.extra_page) {
-        if (ImGui::Selectable(options.extra_page, g_page == Page::Extra, 0, ImVec2(0, ImGui::GetFrameHeight()))) {
+    for (size_t i = 0; i < options.extra_pages.size(); i++) {
+        if (ImGui::Selectable(options.extra_pages[i].name.c_str(), g_page == Page::Extra && g_extra == i, 0,
+                              ImVec2(0, ImGui::GetFrameHeight()))) {
             g_page = Page::Extra;
+            g_extra = i;
         }
-        ImGui::Spacing();
     }
+    if (!options.extra_pages.empty()) ImGui::Spacing();
     ImGui::TextDisabled("%s", L("SETTINGS", "CONFIGURAÇÕES"));
     struct Entry {
         Page page;
@@ -496,7 +528,7 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
     ImGui::BeginChild("page", ImVec2(0, -footer), ImGuiChildFlags_NavFlattened);
     switch (g_page) {
         case Page::Extra:
-            options.draw_extra_page();
+            options.extra_pages[g_extra].draw();
             break;
         case Page::Video: {
             page_title(L("Video", "Vídeo"), nullptr);
@@ -691,8 +723,7 @@ PauseAction pause_menu(Config& config, const std::string& path, const SettingsOp
             action = PauseAction::Quit;
         }
     };
-    menu.extra_page = "Savestates";
-    menu.draw_extra_page = [&] {
+    menu.extra_pages.insert(menu.extra_pages.begin(), {"Savestates", [&] {
         page_title("Savestates", L("The game exactly as it is now, to come back to this point later.",
                                    "O jogo exatamente como está agora, para voltar a este ponto depois."));
         if (!begin_rows("states")) return;
@@ -729,10 +760,132 @@ PauseAction pause_menu(Config& config, const std::string& path, const SettingsOp
                                    "Shortcuts) save and load the chosen slot. Loading does not change the game's own save.",
                                    "Cada slot é um arquivo na pasta savestates, ao lado do jogo. Os atalhos (em Atalhos) "
                                    "salvam e carregam no slot escolhido. O save do próprio jogo não é alterado ao carregar."));
-    };
+    }});
     settings_panel(config, path, menu);
     ImGui::End();
     return action;
+}
+
+// --- achievements --------------------------------------------------------------------------
+
+SDL_Texture* png_texture(SDL_Renderer* renderer, const std::string& path) {
+    static std::map<std::string, SDL_Texture*> cache;  // nullptr: could not be read
+    auto it = cache.find(path);
+    if (it != cache.end()) return it->second;
+    SDL_Texture*& texture = cache[path];
+    if (path.empty()) return nullptr;
+    SDL_Surface* surface = SDL_LoadPNG(path.c_str());
+    if (!surface) {
+        NTR_LOG("[ui] cannot load %s: %s\n", path.c_str(), SDL_GetError());
+        return nullptr;
+    }
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    SDL_DestroySurface(surface);
+    if (texture) SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_LINEAR);
+    return texture;
+}
+
+namespace {
+
+ImTextureRef texture_ref(SDL_Texture* texture) { return ImTextureRef(ImTextureID(intptr_t(texture))); }
+
+// "2026-10-29T14:03:12-03:00" as "29/10/2026 14:03" (Portuguese) or "2026-10-29 14:03".
+std::string date_text(const std::string& iso) {
+    if (iso.size() < 16) return iso;
+    if (language() == Language::Portuguese)
+        return iso.substr(8, 2) + "/" + iso.substr(5, 2) + "/" + iso.substr(0, 4) + " " + iso.substr(11, 5);
+    return iso.substr(0, 10) + " " + iso.substr(11, 5);
+}
+
+// The icon at `pos`, `size` square, dimmed when locked; a plain square without one.
+void icon_at(ImDrawList* dl, SDL_Texture* icon, ImVec2 pos, float size, bool unlocked, float alpha = 1) {
+    ImVec2 end(pos.x + size, pos.y + size);
+    float rounding = size * 0.12f;
+    if (!icon) {
+        dl->AddRectFilled(pos, end, ImGui::GetColorU32(ImVec4(1, 1, 1, 0.08f * alpha)), rounding);
+        dl->AddText(nullptr, size * 0.5f, ImVec2(pos.x + size * 0.36f, pos.y + size * 0.22f),
+                    ImGui::GetColorU32(ImVec4(1, 1, 1, 0.35f * alpha)), "?");
+        return;
+    }
+    ImU32 tint = unlocked ? ImGui::GetColorU32(ImVec4(1, 1, 1, alpha)) : ImGui::GetColorU32(ImVec4(0.45f, 0.45f, 0.45f, 0.55f * alpha));
+    dl->AddImageRounded(texture_ref(icon), pos, end, ImVec2(0, 0), ImVec2(1, 1), tint, rounding);
+}
+
+}  // namespace
+
+void achievements_list(const Achievements& achievements, SDL_Renderer* renderer) {
+    const auto& list = achievements.list();
+    if (list.empty()) {
+        ImGui::TextWrapped("%s", L("No achievements found (achievements/achievements.json next to the game).",
+                                   "Nenhuma conquista encontrada (achievements/achievements.json ao lado do jogo)."));
+        return;
+    }
+    int got = achievements.unlocked_count(), total = int(list.size());
+    char count[64];
+    std::snprintf(count, sizeof count, L("%d of %d unlocked", "%d de %d desbloqueadas"), got, total);
+    ImGui::TextUnformatted(count);
+    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, kAccent);
+    ImGui::ProgressBar(float(got) / float(total), ImVec2(-FLT_MIN, ImGui::GetFontSize() * 0.45f), "");
+    ImGui::PopStyleColor();
+    ImGui::Spacing();
+
+    // Unlocked first, the latest on top; then the locked ones in their order.
+    std::vector<const Achievement*> order;
+    for (const Achievement& a : list) order.push_back(&a);
+    std::stable_sort(order.begin(), order.end(), [&](const Achievement* x, const Achievement* y) {
+        const AchievementStatus &sx = achievements.status(x->id), &sy = achievements.status(y->id);
+        if (sx.unlocked != sy.unlocked) return sx.unlocked;
+        return sx.unlocked && sx.unlocked_at > sy.unlocked_at;
+    });
+    const float size = ImGui::GetFontSize() * 2.6f;
+    if (!ImGui::BeginTable("achievements", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_PadOuterX)) return;
+    ImGui::TableSetupColumn("icon", ImGuiTableColumnFlags_WidthFixed, size);
+    ImGui::TableSetupColumn("text", ImGuiTableColumnFlags_WidthStretch);
+    for (const Achievement* a : order) {
+        const AchievementStatus& st = achievements.status(a->id);
+        bool secret = a->hidden && !st.unlocked;
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
+        ImVec2 pos = ImGui::GetCursorScreenPos();
+        icon_at(ImGui::GetWindowDrawList(), secret ? nullptr : png_texture(renderer, achievements.icon_path(*a)), pos, size, st.unlocked);
+        ImGui::Dummy(ImVec2(size, size));
+        ImGui::TableNextColumn();
+        if (!st.unlocked) ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+        ImGui::TextUnformatted(secret ? "???" : a->name().c_str());
+        if (!st.unlocked) ImGui::PopStyleColor();
+        ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+        ImGui::TextWrapped("%s", secret ? L("Secret achievement.", "Conquista secreta.") : a->description().c_str());
+        ImGui::PopStyleColor();
+        if (st.unlocked) {
+            std::string when = L("Unlocked ", "Desbloqueada em ") + date_text(st.unlocked_at);
+            ImGui::TextColored(kAccentHover, "%s", when.c_str());
+        }
+    }
+    ImGui::EndTable();
+}
+
+void achievement_popup(const Achievement& achievement, SDL_Renderer* renderer, const std::string& icon_path, float shown) {
+    const ImGuiIO& io = ImGui::GetIO();
+    ImDrawList* dl = ImGui::GetForegroundDrawList();
+    ImFont* font = ImGui::GetFont();
+    const float text = std::clamp(io.DisplaySize.y / 34, 13.0f, 40.0f), small = text * 0.8f;
+    const float pad = text * 0.6f, icon = text * 2.4f;
+    const char* title = L("Achievement unlocked!", "Conquista desbloqueada!");
+    const std::string& name = achievement.name();
+    float text_w = std::max(font->CalcTextSizeA(small, FLT_MAX, 0, title).x, font->CalcTextSizeA(text, FLT_MAX, 0, name.c_str()).x);
+    float w = std::min(icon + text_w + pad * 3, io.DisplaySize.x - pad * 2), h = icon + pad * 2;
+    // Slides in from the top right corner.
+    ImVec2 p0(io.DisplaySize.x - w - pad, pad - (1 - shown) * (h + pad));
+    ImVec2 p1(p0.x + w, p0.y + h);
+    auto color = [&](float r, float g, float b, float a) { return ImGui::GetColorU32(ImVec4(r, g, b, a * shown)); };
+    dl->AddRectFilled(p0, p1, color(0.07f, 0.08f, 0.10f, 0.92f), text * 0.4f);
+    dl->AddRect(p0, p1, color(kAccent.x, kAccent.y, kAccent.z, 1), text * 0.4f, 0, std::max(1.0f, text / 10));
+    icon_at(dl, png_texture(renderer, icon_path), ImVec2(p0.x + pad, p0.y + pad), icon, true, shown);
+    float x = p0.x + pad * 2 + icon, block = small + text * 1.15f, y = p0.y + (h - block) / 2;
+    dl->PushClipRect(p0, ImVec2(p1.x - pad, p1.y), true);
+    dl->AddText(font, small, ImVec2(x, y), color(1.0f, 0.82f, 0.30f, 1), title);
+    dl->AddText(font, text, ImVec2(x, y + small * 1.15f), color(1, 1, 1, 1), name.c_str());
+    dl->PopClipRect();
 }
 
 }  // namespace ntr::ui

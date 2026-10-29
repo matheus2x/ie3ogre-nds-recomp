@@ -59,12 +59,23 @@ importado como Meu Save.sav vira meusave-1.sav (com o jogo aberto, isso
 espera ele fechar). O jogo grava por cima do save escolhido: faça uma
 cópia antes de usar um save importante.
 
+CONQUISTAS
+Cada save tem as suas conquistas, só no seu PC (nada online). O jogo
+confere ao abrir e a cada vez que você salva; uma conquista nova aparece
+num aviso no canto da tela (para desligar: [ui] achievement_popups =
+false no boej.ini). A lista fica no menu de pausa, em
+"Conquistas", e na aba "Conquistas" do launcher, que também confere um
+save antigo ou importado ("Conferir este save"). Ficam no arquivo
+saves\<save>.achievements.json, ao lado do .sav: cada conquista, se foi
+desbloqueada, quando e o ícone dela.
+
 ARQUIVOS CRIADOS NESTA PASTA
 - boej.exe, boej.pak  o jogo, preparado a partir do seu dump (uso pessoal:
                       não distribua)
 - cache\, toolchain\  código extraído do dump e o compilador
 - saves\             os saves (boej.sav no começo; o launcher dá a cada um o
                       nome do jogador, e a aba Saves escolhe qual o jogo usa)
+                      e as conquistas de cada um (.achievements.json)
 - savestates\         os savestates (slots 1 a 5)
 - boej.ini            configurações (também editáveis no launcher)
 - logs\               registros para relatar problemas: launcher.log,

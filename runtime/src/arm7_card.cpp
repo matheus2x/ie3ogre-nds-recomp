@@ -70,6 +70,7 @@ uint32_t handle(uint32_t req) {
             for (uint32_t i = 0; i < len; i++) g_save[(dst + i) % kSaveSize] = rd8(src + i);
             save_flush();
             session_game_saved();
+            achievements_game_saved();
             return RESULT_SUCCESS;
         case REQ_VERIFY_BACKUP:
             for (uint32_t i = 0; i < len; i++) {
@@ -158,7 +159,10 @@ void arm7_card_init(const std::string& save_path) {
         session_info("save", "jogo novo");
     }
     replay_initial_save(g_save, bool(in));
+    achievements_init(utf8_string(g_save_path));
     pxi_register_service(11, on_word);
 }
+
+const std::vector<uint8_t>& card_save_data() { return g_save; }
 
 }  // namespace ntr

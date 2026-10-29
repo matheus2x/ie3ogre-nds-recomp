@@ -116,6 +116,10 @@ void saves_update();  // every frame: lists saves/ again when it changed, rename
 void saves_drop(const std::string& path);  // a .sav dropped on the window: copy it to saves/
 std::string current_save();                // the file in saves/ the game uses ([game] save)
 
+// --- achievements (achievements.cpp) ------------------------------------------------------
+
+void achievements_tab(SDL_Renderer* renderer);  // the icons become textures of this renderer
+
 // --- updates (update.cpp) --------------------------------------------------------------
 
 void update_check_start();  // in the background

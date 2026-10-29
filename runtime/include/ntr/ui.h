@@ -10,6 +10,11 @@
 
 #include <ntr/common.h>
 
+namespace ntr {
+class Achievements;
+struct Achievement;
+}  // namespace ntr
+
 namespace ntr::ui {
 
 // ImGui context, style and a system font for this window, scaled by `scale`.
@@ -18,6 +23,10 @@ void shutdown();
 void process_event(const SDL_Event& ev);
 void begin_frame();
 void end_frame(SDL_Renderer* renderer);  // draws the UI over what is already rendered
+// A frame over the game's picture while the renderer keeps its logical presentation: ImGui
+// draws in output pixels all the same (sharp text), whatever the logical size.
+void begin_overlay_frame(SDL_Renderer* renderer);
+void end_overlay_frame(SDL_Renderer* renderer);
 
 struct SettingsOptions {
     bool in_game = false;              // the pause menu: no launcher-only options
@@ -27,9 +36,13 @@ struct SettingsOptions {
     std::function<void()> nav_top;
     std::function<void()> nav_bottom;
     float nav_bottom_height = 0;
-    // A page of the caller's own, first in the side list (the pause menu's savestates).
-    const char* extra_page = nullptr;
-    std::function<void()> draw_extra_page;
+    // Pages of the caller's own, first in the side list (the pause menu's savestates and
+    // achievements).
+    struct Page {
+        std::string name;
+        std::function<void()> draw;
+    };
+    std::vector<Page> extra_pages;
 };
 
 // The settings: a side list of sections (video, audio, controls...) and the chosen one
@@ -46,5 +59,16 @@ enum class PauseAction { None, Resume, Restart, Quit, SaveState, LoadState };
 // `slot` (1 = the first) is the one chosen. `loadable` tells the slots that can be loaded.
 PauseAction pause_menu(Config& config, const std::string& path, const SettingsOptions& options,
                        const std::vector<std::string>& states, const std::vector<bool>& loadable, int& slot);
+
+// --- achievements (ntr/achievements.h) ----------------------------------------------------
+
+// A PNG as a texture of `renderer`, loaded once; nullptr when it cannot be read.
+SDL_Texture* png_texture(SDL_Renderer* renderer, const std::string& path);
+// Every achievement with its icon, name, description and when it was unlocked; the
+// unlocked ones first. For the pause menu's page and the launcher's tab.
+void achievements_list(const Achievements& achievements, SDL_Renderer* renderer);
+// The "achievement unlocked" box in the top corner of an overlay frame; `shown` goes from 0
+// (hidden) to 1 (fully in).
+void achievement_popup(const Achievement& achievement, SDL_Renderer* renderer, const std::string& icon_path, float shown);
 
 }  // namespace ntr::ui

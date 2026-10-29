@@ -90,7 +90,7 @@ Ele é lido ao abrir o jogo; apague-o para voltar ao padrão.
 | `[video]` | `wide_layout` (padrão `true`: janela 16:9 pela altura do monitor, as duas telas à esquerda e a de baixo ampliada à direita; `false` = telas empilhadas e centralizadas), `wide_side` (`left` ou `right`: lado das duas telas pequenas na tela larga), `window_scale` (tamanho inicial da janela, só sem `wide_layout`), `resolution_3d` (1 a 10), `fullscreen`, `filter` (`nearest` ou `linear`), `integer_scale` (ampliar só em múltiplos inteiros, só sem `wide_layout`) |
 | `[audio]` | `volume` (0 a 100) |
 | `[game]` | `fast_forward_speed`: velocidade do avanço rápido, 2 a 10 (vezes a normal; padrão 4); `rewind`, `rewind_seconds`; `save`: o arquivo de `saves/` que o jogo carrega e grava (padrão `boej.sav`; a aba Saves do launcher escolhe) |
-| `[ui]` | `language`: idioma do launcher e do menu de pausa do jogo, `en` (padrão) ou `pt`; o texto do jogo não muda. O launcher troca na aba Jogar ("Language / Idioma") ou em Configurações → Launcher |
+| `[ui]` | `language`: idioma do launcher e do menu de pausa do jogo, `en` (padrão) ou `pt`; o texto do jogo não muda. O launcher troca na aba Jogar ("Language / Idioma") ou em Configurações → Launcher. `achievement_popups` (padrão `true`): aviso no canto da tela quando uma conquista é desbloqueada |
 | `[mods]` | `enabled`: mods de `mods/` ligados (nomes das pastas e dos `.zip`), separados por vírgula; quando dois mods trocam o mesmo arquivo, vale o que vem depois (a aba Mods do launcher cuida disso; veja [`MODS.md`](MODS.md)) |
 | `[keyboard]` | uma linha por botão do DS (`A`, `B`, ..., `UP`, `DOWN`) e por atalho (`fast_forward`, `fast_forward_toggle`, `turbo`, `turbo_toggle`, `screenshot`, `debug_dump`, `fullscreen`, `save_state`, `load_state`, `state_slot_prev`, `state_slot_next`), com nomes de tecla do SDL separados por vírgula, por exemplo `SELECT = Right Shift, Backspace`. Vazio desliga. |
 | `[gamepad]` | o mesmo, com botões pela posição (`south`, `east`, `west`, `north`), `start`, `back`, `leftshoulder`, `dpup` etc., e eixos com direção (`lefty-` = analógico para cima, `righttrigger`). Por padrão, o analógico esquerdo também move o direcional. |
@@ -98,6 +98,37 @@ Ele é lido ao abrir o jogo; apague-o para voltar ao padrão.
 Valores inválidos aparecem no log da sessão (`logs/sessoes/`) com o número da linha, e o padrão é usado no lugar.
 Sem janela (`NTR_HEADLESS`), o arquivo só é lido se `NTR_CONFIG` apontar para ele, para os testes não dependerem
 das configurações de quem joga.
+
+## Conquistas
+
+Conquistas locais, sem nada online (`runtime/include/ntr/achievements.h`). O jogo confere as condições no save do
+próprio jogo: uma vez ao abrir e de novo a cada vez que o jogo salva (quando as escritas no save param por 30
+quadros). Savestates e rewind não mexem no save, então não dão nem tiram conquistas. O que foi desbloqueado
+aparece num aviso no canto da tela, numa página do menu de pausa e na aba Conquistas do launcher, que também confere
+um save antigo ou importado ("Conferir este save").
+
+| Arquivo | Conteúdo |
+|---|---|
+| `achievements/achievements.json` | as definições (vão no release, ao lado do launcher e do jogo; `tools/build.py` copia para junto do executável) |
+| `achievements/icons/*.png` | os ícones (PNG de 8 bits por canal; 64×64) |
+| `saves/<save>.achievements.json` | de cada save: todas as conquistas, `unlocked`, `unlocked_at` (ISO 8601 com fuso, hora real do PC) e `icon`. O launcher renomeia junto com o `.sav`. Uma conquista desbloqueada não volta atrás, nem se sumir das definições |
+
+Uma definição:
+
+```json
+{ "id": "first_save",
+  "name": {"en": "Kickoff", "pt": "Pontapé inicial"},
+  "description": {"en": "Save the game for the first time.", "pt": "Salve o jogo pela primeira vez."},
+  "icon": "icons/first_save.png", "hidden": false,
+  "condition": {"source": "save", "field": "saved"} }
+```
+
+A condição é um teste no save (`"source": "save"`, a única fonte por enquanto) ou `{"all": [...]}` /
+`{"any": [...]}` de outras condições. Campos: `saved` (o save tem um jogo salvo), `chapter`, `level` (do time),
+`members`, `play_hours` e `has_unit` (`value` = número da unidade no elenco), com `op` (`>=` se omitido, `>`,
+`==`, `!=`, `<=`, `<`) e `value`. Uma definição com erro fica de fora e aparece no log (`[achievements]`).
+`hidden: true` mostra "???" até desbloquear. Os campos vêm de `ntr/savedata.h` (a leitura do save, a mesma da aba
+Saves); condições sobre o estado ao vivo (RAM) precisam de uma fonte nova em `GameFacts`.
 
 ## Arquivos de diagnóstico
 
@@ -179,6 +210,7 @@ Variáveis de ambiente:
   - `NTR_INPUT` roteiriza a entrada por quadro, por exemplo `300-310:TOUCH@128,96;900-905:A+START`;
   - `NTR_SCREENSHOT_FRAMES` (lista separada por vírgulas) com `NTR_SCREENSHOT` (caminho; `%d` vira o número do quadro) salva quadros em BMP;
   - `NTR_EXIT_FRAME` encerra depois de N quadros;
+  - `NTR_WINDOW_SHOT=quadro:caminho` salva a janela inteira naquele quadro em BMP, com o que fica por cima do jogo (o aviso de conquista, por exemplo);
   - `NTR_STATE_SAVE=N` / `NTR_STATE_LOAD=N` salvam no / carregam do slot 1 de savestate no quadro N.
 - **Depuração:**
   - `NTR_LOG_IRQ`, `NTR_LOG_THREAD`, `NTR_LOG_CARD`, `NTR_DUMP_SND` (cada comando SND), `NTR_LOG_TP`, `NTR_LOG_3D` (polígonos e comandos do GX a cada 60 trocas de buffer);

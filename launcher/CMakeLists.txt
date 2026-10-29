@@ -3,6 +3,7 @@ file(READ "${CMAKE_SOURCE_DIR}/VERSION" NTR_VERSION)
 string(STRIP "${NTR_VERSION}" NTR_VERSION)
 
 add_executable(ie3-launcher WIN32
+    achievements.cpp
     main.cpp
     mods.cpp
     prepare.cpp

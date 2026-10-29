@@ -371,7 +371,7 @@ int main(int argc, char** argv) {
 
     if (settings().get_bool("launcher", "check_updates")) update_check_start();
 
-    // Tests: IE3_LAUNCHER_TAB opens that tab (0-4), IE3_LAUNCHER_MOD selects that mod folder
+    // Tests: IE3_LAUNCHER_TAB opens that tab (0-5, 5 = Achievements), IE3_LAUNCHER_MOD selects that mod folder
     // in the Mods tab and IE3_LAUNCHER_SHOT saves the window as a BMP after a second, then quits.
     const char* shot = std::getenv("IE3_LAUNCHER_SHOT");
     const char* tab_env = std::getenv("IE3_LAUNCHER_TAB");
@@ -437,6 +437,10 @@ int main(int argc, char** argv) {
             }
             if (ImGui::BeginTabItem("Saves", nullptr, flags(3))) {
                 saves_tab(renderer);
+                ImGui::EndTabItem();
+            }
+            if (ImGui::BeginTabItem(L("Achievements###achievements", "Conquistas###achievements"), nullptr, flags(5))) {
+                achievements_tab(renderer);
                 ImGui::EndTabItem();
             }
             const char* updates = update_available() ? L("Updates (new!)###updates", "Atualizações (nova!)###updates")

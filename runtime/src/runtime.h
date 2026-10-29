@@ -12,6 +12,7 @@
 #include <type_traits>
 #include <vector>
 
+#include <ntr/achievements.h>
 #include <ntr/common.h>
 #include <ntr/guest.h>
 
@@ -172,6 +173,16 @@ uint64_t mods_fingerprint();
 void trace_install();
 void trace_frame(uint64_t frame);  // NTR_PROFILE window bookkeeping
 
+// --- achievements (achievements_game.cpp) ----------------------------------------------
+
+void achievements_init(const std::string& save_path);  // the save's achievements, checked once
+void achievements_game_saved();  // a backup memory write: checked when the writes stop
+void achievements_frame();       // every frame, windowed or not
+void achievements_flush();       // before exiting: a save still being checked is checked now
+const Achievements& achievements();
+// The next achievement to announce, unlocked since the last call; nullptr when none.
+const Achievement* achievements_take_unlocked();
+
 // --- logging ------------------------------------------------------------------
 
 // Terminal and log file (diag.cpp); log_detail goes to the file only.
@@ -283,6 +294,7 @@ void gpu2d_state(StateIo& io);
 void gpu3d_state(StateIo& io);
 void sound_state(StateIo& io);
 void card_state(StateIo& io);
+const std::vector<uint8_t>& card_save_data();  // the backup memory as the game last wrote it
 void rtc_state(StateIo& io);
 
 // Runs the game on `game` and does, on this (the main) fiber, the savestate work the

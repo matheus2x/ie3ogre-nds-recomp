@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "achievements": [
+    {
+      "id": "first_save",
+      "name": {
+        "en": "Kickoff",
+        "pt": "Pontapé inicial"
+      },
+      "description": {
+        "en": "Save the game for the first time.",
+        "pt": "Salve o jogo pela primeira vez."
+      },
+      "icon": "icons/first_save.png",
+      "hidden": false,
+      "condition": {
+        "source": "save",
+        "field": "saved"
+      }
+    }
+  ]
+}

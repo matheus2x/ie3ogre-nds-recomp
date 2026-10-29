@@ -2797,3 +2797,44 @@ e pelas mensagens dos baús do `ov131`) ou as imagens da loja (`pic3d/shop`) e d
 **Commits** (com a confirmação do usuário): a 1.9 e a 1.10 em commits separados ("CyberLifePlus 1.9…" e
 "CyberLifePlus 1.10…"; os documentos da 1.9 montados no índice sem as partes da 1.10), depois a versão 0.1.19 com
 a tag `v0.1.19` e o push para a main.
+
+## 2026-10-29 — Conquistas locais, por save
+
+Pedido: conquistas totalmente separadas do RetroAchievements, sem nada online, com um arquivo JSON por save
+(status, data/hora e ícone). Decisões: conferir no save do jogo agora (a RAM ao vivo não está mapeada) e deixar
+a estrutura pronta para uma fonte "ao vivo" depois; ícones em PNG nossos; aviso no jogo, página no menu de pausa
+e aba no launcher. A lista de conquistas é proposta e só entra com aprovação: por ora há **uma** de exemplo
+(`first_save`, "Pontapé inicial").
+
+- **Leitura do save compartilhada** (`ntr/savedata.h`, `runtime/src/savedata.cpp`, em `ntr-common`): a
+  decriptação e o resumo que estavam em `launcher/saves.cpp` passaram para cá; a aba Saves usa o módulo novo. Novo
+  campo `units` (números de `UnitData.unit_save[]` diferentes de 0): nos dois saves de teste dá 22, igual a
+  `members` (foxperks: cap. 1, nível 5, 0,8 h; runmelonds: cap. 11, nível 45, 22,9 h).
+- **JSON** (`ntr/json.h`): leitor/escritor pequeno, sem biblioteca nova (o SDK do release não precisa de nada a
+  mais). Objetos mantêm a ordem das chaves.
+- **Núcleo** (`ntr/achievements.h`): definições em `achievements/achievements.json`, condições (`saved`,
+  `chapter`, `level`, `members`, `play_hours`, `has_unit`, `all`/`any`), estado em
+  `saves/<save>.achievements.json` gravado com arquivo temporário + rename. Desbloqueada não volta atrás;
+  desbloqueadas que sumiram das definições ficam no arquivo. Data em ISO 8601 com fuso, pela hora real do PC (não
+  pelo relógio do DS).
+- **No jogo** (`runtime/src/achievements_game.cpp`): confere ao abrir e depois de cada save, quando as escritas
+  no EEPROM param por 30 quadros (um save são várias escritas); no fechar/reiniciar, confere o que estava
+  pendente. Aviso com ImGui por cima do jogo sem desligar a apresentação lógica (`ui::begin_overlay_frame`: escala
+  1/fit, texto nítido em pixels da janela), 4,5 s com entrada e saída deslizando, `[ui] achievement_popups`.
+  Menu de pausa: `SettingsOptions` aceita várias páginas extras (Savestates e Conquistas). PNG por
+  `SDL_LoadPNG` (SDL 3.4).
+- **Launcher**: aba Conquistas (save em uso primeiro, seletor dos outros, "Conferir este save" quando o jogo
+  está fechado); a aba Saves renomeia o `.achievements.json` junto com o `.sav`. `tools/build.py` e
+  `tools/release.py` levam a pasta `achievements/`.
+- `NTR_WINDOW_SHOT=quadro:caminho`: captura da janela inteira (com o aviso), para conferir sem tela.
+
+**Verificação:** jogo e launcher compilam sem avisos. Núcleo testado à parte nos dois saves (condições,
+definição inválida descartada com log, segunda avaliação sem mudar a data). Sem janela, com cópia do save
+foxperks: `first_save` desbloqueada no boot e o JSON gravado. Save em branco: nada desbloqueado. Com
+`NTR_WINDOW_SHOT`: aviso no canto superior direito com ícone. Aba do launcher capturada com
+`IE3_LAUNCHER_SHOT` (ícone, acentos, data). **Não testado:** o desbloqueio depois de um save feito
+jogando (chegar a um ponto de salvar por roteiro não deu certo) e a página do menu de pausa na tela (usa a mesma
+lista da aba do launcher).
+
+**Próximo:** aprovar a lista de conquistas; testar salvando no jogo; depois, fontes ao vivo (RAM/hooks).
+
