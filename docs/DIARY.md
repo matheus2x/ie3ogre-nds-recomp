@@ -2895,3 +2895,47 @@ nível 45) → capítulos 2–11, níveis 10 e 25, 16 amigos e capitão do Team 
 - Depois, o usuário colocou os retratos dos 13 capitães nos `captain_*.png` (64×64, RGBA de 8 bits): saíram do
   gerador, que agora só desenha capítulos, nível, amigos e All Stars. O aviso legal do README passa a citar os
   retratos como arte da LEVEL-5, como o logo e o ícone do Endou.
+
+## 2026-10-29 — Launcher minimalista, com a identidade do jogo
+
+- **Sem abas:** a tela inicial segue o launcher do Goemon64Recomp. No alto ficam "RECOMPILED" em amarelo,
+  "Inazuma Eleven **3**" grande (o 3 em magenta, como no logo) e o subtítulo. Embaixo à esquerda, um menu de
+  itens grandes: a ação principal (Jogar, Escolher o dump ou Preparar o jogo, conforme `readiness()`, com o
+  save em uso ao lado), Saves, Conquistas, Mods, Configurações, Atualizações ("versão nova!" em magenta) e Sair.
+  No hover ou foco do teclado/controle, o item ganha um marcador amarelo, uma barra amarela e um brilho azul que
+  some para a direita. O rodapé tem a versão, links pequenos (Pasta do jogo, Logs, Recompilar) e o idioma. O
+  texto sobre o dump e o progresso da preparação ficam entre o título e o menu.
+- **Fundo:** um raio e faixas diagonais (azul do card, amarelo, um fio magenta) desenhados em código, bem
+  apagados, deslizando da direita ao abrir. Nada vem do jogo.
+- **Páginas:** cada item abre a página com "< Voltar" (também Esc ou B do controle), o título em negrito e uma
+  linha azul que começa em amarelo. O conteúdo das páginas não mudou. `IE3_LAUNCHER_TAB` mantém a numeração
+  (0 = tela inicial … 5 = Conquistas).
+- **Tema (ntr-ui, vale também no menu de pausa):** a paleta sai do card dos saves e do logo e fica em
+  `ntr/ui.h` (`kBackground`, `kPrimary*`, `kHighlight`, `kMagenta`, `kSuccess`, `kError`). Cabeçalho e bordas
+  das tabelas no índigo da faixa do card.
+- **Fonte:** Rubik Regular e Bold (SIL OFL 1.1), embutida em `runtime/ui/fonts_embedded.h`, gerado por
+  `tools/embed_font.py` a partir de `runtime/ui/fonts/`. São instâncias estáticas (400/700) da fonte variável
+  do googlefonts/rubik, só com o alfabeto latino (57 KB cada). O header vai versionado porque o jogo compila o
+  `sdk/ui/` no PC do jogador. A Chiaro do Goemon ficou de fora: não tem licença de redistribuição. O que falta
+  na Rubik (o "→", por exemplo) vem de uma fonte do sistema mesclada nas duas; a fonte japonesa dos saves
+  também é mesclada nas duas. A licença está em `TERCEIROS.txt`, e `release.py` copia o OFL para
+  `licenses/rubik.txt`.
+- Os textos que falavam em "aba" (launcher, READMEs, LEIA-ME/README.txt, MODS.md, DESENVOLVIMENTO.md) passaram
+  a falar em página ou tela inicial.
+
+**Verificação:** launcher e jogo compilam sem avisos, no Linux e no cruzado para Windows. Testes Python: 50 OK.
+Capturas com `IE3_LAUNCHER_SHOT` em pastas de teste nos estados "precisa do dump" e "pronto", em inglês e em
+português, mais as cinco páginas. O hover foi conferido com um gancho temporário, já removido. O menu de pausa
+foi capturado com outro gancho temporário (abre no quadro 300 e salva a janela), também removido, rodando com
+`SDL_VIDEO_DRIVER=offscreen`, porque no modo headless não há renderer. **Não testado:** a release completa
+(`release.py`) e a compilação do jogo pelo SDK (`--prepare`); o header novo vai para `sdk/ui/` pelo mesmo
+`copy_tree` dos outros `.h`.
+
+**Pasta de teste do Windows** (`C:\Games\ie3-teste\ie3ogre-recomp`): atualizada da 0.1.17 para uma release 0.1.21
+gerada deste código (`tools/release.py` completo, que agora leva `sdk/ui/fonts_embedded.h` e `licenses/rubik.txt`).
+Troquei o launcher, o `SDL3.dll`, o `sdk/` (o antigo apagado inteiro), `licenses/` e os três `.txt`, e acrescentei
+`achievements/`, que faltava. Mantive `boej.ini`, `boej.pak`, `cache/`, `toolchain/`, `saves/`, `logs/` e `mods/`.
+O mod passou de CyberLifePlus 1.8 para 1.10 com `ie3-launcher.exe --install-mod`: o antigo foi trocado e o novo
+continua ligado no `boej.ini`. O `--prepare` recompilou o jogo no Windows (189 arquivos em 52 s, 60 s no total,
+`build.stamp` 0.1.21). O `boej.exe --check-mods` aceita o mod 1.10. A tela inicial foi capturada no Windows
+(escala de 150%, Rubik e versão 0.1.21).

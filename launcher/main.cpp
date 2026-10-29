@@ -5,10 +5,12 @@
 #include <imgui.h>
 #include <ntr/ui.h>
 
+#include <algorithm>
 #include <cctype>
 #include <cstdarg>
 #include <cstdlib>
 #include <cstdio>
+#include <cstring>
 #include <mutex>
 
 #include "launcher.h"
@@ -89,8 +91,12 @@ std::mutex g_drop_mutex;
 std::string g_dropped;  // a dump from the file dialog or dropped on the window
 bool g_quit = false;
 bool g_hidden = false;          // the window waits hidden while the game runs
-int g_select_tab = -1;          // a tab to open on the next frame
 Uint32 g_game_exited_event = 0;  // pushed by the thread that waits for the game
+
+// The home menu and the pages it opens (the numbers of IE3_LAUNCHER_TAB).
+enum class Screen { Home, Settings, Mods, Saves, Updates, Achievements };
+Screen g_screen = Screen::Home;
+double g_home_since = 0;  // when the home screen appeared, for the background's slide
 
 void on_dump(const std::string& path) {
     std::lock_guard lock(g_drop_mutex);
@@ -138,16 +144,6 @@ void game_exited(SDL_Window* window) {
     SDL_RaiseWindow(window);
 }
 
-void big_button_style(bool on) {
-    if (on) {
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.16f, 0.48f, 0.86f, 1));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.24f, 0.56f, 0.94f, 1));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.12f, 0.40f, 0.76f, 1));
-    } else {
-        ImGui::PopStyleColor(3);
-    }
-}
-
 void job_view() {
     std::lock_guard lock(g_job.mutex);
     ImGui::TextUnformatted(g_job.step.c_str());
@@ -190,35 +186,85 @@ void language_picker() {
     }
 }
 
-void play_tab(SDL_Window* window) {
-    ImGui::PushFont(nullptr, ImGui::GetStyle().FontSizeBase * 1.5f);
-    ImGui::TextUnformatted("Inazuma Eleven 3: Sekai heno Chousen!! The Ogre");
-    ImGui::PopFont();
-    ImGui::TextDisabled(L("Native port through static recompilation. Version %s.",
-                          "Port nativo por recompilação estática. Versão %s."), LAUNCHER_VERSION);
-    language_picker();
-    ImGui::Separator();
-    ImGui::Spacing();
+ImVec4 color(uint32_t c) { return ImGui::ColorConvertU32ToFloat4(c); }
 
-    if (g_job.running) {
+ImU32 with_alpha(uint32_t c, float alpha) {
+    return (c & 0x00FFFFFF) | (ImU32(std::clamp(alpha, 0.0f, 1.0f) * 255) << 24);
+}
+
+void push_bold(float factor) { ImGui::PushFont(ntr::ui::bold_font(), ImGui::GetStyle().FontSizeBase * factor); }
+
+// Behind the home screen, faint: a lightning bolt and diagonal bands in the card's blue and
+// the lightning's yellow. They slide in from the right when the screen appears.
+void draw_background() {
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    const ImVec2 p = ImGui::GetWindowPos(), size = ImGui::GetWindowSize();
+    float t = std::clamp(float(ImGui::GetTime() - g_home_since) / 2.5f, 0.0f, 1.0f);
+    float ease = 1 - (1 - t) * (1 - t) * (1 - t);
+    float shift = (1 - ease) * size.x * 0.12f, fade = std::min(1.0f, t * 2.5f);
+    auto at = [&](float x, float y) { return ImVec2(p.x + x * size.x + shift, p.y + y * size.y); };
+    auto band = [&](float x, float width, uint32_t c, float alpha) {  // from the top to the bottom, leaning
+        ImVec2 q[4] = {at(x, -0.05f), at(x + width, -0.05f), at(x + width - 0.32f, 1.05f), at(x - 0.32f, 1.05f)};
+        dl->AddConvexPolyFilled(q, 4, with_alpha(c, alpha * fade));
+    };
+    band(0.86f, 0.22f, ntr::ui::kPrimary, 0.16f);
+    band(1.12f, 0.30f, ntr::ui::kPrimaryActive, 0.30f);
+    band(0.80f, 0.010f, ntr::ui::kHighlight, 0.30f);
+    band(1.09f, 0.006f, ntr::ui::kMagenta, 0.35f);
+    // The bolt, in a box from (x0, y0) to (x1, y1) of the window.
+    const float x0 = 0.58f, x1 = 0.92f, y0 = 0.08f, y1 = 0.96f;
+    auto in_box = [&](float x, float y) { return at(x0 + x * (x1 - x0), y0 + y * (y1 - y0)); };
+    const ImVec2 bolt[] = {in_box(0.48f, 0), in_box(0.92f, 0), in_box(0.62f, 0.38f), in_box(0.90f, 0.38f),
+                           in_box(0.12f, 1), in_box(0.38f, 0.52f), in_box(0.10f, 0.52f)};
+    dl->AddConcavePolyFilled(bolt, 7, with_alpha(ntr::ui::kHighlight, 0.10f * fade));
+    dl->AddPolyline(bolt, 7, with_alpha(ntr::ui::kHighlight, 0.35f * fade), ImDrawFlags_Closed, 2.0f);
+}
+
+constexpr float kMenuSize = 1.45f;  // the menu's text, times the normal size
+
+// An item of the home menu: the label large and bold; hovered or focused, a yellow marker and a
+// blue glow fading to the right. `note` is a short text after the label, in `note_color`.
+bool menu_item(const char* label, const char* note = nullptr, uint32_t note_color = 0, bool enabled = true) {
+    push_bold(kMenuSize);
+    const float em = ImGui::GetFontSize(), pad = em * 0.3f, marker = em * 0.8f;
+    const char* end = std::strstr(label, "##");  // the id after "###" is not shown
+    const ImVec2 text = ImGui::CalcTextSize(label, end);
+    const ImVec2 p = ImGui::GetCursorScreenPos();
+    const ImVec2 size(std::max(em * 12, ImGui::GetContentRegionAvail().x * 0.5f), text.y + pad * 2);
+    ImGui::PushStyleColor(ImGuiCol_NavCursor, IM_COL32(0, 0, 0, 0));  // the glow shows the focus instead
+    ImGui::BeginDisabled(!enabled);
+    bool pressed = ImGui::InvisibleButton(label, size, ImGuiButtonFlags_EnableNav);
+    bool lit = enabled && (ImGui::IsItemHovered() || (ImGui::IsItemFocused() && ImGui::GetIO().NavVisible));
+    ImGui::EndDisabled();
+    ImGui::PopStyleColor();
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    const ImVec2 q(p.x + size.x, p.y + size.y);
+    if (lit) {
+        ImU32 from = with_alpha(ntr::ui::kPrimary, 0.55f), to = with_alpha(ntr::ui::kPrimary, 0);
+        dl->AddRectFilledMultiColor(p, q, from, to, to, from);
+        dl->AddRectFilled(p, ImVec2(p.x + 3, q.y), ntr::ui::kHighlight);
+        float cy = p.y + size.y / 2, x = p.x + pad + em * 0.1f, h = em * 0.26f;
+        dl->AddTriangleFilled(ImVec2(x, cy - h), ImVec2(x + h * 1.3f, cy), ImVec2(x, cy + h), ntr::ui::kHighlight);
+    }
+    ImU32 ink = !enabled ? ImGui::GetColorU32(ImGuiCol_TextDisabled) : lit ? IM_COL32_WHITE : ImGui::GetColorU32(ImGuiCol_Text, 0.82f);
+    float x = p.x + pad + marker + (lit ? em * 0.15f : 0);
+    dl->AddText(ImVec2(x, p.y + pad), ink, label, end);
+    ImGui::PopFont();
+    if (note) {
+        ImVec2 n = ImGui::CalcTextSize(note);
+        dl->AddText(ImVec2(x + text.x + em * 0.6f, p.y + (size.y - n.y) / 2), note_color ? note_color : ImGui::GetColorU32(ImGuiCol_TextDisabled), note);
+    }
+    return pressed;
+}
+
+// Under the title: what the game still needs, the preparation's progress or its result.
+void home_status(Readiness r) {
+    if (g_job.running || g_job.finished) {
         job_view();
-        if (ImGui::Button(L("Cancel", "Cancelar"))) g_job.cancel = true;
+        if (g_job.running && ImGui::Button(L("Cancel", "Cancelar"))) g_job.cancel = true;
         return;
     }
-    {
-        std::lock_guard lock(g_drop_mutex);
-        if (!g_dropped.empty()) {
-            prepare_start(g_job, g_dropped);
-            g_dropped.clear();
-            return;
-        }
-    }
-    Readiness r = readiness();
-    if (g_job.finished) {
-        job_view();
-        ImGui::Spacing();
-    }
-    const ImVec2 big(260, 54);
+    ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
     switch (r) {
         case Readiness::NoSdk:
             ImGui::TextWrapped("%s", L("This folder has no sdk/. Download the full release, or make the SDK with "
@@ -227,61 +273,171 @@ void play_tab(SDL_Window* window) {
                                        "\"python3 tools/build.py --sdk\" numa cópia do código-fonte."));
             break;
         case Readiness::NeedsDump:
-            ImGui::TextWrapped("%s", L("To play, the launcher needs a dump of YOUR cartridge (.nds, code BOEJ, unmodified). "
-                                       "It is only used now: the launcher checks the dump, creates boej.pak and compiles the "
-                                       "game on this computer. Nothing from the game comes with the launcher.",
-                                       "Para jogar, o launcher precisa do dump do SEU cartucho (.nds, código BOEJ, sem modificações). "
-                                       "Ele é usado só agora: o launcher confere o dump, cria o boej.pak e compila o jogo "
-                                       "neste computador. Nada do jogo vem com o launcher."));
-            ImGui::Spacing();
-            big_button_style(true);
-            if (ImGui::Button(L("Choose the dump (.nds)...", "Escolher o dump (.nds)..."), big)) choose_dump(window);
-            big_button_style(false);
-            ImGui::SameLine();
-            ImGui::TextDisabled("%s", L("or drag the file\nonto this window", "ou arraste o arquivo\npara esta janela"));
-            ImGui::Spacing();
-            ImGui::TextDisabled("%s", L("The first time, the launcher also downloads the compiler (~190 MB) and takes a few minutes.",
-                                        "Na primeira vez, o launcher também baixa o compilador (~190 MB) e leva alguns minutos."));
+            ImGui::TextWrapped("%s", L("To play, the launcher needs a dump of YOUR cartridge (.nds, code BOEJ, unmodified). It "
+                                       "checks the dump and compiles the game on this computer: nothing from the game comes "
+                                       "with the launcher. The first time, it also downloads the compiler (~190 MB) and takes "
+                                       "a few minutes.",
+                                       "Para jogar, o launcher precisa do dump do SEU cartucho (.nds, código BOEJ, sem "
+                                       "modificações). Ele confere o dump e compila o jogo neste computador: nada do jogo vem "
+                                       "com o launcher. Na primeira vez, também baixa o compilador (~190 MB) e leva alguns "
+                                       "minutos."));
             break;
         case Readiness::NeedsBuild:
             ImGui::TextWrapped("%s", L("The game needs to be compiled for this version of the launcher (it takes a few minutes; "
                                        "the dump is not needed).",
                                        "O jogo precisa ser compilado para esta versão do launcher (leva alguns minutos; o dump "
                                        "não é necessário)."));
-            ImGui::Spacing();
-            big_button_style(true);
-            if (ImGui::Button(L("Prepare the game", "Preparar o jogo"), big)) prepare_start(g_job, "");
-            big_button_style(false);
             break;
         case Readiness::Ready:
-            big_button_style(true);
-            if (ImGui::Button(L("Play", "Jogar"), big)) play(window);
-            big_button_style(false);
-            ImGui::SameLine();
-            ImGui::BeginGroup();
-            ImGui::TextDisabled("Save: %s", current_save().c_str());
-            ImGui::SameLine();
-            if (ImGui::SmallButton(L("Change", "Trocar"))) g_select_tab = 3;
-            if (update_available()) {
-                ImGui::TextColored(ImVec4(0.5f, 0.85f, 0.5f, 1), "%s",
-                                   L("A new version is out (Updates tab).", "Há uma versão nova (aba Atualizações)."));
-            }
-            ImGui::EndGroup();
-            ImGui::Spacing();
-            if (ImGui::Button(L("Open the game folder", "Abrir a pasta do jogo"))) open_folder(paths().root);
-            ImGui::SameLine();
-            if (ImGui::Button(L("Open the logs folder", "Abrir a pasta de logs"))) open_folder(paths().logs());
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("%s", L("A log and a recording of each game session, and historico.txt with all of them",
-                                          "Um registro e uma gravação por sessão de jogo, e o historico.txt com todas elas"));
-            }
-            ImGui::SameLine();
-            if (ImGui::Button(L("Recompile", "Recompilar"))) prepare_start(g_job, "");
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("%s", L("Compiles the game again (for testing; normally not needed)",
-                                          "Compila o jogo de novo (para testes; normalmente não é preciso)"));
-            }
             break;
+    }
+    ImGui::PopStyleColor();
+}
+
+// A small text button, for the links at the bottom of the home screen.
+bool link(const char* label, const char* tooltip = nullptr) {
+    ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 0));
+    ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(ImGui::GetStyle().FramePadding.x * 0.6f, ImGui::GetStyle().FramePadding.y));
+    bool pressed = ImGui::Button(label);
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor(2);
+    if (tooltip && ImGui::IsItemHovered()) ImGui::SetTooltip("%s", tooltip);
+    return pressed;
+}
+
+// The home screen, minimal as in the N64 Recomp launchers: the title at the top, the menu at the
+// bottom left, the version, folders and language in the footer.
+void home_screen(SDL_Window* window) {
+    {
+        std::lock_guard lock(g_drop_mutex);
+        if (!g_dropped.empty() && !g_job.running) {
+            prepare_start(g_job, g_dropped);
+            g_dropped.clear();
+        }
+    }
+    draw_background();
+    const ImGuiStyle& style = ImGui::GetStyle();
+    const float em = ImGui::GetFontSize(), margin = em * 1.6f;
+    const ImVec2 origin = ImGui::GetCursorPos();
+    ImGui::SetCursorPos(ImVec2(origin.x + margin, origin.y + margin * 0.6f));
+    ImGui::BeginGroup();
+    push_bold(0.85f);
+    ImGui::PushStyleColor(ImGuiCol_Text, color(ntr::ui::kHighlight));
+    ImGui::TextUnformatted("R E C O M P I L E D");
+    ImGui::PopStyleColor();
+    ImGui::PopFont();
+    push_bold(2.6f);
+    ImGui::TextUnformatted("Inazuma Eleven");
+    ImGui::SameLine();
+    ImGui::TextColored(color(ntr::ui::kMagenta), "3");  // pink, as on the logo
+    ImGui::PopFont();
+    ImGui::PushFont(nullptr, style.FontSizeBase * 1.25f);
+    ImGui::TextDisabled("Sekai heno Chousen!! The Ogre");
+    ImGui::PopFont();
+    ImGui::EndGroup();
+
+    // The footer's height and the menu's, from the bottom of the window up.
+    const Readiness r = readiness();
+    const bool busy = g_job.running;
+    const int items = busy ? 0 : 7;
+    const float item_h = style.FontSizeBase * style.FontScaleMain * kMenuSize * 1.6f;
+    const float footer_h = ImGui::GetFrameHeight() + style.WindowPadding.y;
+    const float bottom = ImGui::GetWindowHeight() - footer_h - style.WindowPadding.y;
+    const float menu_y = bottom - items * item_h - em;
+
+    // What the game needs, or the preparation, between the title and the menu.
+    const float status_y = ImGui::GetCursorPosY() + em;
+    const float status_w = std::min(ImGui::GetContentRegionAvail().x - margin, em * 34);
+    if (menu_y - status_y > em * 2) {
+        ImGui::SetCursorPos(ImVec2(origin.x + margin, status_y));
+        ImGui::BeginChild("status", ImVec2(status_w, menu_y - status_y - em * 0.5f));
+        home_status(r);
+        ImGui::EndChild();
+    }
+
+    if (!busy) {
+        // The labels in line with the title, the marker in the margin.
+        ImGui::SetCursorPos(ImVec2(origin.x + margin - em * kMenuSize * 1.1f, menu_y));
+        ImGui::BeginGroup();
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(style.ItemSpacing.x, 0));
+        std::string save = "save: " + current_save();
+        switch (r) {
+            case Readiness::Ready:
+                if (menu_item(L("Play###main", "Jogar###main"), save.c_str())) play(window);
+                break;
+            case Readiness::NeedsDump:
+                if (menu_item(L("Choose the dump###main", "Escolher o dump###main"),
+                              L("(.nds) or drag it here", "(.nds) ou arraste para cá"))) {
+                    choose_dump(window);
+                }
+                break;
+            case Readiness::NeedsBuild:
+                if (menu_item(L("Prepare the game###main", "Preparar o jogo###main"))) prepare_start(g_job, "");
+                break;
+            case Readiness::NoSdk:
+                menu_item(L("Play###main", "Jogar###main"), nullptr, 0, false);
+                break;
+        }
+        if (ImGui::IsWindowAppearing()) ImGui::SetItemDefaultFocus();
+        if (menu_item("Saves")) g_screen = Screen::Saves;
+        if (menu_item(L("Achievements", "Conquistas"))) g_screen = Screen::Achievements;
+        if (menu_item("Mods")) g_screen = Screen::Mods;
+        if (menu_item(L("Settings", "Configurações"))) g_screen = Screen::Settings;
+        if (menu_item(L("Updates", "Atualizações"), update_available() ? L("new version!", "versão nova!") : nullptr, ntr::ui::kMagenta)) {
+            g_screen = Screen::Updates;
+        }
+        if (menu_item(L("Quit", "Sair"))) g_quit = true;
+        ImGui::PopStyleVar();
+        ImGui::EndGroup();
+    }
+
+    // The footer: the version and the folders on the left, the language on the right.
+    ImGui::SetCursorPos(ImVec2(origin.x + margin - style.FramePadding.x * 0.6f, ImGui::GetWindowHeight() - footer_h));
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextDisabled("v%s", LAUNCHER_VERSION);
+    ImGui::SameLine(0, em);
+    if (link(L("Game folder", "Pasta do jogo"))) open_folder(paths().root);
+    ImGui::SameLine(0, 0);
+    if (link("Logs", L("A log and a recording of each game session, and historico.txt with all of them",
+                       "Um registro e uma gravação por sessão de jogo, e o historico.txt com todas elas"))) {
+        open_folder(paths().logs());
+    }
+    if (r == Readiness::Ready && !busy) {
+        ImGui::SameLine(0, 0);
+        if (link(L("Recompile", "Recompilar"), L("Compiles the game again (for testing; normally not needed)",
+                                                 "Compila o jogo de novo (para testes; normalmente não é preciso)"))) {
+            prepare_start(g_job, "");
+        }
+    }
+    language_picker();
+}
+
+// A page opened from the menu: "Back" (also Escape or the gamepad's B) and its title.
+void page_header(const char* title) {
+    bool back = ImGui::Button(L("< Back", "< Voltar"));
+    bool popup = ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId);
+    if (!popup && !ImGui::GetIO().WantTextInput &&
+        (ImGui::IsKeyPressed(ImGuiKey_Escape, false) || ImGui::IsKeyPressed(ImGuiKey_GamepadFaceRight, false))) {
+        back = true;
+    }
+    ImGui::SameLine(0, ImGui::GetFontSize());
+    push_bold(1.6f);
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted(title);
+    ImGui::PopFont();
+    // Under it, a blue rule that starts in yellow.
+    const float em = ImGui::GetFontSize();
+    const ImVec2 p = ImGui::GetCursorScreenPos();
+    const float w = ImGui::GetContentRegionAvail().x;
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    dl->AddRectFilled(p, ImVec2(p.x + w, p.y + 2), with_alpha(ntr::ui::kPrimary, 0.55f));
+    dl->AddRectFilled(p, ImVec2(p.x + em * 3, p.y + 2), ntr::ui::kHighlight);
+    ImGui::Dummy(ImVec2(w, 2));
+    ImGui::Spacing();
+    if (back) {
+        g_screen = Screen::Home;
+        g_home_since = ImGui::GetTime();
     }
 }
 
@@ -371,11 +527,13 @@ int main(int argc, char** argv) {
 
     if (settings().get_bool("launcher", "check_updates")) update_check_start();
 
-    // Tests: IE3_LAUNCHER_TAB opens that tab (0-5, 5 = Achievements), IE3_LAUNCHER_MOD selects that mod folder
-    // in the Mods tab and IE3_LAUNCHER_SHOT saves the window as a BMP after a second, then quits.
+    // Tests: IE3_LAUNCHER_TAB opens that page (0-5 as in Screen, 5 = Achievements), IE3_LAUNCHER_MOD selects that
+    // mod folder in Mods and IE3_LAUNCHER_SHOT saves the window as a BMP after a second, then quits (with the
+    // home screen's background already in place).
     const char* shot = std::getenv("IE3_LAUNCHER_SHOT");
     const char* tab_env = std::getenv("IE3_LAUNCHER_TAB");
-    g_select_tab = tab_env ? std::atoi(tab_env) : -1;
+    if (tab_env) g_screen = Screen(std::clamp(std::atoi(tab_env), 0, 5));
+    if (shot) g_home_since = -10;
     int frames = 0;
 
     while (!g_quit) {
@@ -397,12 +555,13 @@ int main(int argc, char** argv) {
                 std::error_code ec;
                 if (ext == ".zip" || fs::is_directory(ntr::fs_path(path), ec)) {
                     mods_drop(path);
-                    g_select_tab = 2;
+                    g_screen = Screen::Mods;
                 } else if (ext == ".sav") {
                     saves_drop(path);
-                    g_select_tab = 3;
+                    g_screen = Screen::Saves;
                 } else if (!g_job.running) {
                     on_dump(path);
+                    g_screen = Screen::Home;
                 }
             }
             if (ev.type == g_game_exited_event) game_exited(window);
@@ -419,41 +578,35 @@ int main(int argc, char** argv) {
         ImGui::SetNextWindowPos(vp->WorkPos);
         ImGui::SetNextWindowSize(vp->WorkSize);
         ImGui::Begin("main", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings);
-        if (ImGui::BeginTabBar("tabs")) {
-            int select_tab = g_select_tab;  // a tab can ask for another one (it opens on the next frame)
-            g_select_tab = -1;
-            auto flags = [&](int tab) { return select_tab == tab ? ImGuiTabItemFlags_SetSelected : 0; };
-            if (ImGui::BeginTabItem(L("Play###play", "Jogar###play"), nullptr, flags(0))) {
-                play_tab(window);
-                ImGui::EndTabItem();
-            }
-            if (ImGui::BeginTabItem(L("Settings###settings", "Configurações###settings"), nullptr, flags(1))) {
+        switch (g_screen) {
+            case Screen::Home:
+                home_screen(window);
+                break;
+            case Screen::Settings:
+                page_header(L("Settings", "Configurações"));
                 settings_ui();
-                ImGui::EndTabItem();
-            }
-            if (ImGui::BeginTabItem("Mods", nullptr, flags(2))) {
+                break;
+            case Screen::Mods:
+                page_header("Mods");
                 mods_tab(window);
-                ImGui::EndTabItem();
-            }
-            if (ImGui::BeginTabItem("Saves", nullptr, flags(3))) {
+                break;
+            case Screen::Saves:
+                page_header("Saves");
                 saves_tab(renderer);
-                ImGui::EndTabItem();
-            }
-            if (ImGui::BeginTabItem(L("Achievements###achievements", "Conquistas###achievements"), nullptr, flags(5))) {
+                break;
+            case Screen::Achievements:
+                page_header(L("Achievements", "Conquistas"));
                 achievements_tab(renderer);
-                ImGui::EndTabItem();
-            }
-            const char* updates = update_available() ? L("Updates (new!)###updates", "Atualizações (nova!)###updates")
-                                                     : L("Updates###updates", "Atualizações###updates");
-            if (ImGui::BeginTabItem(updates, nullptr, flags(4))) {
+                break;
+            case Screen::Updates:
+                page_header(L("Updates", "Atualizações"));
                 update_ui();
-                ImGui::EndTabItem();
-            }
-            ImGui::EndTabBar();
+                break;
         }
         ImGui::End();
 
-        SDL_SetRenderDrawColor(renderer, 20, 22, 28, 255);
+        SDL_SetRenderDrawColor(renderer, ntr::ui::kBackground & 0xFF, (ntr::ui::kBackground >> 8) & 0xFF,
+                               (ntr::ui::kBackground >> 16) & 0xFF, 255);
         SDL_RenderClear(renderer);
         ntr::ui::end_frame(renderer);
         if (shot && ++frames == 60) {

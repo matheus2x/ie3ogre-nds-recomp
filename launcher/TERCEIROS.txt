@@ -9,6 +9,10 @@ Distribuídos com o launcher:
 - Dear ImGui (dentro do ie3-launcher) - MIT License
   Copyright (c) 2014-2026 Omar Cornut. https://github.com/ocornut/imgui
 
+- Rubik, Regular e Bold (dentro do ie3-launcher e do jogo; sdk/ui/fonts_embedded.h) -
+  SIL Open Font License 1.1
+  Copyright 2015 The Rubik Project Authors. https://github.com/googlefonts/rubik
+
 - ds-decomp / dsd (sdk/bin/dsd) - MIT License
   Copyright (c) 2025 Aetias. https://github.com/AetiasHax/ds-decomp
   Usado no PC do jogador para extrair o ARM9 e as overlays do dump, incluindo a

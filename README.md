@@ -45,7 +45,7 @@
 
 > [!NOTE]
 > The game itself is the Japanese version. The launcher and the in-game pause menu are in English by default, with
-> Brazilian Portuguese as an option ("Language / Idioma" in the Play tab). The documentation in `docs/` is in
+> Brazilian Portuguese as an option ("Language / Idioma" on the launcher's home screen). The documentation in `docs/` is in
 > Brazilian Portuguese; this README is the English overview.
 
 ## What the port adds
@@ -56,7 +56,7 @@ Everything the cartridge does, plus:
 |---|---|---|
 | 🎨 **Graphics** | 3D at 256×192 | 3D at **1× to 10×** with anti-aliasing; **16:9** layout (the bottom screen large, the two small ones beside it) or stacked screens |
 | 💾 **Progress** | the game's save | **5 savestates** and up to 30 s of **rewind** |
-| 🏆 **Achievements** | — | **34 local achievements** per save (chapters, team level, roster, the captain of each team you face), with a popup in game, a page in the pause menu and a tab in the launcher. Nothing online: each save has a `.achievements.json` next to it |
+| 🏆 **Achievements** | — | **34 local achievements** per save (chapters, team level, roster, the captain of each team you face), with a popup in game, a page in the pause menu and in the launcher. Nothing online: each save has a `.achievements.json` next to it |
 | ⏩ **Speed** | normal | **fast-forward** from 2× to 10× and auto-A |
 | 🎮 **Controls** | buttons and stylus | keyboard, mouse on the touch screen and **controllers**, all remappable |
 | ⚙️ **Interface** | — | a **pause menu** (settings, savestates, achievements) and a **launcher** that prepares, updates and manages saves and mods, in English or Portuguese |
@@ -77,9 +77,9 @@ first time, to download the compiler.
    [llvm-mingw](https://github.com/mstorsjo/llvm-mingw) compiler once (~190 MB) and compiles `boej.exe`. This takes
    one to a few minutes, depending on your CPU. Then just click **Play**: the dump is no longer needed.
 
-The launcher's other tabs:
+The other pages of the launcher's menu:
 
-| Tab | What it does |
+| Page | What it does |
 |---|---|
 | **Settings** | video, audio, controls and the launcher's language (also in the in-game pause menu, with Esc) |
 | **Saves** | picks the save the game uses, creates new saves and imports `.sav` files from a cartridge or emulators |
@@ -126,7 +126,7 @@ they only load in the same `boej.exe` and with the same mods (an update recompil
 ## Mods and the PT-BR translation
 
 Mods replace game files (text, fonts, images, tables) without touching `boej.pak`. Each mod is a folder or a
-`.zip` in the `mods/` folder: put it there (or drag it onto the launcher) and enable it in the **Mods** tab. How
+`.zip` in the `mods/` folder: put it there (or drag it onto the launcher) and enable it under **Mods** in the launcher. How
 to make a mod (in Portuguese): [`docs/MODS.md`](docs/MODS.md).
 
 Official mods live in [`mods/`](mods/) and ship as separate `.zip` files with each release, as patches only,
@@ -144,7 +144,7 @@ If something goes wrong, press **F8** right away, close the game and open an [is
 - from the `logs` folder (the "Open the logs folder" button in the launcher): the session log in
   `logs/sessoes/` and the replay with the same name in `logs/replays/` (the `.txt` and the `.sav`, which replay the
   session exactly);
-- the version (Updates tab) and the enabled mods.
+- the version (Updates page) and the enabled mods.
 
 Each time the game opens is a session named after the date and time; the 20 most recent are kept, and
 `logs/historico.txt` summarizes all of them.

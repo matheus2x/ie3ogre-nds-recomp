@@ -7,8 +7,8 @@ no seu computador a partir do dump do SEU cartucho.
 
 IDIOMA
 O launcher e o menu de pausa abrem em inglês. Para usar em português,
-escolha "Português (Brasil)" em "Language / Idioma", no canto da aba
-"Play" (Jogar), ou em Settings > Launcher. A tradução do texto do jogo é o
+escolha "Português (Brasil)" em "Language / Idioma", no canto da tela
+inicial, ou em Settings > Launcher. A tradução do texto do jogo é o
 mod CyberLifePlus (veja MODS).
 
 PRIMEIRA VEZ
@@ -25,28 +25,28 @@ PRIMEIRA VEZ
    Depois disso, o dump não é mais necessário. É só clicar em "Jogar".
 
 ATUALIZAÇÕES
-A aba "Atualizações" baixa a versão nova e confere com o sha256sums.txt da
+A página "Atualizações" baixa a versão nova e confere com o sha256sums.txt da
 release. O jogo é compilado de novo automaticamente, sem pedir o dump.
 Seus saves e configurações não são mexidos.
 
 MODS
 Cada mod é uma pasta ou um .zip. Para adicionar, coloque o mod na pasta
 "mods", ao lado do boej.exe (ou arraste-o para a janela do launcher). Depois,
-na aba "Mods", ligue, desligue, ordene e remova os mods. Adicionar só copia o
+em "Mods", ligue, desligue, ordene e remova os mods. Adicionar só copia o
 mod para a pasta "mods", e Remover só apaga essa cópia: o arquivo ou a pasta
-original não é alterado. A aba também cria um mod a partir de um dump
+original não é alterado. A página também cria um mod a partir de um dump
 modificado (uma tradução, por exemplo), desde que o código dele seja o do
 jogo original. As mudanças valem na próxima vez que o jogo abrir. Como fazer um mod: veja
 docs/MODS.md no repositório do projeto (endereço no fim deste arquivo).
 Os mods oficiais saem como .zip separados nas releases (por exemplo, o
 mod-CyberLifePlus-<versão>.zip, a tradução PT-BR): coloque o .zip na
 pasta "mods" sem descompactar. Para atualizar um mod, adicione o .zip novo
-na aba Mods: ele toma o lugar do antigo e continua ligado.
+em Mods: ele toma o lugar do antigo e continua ligado.
 
 SAVES
 Os saves ficam na pasta "saves", ao lado do boej.exe, um arquivo .sav por
-save (64 KB, o mesmo formato do save do cartucho). Na aba "Saves" do
-launcher, clique no save que o jogo vai usar; a aba mostra o nome do
+save (64 KB, o mesmo formato do save do cartucho). Na página "Saves" do
+launcher, clique no save que o jogo vai usar; a página mostra o nome do
 jogador, o capítulo, o nível do time, os membros, o tempo de jogo e os
 rostos dos jogadores do time de cada um. "Novo save" cria na lista um save
 em branco com o nome que você escrever: clique nele e comece um Novo Jogo;
@@ -64,7 +64,7 @@ Cada save tem as suas conquistas, só no seu PC (nada online). O jogo
 confere ao abrir e a cada vez que você salva; uma conquista nova aparece
 num aviso no canto da tela (para desligar: [ui] achievement_popups =
 false no boej.ini). A lista fica no menu de pausa, em
-"Conquistas", e na aba "Conquistas" do launcher, que também confere um
+"Conquistas", e na página "Conquistas" do launcher, que também confere um
 save antigo ou importado ("Conferir este save"). Ficam no arquivo
 saves\<save>.achievements.json, ao lado do .sav: cada conquista, se foi
 desbloqueada, quando e o ícone dela.
@@ -74,7 +74,7 @@ ARQUIVOS CRIADOS NESTA PASTA
                       não distribua)
 - cache\, toolchain\  código extraído do dump e o compilador
 - saves\             os saves (boej.sav no começo; o launcher dá a cada um o
-                      nome do jogador, e a aba Saves escolhe qual o jogo usa)
+                      nome do jogador, e a página Saves escolhe qual o jogo usa)
                       e as conquistas de cada um (.achievements.json)
 - savestates\         os savestates (slots 1 a 5)
 - boej.ini            configurações (também editáveis no launcher)

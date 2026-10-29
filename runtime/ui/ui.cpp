@@ -19,6 +19,8 @@
 #include <ntr/achievements.h>
 #include <ntr/ui.h>
 
+#include "fonts_embedded.h"
+
 namespace ntr::ui {
 
 namespace {
@@ -164,10 +166,16 @@ void push_font_size(float factor) {
     ImGui::PushFont(nullptr, ImGui::GetStyle().FontSizeBase * factor);
 }
 
-// Palette shared by the panel's accents.
-const ImVec4 kAccent(0.20f, 0.52f, 0.90f, 1);
-const ImVec4 kAccentHover(0.28f, 0.60f, 0.96f, 1);
-const ImVec4 kAccentActive(0.15f, 0.44f, 0.80f, 1);
+// The bold font, at the current size times `factor`.
+void push_bold(float factor) {
+    ImGui::PushFont(bold_font(), ImGui::GetStyle().FontSizeBase * factor);
+}
+
+// The panel's accents (ntr/ui.h has the palette).
+const ImVec4 kAccent = ImGui::ColorConvertU32ToFloat4(kPrimary);
+const ImVec4 kAccentHover = ImGui::ColorConvertU32ToFloat4(kPrimaryHover);
+const ImVec4 kAccentActive = ImGui::ColorConvertU32ToFloat4(kPrimaryActive);
+const ImVec4 kYellow = ImGui::ColorConvertU32ToFloat4(kHighlight);
 
 void push_accent() {
     ImGui::PushStyleColor(ImGuiCol_Button, kAccent);
@@ -230,7 +238,7 @@ void checkbox_row(const char* label, const char* hint, const char* section, cons
 }
 
 void page_title(const char* title, const char* subtitle) {
-    push_font_size(1.6f);
+    push_bold(1.6f);
     ImGui::TextUnformatted(title);
     ImGui::PopFont();
     if (subtitle) ImGui::TextDisabled("%s", subtitle);
@@ -328,21 +336,36 @@ void capture_popup() {
     }
 }
 
+ImFont* g_bold = nullptr;
+
+// Rubik, regular and bold (runtime/ui/fonts_embedded.h). What Rubik lacks (arrows, other
+// scripts) comes from a system font merged into both.
 void load_font(float scale) {
     ImGuiIO& io = ImGui::GetIO();
-    static const char* const kFonts[] = {
+    ImFontConfig config;
+    config.FontDataOwnedByAtlas = false;  // static data
+    auto add = [&](const unsigned char* data, int size) {
+        return io.Fonts->AddFontFromMemoryTTF(const_cast<unsigned char*>(data), size, 18.0f * scale, &config);
+    };
+    ImFont* regular = add(kRubikRegular, int(sizeof kRubikRegular));
+    g_bold = add(kRubikBold, int(sizeof kRubikBold));
+    static const char* const kFallbacks[] = {
         "C:/Windows/Fonts/segoeui.ttf",
         "/usr/share/fonts/noto/NotoSans-Regular.ttf",
         "/usr/share/fonts/TTF/DejaVuSans.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     };
-    for (const char* path : kFonts) {
+    for (const char* path : kFallbacks) {
         std::error_code ec;
-        if (std::filesystem::exists(path, ec) && io.Fonts->AddFontFromFileTTF(path, 18.0f * scale)) return;
+        if (!std::filesystem::exists(path, ec)) continue;
+        for (ImFont* font : {regular, g_bold}) {
+            ImFontConfig merge;
+            merge.MergeMode = true;
+            merge.DstFont = font;
+            io.Fonts->AddFontFromFileTTF(path, 18.0f * scale, &merge);
+        }
+        break;
     }
-    ImFontConfig config;
-    config.SizePixels = 13.0f * scale;
-    io.Fonts->AddFontDefault(&config);
 }
 
 // A confirmation popup, opened with OpenPopup(id) and titled `yes`; true when confirmed.
@@ -385,8 +408,12 @@ void init(SDL_Window* window, SDL_Renderer* renderer, float scale) {
     style.WindowBorderSize = 0;
     style.PopupBorderSize = 1;
     ImVec4* c = style.Colors;
-    c[ImGuiCol_WindowBg] = ImVec4(0.09f, 0.10f, 0.12f, 1);
-    c[ImGuiCol_PopupBg] = ImVec4(0.12f, 0.13f, 0.16f, 1);
+    c[ImGuiCol_Text] = ImVec4(0.95f, 0.96f, 1, 1);
+    c[ImGuiCol_TextDisabled] = ImVec4(0.66f, 0.71f, 0.85f, 1);  // the card's soft blue, dimmed
+    c[ImGuiCol_WindowBg] = ImGui::ColorConvertU32ToFloat4(kBackground);
+    c[ImGuiCol_ChildBg] = ImVec4(0, 0, 0, 0);
+    c[ImGuiCol_PopupBg] = ImVec4(0.08f, 0.10f, 0.21f, 1);
+    c[ImGuiCol_Border] = ImVec4(kAccent.x, kAccent.y, kAccent.z, 0.35f);
     c[ImGuiCol_FrameBg] = ImVec4(1, 1, 1, 0.06f);
     c[ImGuiCol_FrameBgHovered] = ImVec4(1, 1, 1, 0.10f);
     c[ImGuiCol_FrameBgActive] = ImVec4(1, 1, 1, 0.14f);
@@ -403,12 +430,24 @@ void init(SDL_Window* window, SDL_Renderer* renderer, float scale) {
     c[ImGuiCol_TabSelected] = kAccentActive;
     c[ImGuiCol_TabSelectedOverline] = kAccentHover;
     c[ImGuiCol_Separator] = ImVec4(1, 1, 1, 0.08f);
+    c[ImGuiCol_PlotHistogram] = kAccentHover;
+    c[ImGuiCol_NavCursor] = kYellow;
+    c[ImGuiCol_TextSelectedBg] = ImVec4(kAccent.x, kAccent.y, kAccent.z, 0.45f);
+    c[ImGuiCol_ScrollbarGrab] = ImVec4(1, 1, 1, 0.14f);
+    c[ImGuiCol_ScrollbarGrabHovered] = ImVec4(1, 1, 1, 0.22f);
+    c[ImGuiCol_ScrollbarGrabActive] = kAccent;
+    c[ImGuiCol_TableHeaderBg] = ImVec4(0.19f, 0.22f, 0.67f, 0.45f);  // the card's band (#3139AC)
+    c[ImGuiCol_TableBorderStrong] = ImVec4(kAccent.x, kAccent.y, kAccent.z, 0.40f);
+    c[ImGuiCol_TableBorderLight] = ImVec4(kAccent.x, kAccent.y, kAccent.z, 0.18f);
+    c[ImGuiCol_TableRowBgAlt] = ImVec4(kAccent.x, kAccent.y, kAccent.z, 0.07f);
     c[ImGuiCol_ModalWindowDimBg] = ImVec4(0, 0, 0, 0.55f);
     style.ScaleAllSizes(scale);
     load_font(scale);
     ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
     ImGui_ImplSDLRenderer3_Init(renderer);
 }
+
+ImFont* bold_font() { return g_bold; }
 
 void shutdown() {
     ImGui_ImplSDLRenderer3_Shutdown();
@@ -696,7 +735,7 @@ PauseAction pause_menu(Config& config, const std::string& path, const SettingsOp
 
     SettingsOptions menu = options;
     menu.nav_top = [&] {
-        push_font_size(1.5f);
+        push_bold(1.5f);
         ImGui::TextUnformatted(L("Paused", "Pausado"));
         ImGui::PopFont();
         ImGui::Spacing();

@@ -89,9 +89,9 @@ Ele é lido ao abrir o jogo; apague-o para voltar ao padrão.
 |---|---|
 | `[video]` | `wide_layout` (padrão `true`: janela 16:9 pela altura do monitor, as duas telas à esquerda e a de baixo ampliada à direita; `false` = telas empilhadas e centralizadas), `wide_side` (`left` ou `right`: lado das duas telas pequenas na tela larga), `window_scale` (tamanho inicial da janela, só sem `wide_layout`), `resolution_3d` (1 a 10), `fullscreen`, `filter` (`nearest` ou `linear`), `integer_scale` (ampliar só em múltiplos inteiros, só sem `wide_layout`) |
 | `[audio]` | `volume` (0 a 100) |
-| `[game]` | `fast_forward_speed`: velocidade do avanço rápido, 2 a 10 (vezes a normal; padrão 4); `rewind`, `rewind_seconds`; `save`: o arquivo de `saves/` que o jogo carrega e grava (padrão `boej.sav`; a aba Saves do launcher escolhe) |
-| `[ui]` | `language`: idioma do launcher e do menu de pausa do jogo, `en` (padrão) ou `pt`; o texto do jogo não muda. O launcher troca na aba Jogar ("Language / Idioma") ou em Configurações → Launcher. `achievement_popups` (padrão `true`): aviso no canto da tela quando uma conquista é desbloqueada |
-| `[mods]` | `enabled`: mods de `mods/` ligados (nomes das pastas e dos `.zip`), separados por vírgula; quando dois mods trocam o mesmo arquivo, vale o que vem depois (a aba Mods do launcher cuida disso; veja [`MODS.md`](MODS.md)) |
+| `[game]` | `fast_forward_speed`: velocidade do avanço rápido, 2 a 10 (vezes a normal; padrão 4); `rewind`, `rewind_seconds`; `save`: o arquivo de `saves/` que o jogo carrega e grava (padrão `boej.sav`; a página Saves do launcher escolhe) |
+| `[ui]` | `language`: idioma do launcher e do menu de pausa do jogo, `en` (padrão) ou `pt`; o texto do jogo não muda. O launcher troca na tela inicial ("Language / Idioma") ou em Configurações → Launcher. `achievement_popups` (padrão `true`): aviso no canto da tela quando uma conquista é desbloqueada |
+| `[mods]` | `enabled`: mods de `mods/` ligados (nomes das pastas e dos `.zip`), separados por vírgula; quando dois mods trocam o mesmo arquivo, vale o que vem depois (a página Mods do launcher cuida disso; veja [`MODS.md`](MODS.md)) |
 | `[keyboard]` | uma linha por botão do DS (`A`, `B`, ..., `UP`, `DOWN`) e por atalho (`fast_forward`, `fast_forward_toggle`, `turbo`, `turbo_toggle`, `screenshot`, `debug_dump`, `fullscreen`, `save_state`, `load_state`, `state_slot_prev`, `state_slot_next`), com nomes de tecla do SDL separados por vírgula, por exemplo `SELECT = Right Shift, Backspace`. Vazio desliga. |
 | `[gamepad]` | o mesmo, com botões pela posição (`south`, `east`, `west`, `north`), `start`, `back`, `leftshoulder`, `dpup` etc., e eixos com direção (`lefty-` = analógico para cima, `righttrigger`). Por padrão, o analógico esquerdo também move o direcional. |
 
@@ -104,7 +104,7 @@ das configurações de quem joga.
 Conquistas locais, sem nada online (`runtime/include/ntr/achievements.h`). O jogo confere as condições no save do
 próprio jogo: uma vez ao abrir e de novo a cada vez que o jogo salva (quando as escritas no save param por 30
 quadros). Savestates e rewind não mexem no save, então não dão nem tiram conquistas. O que foi desbloqueado
-aparece num aviso no canto da tela, numa página do menu de pausa e na aba Conquistas do launcher, que também confere
+aparece num aviso no canto da tela, numa página do menu de pausa e na página Conquistas do launcher, que também confere
 um save antigo ou importado ("Conferir este save").
 
 | Arquivo | Conteúdo |
@@ -127,7 +127,7 @@ A condição é um teste no save (`"source": "save"`, a única fonte por enquant
 `{"any": [...]}` de outras condições. Campos: `saved` (o save tem um jogo salvo), `chapter`, `level` (do time),
 `members`, `play_hours` e `has_unit` (`value` = número da unidade no elenco), com `op` (`>=` se omitido, `>`,
 `==`, `!=`, `<=`, `<`) e `value`. Uma definição com erro fica de fora e aparece no log (`[achievements]`).
-`hidden: true` mostra "???" até desbloquear. Os campos vêm de `ntr/savedata.h` (a leitura do save, a mesma da aba
+`hidden: true` mostra "???" até desbloquear. Os campos vêm de `ntr/savedata.h` (a leitura do save, a mesma da página
 Saves); condições sobre o estado ao vivo (RAM) precisam de uma fonte nova em `GameFacts`.
 
 A lista atual (34): primeiro save; capítulos 2 a 11 (o jogo tem 11, `EVENTINFO.TXT`); nível do time 10, 25, 50,
@@ -204,9 +204,9 @@ tópicos), seguido de como instalar e conferir o download. Para ver antes de cri
 
 O launcher aceita na linha de comando `--prepare [dump.nds]` (prepara sem janela), `--update` (procura, baixa e
 instala a versão nova), `--install-mod <mod.zip ou pasta>` (copia para `mods/`) e `--mod-from-dump hack.nds`. Para testes: `IE3_UPDATE_API` troca a
-URL da API de releases (aceita `file://`), `IE3_LAUNCHER_TAB=0..4` abre uma aba (3 = Saves), `IE3_LAUNCHER_NEW_SAVE=<nome>` abre a caixa "Novo save" com esse nome, `IE3_LAUNCHER_MOD=<pasta>` seleciona
-um mod na aba Mods e `IE3_LAUNCHER_SHOT=arquivo.bmp` salva a janela e fecha. O jogo aceita `--check-mods` (a
-checagem dos mods que a aba Mods mostra).
+URL da API de releases (aceita `file://`), `IE3_LAUNCHER_TAB=0..5` abre uma página (0 = tela inicial, 1 Configurações, 2 Mods, 3 Saves, 4 Atualizações, 5 Conquistas), `IE3_LAUNCHER_NEW_SAVE=<nome>` abre a caixa "Novo save" com esse nome, `IE3_LAUNCHER_MOD=<pasta>` seleciona
+um mod na página Mods e `IE3_LAUNCHER_SHOT=arquivo.bmp` salva a janela e fecha. O jogo aceita `--check-mods` (a
+checagem dos mods que a página Mods mostra).
 
 `tools/build.py --trace` gera uma build com rastreamento de funções em `build/cmake`. Ao receber Ctrl+C,
 ela imprime as últimas 256 funções chamadas.

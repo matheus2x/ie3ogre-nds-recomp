@@ -41,7 +41,7 @@
 
 > [!NOTE]
 > O launcher e o menu de pausa abrem em inglês: para usar em português, escolha **Português (Brasil)** em
-> "Language / Idioma", no canto da primeira aba do launcher. O texto do jogo vem da tradução (abaixo).
+> "Language / Idioma", no canto da tela inicial do launcher. O texto do jogo vem da tradução (abaixo).
 
 > [!NOTE]
 > Ferramentas de IA ajudam no desenvolvimento deste projeto. A direção, as decisões técnicas e os testes são do
@@ -55,7 +55,7 @@ Tudo o que o cartucho faz, e mais:
 |---|---|---|
 | 🎨 **Gráficos** | 3D em 256×192 | 3D de **1× a 10×** com anti-aliasing; tela **16:9** (a de baixo grande e as duas pequenas ao lado) ou telas empilhadas |
 | 💾 **Progresso** | o save do jogo | **5 savestates** e **rewind** de até 30 s |
-| 🏆 **Conquistas** | — | **34 conquistas locais** por save (capítulos, nível do time, elenco, o capitão de cada time enfrentado), com aviso no jogo, página no menu de pausa e aba no launcher. Nada online: cada save tem um `.achievements.json` ao lado |
+| 🏆 **Conquistas** | — | **34 conquistas locais** por save (capítulos, nível do time, elenco, o capitão de cada time enfrentado), com aviso no jogo, página no menu de pausa e no launcher. Nada online: cada save tem um `.achievements.json` ao lado |
 | ⏩ **Velocidade** | normal | **avanço rápido** de 2× a 10× e A automático |
 | 🎮 **Controles** | botões e caneta | teclado, mouse na tela de toque e **controles**, tudo remapeável |
 | ⚙️ **Interface** | — | **menu de pausa** (configurações, savestates, conquistas) e um **launcher** que prepara, atualiza e cuida dos saves e mods, em português ou inglês |
@@ -76,9 +76,9 @@ compilador.
    [llvm-mingw](https://github.com/mstorsjo/llvm-mingw) (~190 MB) e compila o `boej.exe`. Leva de 1 a alguns
    minutos, conforme o processador. Depois é só clicar em **Jogar**: o dump não é mais necessário.
 
-As outras abas do launcher:
+As outras páginas do menu do launcher:
 
-| Aba | O que faz |
+| Página | O que faz |
 |---|---|
 | **Configurações** | vídeo, áudio, controles e o idioma do launcher (também no menu de pausa do jogo, com Esc) |
 | **Saves** | escolhe o save que o jogo usa, cria um save novo e importa `.sav` do cartucho ou de emuladores |
@@ -125,7 +125,7 @@ execução: só abrem no mesmo `boej.exe` e com os mesmos mods (uma atualizaçã
 ## Mods e a tradução PT-BR
 
 Mods trocam arquivos do jogo (textos, fontes, imagens, tabelas) sem alterar o `boej.pak`. Cada mod é uma pasta
-ou um `.zip` na pasta `mods/`: coloque o mod lá (ou arraste-o para o launcher) e ligue-o na aba **Mods**. Como
+ou um `.zip` na pasta `mods/`: coloque o mod lá (ou arraste-o para o launcher) e ligue-o em **Mods**, no launcher. Como
 fazer um mod: [`docs/MODS.md`](docs/MODS.md).
 
 Os mods oficiais ficam na pasta [`mods/`](mods/) e saem como `.zip` separados em cada release, só com patches,
@@ -142,7 +142,7 @@ Se algo der errado, aperte **F8** na hora, feche o jogo e abra uma [issue](../..
 - o que aconteceu e o que você esperava;
 - da pasta `logs` (botão "Abrir a pasta de logs" no launcher): o log da sessão em `logs/sessoes/` e o replay de
   mesmo nome em `logs/replays/` (o `.txt` e o `.sav`, que repetem a sessão exatamente);
-- a versão (aba Atualizações) e os mods ligados.
+- a versão (página Atualizações) e os mods ligados.
 
 Cada abertura do jogo é uma sessão com nome de data e hora; as 20 mais recentes ficam guardadas, e o
 `logs/historico.txt` resume todas.

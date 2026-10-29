@@ -8,7 +8,7 @@ prepares everything on your computer from a dump of YOUR cartridge.
 LANGUAGE
 The launcher and the pause menu are in English. For Brazilian Portuguese,
 pick "Português (Brasil)" under "Language / Idioma", in the corner of the
-Play tab, or under Settings > Launcher. The game itself is the Japanese
+home screen, or under Settings > Launcher. The game itself is the Japanese
 version; the CyberLifePlus mod translates it to Brazilian Portuguese.
 
 FIRST TIME
@@ -25,28 +25,28 @@ FIRST TIME
    After that, the dump is no longer needed. Just click "Play".
 
 UPDATES
-The Updates tab downloads the new version and checks it against the
+The Updates page downloads the new version and checks it against the
 release's sha256sums.txt. The game is compiled again automatically, without
 asking for the dump. Your saves and settings are not touched.
 
 MODS
 Each mod is a folder or a .zip. To add one, put it in the "mods" folder,
-next to boej.exe (or drag it onto the launcher's window). Then, in the Mods
-tab, turn mods on and off, order and remove them. Add only copies the mod
+next to boej.exe (or drag it onto the launcher's window). Then, under Mods,
+turn mods on and off, order and remove them. Add only copies the mod
 to the "mods" folder, and Remove only deletes that copy: the original file
-or folder is not changed. The tab also creates a mod from a modified dump
+or folder is not changed. The page also creates a mod from a modified dump
 (a translation, for example), as long as its code is the original game's.
 Changes apply the next time the game starts. How to make a mod: see
 docs/MODS.md in the project's repository (address at the end of this file).
 Official mods ship as separate .zip files in the releases (for example
 mod-CyberLifePlus-<version>.zip, the PT-BR translation): put the .zip in
 the "mods" folder without extracting it. To update a mod, add the new .zip
-in the Mods tab: it takes the old one's place and stays on.
+under Mods: it takes the old one's place and stays on.
 
 SAVES
 Saves live in the "saves" folder, next to boej.exe, one .sav file per save
-(64 KB, the same format as the cartridge's save). In the launcher's Saves
-tab, click the save the game will use; the tab shows each one's player
+(64 KB, the same format as the cartridge's save). On the launcher's Saves
+page, click the save the game will use; the page shows each one's player
 name, chapter, team level, members, play time and team faces. "New save"
 adds a blank save with the name you type: click it and start a New Game;
 the other saves do not change. To import a save (dumped from the cartridge
@@ -63,7 +63,7 @@ Each save has its own achievements, on your PC only (nothing online). The
 game checks them when it starts and every time you save; a new one shows
 up in the corner of the screen (turn that off in boej.ini with
 [ui] achievement_popups = false). The list is in the pause menu, under
-"Achievements", and in the launcher's "Achievements" tab, which can also
+"Achievements", and in the launcher's "Achievements" page, which can also
 check an older or imported save ("Check this save"). They are kept in
 saves\<save>.achievements.json, next to the .sav: each achievement,
 whether it was unlocked, when, and its icon.
@@ -73,7 +73,7 @@ FILES CREATED IN THIS FOLDER
                       do not distribute)
 - cache\, toolchain\  code extracted from the dump, and the compiler
 - saves\              the saves (boej.sav at first; the launcher names each
-                      one after its player, and the Saves tab picks the one
+                      one after its player, and the Saves page picks the one
                       the game uses) and each one's achievements
                       (.achievements.json)
 - savestates\         the savestates (slots 1 to 5)
@@ -83,7 +83,7 @@ FILES CREATED IN THIS FOLDER
                       replays\ (log and recording of each of the last 20)
 - mods\               the mods (one folder or .zip per mod)
 
-DEFAULT CONTROLS (change them in the game's menu or the launcher's Settings tab)
+DEFAULT CONTROLS (change them in the game's menu or the launcher's Settings)
   D-pad       arrow keys (controller: D-pad or left stick)
   A B X Y     X Z S A
   L R         Q W

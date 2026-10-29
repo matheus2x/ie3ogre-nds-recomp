@@ -383,7 +383,7 @@ void mod_from_dump(const std::string& dump) {
     set_status(L("Comparing ", "Comparando ") + stem + L(" with the original game...", " com o jogo original..."));
     ntr::RomImage retail, other;
     if (!retail.open(paths().pak())) {
-        set_status(L("boej.pak is missing: prepare the game first (Play tab).", "Falta o boej.pak: prepare o jogo antes (aba Jogar)."), true);
+        set_status(L("boej.pak is missing: prepare the game first (home screen).", "Falta o boej.pak: prepare o jogo antes (tela inicial)."), true);
         return;
     }
     if (!other.open(dump) || other.is_pak()) {

@@ -116,7 +116,7 @@ void achievements_tab(SDL_Renderer* renderer) {
         return;
     }
     if (g_files.empty()) {
-        ImGui::TextDisabled("%s", L("No saves yet (Saves tab).", "Nenhum save ainda (aba Saves)."));
+        ImGui::TextDisabled("%s", L("No saves yet (see Saves).", "Nenhum save ainda (veja Saves)."));
         return;
     }
     ImGui::AlignTextToFramePadding();

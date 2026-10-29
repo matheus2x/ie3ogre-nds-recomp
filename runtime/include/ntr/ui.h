@@ -2,6 +2,7 @@
 // launcher's settings tab and by the game's pause menu. ImGui stays out of this header.
 #pragma once
 
+#include <cstdint>
 #include <functional>
 #include <string>
 #include <vector>
@@ -10,6 +11,8 @@
 
 #include <ntr/common.h>
 
+struct ImFont;
+
 namespace ntr {
 class Achievements;
 struct Achievement;
@@ -17,8 +20,20 @@ struct Achievement;
 
 namespace ntr::ui {
 
-// ImGui context, style and a system font for this window, scaled by `scale`.
+// The palette, from the game's slot card (pic2d/menu/MMSlot.SPF_) and its logo, as ImU32
+// (0xAABBGGRR): the card's blue, the lightning's yellow and the Ogre's magenta.
+constexpr uint32_t kBackground = 0xFF1F0E0B;     // #0B0E1F
+constexpr uint32_t kPrimary = 0xFFE67331;        // #3173E6, the card's body
+constexpr uint32_t kPrimaryHover = 0xFFF0884A;   // #4A88F0
+constexpr uint32_t kPrimaryActive = 0xFFAC4A10;  // #104AAC, the card's dark blue
+constexpr uint32_t kHighlight = 0xFF1FD2FF;      // #FFD21F
+constexpr uint32_t kMagenta = 0xFFF03CD6;        // #D63CF0
+constexpr uint32_t kSuccess = 0xFF7ADB5B;        // #5BDB7A
+constexpr uint32_t kError = 0xFF3C5AFF;          // #FF5A3C
+
+// ImGui context, style and fonts (Rubik, embedded) for this window, scaled by `scale`.
 void init(SDL_Window* window, SDL_Renderer* renderer, float scale);
+ImFont* bold_font();  // for titles; the regular one is the default font
 void shutdown();
 void process_event(const SDL_Event& ev);
 void begin_frame();

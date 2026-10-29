@@ -1,7 +1,7 @@
 # Mods
 
 Cada mod é **uma pasta ou um `.zip`** dentro da pasta `mods/`, ao lado do `boej.exe` e do launcher. Para
-adicionar um mod, basta colocá-lo lá: o launcher mostra os mods dessa pasta na aba **Mods**, onde cada um é
+adicionar um mod, basta colocá-lo lá: o launcher mostra os mods dessa pasta na página **Mods**, onde cada um é
 ligado, desligado e ordenado. O jogo lê os arquivos do mod no lugar dos originais, direto da pasta ou de dentro do
 `.zip` (sem extrair); o `boej.pak` nunca é alterado.
 
@@ -86,14 +86,14 @@ Os patches são aplicados ao abrir o jogo, em segundo plano, como os arquivos co
 inteira (512 arquivos, 9 MB de patches para 76 MB de arquivos) custa uns 0,1 s a mais no começo.
 
 **Mod com erro** fica de fora inteiro (o jogo abre sem ele). Arquivos com caminho que o jogo não tem são
-ignorados, com um aviso. Os erros e avisos aparecem na aba Mods e no log da sessão em `logs/sessoes/` (linhas `[mods]`).
+ignorados, com um aviso. Os erros e avisos aparecem na página Mods e no log da sessão em `logs/sessoes/` (linhas `[mods]`).
 
 **Savestates** guardam quais mods estavam em uso: um slot salvo com outros mods (ou com outra versão de um
 arquivo do mod) não abre, porque o jogo já tinha lido os arquivos antigos.
 
 ## Ferramentas
 
-### Launcher (aba Mods)
+### Launcher (página Mods)
 
 - A lista mostra o que está na pasta `mods/` e se atualiza sozinha quando algo é colocado ou tirado de lá.
 - **Adicionar mod (.zip):** copia o `.zip` para a pasta `mods/` (o mesmo que copiar à mão). Também dá para
@@ -103,7 +103,7 @@ arquivo do mod) não abre, porque o jogo já tinha lido os arquivos antigos.
   for o do retail (o caso das traduções que só mudam textos, fontes e imagens).
 - **Remover** (na linha do mod ou nos detalhes, com confirmação) apaga a pasta ou o `.zip` de dentro de `mods/`.
 - Adicionar e remover mexem só na cópia que está em `mods/`: o `.zip` ou a pasta de onde o mod foi adicionado
-  nunca é alterado nem apagado. A aba e a confirmação de remover dizem isso.
+  nunca é alterado nem apagado. A página e a confirmação de remover dizem isso.
 - Ligar/desligar e mudar a ordem com as setas.
 
 Pela linha de comando: `ie3-launcher --install-mod mod.zip` e `ie3-launcher --mod-from-dump hack.nds`.
@@ -153,7 +153,7 @@ Jogue até a cena que interessa, aperte **F8** (marca o momento no log) e veja o
 1. `tools/mod.py unpack` para ter os originais; edite com as ferramentas do formato.
 2. Coloque só os arquivos alterados em `mods/<seu-mod>/files/` (mesmo caminho do jogo).
 3. Ligue o mod no launcher e abra o jogo. Não precisa recompilar nada: o mod é lido ao abrir o jogo.
-4. Confira a aba Mods (ou o log da sessão) se algo não aparecer.
+4. Confira a página Mods (ou o log da sessão) se algo não aparecer.
 5. `tools/mod.py patch` para trocar os arquivos inteiros por patches e `tools/mod.py pack` (ou "Compactar" no
    Windows) para gerar o `.zip` que os jogadores colocam na pasta `mods/`.
 
@@ -169,7 +169,7 @@ launcher reconhece o mesmo mod pelo `name` do `mod.ini`: adicionado pelo launche
 pasta `mods` e fica no lugar dela na lista (ligado, se ela estava); colocado à mão, uma versão mais nova fica no
 lugar da antiga, que continua na pasta, desligada. A versão é o `version` do `mod.ini`: aparece no nome do
 `.zip`, na seção "Mods oficiais" das notas (com "atualizado nesta versão" quando o mod mudou) e, no launcher, na
-lista e nos detalhes da aba Mods. A release é recusada se um mod oficial tiver um arquivo inteiro do jogo ou se
+lista e nos detalhes da página Mods. A release é recusada se um mod oficial tiver um arquivo inteiro do jogo ou se
 tiver mudado desde a release anterior sem um `version` novo.
 
 | Mod | O que é |

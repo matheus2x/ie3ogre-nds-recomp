@@ -103,12 +103,12 @@ def main() -> int:
     out.append("1. Baixe o `ie3ogre-recomp-<versão>-windows.zip` abaixo e descompacte numa pasta em que dê para gravar.\n"
                "2. Abra o `ie3-launcher.exe` e escolha o dump do **seu** cartucho (`.nds`, BOEJ, sem modificações).\n"
                "3. O launcher prepara e compila o jogo no seu PC; depois é só clicar em **Jogar**.\n\n"
-               "Quem já tem o launcher pode atualizar pela aba **Atualizações**: saves e configurações são mantidos, e o "
+               "Quem já tem o launcher pode atualizar em **Atualizações**, no menu do launcher: saves e configurações são mantidos, e o "
                "dump não é pedido de novo.\n\n"
                "O pacote não contém dados nem código do jogo. Para conferir o download, compare o SHA-256 do zip com o "
                "`sha256sums.txt` (no PowerShell: `Get-FileHash ie3ogre-recomp-*.zip`).\n\n"
                "Os outros `.zip` da release são os mods oficiais (lista acima): "
-               "coloque-os, sem descompactar, na pasta `mods` ao lado do jogo e ligue-os na aba **Mods**. Eles só "
+               "coloque-os, sem descompactar, na pasta `mods` ao lado do jogo e ligue-os em **Mods**, no launcher. Eles só "
                "trazem patches e também não contêm dados do jogo.\n")
     if since and args.repo:
         out.append(f"**Todas as mudanças:** https://github.com/{args.repo}/compare/{since}...{args.tag}\n")
