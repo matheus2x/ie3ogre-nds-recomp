@@ -31,6 +31,12 @@ dá exatamente os arquivos do dump traduzido.
 
 ## Versões
 
+- **1.10:** os menus em texto que estavam em inglês: o menu de campo (Mochila, Formação com História,
+  Batalha e Rede 1–3, Dados com Fichário, Celular, Uniformes e Resultados, Sistema com Recordes, Ajuda e
+  Opções), o cartão da tela de cima (Nível do time, Amigos, Garra, Amizade), o menu Y dos Amigos (Ordenar,
+  Camisa, Dispensar, Equipar, Técnicas, Itens) e a ordenação por Nome, Apelido, Nível e Atributos, os comandos
+  da partida (Defesa, Vamos!, Craque, Táticas, Formação), a mochila e o aprender técnicas, com as janelas
+  deles ("Precisamos de Endo!", que era "power ofEndo is ok.").
 - **1.9:** os menus do time, que estavam em inglês: Amigos (a lista, "Ordem" com os status — Chute, Físico,
   Controle, Defesa, Velocidade, Resistência, Coragem —, Dados, Trocar, Menu, "Número da camisa"),
   Equipamento (Chuteira, Acessório, Luvas, Mudar) e Formação (Montar time - História / Rede 1–3 -, Copiar,

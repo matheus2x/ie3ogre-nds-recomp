@@ -196,6 +196,15 @@ class TableTest(unittest.TestCase):
         self.assertEqual(bytes(tables["data_iz/logic/sp_binder.STR"]), b"longer one\0two\0")
         self.assertEqual(struct.unpack_from("<H", dat, 2 + 12 + 10)[0], 11)
 
+    def test_overlay_lists(self):
+        # a pointer at "aa" gives the list "aa", "bbb", "c" (found after each NUL); "zz" has its own
+        d = bytearray(32)
+        d[0:9], d[16:18] = b"aa\0bbb\0c\0", b"zz"
+        lists = texttool.overlay_lists(bytes(d), [(0, 4), (16, 4)])
+        self.assertEqual(lists, {0: ([0, 3, 7], 12)})
+        d[0:8] = b"aaaa\0b\0c"  # the mod moved them: the strings are found by walking the NULs
+        self.assertEqual(texttool.list_bytes(bytes(d), 0, 3), [b"aaaa", b"b", b"c"])
+
     def test_table_problems(self):
         font = FixedFont()
         self.assertEqual(problems(b"", "Leite\\nRecupera GP.", 40, font, (2, 120)), [])

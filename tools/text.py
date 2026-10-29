@@ -68,7 +68,19 @@ COMMAND_WIDTH = 124  # px of the widest technique name of the fan translation ("
 # Overlay strings written as plain text: button labels whose neighbours the fan translation wrote
 # so ("Defend", "Look for other"); the messages go through the furigana parser and are PAIRED.
 PLAIN_LABELS = {"ov050:0x46c4", "ov050:0x46cc", "ov050:0x46d4", "ov050:0x46dc", "ov050:0x46e8",
-                "ov057:0xa4dc"}
+                "ov057:0xa4dc", "ov057:0xa4cc", "ov057:0xa4d4", "ov057:0xa4e4", "ov057:0xa4ec", "ov057:0xa4f8",
+                "ov057:0xa504", "ov057:0xa510", "ov057:0xa51c", "ov057:0xa570", "ov057:0xa5b0", "ov057:0xa870",
+                "ov057:0xa884", "ov057:0xa898", "ov057:0xa8ac", "ov056:0x70f8",
+                "ov059:0x51fc", "ov059:0x5204", "ov059:0x5210", "ov059:0x5218",
+                "ov063:0xa5b0", "ov063:0xa5b8", "ov063:0xa5c4", "ov063:0xa8c0", "ov063:0xaa90"}
+# Overlays whose strings are all menus, written as plain text, where a pointer can give a whole list
+# (the field menu of ov000)
+MENU_OVERLAYS = {0}
+# Labels of one menu window, which fit the widest original label of the menu, not their own: the
+# Y menu and the sorting list of the team screen (ov044)
+MENUS = [{"ov044:0x83d8", "ov044:0x83e0", "ov044:0x83e8", "ov044:0x83f0", "ov044:0x83f8", "ov044:0x8400",
+          "ov044:0x8408", "ov044:0x8410", "ov044:0x841c", "ov044:0x8428", "ov044:0x8434", "ov044:0x8440",
+          "ov044:0x844c", "ov044:0x8458", "ov044:0x84c4", "ov044:0x85a4", "ov044:0x8624"}]
 
 
 class Game:
@@ -124,6 +136,7 @@ class Slot:
                  table: tuple[int, int] | None = None, objective: bool = False):
         self.id, self.capacity, self.source, self.current, self.context = sid, capacity, source, current, context
         self.table, self.objective = table, objective
+        self.list: tuple[int, int, int, int] | None = None  # in a list of an overlay: head, index, count, room
         name, *key, offset = sid.split(":")
         self.file, self.key, self.offset = name, int(key[0]) if key else 0, int(offset, 0)
         self.group = name.split(".")[0] if table else name if name != "evet" else key[0][:4]
@@ -324,21 +337,62 @@ def overlay_strings(game: Game, oid: int):
     return out
 
 
+def overlay_lists(data: bytes, places: list[tuple[int, int]]) -> dict[int, tuple[list[int], int]]:
+    """The menus given by one pointer: the code passes the first string and a count, and the
+    game finds the others after each NUL (the fan translation moved them, ov000). Head -> (the
+    strings in order, the bytes of all of them up to the next pointer)."""
+    ends = sorted(at for at, _ in places)
+    out = {}
+    for k, (at, _) in enumerate(sorted(places)):
+        limit = ends[k + 1] if k + 1 < len(ends) else len(data)
+        members, nxt = [at], at + len(text_at(data, at)) + 1
+        while nxt < limit and data[nxt]:
+            members.append(nxt)
+            nxt += len(text_at(data, nxt)) + 1
+        if len(members) > 1:
+            out[at] = members, min((nxt + 3) & ~3, limit) - at
+    return out
+
+
+def list_bytes(cur: bytes, head: int, count: int) -> list[bytes]:
+    """The strings of a list as the mod has them now, walking the NULs from its head."""
+    out, at = [], head
+    for _ in range(count):
+        out.append(text_at(cur, at))
+        at += len(out[-1]) + 1
+    return out
+
+
 def overlay_slots(game: Game, font: Font):
     """Strings of the overlays (menus and messages). A message goes through the furigana parser
     of the message boxes and is written PAIRED, with the rows and width of the overlay's own
-    messages; a plain label (PLAIN_LABELS) fits the width of its original letters."""
+    messages; a plain label (PLAIN_LABELS) fits the width of its original letters, or of the
+    widest label of its menu. A string of a list has the room of the whole list."""
     for oid in sorted(game.overlays):
         retail, cur = game.overlay(oid, False), game.overlay(oid, True)
         places = overlay_strings(game, oid)
+        lists = overlay_lists(retail, places) if oid in MENU_OVERLAYS else {}
+        member = {m: (head, k) for head, (ms, _) in lists.items() for k, m in enumerate(ms)}
+        places = [(at, room) for at, room in places if at not in lists] + \
+            [(m, room) for ms, room in lists.values() for m in ms]
         sids = {at: f"ov{oid:03d}:{at:#x}" for at, _ in places}
-        messages = [text_at(retail, at) for at, _ in places if sids[at] not in PLAIN_LABELS]
+        plain = {sid for sid in sids.values() if sid in PLAIN_LABELS or oid in MENU_OVERLAYS or
+                 any(sid in menu for menu in MENUS)}
+        messages = [text_at(retail, at) for at, _ in places if sids[at] not in plain]
         rules = (table_rules(font, messages) if messages else (1, 0)) + (PAIRED, 1)
-        for at, room in places:
+        for at, room in sorted(places):
             source = text_at(retail, at)
             # a label's button was made for Japanese letters of 12 pixels
-            table = (1, 12 * len(visible(source))) if sids[at] in PLAIN_LABELS else rules
-            yield Slot(sids[at], room - 1, source, text_at(cur, at), [], table)
+            menu = next((m for m in MENUS if sids[at] in m), None) or \
+                ({f"ov{oid:03d}:{m:#x}" for m in lists[member[at][0]][0]} if at in member else {sids[at]})
+            width = 12 * max(len(visible(text_at(retail, int(sid.split(":")[1], 0)))) for sid in menu)
+            table = (1, width) if sids[at] in plain else rules
+            now = list_bytes(cur, member[at][0], member[at][1] + 1)[-1] if at in member else text_at(cur, at)
+            slot = Slot(sids[at], room - 1, source, now, [], table)
+            if at in member:
+                head, k = member[at]
+                slot.list = head, k, len(lists[head][0]), room
+            yield slot
 
 
 def under_build(path: Path):
@@ -645,9 +699,31 @@ def checked(game: Game, folder: Path) -> tuple[dict[str, Slot], dict[str, str], 
         elif text and (p := problems(s.source, placed(s, text, font), s.capacity, font, s.table)):
             print(f"!! {sid}: {'; '.join(p)}\n   {text[:100]}")
             bad += 1
+    for (file, head), (data, room) in overlay_list_bytes(game, by_id, tr).items():
+        if len(data) > room:
+            print(f"!! {file}:{head:#x}: the list takes {len(data)} bytes, room for {room}")
+            bad += 1
     skipped = sum(1 for t in tr.values() if not t)
     print(f"{len(tr) - bad - skipped} lines ok, {skipped} skipped on purpose, {bad} with problems")
     return by_id, tr, bad
+
+
+def overlay_list_bytes(game: Game, by_id: dict[str, Slot],
+                       tr: dict[str, str]) -> dict[tuple[str, int], tuple[bytes, int]]:
+    """The lists of the overlays that a translation touches, as written (each string after the
+    NUL of the one before, an untranslated one as the mod has it now, the last NUL included),
+    and their room."""
+    out: dict[tuple[str, int], list[bytes]] = {}
+    rooms: dict[tuple[str, int], int] = {}
+    for sid, text in tr.items():
+        s = by_id.get(sid)
+        if not (s and s.list and text):
+            continue
+        head, k, count, rooms[s.file, head] = s.list
+        if (s.file, head) not in out:
+            out[s.file, head] = list_bytes(game.overlay(int(s.file[2:]), True), head, count)
+        out[s.file, head][k] = table_bytes(text, s.table[2] if len(s.table) > 2 else None)
+    return {key: (b"\0".join(strs) + b"\0", rooms[key]) for key, strs in out.items()}
 
 
 def placed(s: Slot, text: str, font: Font) -> str:
@@ -771,6 +847,8 @@ def cmd_apply(args) -> int:
             continue
         s = by_id[sid]
         room = s.capacity + 1
+        if s.list:
+            continue  # with its list, below
         if s.file.startswith("ov"):
             oid = int(s.file[2:])
             d = overlays.setdefault(oid, bytearray(game.overlay(oid, True)))
@@ -801,6 +879,10 @@ def cmd_apply(args) -> int:
         d = changed[s.file].setdefault(s.key, bytearray(game.pack(s.file, True)[s.key]))
         data = encode(placed(s, text, font)) + b"\0"
         d[s.offset:s.offset + room] = data + bytes(room - len(data))
+    for (file, head), (data, room) in overlay_list_bytes(game, by_id, tr).items():
+        oid = int(file[2:])
+        d = overlays.setdefault(oid, bytearray(game.overlay(oid, True)))
+        d[head:head + room] = data + bytes(room - len(data))
     if any(by_id[sid].objective or PAIRED in (by_id[sid].table or ())[2:3] for sid, text in tr.items() if text):
         tables[FONT] = bytearray(fit_font(game.modded(FONT)))  # the SPACER without ink
     if binder:

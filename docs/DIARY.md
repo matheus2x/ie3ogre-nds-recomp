@@ -2746,3 +2746,54 @@ e os 49 testes: ok. `survey`: 35,4 % / 48,4 %, como antes (imagens ficam fora da
 
 **Próximo:** os menus em texto achados agora (submenu da Formação, menu Y dos Amigos) ou seguir pelas imagens,
 começando pela loja (`pic3d/shop`) e pelo menu de técnicas (`menu_special_comand`).
+
+## 2026-10-29 — Menus em texto do time e do campo (mod 1.10)
+
+- Pedido: a próxima tarefa do mod. Pelo "Próximo" anterior: os menus em texto achados na v1.9.
+- **Onde estão:** nos overlays, como strings que o CyberLife escreveu em inglês (o `survey` as conta como
+  traduzidas). `extract --only ov --redo` lista 337 assim. O menu de campo e seus submenus ficam no `ov000`, e o
+  menu Y e a ordenação dos Amigos no `ov044`.
+- **Listas do `ov000`:** o código passa ao desenhista de menu (`0x020CEA64`, por `fn_ov000_020d0ae4`) o endereço
+  da primeira string e a quantidade (5 para o submenu da Formação), e o jogo acha as outras depois de cada NUL.
+  Só a primeira tem ponteiro; o CyberLife reescreveu as listas com outros comprimentos, e elas funcionam no
+  jogo. O `text.py` passou a ver essas listas (`overlay_lists`, só nos `MENU_OVERLAYS`): cada string tem o seu
+  lugar (o deslocamento no original), o espaço é o da lista toda, o `check` confere o total e o `apply`
+  reescreve a lista em sequência. Limitei aos overlays de menu porque, nos outros, depois de uma string com
+  ponteiro vêm caminhos de arquivo e formatos (`/data_iz/...`, `%3d%`) que não podem sair do lugar. A lista
+  da じょうほう termina em "ＦＦＩ", que não é japonês: a lista anda até o próximo ponteiro, não até o fim do
+  japonês. Teste novo em `test_text.py`.
+- **Texto comum ou em pares:** onde o CyberLife escreveu em meia largura ("Sort by"), o desenho é de texto
+  comum; onde escreveu em largura cheia ("ｐｏｗｅｒ　ｏｆ"), é o leitor de furigana (pares). Os rótulos entraram
+  em `PLAIN_LABELS` (e o `ov000` inteiro em `MENU_OVERLAYS`); os do menu Y e da ordenação dos Amigos dividem a
+  largura do mais largo do menu (`MENUS`, 72 px de ニックネーム/コントロール). As mensagens ficaram em pares,
+  inclusive a "Do you want to dismiss %s ?", que o CyberLife escreveu em meia largura.
+- **Traduções** (110 strings, do japonês, termos do glossário): もちもの → Mochila, せんじゅつ → Formação,
+  ならびかえ → Ordenar, みんな → Todos, そうび → Equipar, ひっさつわざ → Técnicas, バトル → Batalha, つうしん１ → Rede
+  1, へんせい → Escalação (no título do submenu, "Time": 48 px), 選手/技バインダー → Fichário/Fichário técn.,
+  ケータイ → Celular, つうしん成績 → Resultados, きろく → Recordes, せってい → Opções ("Configurar" passa de 48 px),
+  称号 → "Tít." (a aba tem 24 px: "Título" apareceu cortado no jogo), ねっけつ/ゆうじょう → Garra/Amizade,
+  ゼッケン → Camisa, わかれる → Dispensar, のうりょく → Atributos; na partida まもれ → Defesa (ao lado do "Ataque"
+  da v1.4), がんばれ → Vamos!, キーマン → Craque, 必殺タクティクス → Táticas; すてる → Largar, わざをおぼえる →
+  Aprender, おまかせ → Auto. "今は%sの力がパーティに必要だ。" → "Precisamos\nde %s!". As mensagens em pares gastam
+  2 bytes por letra, então várias foram encurtadas para caber.
+- Ficaram para depois os outros ~250 textos em inglês dos overlays (scout, baús, torneio, recordes, treinos),
+  listados no checklist; os nomes de status do `ov064` entram por `%s` numa mensagem em pares, e é preciso ver no
+  jogo como o CyberLife os mostra antes de mudar.
+- **No jogo** (savestate no campo, depois devolvido o original): menu de campo (Menu, Amigos, Mochila, Formação,
+  Dados, Sistema, Salvar), submenu da Formação (História, Batalha, Rede 1–3), cartão da tela de cima (Nível do
+  time, Amigos, Tít., Garra, Amizade), menu Y dos Amigos (Ordenar, Camisa, Dispensar, Equipar, Técnicas,
+  Itens), ordenação (Nome, Apelido, Nível, Atributos) e a lista de atributos (Chute… Coragem), e a janela
+  "Precisamos de Endo!" ao apertar A num jogador. "Dispensar" está apagado nesse save. Visto também: as
+  imagens do status (tela de cima, do CyberLife) dizem "Corpo" para ボディ; anotado no checklist.
+
+**Verificação:** `text.py check` (5.347 ok) e `apply` duas vezes (a segunda não muda nada); `mod.py check` ok;
+`image.py check` sem problemas; 50 testes ok; `survey`: 35,4 % / 48,4 % (o inglês já contava como traduzido).
+**Não testado no jogo:** os comandos da partida (`ov057`), a mochila (`ov059`), o aprender técnicas (`ov063`), o
+"Tirar equip." (`ov056`) e as outras janelas.
+
+**Próximo:** os outros textos em inglês dos overlays (começando pelo scout e mapa de contatos, `ov108`/`ov051`,
+e pelas mensagens dos baús do `ov131`) ou as imagens da loja (`pic3d/shop`) e do menu de técnicas.
+
+**Commits** (com a confirmação do usuário): a 1.9 e a 1.10 em commits separados ("CyberLifePlus 1.9…" e
+"CyberLifePlus 1.10…"; os documentos da 1.9 montados no índice sem as partes da 1.10), depois a versão 0.1.19 com
+a tag `v0.1.19` e o push para a main.

@@ -12,7 +12,7 @@ caracteres japoneses (kana + kanji) e deixa de fora:
 
 ## Números
 
-| | v1.0 | v1.1 | v1.2 | v1.4 | v1.5–v1.9 |
+| | v1.0 | v1.1 | v1.2 | v1.4 | v1.5–v1.10 |
 |---|---:|---:|---:|---:|---:|
 | Tudo, com repetições (o que o jogador lê; 782 mil caracteres no original) | 29 % | 32 % | 34 % | 35,2 % | **35,4 %** |
 | Textos únicos (o trabalho que falta; 429 mil) | 39 % | 44 % | 47 % | 48,3 % | **48,4 %** |
@@ -29,7 +29,8 @@ de depuração dos scripts saíram da conta (782 mil). Na v1.5 saíram as sobras
 tradução mais curta nas tabelas (o fim da string original, que o jogo nunca mostra) e os nomes de técnica que o
 CyberLife tirou do lugar no `command.STR`: só isso tira ~1.200 caracteres, e a v1.4 medida assim dá 35,4 % e
 48,4 %. Quase tudo o que o levantamento contava em "outras tabelas" era sobra. Da v1.6 à v1.9 o trabalho foi
-no texto das imagens, que fica fora da conta: o `survey` da v1.9 dá os mesmos números da v1.5.
+no texto das imagens, que fica fora da conta: o `survey` da v1.9 dá os mesmos números da v1.5. A v1.10 passou
+para o português menus que o CyberLife deixou em inglês, que a conta já tratava como traduzidos.
 
 A história está toda em português desde a v1.1, mas **ainda falta mais da metade do texto do jogo**. Quase tudo
 está em quatro blocos: falas dos jogadores nas partidas, perfis dos jogadores, subeventos e NPCs.
@@ -218,12 +219,24 @@ etapa ficam no `docs/DIARY.md`.
   História / Rede 1–3 -, Trocar, OK, Copiar, Abrir, Sim/Não). 30 imagens. As edições saem de um gerador que
   acha as cores do texto original (corpo e contorno) e, nos quadros escuros com a bola desenhada atrás,
   apaga por tinta em vez de por coluna.
-- [ ] Menus do jogo em texto que ainda estão em inglês (vistos no jogo, v1.9): o submenu da Formação ("Story",
-  "Battle", "Time 1–3"), o menu Y dos Amigos ("Sort by", "Bib number", "Dismiss", "Equip", "Special moves",
-  "Items") e a lista de ordenação dele ("Name", "Nickname", "Level", "Ability"). Achar de onde vêm (overlay ou
-  tabela).
-- [ ] Janela "power ofEndo is ok." ao apertar A num jogador já escalado na tela dos Amigos (em inglês, e sem o
-  espaço antes do nome).
+- [x] Menus em texto do time e do campo (v1.10, overlays), do japonês: o menu de campo do `ov000` (Menu,
+  Amigos, Mochila, Formação, Dados, Sistema, Salvar e os submenus: Ordenar/Todos/Equipar/Técnicas,
+  Itens/Equipar/Técnicas, História/Batalha/Rede 1–3, Blog/Escalação/Fichário/Fichário técn./Celular/
+  Uniformes/Resultados, Recordes/Ajuda/Opções, Time, Membros/Grupo/Time/Reserva), o cartão da tela de cima
+  (Nível do time, Amigos, "Tít.", Garra, Amizade); o menu Y dos Amigos (`ov044`: Ordenar, Camisa, Dispensar,
+  Equipar, Técnicas, Itens), a ordenação (Nome, Apelido, Nível, Atributos e os sete status) e as janelas
+  ("Dispensar %s?", "Precisamos de %s!", que era "power ofEndo is ok.", "Não dá para dispensar mais."); os
+  comandos da partida (`ov057`: Defesa, Vamos!, Craque, Equipar, Itens, Técnicas, Táticas, Formação); a
+  mochila (`ov059`: Largar, Descartar?, as mensagens de GP/TP), o aprender técnicas (`ov063`: Aprender, Auto,
+  Nova técnica e as mensagens) e o "Tirar equip." do `ov056`. 110 strings. O `text.py` passou a tratar as
+  listas do `ov000` (um ponteiro, várias strings; ver as regras técnicas).
+- [ ] Os outros textos que o CyberLife deixou em inglês nos overlays (`extract --only ov --redo`, ~250): scout
+  e mapa de contatos (`ov108`, `ov051`, `ov020`/`ov021`/`ov050`), mensagens do campo e dos baús (`ov131`, com
+  códigos `%1F`), torneio (`ov022`, `ov098`), recordes (`ov031`), treinos e status (`ov045`, `ov064`, `ov096`,
+  `ov109`, `ov110`), compra e ensino de técnicas (`ov062`, `ov065`, `ov068`, `ov070`), os tempos da partida
+  (`ov001`: "HT1"…) e "Master" no cartão (`ov000:0x19374`, contexto desconhecido). Os nomes de status do `ov064`
+  entram por `%s` numa mensagem em pares: ver no jogo como ficam antes de traduzir.
+- [ ] O CyberLife pôs "Corpo" no lugar de "Físico" (ボディ) nas imagens do status dos Amigos (tela de cima).
 - [ ] Legendas dos vídeos (`movie/txt`): levantar e traduzir ("確かに大事なところでの大失敗は辛い！")
 - [ ] Aviso de ficção de um jogo novo ("この作品はフィクションです…")
 
@@ -266,6 +279,10 @@ etapa ficam no `docs/DIARY.md`.
   Sair), a ordenação (faixa Ordem/Nome, B Amigos). Não vistos: Equipamento, as telas da Formação (o save do
   teste abre só o submenu), Copiar/Abrir e as janelas Sim/Não e "Número da camisa". O perfil do Kageto aparece
   como "?から?まれた??の???" (kanji fora da fonte): é o `unitbase.STR` sem tradução (fase 4).
+- [x] Menus em texto (v1.10): vistos no jogo o menu de campo e o submenu da Formação, o cartão da tela de cima
+  ("Título" não cabe na aba: "Tít."; Garra e Amizade embaixo), o menu Y e a ordenação dos Amigos com a lista de
+  atributos, e a janela "Precisamos de Endo!" (em pares). "Dispensar" está apagado no save do teste. Não vistos:
+  os comandos da partida, a mochila, o aprender técnicas e as outras janelas.
 - [ ] Tutorial das ligações (v1.8): só na prévia. No save do teste o Superlink 2→3 e o Link Premium Ogre
   estão bloqueados ("Esta função ainda não está liberada").
 - [ ] Títulos do jogador (v1.8): vistos no cartão do Passing ("Onze rival"). Quem lê a tabela é o `ov000`,
@@ -276,8 +293,8 @@ etapa ficam no `docs/DIARY.md`.
   de "Baixar dados de time". Não vistos: as janelas de aviso, Registros/Torneio e as instruções do `SRD_O60`.
 - [x] Aviso do Passing (v1.8): visto no jogo (Conectar → Desafio Passing → A). Os painéis de download não:
   não aparecem nem no submenu Download nem em "Baixar dados de time"; devem vir depois de um download.
-- [ ] Mensagens dos overlays: nenhuma vista no jogo (a forma em pares foi conferida na galeria, que usa o
-  mesmo leitor). A formação do save de teste não deixou provocar os avisos do `ov057`.
+- [ ] Mensagens dos overlays: a primeira vista no jogo foi a "Precisamos de Endo!" do `ov044` (v1.10), em pares
+  como as da galeria. A formação do save de teste não deixou provocar os avisos do `ov057`.
 - [ ] Rótulos de quem fala nas partidas 34010007 e 34010022 (`mch.pkb`)
 - [x] Objetivos das batalhas de rua (`gamerule.dat`, v1.5): vistos no jogo, em pares e com acento ("Objective"
   na tela de cima da batalha; sessão `bug3`, quadro 35300)
@@ -417,7 +434,12 @@ etc. (vieram do patch em inglês) e devem seguir esta lista quando forem traduzi
   `%s` fica inteiro para o `sprintf`. Por isso o CyberLife escreveu as mensagens dele em largura cheia. Regras:
   as linhas e a largura (com 1 px entre letras) das mensagens originais do mesmo overlay. Os rótulos de botão
   com vizinhos em meia largura (`PLAIN_LABELS` no `text.py`) vão como texto comum, com 12 px por letra do
-  original. Lugar: `ovNNN:0xdeslocamento` (`overlays.json`). Senhas comparadas com o que o jogador digita
+  original; os de um mesmo menu (`MENUS`) cabem na largura do rótulo original mais largo do menu. As strings do
+  `ov000` (`MENU_OVERLAYS`) são todas de menu, em texto comum, e lá um ponteiro pode dar uma lista inteira: o
+  código passa a primeira string e a quantidade, e o jogo acha as outras depois de cada NUL (o CyberLife as
+  tirou do lugar). Cada string da lista tem o seu lugar (o deslocamento no original), e o `apply` reescreve a
+  lista em sequência, sem NUL a mais, no espaço dela toda (até o próximo ponteiro); a que não tem tradução vai
+  como o mod a tem. Lugar: `ovNNN:0xdeslocamento` (`overlays.json`). Senhas comparadas com o que o jogador digita
   ficam em japonês (`""`): "ゆうきがあれば" (`ov055`), "なつみぶか"/"ぜうすくろ" (`ov016`), "てんま" (`ov028`),
   "トンコツ" (`ov131`).
 - **Descrições das técnicas (`command.STR:deslocamento` no original):** o índice fica em 0x1A do registro do
