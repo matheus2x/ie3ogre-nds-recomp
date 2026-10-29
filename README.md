@@ -9,20 +9,18 @@
 </p>
 
 <p align="center">
-  <a href="../../releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/matheus2x/ie3ogre-nds-recomp?style=for-the-badge&color=e8590c"></a>
-  <img alt="Windows x64" src="https://img.shields.io/badge/Windows-x64-1c5fd6?style=for-the-badge">
-  <img alt="Linux (from source)" src="https://img.shields.io/badge/Linux-from_source-1c5fd6?style=for-the-badge">
-  <img alt="Requires your own cartridge" src="https://img.shields.io/badge/requires-your_own_cartridge-f4c430?style=for-the-badge&labelColor=1b1b2f">
-  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-555?style=for-the-badge"></a>
+  <a href="../../releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/matheus2x/ie3ogre-nds-recomp?label=release&style=flat-square&labelColor=30363d&color=57606a"></a>
+  <img alt="Windows x64 · Linux (from source)" src="https://img.shields.io/badge/platform-Windows_x64_%C2%B7_Linux_%28source%29-57606a?style=flat-square&labelColor=30363d&color=57606a">
+  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-57606a?style=flat-square&labelColor=30363d&color=57606a"></a>
 </p>
 
 <p align="center">
   A native PC port of <b>Inazuma Eleven 3: Sekai heno Chousen!! The Ogre</b> (Nintendo DS)<br>
-  through <b>static recompilation</b> from ARM to C++. No emulator: the game's code becomes a PC program.<br>
-  <b>3D up to 10× • 16:9 widescreen • savestates and rewind • controllers • mods • Brazilian Portuguese translation</b>
+  through <b>static recompilation</b> from ARM to C++. No emulator: the game's code becomes a PC program.
 </p>
 
 <p align="center">
+  <a href="#what-the-port-adds">What it adds</a> ·
   <a href="#how-to-play">How to play</a> ·
   <a href="#controls">Controls</a> ·
   <a href="#mods-and-the-pt-br-translation">Mods</a> ·
@@ -50,36 +48,22 @@
 > Brazilian Portuguese as an option ("Language / Idioma" in the Play tab). The documentation in `docs/` is in
 > Brazilian Portuguese; this README is the English overview.
 
-## About
+## What the port adds
 
-The game's ARM9 and its 133 overlays are translated to C++ by `ntr-recomp` (16,057 functions) and compiled for
-x86-64. What used to be DS hardware (2D and 3D graphics, sound, touch, cartridge) and the ARM7 are reimplemented
-on the PC, along with the parts of the BIOS and the NitroSDK the game uses.
+Everything the cartridge does, plus:
 
 | | On the DS | In this port |
 |---|---|---|
-| 3D resolution | 256×192 | **1× to 10×**, with anti-aliasing |
-| Screens | two stacked 4:3 screens | **16:9**: the bottom screen large with both small screens beside it, or stacked |
-| Progress | the game's save only | the game's save, **5 savestates** and up to 30 s of **rewind** |
-| Speed | normal | **fast-forward** from 2× to 10× and auto-A |
-| Controls | DS buttons and stylus | keyboard, mouse on the touch screen and **controllers**, all remappable |
-| Content | the cartridge | **mods** as folders or `.zip` files, including the PT-BR translation |
-| Wi-Fi | Nintendo WFC (shut down) | disabled |
+| 🎨 **Graphics** | 3D at 256×192 | 3D at **1× to 10×** with anti-aliasing; **16:9** layout (the bottom screen large, the two small ones beside it) or stacked screens |
+| 💾 **Progress** | the game's save | **5 savestates** and up to 30 s of **rewind** |
+| 🏆 **Achievements** | — | **36 local achievements** per save (chapters, team level, roster, the captain of each team you face), with a popup in game, a page in the pause menu and a tab in the launcher. Nothing online: each save has a `.achievements.json` next to it |
+| ⏩ **Speed** | normal | **fast-forward** from 2× to 10× and auto-A |
+| 🎮 **Controls** | buttons and stylus | keyboard, mouse on the touch screen and **controllers**, all remappable |
+| ⚙️ **Interface** | — | a **pause menu** (settings, savestates, achievements) and a **launcher** that prepares, updates and manages saves and mods, in English or Portuguese |
+| 🧩 **Content** | the cartridge | **mods** as folders or `.zip` files, including the PT-BR translation |
+| 🐞 **Bug reports** | — | a log, an exact replay and a history of every session (F8 marks the moment) |
 
-## Features
-
-- [x] ARMv5TE/Thumb → C++ recompiler (`ntr-recomp`): ARM9, ITCM and 133 overlays
-- [x] Runtime: memory, IRQs, timers, DMA, overlays and threads as fibers; BIOS, NitroSDK and ARM7 in HLE
-- [x] Software 2D and 3D rendering, with 3D from 1× to 10×, anti-aliasing and wireframe
-- [x] Audio (16 channels at 32 kHz) and Mobiclip videos
-- [x] Saves, savestates, rewind, fast-forward, 16:9 widescreen and remappable controls
-- [x] Pause menu with settings, savestates and shortcuts
-- [x] A launcher with nothing from the game: it prepares, configures, updates, picks saves and manages mods, in English
-  or Brazilian Portuguese
-- [x] Mods: replace files and overlay data, whole or as BPS patches (no game data)
-- [x] A log, replay and history of every session, for bug reports
-- [ ] Linux release (source builds only for now)
-- [ ] Mods: documented formats, high-resolution textures, a special move editor
+Nintendo WFC (Wi-Fi) is shut down and stays disabled.
 
 ## How to play
 
@@ -100,10 +84,11 @@ The launcher's other tabs:
 | **Settings** | video, audio, controls and the launcher's language (also in the in-game pause menu, with Esc) |
 | **Saves** | picks the save the game uses, creates new saves and imports `.sav` files from a cartridge or emulators |
 | **Mods** | adds, enables, orders and removes mods; creates a mod from a modified dump |
+| **Achievements** | each save's achievements, with when they were unlocked; also checks an older or imported save |
 | **Updates** | downloads the new version and recompiles the game without asking for the dump; saves, settings and mods are kept |
 
-Everything stays in the launcher's folder: `saves/`, `savestates/`, `mods/`, `logs/` and `boej.ini` (settings). The
-[`README.txt`](launcher/README.txt) that ships with the release explains each one.
+Everything stays in the launcher's folder: `saves/` (with each save's achievements), `savestates/`, `mods/`,
+`logs/` and `boej.ini` (settings). The [`README.txt`](launcher/README.txt) that ships with the release explains each one.
 
 ### Supported dump
 
@@ -127,7 +112,7 @@ not supported. If your dump has a different SHA-1, open an issue with the hash.
 
 | Shortcut | Key |
 |---|---|
-| Pause menu (settings, savestates, reset, quit) | Esc |
+| Pause menu (settings, savestates, achievements, reset, quit) | Esc |
 | Fast-forward (hold / toggle) | Tab / F2 |
 | Auto-A (hold / toggle) | C / F3 |
 | Savestate: save / load / change slot (1 to 5) | F5 / F9 / F6 and F7 |
@@ -163,6 +148,21 @@ If something goes wrong, press **F8** right away, close the game and open an [is
 
 Each time the game opens is a session named after the date and time; the 20 most recent are kept, and
 `logs/historico.txt` summarizes all of them.
+
+## How it works
+
+The game's ARM9 and its 133 overlays are translated to C++ by `ntr-recomp` (16,057 functions) and compiled for
+x86-64. What used to be DS hardware (2D and 3D graphics, sound, touch, cartridge) and the ARM7 are reimplemented
+on the PC, along with the parts of the BIOS and the NitroSDK the game uses.
+
+- [x] ARMv5TE/Thumb → C++ recompiler (`ntr-recomp`): ARM9, ITCM and 133 overlays
+- [x] Runtime: memory, IRQs, timers, DMA, overlays and threads as fibers; BIOS, NitroSDK and ARM7 in HLE
+- [x] Software 2D and 3D rendering, audio (16 channels at 32 kHz) and Mobiclip videos
+- [x] Launcher with nothing from the game in it: the game is recompiled on the player's PC
+- [x] Mods: replace files and overlay data, whole or as BPS patches (no game data)
+- [ ] Linux release (source builds only for now)
+- [ ] Achievements from live game state (today they are checked against the save)
+- [ ] Mods: documented formats, high-resolution textures, a special move editor
 
 ## Building
 

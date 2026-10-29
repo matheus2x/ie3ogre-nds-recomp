@@ -2867,3 +2867,16 @@ enfrentado (se der para recrutar) e uma "All Stars" com os capitães das princip
 **Verificação:** núcleo nos dois saves: foxperks (cap. 1) → primeiro save e 16 amigos; runmelonds (cap. 11,
 nível 45) → capítulos 2–11, níveis 10 e 25, 16 amigos e capitão do Team K. Aba do launcher capturada com a lista.
 
+## 2026-10-29 — README: as funcionalidades do port à vista
+
+- As conquistas entraram no README (inglês e português): na frase do topo, numa linha própria da tabela, na aba
+  do launcher, no atalho do menu de pausa e na pasta `saves/`.
+- Reorganização: "Sobre" + "Funcionalidades" viraram **"O que o port acrescenta"**, logo depois dos avisos, uma
+  tabela "No DS / Neste port" por área (gráficos, progresso, conquistas, velocidade, controles, interface,
+  conteúdo, relatar problemas), com link no menu do topo. A explicação técnica e a lista de progresso (o que já
+  funciona e o que falta, agora com "conquistas pelo estado ao vivo") desceram para **"Como funciona"**, antes
+  de "Compilando".
+- Depois, a pedido: saiu a linha em negrito com a lista de recursos no topo (a tabela logo abaixo já diz o mesmo),
+  e os selos ficaram planos e cinza (`flat-square`, `labelColor=30363d`, `color=57606a`), três em vez de cinco:
+  release, plataforma (Windows x64 · Linux compilando, num selo só) e licença. O "requer o seu cartucho" saiu: o
+  aviso IMPORTANT já diz isso. Conferido baixando os selos do shields.io e vendo em fundo claro e escuro.

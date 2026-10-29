@@ -9,20 +9,18 @@
 </p>
 
 <p align="center">
-  <a href="../../releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/matheus2x/ie3ogre-nds-recomp?style=for-the-badge&color=e8590c"></a>
-  <img alt="Windows x64" src="https://img.shields.io/badge/Windows-x64-1c5fd6?style=for-the-badge">
-  <img alt="Linux (compilando)" src="https://img.shields.io/badge/Linux-compilando-1c5fd6?style=for-the-badge">
-  <img alt="Requer o seu cartucho" src="https://img.shields.io/badge/requer-o_seu_cartucho-f4c430?style=for-the-badge&labelColor=1b1b2f">
-  <a href="LICENSE"><img alt="Licença MIT" src="https://img.shields.io/badge/licen%C3%A7a-MIT-555?style=for-the-badge"></a>
+  <a href="../../releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/matheus2x/ie3ogre-nds-recomp?label=release&style=flat-square&labelColor=30363d&color=57606a"></a>
+  <img alt="Windows x64 · Linux (compilando)" src="https://img.shields.io/badge/plataforma-Windows_x64_%C2%B7_Linux_%28compilando%29-57606a?style=flat-square&labelColor=30363d&color=57606a">
+  <a href="LICENSE"><img alt="Licença MIT" src="https://img.shields.io/badge/licen%C3%A7a-MIT-57606a?style=flat-square&labelColor=30363d&color=57606a"></a>
 </p>
 
 <p align="center">
   Port nativo para PC de <b>Inazuma Eleven 3: Sekai heno Chousen!! The Ogre</b> (Nintendo DS)<br>
-  por <b>recompilação estática</b> ARM → C++. Sem emulador: o código do jogo vira um programa de PC.<br>
-  <b>3D em até 10× • tela larga 16:9 • savestates e rewind • controles • mods • tradução PT-BR</b>
+  por <b>recompilação estática</b> ARM → C++. Sem emulador: o código do jogo vira um programa de PC.
 </p>
 
 <p align="center">
+  <a href="#o-que-o-port-acrescenta">O que acrescenta</a> ·
   <a href="#como-jogar">Como jogar</a> ·
   <a href="#controles">Controles</a> ·
   <a href="#mods-e-a-tradução-pt-br">Mods</a> ·
@@ -49,35 +47,22 @@
 > Ferramentas de IA ajudam no desenvolvimento deste projeto. A direção, as decisões técnicas e os testes são do
 > mantenedor, que revisa cada mudança antes de publicá-la.
 
-## Sobre
+## O que o port acrescenta
 
-O ARM9 e as 133 overlays do jogo são traduzidos para C++ pelo `ntr-recomp` (16.057 funções) e compilados para
-x86-64. O que era hardware do DS (vídeo 2D e 3D, som, toque, cartucho) e o ARM7 são reimplementados no PC, junto
-com as partes do BIOS e do NitroSDK que o jogo usa.
+Tudo o que o cartucho faz, e mais:
 
 | | No DS | Neste port |
 |---|---|---|
-| Resolução do 3D | 256×192 | **1× a 10×**, com anti-aliasing |
-| Telas | duas telas 4:3 empilhadas | **16:9**: a tela de baixo grande e as duas pequenas ao lado, ou empilhadas |
-| Progresso | só o save do jogo | o save do jogo, **5 savestates** e **rewind** de até 30 s |
-| Velocidade | normal | **avanço rápido** de 2× a 10× e A automático |
-| Controles | botões do DS e caneta | teclado, mouse na tela de toque e **controles**, tudo remapeável |
-| Conteúdo | o cartucho | **mods** em pasta ou `.zip`, inclusive a tradução PT-BR |
-| Wi-Fi | Nintendo WFC (encerrado) | desativado |
+| 🎨 **Gráficos** | 3D em 256×192 | 3D de **1× a 10×** com anti-aliasing; tela **16:9** (a de baixo grande e as duas pequenas ao lado) ou telas empilhadas |
+| 💾 **Progresso** | o save do jogo | **5 savestates** e **rewind** de até 30 s |
+| 🏆 **Conquistas** | — | **36 conquistas locais** por save (capítulos, nível do time, elenco, o capitão de cada time enfrentado), com aviso no jogo, página no menu de pausa e aba no launcher. Nada online: cada save tem um `.achievements.json` ao lado |
+| ⏩ **Velocidade** | normal | **avanço rápido** de 2× a 10× e A automático |
+| 🎮 **Controles** | botões e caneta | teclado, mouse na tela de toque e **controles**, tudo remapeável |
+| ⚙️ **Interface** | — | **menu de pausa** (configurações, savestates, conquistas) e um **launcher** que prepara, atualiza e cuida dos saves e mods, em português ou inglês |
+| 🧩 **Conteúdo** | o cartucho | **mods** em pasta ou `.zip`, inclusive a tradução PT-BR |
+| 🐞 **Relatar problemas** | — | log, replay exato e histórico de cada sessão (F8 marca o momento) |
 
-## Funcionalidades
-
-- [x] Recompilador ARMv5TE/Thumb → C++ (`ntr-recomp`): ARM9, ITCM e 133 overlays
-- [x] Runtime: memória, IRQ, timers, DMA, overlays e threads em fibers; BIOS, NitroSDK e ARM7 em HLE
-- [x] Vídeo 2D e 3D por software, com o 3D de 1× a 10×, anti-aliasing e wireframe
-- [x] Áudio (16 canais a 32 kHz) e vídeos Mobiclip
-- [x] Saves, savestates, rewind, avanço rápido, tela larga 16:9 e controles remapeáveis
-- [x] Menu de pausa com configurações, savestates e atalhos
-- [x] Launcher sem nada do jogo: prepara, configura, atualiza, escolhe saves e gerencia mods, em inglês ou português
-- [x] Mods: troca de arquivos e dos dados das overlays, inteiros ou em patches BPS (sem dados do jogo)
-- [x] Log, replay e histórico de cada sessão, para relatar problemas
-- [ ] Release para Linux (hoje só compilando)
-- [ ] Mods: formatos documentados, texturas em alta resolução, editor de técnicas
+O Nintendo WFC (Wi-Fi) foi encerrado e fica desativado.
 
 ## Como jogar
 
@@ -98,10 +83,11 @@ As outras abas do launcher:
 | **Configurações** | vídeo, áudio, controles e o idioma do launcher (também no menu de pausa do jogo, com Esc) |
 | **Saves** | escolhe o save que o jogo usa, cria um save novo e importa `.sav` do cartucho ou de emuladores |
 | **Mods** | adiciona, liga, ordena e remove mods; cria um mod a partir de um dump modificado |
+| **Conquistas** | as conquistas de cada save, com a data em que foram desbloqueadas; também confere um save antigo ou importado |
 | **Atualizações** | baixa a versão nova e recompila o jogo sem pedir o dump; saves, configurações e mods ficam como estão |
 
-Tudo fica na pasta do launcher: `saves/`, `savestates/`, `mods/`, `logs/` e o `boej.ini` (configurações). O
-[`LEIA-ME.txt`](launcher/LEIA-ME.txt) que vai na release explica cada um.
+Tudo fica na pasta do launcher: `saves/` (com as conquistas de cada save), `savestates/`, `mods/`, `logs/` e o
+`boej.ini` (configurações). O [`LEIA-ME.txt`](launcher/LEIA-ME.txt) que vai na release explica cada um.
 
 ### Dump suportado
 
@@ -125,7 +111,7 @@ abra uma issue com o hash.
 
 | Atalho | Tecla |
 |---|---|
-| Menu de pausa (configurações, savestates, reiniciar, sair) | Esc |
+| Menu de pausa (configurações, savestates, conquistas, reiniciar, sair) | Esc |
 | Avanço rápido (segurar / ligar e desligar) | Tab / F2 |
 | A automático (segurar / ligar e desligar) | C / F3 |
 | Savestate: salvar / carregar / trocar o slot (1 a 5) | F5 / F9 / F6 e F7 |
@@ -160,6 +146,21 @@ Se algo der errado, aperte **F8** na hora, feche o jogo e abra uma [issue](../..
 
 Cada abertura do jogo é uma sessão com nome de data e hora; as 20 mais recentes ficam guardadas, e o
 `logs/historico.txt` resume todas.
+
+## Como funciona
+
+O ARM9 e as 133 overlays do jogo são traduzidos para C++ pelo `ntr-recomp` (16.057 funções) e compilados para
+x86-64. O que era hardware do DS (vídeo 2D e 3D, som, toque, cartucho) e o ARM7 são reimplementados no PC, junto
+com as partes do BIOS e do NitroSDK que o jogo usa.
+
+- [x] Recompilador ARMv5TE/Thumb → C++ (`ntr-recomp`): ARM9, ITCM e 133 overlays
+- [x] Runtime: memória, IRQ, timers, DMA, overlays e threads em fibers; BIOS, NitroSDK e ARM7 em HLE
+- [x] Vídeo 2D e 3D por software, áudio (16 canais a 32 kHz) e vídeos Mobiclip
+- [x] Launcher sem nada do jogo: o jogo é recompilado no PC do jogador
+- [x] Mods: troca de arquivos e dos dados das overlays, inteiros ou em patches BPS (sem dados do jogo)
+- [ ] Release para Linux (hoje só compilando)
+- [ ] Conquistas pelo estado ao vivo do jogo (hoje são conferidas no save)
+- [ ] Mods: formatos documentados, texturas em alta resolução, editor de técnicas
 
 ## Compilando
 
