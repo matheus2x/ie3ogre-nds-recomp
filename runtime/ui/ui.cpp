@@ -666,6 +666,22 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
                 if (SDL_strcasecmp(config.get("video", "filter").c_str(), kFilterValues[i]) == 0) filter = i;
             }
             if (ImGui::Combo("##filter", &filter, kFilters, 4)) set("video", "filter", kFilterValues[filter]);
+            row(L("Anti-aliasing", "Anti-aliasing"),
+                L("Smooths the jagged edges of the 3D; the HUD and the text stay as they are. Only with Vulkan or Direct3D 12.",
+                  "Suaviza os serrilhados do 3D; o HUD e os textos não mudam. Só com Vulkan ou Direct3D 12."));
+            const char* kPostAaValues[] = {"off", "fxaa"};
+            const char* kPostAa[] = {L("Off", "Desligado"), "FXAA"};
+            int post_aa = SDL_strcasecmp(config.get("video", "post_aa").c_str(), "fxaa") == 0;
+            if (ImGui::Combo("##post_aa", &post_aa, kPostAa, 2)) set("video", "post_aa", kPostAaValues[post_aa]);
+            row(L("3D upscaling", "Ampliação do 3D"),
+                L("FSR 1 enlarges the 3D to the window size: with the 3D at 2× or 3× it looks close to much higher, "
+                  "without the processor cost. Replaces the scaling filter. Only with Vulkan or Direct3D 12.",
+                  "O FSR 1 amplia o 3D até o tamanho da janela: com o 3D em 2× ou 3× fica perto de bem mais alto, "
+                  "sem o custo no processador. Substitui o filtro de ampliação. Só com Vulkan ou Direct3D 12."));
+            const char* kUpscalerValues[] = {"off", "fsr1"};
+            const char* kUpscalers[] = {L("Off", "Desligado"), "AMD FSR 1"};
+            int upscaler = SDL_strcasecmp(config.get("video", "upscaler").c_str(), "fsr1") == 0;
+            if (ImGui::Combo("##upscaler", &upscaler, kUpscalers, 2)) set("video", "upscaler", kUpscalerValues[upscaler]);
             std::string api_hint = L("Takes effect when the game starts again.", "Vale quando o jogo abrir de novo.");
             if (!options.active_renderer.empty()) api_hint += std::string(" ") + L("In use: ", "Em uso: ") + options.active_renderer;
             row(L("Graphics API", "API gráfica"), api_hint.c_str());

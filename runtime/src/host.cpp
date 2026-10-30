@@ -59,6 +59,7 @@
 #include <ntr/ui.h>
 
 #include "runtime.h"
+#include "shaders_embedded.h"
 
 namespace ntr {
 
@@ -68,6 +69,8 @@ constexpr uint64_t kFrameNs = 1000000000ull * 263 * 2130 / 33513982;  // 355x263
 // Frames between rewind states. Each step back loads the state before, and the game runs one
 // frame from it: rewinding goes back about 3 times as fast as the game runs.
 constexpr int kRewindInterval = 4;
+// RCAS sharpness: 0.2 stops below the most (exp2(-0.2)), FSR 1's usual default.
+constexpr float kFsrSharpness = 0.87f;
 
 // What a key or gamepad input does: a DS button (KEYINPUT bits 0-9, X = bit 10, Y = bit 11)
 // or a frontend shortcut.
@@ -121,6 +124,17 @@ struct ScriptedInput {
     int x, y;
 };
 
+// A fragment shader of runtime/shaders/ drawn through SDL's GPU renderer, made the first
+// time it is needed.
+struct GpuPass {
+    const EmbeddedShader* code;
+    const char* setting;  // for the log
+    const char* name;
+    SDL_GPUShader* shader = nullptr;
+    SDL_GPURenderState* state = nullptr;
+    bool failed = false;  // said once in the log; the pass stays off
+};
+
 struct Host {
     bool headless = true;
     bool throttle = true;
@@ -165,6 +179,20 @@ struct Host {
     SDL_Texture* sharp[3] = {};      // top, bottom, enlarged bottom (wide layout)
     uint64_t sharp_frame[3] = {};    // the frame each one holds
     SDL_Texture* lcd_grid = nullptr;
+    // Shader passes, only on SDL's GPU renderer. video.post_aa: one over each screen's picture
+    // at its own size, before the filter enlarges it (post[i] then stands in for
+    // textures[i]). video.upscaler: FSR 1 enlarges each place a screen is drawn to its size
+    // in the window (EASU, then RCAS), in place of the filter.
+    enum class PostAa { Off, Fxaa } post_aa = PostAa::Off;
+    enum class Upscaler { Off, Fsr1 } upscaler = Upscaler::Off;
+    GpuPass fxaa = {&kFxaaShader, "post_aa", "fxaa"};
+    GpuPass easu = {&kEasuShader, "upscaler", "fsr1 (easu)"};
+    GpuPass rcas = {&kRcasShader, "upscaler", "fsr1 (rcas)"};
+    SDL_Texture* post[2] = {};
+    uint64_t post_frame[2] = {};  // the frame each one holds
+    SDL_Texture* fsr_easu[3] = {};  // per place, like sharp
+    SDL_Texture* fsr_rcas[3] = {};
+    uint64_t fsr_easu_frame[3] = {}, fsr_frame[3] = {};
     std::string renderer_name;  // the API in use, for the log and the pause menu
     std::string config_path;
     bool env_scale = false, env_scale_3d = false;  // NTR_SCALE / NTR_3D_SCALE win over boej.ini
@@ -669,12 +697,132 @@ void draw_lcd_grid(const SDL_FRect& dst) {
     SDL_RenderTextureTiled(r, g_host.lcd_grid, nullptr, dst.w / kScreenWidth / kTile, &dst);
 }
 
+// The screen textures are filtered only by the linear filter: sharp and LCD enlarge them
+// by whole pixels first.
+SDL_ScaleMode screen_scale_mode() {
+    return g_host.filter == Host::Filter::Linear ? SDL_SCALEMODE_LINEAR : SDL_SCALEMODE_NEAREST;
+}
+
+// A pass's render state, made the first time it is needed. Only SDL's GPU renderer (api =
+// vulkan or d3d12) takes shaders of its own; with another API, or when the shader cannot be
+// made, the pass stays off and the log says why, once.
+SDL_GPURenderState* pass_state(GpuPass& pass) {
+    if (pass.state || pass.failed) return pass.state;
+    pass.failed = true;
+    SDL_GPUDevice* device = SDL_GetGPURendererDevice(g_host.renderer);
+    if (!device) {
+        NTR_LOG("[host] %s needs api = vulkan or d3d12 (now %s); off\n", pass.setting, g_host.renderer_name.c_str());
+        return nullptr;
+    }
+    const EmbeddedShader& code = *pass.code;
+    SDL_GPUShaderFormat formats = SDL_GetGPUShaderFormats(device);
+    SDL_GPUShaderCreateInfo info = {};
+    if ((formats & SDL_GPU_SHADERFORMAT_SPIRV) && code.spirv_size) {
+        info.code = code.spirv;
+        info.code_size = code.spirv_size;
+        info.format = SDL_GPU_SHADERFORMAT_SPIRV;
+    } else if ((formats & SDL_GPU_SHADERFORMAT_DXIL) && code.dxil_size) {
+        info.code = code.dxil;
+        info.code_size = code.dxil_size;
+        info.format = SDL_GPU_SHADERFORMAT_DXIL;
+    } else {
+        NTR_LOG("[host] %s: no %s shader for %s in this build; off\n", pass.setting, pass.name, g_host.renderer_name.c_str());
+        return nullptr;
+    }
+    info.entrypoint = "main";
+    info.stage = SDL_GPU_SHADERSTAGE_FRAGMENT;
+    info.num_samplers = 1;
+    info.num_uniform_buffers = 1;
+    SDL_GPUShader* shader = SDL_CreateGPUShader(device, &info);
+    SDL_GPURenderStateCreateInfo state = {};
+    state.fragment_shader = shader;
+    pass.state = shader ? SDL_CreateGPURenderState(g_host.renderer, &state) : nullptr;
+    if (!pass.state) {
+        NTR_LOG("[host] %s: the %s shader did not start: %s; off\n", pass.setting, pass.name, SDL_GetError());
+        if (shader) SDL_ReleaseGPUShader(device, shader);
+        return nullptr;
+    }
+    pass.shader = shader;
+    pass.failed = false;
+    NTR_LOG("[host] %s: %s\n", pass.setting, pass.name);
+    return pass.state;
+}
+
+// src through a pass into target, (re)made at w x h when its size changed; once per frame
+// (the paused menu redraws the same one). src is read with linear filtering during the pass.
+// False when the target cannot be made.
+bool run_pass(GpuPass& pass, SDL_Texture* src, SDL_Texture*& target, int w, int h, uint64_t& frame,
+              const float* uniforms, size_t size) {
+    SDL_Renderer* r = g_host.renderer;
+    float tw = 0, th = 0;
+    if (target) SDL_GetTextureSize(target, &tw, &th);
+    if (!target || int(tw) != w || int(th) != h) {
+        if (target) SDL_DestroyTexture(target);
+        target = SDL_CreateTexture(r, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, w, h);
+        if (!target) return false;
+        SDL_SetTextureBlendMode(target, SDL_BLENDMODE_NONE);
+        frame = 0;
+    }
+    if (frame == g_host.frame) return true;
+    SDL_SetGPURenderStateFragmentUniforms(pass.state, 0, uniforms, Uint32(size));
+    SDL_Texture* previous = SDL_GetRenderTarget(r);
+    SDL_ScaleMode mode = SDL_SCALEMODE_NEAREST;
+    SDL_GetTextureScaleMode(src, &mode);
+    SDL_SetRenderTarget(r, target);
+    SDL_SetTextureScaleMode(src, SDL_SCALEMODE_LINEAR);
+    SDL_SetGPURenderState(r, pass.state);
+    SDL_RenderTexture(r, src, nullptr, nullptr);
+    SDL_SetGPURenderState(r, nullptr);
+    SDL_SetTextureScaleMode(src, mode);
+    SDL_SetRenderTarget(r, previous);
+    frame = g_host.frame;
+    return true;
+}
+
+// A screen's picture as the window shows it: the screen texture, or its copy through the
+// post_aa pass (FXAA, which keeps the 3D mask in the alpha).
+SDL_Texture* screen_texture(int screen) {
+    SDL_Texture* src = g_host.textures[screen];
+    if (g_host.post_aa == Host::PostAa::Off || !src || !pass_state(g_host.fxaa)) return src;
+    float w = 0, h = 0;
+    SDL_GetTextureSize(src, &w, &h);
+    float texel[4] = {1 / w, 1 / h, w, h};
+    SDL_Texture*& t = g_host.post[screen];
+    if (!run_pass(g_host.fxaa, src, t, int(w), int(h), g_host.post_frame[screen], texel, sizeof texel)) return src;
+    SDL_SetTextureScaleMode(t, screen_scale_mode());
+    return t;
+}
+
+// FSR 1: the screen enlarged by EASU to the pixels dst covers in the window, then sharpened
+// by RCAS, both only on the 3D (the 2D goes through sharp bilinear). False when it does not
+// apply: no shaders, or a place smaller than the picture (the small screens of the wide
+// layout with the 3D above 2x), which the filter shrinks.
+bool draw_fsr(int slot, int screen, const SDL_FRect& dst) {
+    if (!pass_state(g_host.easu) || !pass_state(g_host.rcas)) return false;
+    SDL_Texture* src = screen_texture(screen);
+    float sw = 0, sh = 0;
+    SDL_GetTextureSize(src, &sw, &sh);
+    float px = pixels_per_unit();
+    int ow = int(std::lround(dst.w * px)), oh = int(std::lround(dst.h * px));
+    if (ow <= int(sw) || oh <= int(sh)) return false;
+    float easu[8] = {sw, sh, 1 / sw, 1 / sh, float(ow), float(oh), 1.0f / ow, 1.0f / oh};
+    float rcas[8] = {float(ow), float(oh), 1.0f / ow, 1.0f / oh, kFsrSharpness, 0, 0, 0};
+    if (!run_pass(g_host.easu, src, g_host.fsr_easu[slot], ow, oh, g_host.fsr_easu_frame[slot], easu, sizeof easu) ||
+        !run_pass(g_host.rcas, g_host.fsr_easu[slot], g_host.fsr_rcas[slot], ow, oh, g_host.fsr_frame[slot], rcas,
+                  sizeof rcas)) {
+        return false;
+    }
+    SDL_SetTextureScaleMode(g_host.fsr_rcas[slot], SDL_SCALEMODE_NEAREST);  // pixel for pixel
+    SDL_RenderTexture(g_host.renderer, g_host.fsr_rcas[slot], nullptr, &dst);
+    return true;
+}
+
 // Sharp bilinear: the screen enlarged by whole pixels (nearest) to at least the size it is
 // shown at, then shrunk to that size with linear filtering. Every pixel comes out the
 // same size, and only the borders between them are smoothed.
 void draw_sharp(int slot, int screen, const SDL_FRect& dst) {
     SDL_Renderer* r = g_host.renderer;
-    SDL_Texture* src = g_host.textures[screen];
+    SDL_Texture* src = screen_texture(screen);
     float sw = 0, sh = 0;
     SDL_GetTextureSize(src, &sw, &sh);
     float px = pixels_per_unit();
@@ -710,10 +858,12 @@ void draw_sharp(int slot, int screen, const SDL_FRect& dst) {
 void draw_screens(float x, float y, float s) {
     auto draw = [&](int slot, int screen, const SDL_FRect& rect) {
         SDL_FRect dst = {x + rect.x * s, y + rect.y * s, rect.w * s, rect.h * s};
-        if (g_host.filter == Host::Filter::Sharp || g_host.filter == Host::Filter::Lcd) {
+        if (g_host.upscaler == Host::Upscaler::Fsr1 && draw_fsr(slot, screen, dst)) {
+            return;
+        } else if (g_host.filter == Host::Filter::Sharp || g_host.filter == Host::Filter::Lcd) {
             draw_sharp(slot, screen, dst);
         } else {
-            SDL_RenderTexture(g_host.renderer, g_host.textures[screen], nullptr, &dst);
+            SDL_RenderTexture(g_host.renderer, screen_texture(screen), nullptr, &dst);
         }
     };
     if (!g_host.wide) {
@@ -801,12 +951,6 @@ void default_window_size(int scale, int& w, int& h) {
     }
 }
 
-// The screen textures are filtered only by the linear filter: sharp and LCD enlarge them
-// by whole pixels first.
-SDL_ScaleMode screen_scale_mode() {
-    return g_host.filter == Host::Filter::Linear ? SDL_SCALEMODE_LINEAR : SDL_SCALEMODE_NEAREST;
-}
-
 void apply_presentation() {
     const Config& c = g_host.config;
     g_host.wide = c.get_bool("video", "wide_layout");
@@ -831,6 +975,18 @@ void apply_presentation() {
                                                                    : Host::Filter::Nearest;
     for (SDL_Texture* t : g_host.textures) {
         if (t) SDL_SetTextureScaleMode(t, screen_scale_mode());
+    }
+    Host::PostAa post_aa = SDL_strcasecmp(c.get("video", "post_aa").c_str(), "fxaa") == 0 ? Host::PostAa::Fxaa
+                                                                                          : Host::PostAa::Off;
+    Host::Upscaler upscaler = SDL_strcasecmp(c.get("video", "upscaler").c_str(), "fsr1") == 0 ? Host::Upscaler::Fsr1
+                                                                                             : Host::Upscaler::Off;
+    if (post_aa != g_host.post_aa || upscaler != g_host.upscaler) {
+        g_host.post_aa = post_aa;
+        g_host.upscaler = upscaler;
+        // Made from the other picture.
+        std::fill(std::begin(g_host.sharp_frame), std::end(g_host.sharp_frame), 0);
+        std::fill(std::begin(g_host.fsr_easu_frame), std::end(g_host.fsr_easu_frame), 0);
+        std::fill(std::begin(g_host.fsr_frame), std::end(g_host.fsr_frame), 0);
     }
 }
 
@@ -1131,6 +1287,14 @@ bool host_init() {
     bool known = false;
     for (const char* name : {"nearest", "linear", "sharp", "lcd"}) known |= SDL_strcasecmp(filter.c_str(), name) == 0;
     if (!known) config.warn(*config.find("video", "filter"), "\"" + filter + "\" is not nearest, linear, sharp or lcd");
+    std::string post_aa = config.get("video", "post_aa");
+    if (SDL_strcasecmp(post_aa.c_str(), "off") != 0 && SDL_strcasecmp(post_aa.c_str(), "fxaa") != 0) {
+        config.warn(*config.find("video", "post_aa"), "\"" + post_aa + "\" is not off or fxaa");
+    }
+    std::string upscaler = config.get("video", "upscaler");
+    if (SDL_strcasecmp(upscaler.c_str(), "off") != 0 && SDL_strcasecmp(upscaler.c_str(), "fsr1") != 0) {
+        config.warn(*config.find("video", "upscaler"), "\"" + upscaler + "\" is not off or fsr1");
+    }
     apply_presentation();
     g_host.fullscreen_applied = config.get_bool("video", "fullscreen");
     g_host.window_scale_applied = scale;

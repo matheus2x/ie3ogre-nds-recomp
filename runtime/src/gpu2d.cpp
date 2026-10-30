@@ -13,6 +13,10 @@
 // While a line is drawn, the top two 2D layers of each pixel are recorded (HiLine); the
 // large picture is composed from them at VBlank, in parallel. A screen without 3D goes
 // to the host at native size.
+//
+// The alpha byte of the host's pictures is the 3D mask: 0xFF where the 3D frame is the top
+// layer, 0 elsewhere. The post-processing passes of the window (host.cpp) only touch those
+// pixels, so the HUD and the text stay as they are.
 #include <algorithm>
 #include <vector>
 
@@ -79,6 +83,7 @@ struct Line {
     uint8_t win[kScreenWidth];         // layers and effects enabled by the windows
     uint16_t out[kScreenWidth];        // composed line, before master brightness
     uint8_t alpha3d[kScreenWidth];     // BG0 in 3D mode: 3D alpha (31 = opaque)
+    bool top3d[kScreenWidth];          // the 3D frame is the top layer (the host's mask)
     bool bg0_is_3d;
 };
 Line g_line;
@@ -483,6 +488,7 @@ void compose(const Engine& e, Line& L, const bool* bg_on, uint16_t* out_line) {
         uint8_t key[2];
         top_layers(L, bg_on, bg_prio, backdrop, x, false, color, layer, key);
         out_line[x] = finish_pixel(fx, color, layer, L.win[x], L.bg0_is_3d, L.alpha3d[x], L.obj_alpha[x]);
+        L.top3d[x] = L.bg0_is_3d && layer[0] == 0;
     }
 }
 
@@ -537,19 +543,19 @@ uint32_t to_rgb(uint16_t c) {
     return 0xFF000000u | r << 16 | g << 8 | b;
 }
 
-// Master brightness, then 24-bit color.
-void output_pixels(uint16_t bright, const uint16_t* colors, int count, uint32_t* dst) {
+// Master brightness, then 24-bit color, with the 3D mask in the alpha byte.
+void output_pixels(uint16_t bright, const uint16_t* colors, const bool* top3d, int count, uint32_t* dst) {
     uint32_t factor = std::min(bright & 0x1Fu, 16u), mode = bright >> 14;
     for (int x = 0; x < count; x++) {
         uint16_t c = colors[x] & 0x7FFF;
         if (mode == 1) c = brighten(c, factor);
         else if (mode == 2) c = darken(c, factor);
-        dst[x] = to_rgb(c);
+        dst[x] = to_rgb(c) & (top3d[x] ? 0xFFFFFFFFu : 0x00FFFFFFu);
     }
 }
 
-void output_line(Engine& e, uint32_t line, const uint16_t* colors) {
-    output_pixels(r16(e, 0x6C), colors, kScreenWidth, e.fb + line * kScreenWidth);
+void output_line(Engine& e, uint32_t line, const Line& L) {
+    output_pixels(r16(e, 0x6C), L.out, L.top3d, kScreenWidth, e.fb + line * kScreenWidth);
 }
 
 // What the large picture needs from this line (see HiLine).
@@ -594,6 +600,7 @@ void compose_hi_line(Engine& e, uint32_t line, int scale) {
     }
     int32_t hofs = h.hofs * scale;
     uint16_t out[kScreenWidth * kMax3dScale];
+    bool top3d[kScreenWidth * kMax3dScale];
     for (int r = 0; r < scale; r++) {
         const uint16_t* color3d = gpu3d_hi_row_color(line * scale + r);
         const uint8_t* alpha3d = gpu3d_hi_row_alpha(line * scale + r);
@@ -617,8 +624,9 @@ void compose_hi_line(Engine& e, uint32_t line, int scale) {
                 }
             }
             out[xo] = finish_pixel(h.fx, color, layer, p.mask, true, a3d, p.obj_alpha);
+            top3d[xo] = layer[0] == 0;
         }
-        output_pixels(h.bright, out, width, rows + size_t(r) * width);
+        output_pixels(h.bright, out, top3d, width, rows + size_t(r) * width);
     }
 }
 
@@ -631,9 +639,10 @@ void render_engine_line(Engine& e, int id, uint32_t line) {
 
     bool bg_on[4] = {};
     bool composed = false;
+    std::fill(std::begin(L.top3d), std::end(L.top3d), false);
     if (!powered) {
         std::fill(std::begin(L.out), std::end(L.out), 0);
-        output_line(e, line, L.out);
+        output_line(e, line, L);
         if (gpu3d_scale() > 1) record_hi(e, line, L, bg_on, false);
         return;
     }
@@ -682,7 +691,7 @@ void render_engine_line(Engine& e, int id, uint32_t line) {
         }
         capture_line(line, source_a);
     }
-    output_line(e, line, L.out);
+    output_line(e, line, L);
     if (gpu3d_scale() > 1) record_hi(e, line, L, bg_on, composed);
 
     // BG2/BG3 reference points advance by (dmx, dmy) every line.

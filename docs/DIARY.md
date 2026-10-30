@@ -3225,3 +3225,102 @@ muda: as legendas continuam fora da conta.
 **Pasta de teste do Windows** (`C:\Games\ie3-teste\ie3ogre-recomp`): o `mods\mod-CyberLifePlus-1.10.zip` deu lugar
 ao `mod-CyberLifePlus-1.15.zip` (`tools/mod.py pack`), e o `enabled` do `boej.ini` passou a apontar para ele. O
 programa continua o da 0.1.22; só os dados do mod mudaram.
+
+## 2026-10-30 — Fase 1 dos gráficos: máscara do 3D e FXAA (Vulkan)
+
+- Pedido: seguir com a próxima etapa do `GRAFICOS.md` (Fase 1, pós-processamento sobre a imagem do software).
+- **Máscara do 3D:** o byte de alpha dos quadros que vão para a janela agora diz onde o 3D é a camada de cima
+  (0xFF) e onde não é (0). `gpu2d.cpp` marca `top3d` no `compose` (resolução nativa) e no `compose_hi_line` (3D
+  ampliado); `output_pixels` aplica. As texturas das telas continuam XRGB8888, então D3D11, OpenGL e o
+  `write_bmp` (24 bits) ignoram o alpha: a captura da janela no OpenGL sai idêntica com e sem o passe.
+- **Shaders:** `runtime/shaders/fxaa.frag.hlsl` (FXAA, quality, a partir do 3.11). Entra pelo
+  `SDL_GPURenderState` do SDL_Renderer (só no renderizador de GPU, `api = vulkan`/`d3d12`): o SDL liga o quadro
+  em t0/s0 (space2) e os uniforms em b0 (space3), como nos exemplos do próprio SDL. `tools/shaders.py` compila
+  para SPIR-V (glslc) e DXIL (dxc) e grava `runtime/src/shaders_embedded.h`, que vai no SDK como os outros `.h`.
+  O dxc (DirectXShaderCompiler 1.9.2609, release para Linux, assina o DXIL sozinho) foi instalado pelo usuário
+  em `~/tools/dxc-1.9.2609` (`~/tools/get-dxc.sh`), onde o `shaders.py` procura.
+- **D3D12 preto:** a primeira versão com DXIL deixava as duas telas pretas. O SDL compila os shaders dele de
+  HLSL para SPIR-V e de volta (SDL_shadercross), e o vertex shader no D3D12 sai com `TEXCOORD0` (cor) e
+  `TEXCOORD1` (uv), não com `COLOR0`/`TEXCOORD0`. O D3D12 casa pelo nome da semântica, então o uv chegava errado.
+  O FXAA passou a usar `TEXCOORD0`/`TEXCOORD1`; no SPIR-V nada muda (casa pela ordem).
+- **Passe:** `screen_texture` em `host.cpp` desenha cada tela pelo FXAA num render target do tamanho do quadro
+  (com o quadro em linear durante o passe), uma vez por quadro; o filtro de ampliação (nearest, linear, sharp,
+  LCD) usa esse resultado. Pixels fora da máscara são copiados como estão. Com outra API, ou sem o shader da
+  API (um header feito sem dxc), o log avisa uma vez e o passe fica desligado.
+- **`[video] post_aa = off|fxaa`** (padrão `off`), no `boej.ini` padrão, com aviso de valor desconhecido, e na
+  página Vídeo do launcher e do menu de pausa (combo "Anti-aliasing").
+- **Resultado:** neste jogo o FXAA ajuda pouco. A tela de baixo do campo é 3D inteira, inclusive a mochila do HUD
+  (a máscara gravada em imagem com um ajuste temporário, já removido, deu 1,0 de média nela e 0 no mapa 2D de
+  cima). As texturas são pixel art e o FXAA toma os degraus dos texels por serrilhado: a borda da sombra fica
+  lisa, mas os personagens e a mochila amolecem. Baixei o subpixel de 0,75 para 0,25 e subi o limiar de 0,125
+  para 0,166; borra menos, mas ainda borra. Fica como opção, desligada por padrão.
+
+**Verificação:** compila sem avisos no Linux e no cruzado para Windows; 51 testes ok. Linux (OpenGL): `post_aa =
+fxaa` loga "post_aa needs api = vulkan or d3d12 (now opengl); off" e a captura do campo (quadro 3400, 3D em 2×)
+sai idêntica à com `off`. Windows, numa pasta em `%TEMP%` (já apagada): Vulkan e D3D12 abrem o passe ("post_aa:
+fxaa"), que muda 0,2% dos pixels, só na tela 3D (o mapa 2D de cima fica igual). Vulkan e D3D12 com FXAA diferem em
+0,001% dos pixels; sem FXAA saem idênticos.
+**Não testado:** HUD 2D sobre o 3D (nenhuma cena com isso foi capturada), a troca de `post_aa` com o menu de pausa
+aberto e a página Vídeo em captura.
+
+**Próximo:** decidir se o FXAA fica; FSR 1
+(EASU + RCAS) ou SMAA, conferindo como cada um trata a pixel art.
+
+**Pasta de teste do Windows** (`C:\Games\ie3-teste\ie3ogre-recomp`): atualizada com uma release 0.1.24 gerada deste
+código (`tools/release.py`): launcher, `SDL3.dll`, `sdk/` (o antigo apagado inteiro, o novo com o
+`shaders_embedded.h`), `licenses/`, `achievements/` e os três `.txt`. `boej.ini`, saves, savestates, mods e cache
+mantidos. `--prepare` depois de apagar `cache/build.stamp`: 189 arquivos em 44 s, 52 s no total. O `boej.ini` dela
+não tem `post_aa` (vale `off`) e está com `api = auto`.
+
+**Teste do usuário** (pasta de teste, D3D12, `resolution_3d = 5`, partida com a Eternal Blizzard): quase nenhuma
+diferença entre FXAA ligado e desligado. O log confirma que o passe estava ligado ("post_aa: fxaa"). Esperado: em
+5× o FXAA trabalha no quadro de 1280×960, onde os degraus das bordas da geometria já são de um pixel, e quase
+nada é ampliado depois. Os blocos que aparecem são os texels das texturas do DS ampliados sem filtro, que o FXAA
+não deve tocar (e não toca, pelo limiar). O FXAA só aparece em 1× ou 2×.
+
+## 2026-10-30 — Roadmap do mod remasterizador
+
+- Pedido: por enquanto seguir com a estrutura geral de GPU (`GRAFICOS.md`) e deixar no radar um mod
+  remasterizador, que use CPU e GPU, num `.md` próprio com checklist.
+- **`docs/REMASTER.md`** (novo): o porquê (o teste do FXAA mostrou que o "visual de DS" em 3D alto vem das texturas
+  e do 2D ampliados sem filtro), as regras (opcional, `g_native` e captura iguais, CPU e GPU, recursos do runtime
+  separados do pacote de dados, release sem nada do jogo) e as fases: 0 base (ponto único das texturas, hash
+  estável, cache, 2D em resolução alta); 1 filtros sem dados (bilinear, xBR/ScaleFX/MMPX, 2D, texto, mipmaps);
+  2 pacotes de texturas por hash (despejo, formato no mod, paletas, texturas animadas, ferramenta, carga em
+  segundo plano); 3 visual (cor de 8 bits, contorno, widescreen pela câmera, vídeos); 4 distribuição; decisões em
+  aberto.
+- Links no `GRAFICOS.md` (itens de filtro e texturas da Fase 2), no `MODS.md` (linha das texturas em alta
+  resolução) e no `DESENVOLVIMENTO.md` (linha `[video]`).
+
+## 2026-10-30 — Fase 1 dos gráficos: FSR 1 (EASU + RCAS)
+
+- Pedido: seguir com a próxima etapa do `GRAFICOS.md`. Fiz o FSR 1 antes do SMAA: o SMAA, como o FXAA, só alisa
+  bordas, e o teste do usuário mostrou que isso pouco aparece com o 3D alto; o FSR 1 é o item com ganho de
+  desempenho (3D em 2× ou 3× na CPU, ampliado pela GPU).
+- **Shaders:** `easu.frag.hlsl` e `rcas.frag.hlsl`, escritos a partir do algoritmo do `ffx_fsr1.h` (AMD
+  FidelityFX FSR 1, MIT) em float, sem o empacotamento do original. EASU: 12 amostras, direção e comprimento da
+  borda pelos quatro vizinhos, lóbulo tipo Lanczos esticado ao longo dela, resultado preso entre os quatro
+  pixels mais próximos. Pixels 2D (máscara 0, pela amostra mais próxima) vão por sharp bilinear; a máscara segue
+  no alpha. RCAS: nitidez de 0,2 stop abaixo do máximo (`kFsrSharpness`), só no 3D. Licença em
+  `runtime/shaders/LICENSE-fidelityfx-fsr.txt`, copiada pelo `release.py` para `licenses/fidelityfx-fsr.txt`, e
+  uma entrada no `TERCEIROS.txt`.
+- **`host.cpp`:** os passes viraram `GpuPass` (shader, render state, aviso único no log) com `pass_state` e
+  `run_pass` (render target refeito quando o tamanho muda, uma vez por quadro). `draw_fsr` faz EASU e RCAS para
+  cada lugar onde a tela aparece (três, como o `sharp`), no tamanho em pixels da janela, e desenha pixel a
+  pixel. Lugares menores que o quadro voltam para o filtro. O FXAA agora mantém a máscara no alpha, para vir
+  antes do FSR.
+- **`[video] upscaler = off|fsr1`** (padrão `off`), com aviso de valor desconhecido e o combo "Ampliação do 3D"
+  na página Vídeo.
+- **Resultado:** funciona, mas nas texturas de pixel art o EASU arredonda os blocos (aspecto de pintura a óleo nos
+  olhos e no cabelo do personagem). As bordas da geometria (sombra) ficam lisas e o 2D fica nítido. Ficou como
+  opção, e o `GRAFICOS.md` tem um item para decidir.
+
+**Verificação:** compila sem avisos no Linux e no cruzado para Windows; Linux (OpenGL): "upscaler needs api =
+vulkan or d3d12 (now opengl); off" e captura idêntica à sem FSR. Windows, numa pasta em `%TEMP%` (já apagada),
+campo no quadro 3400, 3D em 2×: Vulkan e D3D12 abrem EASU e RCAS e diferem em 0,0006% dos pixels; FXAA + FSR
+juntos abrem; comparação de perto com nearest em 2× e em 5× (personagem e sombra).
+**Não testado:** desempenho medido, troca de `upscaler` com o menu de pausa aberto, layout empilhado, partida.
+
+**Pasta de teste do Windows** atualizada com o FSR 1 (release 0.1.24 deste código: launcher, `SDL3.dll`, `sdk/` novo,
+`licenses/` com o `fidelityfx-fsr.txt`, `achievements/`, `.txt`; `--prepare` em 53,5 s). O `boej.ini` dela está com
+`api = d3d12`, `resolution_3d = 4` e sem `upscaler` (vale `off`).

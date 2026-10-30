@@ -184,7 +184,7 @@ O que já dá para fazer com a troca de arquivos, e o que ainda falta no port pa
 |---|---|---|
 | **Tradução** | sim: textos (`data_iz/logic`, `data_iz/movie/txt`), fontes (`data_iz/font`), imagens com texto e strings das overlays. Uma tradução já pronta em `.nds` vira mod pelo botão "Criar de um dump modificado" (ou `tools/mod.py from-dump --patch`) e roda igual ao dump traduzido (testado byte a byte com uma tradução de fãs, em arquivos inteiros e em patches) | documentar os formatos de texto e fonte e ter conversores para texto editável em `tools/` |
 | **Troca de sprites e imagens** | sim, trocando o arquivo (`data_iz/pic2d`, `obj2d`, `spr`, `face2d`, `pic3d`) no formato do jogo | documentar os formatos e ter conversores para PNG |
-| **Texturas em alta resolução (upscaling)** | não: um arquivo do jogo só pode ter o tamanho que cabe na VRAM do DS | pacotes de texturas por hash (`textures/` no mod), aplicados pelo renderizador 3D na resolução interna e pela composição 2D |
+| **Texturas em alta resolução (upscaling)** | não: um arquivo do jogo só pode ter o tamanho que cabe na VRAM do DS | pacotes de texturas por hash (`textures/` no mod), aplicados pelo renderizador 3D na resolução interna e pela composição 2D (plano em [`REMASTER.md`](REMASTER.md)) |
 | **Gerenciador de técnicas (estilo Mini Hack)** | em parte: as tabelas de jogadores e técnicas são arquivos e podem ser trocadas inteiras | mapear o formato das tabelas e fazer um editor que gere a pasta do mod |
 
 Próximos passos da infraestrutura, em ordem:

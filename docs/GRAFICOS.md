@@ -52,19 +52,33 @@ próximas fases. Isso substituiu a interface `Presenter` e o `imgui_impl_sdlgpu3
 
 ## Fase 1 — Pós-processamento sobre a imagem do software
 
-Passes em tela cheia sobre a tela de cima, sem mexer no rasterizador. Não precisam de profundidade nem de
+Passes em tela cheia sobre as telas, sem mexer no rasterizador. Não precisam de profundidade nem de
 vetores de movimento.
 
-- [ ] Máscara do 3D (`gpu3d_hi_row_alpha`) enviada junto com o quadro, para os passes não borrarem o HUD e o
-  texto do 2D
-- [ ] FXAA
+- [x] Máscara do 3D no byte de alpha do quadro (`gpu2d.cpp`: 0xFF onde o 3D é a camada de cima, 0 no resto),
+  para os passes não borrarem o HUD e o texto do 2D. Neste jogo parte do HUD é 3D (a mochila do campo) e entra
+  na máscara
+- [x] FXAA (`runtime/shaders/fxaa.frag.hlsl`), um passe por tela no tamanho do quadro, antes do filtro de
+  ampliação. Vulkan e D3D12 dão a mesma imagem (0,001% dos pixels diferem, por arredondamento)
+- [ ] Decidir se o FXAA fica: as texturas do jogo são pixel art, e ele toma os degraus dos texels por serrilhado
+  e amolece os personagens. Mesmo com subpixel 0,25 e limiar 0,166 a perda aparece
 - [ ] SMAA 1x
-- [ ] FSR 1 (EASU + RCAS): 3D em 2× ou 3× ampliado até a janela, em vez de pagar 6× ou 8× na CPU
+- [x] FSR 1 (EASU + RCAS, `runtime/shaders/easu.frag.hlsl` e `rcas.frag.hlsl`, a partir do FidelityFX FSR 1 da
+  AMD, MIT): cada lugar onde uma tela aparece é ampliado até os pixels que ocupa na janela, no lugar do filtro.
+  Só o 3D da máscara passa pelo EASU e pelo RCAS; o 2D vai por sharp bilinear. Lugares menores que o quadro (as
+  telas pequenas da tela larga com o 3D acima de 2×) ficam com o filtro. Vulkan e D3D12 dão a mesma imagem
+- [ ] Decidir o que fazer com o FSR 1 nas texturas: como o FXAA, ele foi feito para imagens naturais; na pixel
+  art arredonda os blocos (aspecto de pintura a óleo nos rostos). Melhora as bordas da geometria
 - [ ] Nitidez (CAS) sozinha
-- [ ] Shaders próprios pelo `SDL_GPURenderState` do SDL_Renderer sobre a SDL_GPU, em HLSL, compilados para
-  SPIR-V e DXIL (glslc existe aqui; o dxc ainda falta) e guardados pré-compilados, para o PC do jogador não
-  precisar de compilador de shader
-- [ ] `[video] post_aa = off|fxaa|smaa` e `upscaler = off|fsr1`
+- [x] Shaders próprios pelo `SDL_GPURenderState` do SDL_Renderer sobre a SDL_GPU, em HLSL, guardados
+  pré-compilados em `runtime/src/shaders_embedded.h` (`tools/shaders.py`), para o PC do jogador não precisar de
+  compilador de shader. SPIR-V pelo glslc, DXIL pelo dxc (`~/tools/dxc-*/bin/dxc`). As entradas do fragment
+  shader são `TEXCOORD0` (cor) e `TEXCOORD1` (uv), como no vertex shader do SDL
+- [x] `[video] post_aa = off|fxaa`, no launcher e no menu de pausa (Vídeo → Anti-aliasing). Com outra API que
+  não `vulkan`/`d3d12`, o log diz que o passe ficou desligado
+- [x] `[video] upscaler = off|fsr1`, no launcher e no menu de pausa (Vídeo → Ampliação do 3D); o FXAA pode vir
+  antes (mantém a máscara no alpha)
+- [ ] `post_aa = smaa`
 
 ## Fase 2 — Rasterizador 3D na GPU
 
@@ -94,8 +108,10 @@ O geometry engine fica na CPU; só a rasterização vai para a GPU.
 - [ ] Captura de tela do DS (transições) conferida cena a cena com o atraso da leitura
 - [ ] Escala acima de 10× sem custo de CPU
 - [ ] Opcional: `color_depth = ds|full` (8 bits por canal, menos banding no fog e na translucidez)
-- [ ] Opcional: `texture_filter = off|bilinear|anisotropic` (o DS não filtra)
-- [ ] Caminho aberto para as texturas em alta resolução dos mods (já no roadmap do `README.md`)
+- [ ] Opcional: `texture_filter = off|bilinear|anisotropic` (o DS não filtra); filtros de textura, pacotes de
+  texturas e o resto do visual "remaster" estão em [`REMASTER.md`](REMASTER.md)
+- [ ] Caminho aberto para as texturas em alta resolução dos mods (já no roadmap do `README.md`; plano em
+  [`REMASTER.md`](REMASTER.md))
 
 ## Fase 3 — Anti-aliasing de verdade
 

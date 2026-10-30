@@ -37,6 +37,13 @@ fullscreen = false
 ; Ampliação da imagem: nearest (pixels nítidos), linear (suavizada), sharp (pixels nítidos
 ; sem tamanhos desiguais, para escalas não inteiras) ou lcd (sharp com a grade da tela do DS).
 filter = nearest
+; Anti-aliasing do 3D, sobre a imagem pronta: off (desligado) ou fxaa (suaviza os serrilhados;
+; o HUD e os textos não mudam). Só com api = vulkan ou d3d12; nas outras fica desligado.
+post_aa = off
+; Ampliação do 3D pela GPU até o tamanho da janela: off ou fsr1 (AMD FSR 1: com o 3D em 2x
+; ou 3x, fica perto de uma resolução bem mais alta, sem o custo no processador). Substitui o
+; filtro de ampliação. Só com api = vulkan ou d3d12; nas outras fica desligado.
+upscaler = off
 ; API gráfica da janela: auto (a padrão do SDL: Direct3D 11 no Windows, OpenGL no Linux),
 ; d3d11 (só Windows), opengl, ou, pela SDL_GPU (beta), vulkan e d3d12 (só Windows). Se a
 ; escolhida não abrir, o jogo usa a padrão. Vale ao abrir o jogo.
