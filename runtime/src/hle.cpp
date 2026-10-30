@@ -147,6 +147,29 @@ constexpr uint32_t kObjectiveCall = 0xE12FFF34;
 constexpr uint32_t kObjectiveSpacing = 4;
 constexpr uint32_t kFontLineSpacing = 0x18;  // field of the font object: rows between lines
 
+// The place, the label and the objective are drawn (by func_ov000_020c749c, 020c73bc and
+// 020c72d4) from a copy of the data at 0x020AA044, which the save keeps with the texts in it.
+// Before the draw, a text of another version of the scripts becomes the one in use
+// (saved_text_fix): a save made with a translation, loaded without it, has no letters "?".
+struct SavedText {
+    uint32_t ret, call, offset, size;  // after the call; its "blx"; the field in the data
+};
+constexpr SavedText kSavedTexts[] = {
+    {0x020C7558, 0xE12FFF3C, 0x44, 0x20},  // the place
+    {0x020C747C, 0xE12FFF36, 0x76, 0x10},  // the label ("もくてき")
+    {kObjectiveReturn, kObjectiveCall, 0x86, 0x40},
+};
+constexpr uint32_t kSavedData = 0x020AA044;
+
+void fix_saved_text(const Cpu& c) {
+    for (const SavedText& t : kSavedTexts) {
+        if (c.r[14] == t.ret && overlay_active_at(kObjectiveOverlay, t.ret) && rd32(t.ret - 4) == t.call) {
+            saved_text_fix(c.r[3], kSavedData + t.offset, t.size);
+            return;
+        }
+    }
+}
+
 bool is_objective(const Cpu& c) {
     return c.r[14] == kObjectiveReturn && overlay_active_at(kObjectiveOverlay, kObjectiveReturn) &&
            rd32(kObjectiveReturn - 4) == kObjectiveCall;
@@ -176,6 +199,7 @@ int letter_offset(Cpu& c, uint32_t font, uint32_t code) {
 }  // namespace
 
 void hle_font_draw_string(Cpu& c, GuestFn orig) {
+    fix_saved_text(c);
     if (is_objective(c)) {
         const uint32_t field = c.r[0] + kFontLineSpacing, spacing = rd32(field), lr = c.r[14];
         wr32(field, kObjectiveSpacing);

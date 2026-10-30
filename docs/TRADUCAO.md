@@ -376,8 +376,11 @@ etapa ficam no `docs/DIARY.md`.
 ### Fora do mod (precisa de mudança no port)
 
 - [ ] ARM9 (15 textos): um mod não pode mudá-lo hoje (`from-dump`/`check` exigem o ARM9 do retail)
-- [ ] Saves de antes do mod mostram o lugar e o objetivo gravados em japonês (card do save e faixa de cima) até
-  salvar de novo
+- [x] Lugar, rótulo e objetivo gravados no save em outra versão (save de antes do mod, ou feito com o mod e
+  carregado sem ele, com "????"): o port troca pelos textos dos scripts em uso ao desenhar a faixa de cima (ver
+  `MODS.md`, "Textos gravados no save"). O card da tela de carregar só muda depois de salvar de novo
+- [ ] Objetivos do opcode 0x201C (ex.: "Converse com o pessoal!", evento 32011600): o `text.py` só reconhece os
+  do 0x201D, então esses não passam pelo `objective_fit`. Conferir se algum tem letras sobrepostas
 
 ### Créditos e pacote
 

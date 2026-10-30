@@ -169,6 +169,11 @@ void rom_override_lazy(uint32_t offset, uint32_t size, std::function<const uint8
 // out whole.
 // The mods in use and their files, for the savestate identity (0 without mods).
 uint64_t mods_fingerprint();
+// A text of the top screen kept in the save (the place, the label, the objective), about to be
+// drawn from `text`: if it comes from the scripts of another version (the game's, or a mod's
+// in mods/, on or off), it becomes the one the scripts in use have, there and at `copy` (the
+// same field in the other copy of the data). `size` is the field's.
+void saved_text_fix(uint32_t text, uint32_t copy, uint32_t size);
 
 void trace_install();
 void trace_frame(uint64_t frame);  // NTR_PROFILE window bookkeeping

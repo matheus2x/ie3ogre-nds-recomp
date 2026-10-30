@@ -206,3 +206,14 @@ Os patches BPS são aplicados pelo `bps_apply` (no mesmo arquivo) sobre os bytes
 `tools/ntr/bps.py` gera e aplica os mesmos patches em Python.
 Os arquivos de uma pasta e os guardados sem compressão num zip ficam mapeados em memória; os comprimidos são
 descomprimidos por uma thread em segundo plano, ou na hora, se o jogo pedir um antes dela.
+
+**Textos gravados no save.** O save guarda o lugar, o rótulo ("もくてき") e o objetivo da faixa de cima como texto
+pronto, não como índice. Por isso um save feito com uma tradução mostra "????" sem ela (a fonte original não tem
+aquelas letras), e um save de antes dela mostra japonês. Esses textos vêm das instruções dos scripts
+(`data_iz/script/eve.pkb`: lugar no opcode 0x4037, rótulo no 0x402F, objetivo no 0x201C e no 0x201D). Ao abrir,
+uma thread em segundo plano lê os scripts do jogo e os de todos os mods da pasta `mods/`, ligados ou não, e
+monta uma tabela que leva o texto de cada versão ao texto da mesma instrução nos scripts em uso. Quando a faixa
+de cima vai ser desenhada (gancho no `Font_DrawString`, `hle.cpp`), um texto que não é dos scripts em uso é
+trocado pelo certo, na cópia desenhada e na estrutura em `0x020AA044` que vai para o save. O card da tela de
+carregar lê o save direto e só muda depois de salvar de novo. Um save feito com um mod que já não está na pasta
+não é reconhecido.

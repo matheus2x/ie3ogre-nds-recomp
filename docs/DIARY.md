@@ -3458,3 +3458,55 @@ aparece embaixo de "Não reabrir ao fechar o jogo", desligada.
 
 **Ligado por padrão:** o usuário mudou de ideia: `[ui] discord_presence` volta a vir `true`; a opção continua em
 Configurações → Launcher (e Atalhos no menu de pausa) para desligar. Documentação ajustada.
+
+## 2026-10-30 — Lugar e objetivo do save em outro idioma (investigação)
+
+- Pedido: com o CyberLifePlus desligado, um save feito com ele mostra o lugar, o rótulo e o objetivo da faixa de
+  cima como "????". Investigar se o port consegue corrigir.
+- **Causa:** o jogo grava esses textos prontos (não um índice), numa estrutura em `0x020AA044` (cópia em
+  `0x021755C0`) que vai para o save. Com o mod, eles estão nos códigos de 1 byte da `FONT12` do mod; a `FONT12`
+  original não tem esses desenhos. Conteúdo, medido com o save do usuário (`foxperks-1.sav`) num savestate:
+  `+0x04` nome do mapa (`mr07b03_mn`), `+0x44` lugar ("Raimon"), `+0x64` quatro u32 (0x7F, 0x7B, 0x491F, 0x4BAE),
+  `+0x76` rótulo ("Objetivo"), `+0x86` objetivo ("Converse com o pessoal!"). Depois do NUL ficam restos de textos
+  mais longos.
+- **De onde vem cada texto (todos de scripts `eve.pkb`):**
+  - lugar: registro 3 do opcode **0x4037** (o registro 2 é o mapa; os argumentos têm os mesmos 0x7F, 0x7B, 0x491F,
+    0x4BAE da estrutura). Ex.: evento 35040740, "雷門中　正門前" → "Raimon".
+  - rótulo: registro 2 do opcode **0x402F** (690 instruções com "Objetivo" no mod).
+  - objetivo: registro 3 do opcode 0x201D **e também do 0x201C** (o "Converse com o pessoal!" é um 0x201C do
+    evento 32011600). O último argumento do 0x201D não identifica o texto (o mesmo número aparece em objetivos
+    diferentes), então não há índice para refazer o objetivo: só o próprio texto.
+  - O `text.py` só reconhece objetivos do 0x201D: os do 0x201C não passam pelo `objective_fit` (verificar).
+- **Correção possível no port:** montar, a partir das instruções acima, uma tabela "texto de qualquer variante →
+  texto ativo" (retail + o `eve.pkb` de cada mod em `mods/`, ligado ou não, pareando por evento, instrução e
+  registro). Quando o jogo for montar a faixa de cima (funções do `ov000` que leem `0x020AA044`), trocar na
+  estrutura os textos que não pertencem ao idioma ativo. Assim a faixa, o próximo save e o card (depois de
+  salvar) ficam certos. O card da tela de carregar lê o save direto e só se corrige depois de salvar de novo.
+
+**Não feito:** a correção. Savestate de teste restaurado.
+
+## 2026-10-30 — Lugar e objetivo do save em outro idioma (correção)
+
+- Pedido: implementar a correção investigada acima.
+- **Tabela (`mods.cpp`):** `saved_texts_start`, chamado pelo `mods_apply` (também sem mods ligados), monta em
+  segundo plano (`std::async`) a tabela "texto de outra versão → texto em uso". Fontes: o `eve.pkh`/`eve.pkb`
+  do jogo e o de cada mod em `mods/` (pasta ou zip, ligado ou não; arquivo inteiro ou `.bps` sobre o original).
+  Os scripts em uso seguem a regra do `mods_apply` (o último mod ligado vale, arquivo por arquivo). Cada entrada
+  é descomprimida (LZ10, `lz10` novo) e os registros que vão para o save são pareados por (evento, instrução,
+  registro): 0x4037 reg. 3, 0x402F reg. 2, 0x201C/0x201D reg. 3. Um texto que já é dos scripts em uso nunca é
+  trocado.
+- **Gancho (`hle.cpp`):** no `Font_DrawString`, as chamadas que desenham o lugar (retorno `0x020C7558`), o rótulo
+  (`0x020C747C`) e o objetivo (`0x020C739C`) passam antes pelo `saved_text_fix`. Elas desenham de uma cópia da
+  estrutura (`0x021755C0` no teste, mesmo layout de `0x020AA044`); a troca é feita nela e no mesmo campo de
+  `0x020AA044` (se tiver o mesmo texto), limitada ao tamanho do campo (0x20, 0x10, 0x40; o maior texto dos
+  scripts tem 20, 8 e 42 bytes). Assim o próximo save já sai com o texto certo.
+
+**Verificação:** compila sem avisos (Linux e Windows). Sessões sem janela com o `foxperks-1.sav` do usuário
+(feito com o mod 1.x), até o campo (quadro 3300):
+- Sem o mod: a faixa mostra "雷門中　正門前", "もくてき" e "なつかしい顔ぶれ！！声をかけてみよう！" (antes, "????").
+  Três trocas no log. A tabela ficou pronta em ~1 s (508 textos de outras versões).
+- Com o mod: nenhuma troca, captura idêntica à de antes da mudança.
+- `runmelonds-1.sav` com o mod: o objetivo, gravado por uma versão antiga do mod, virou o da versão atual
+  ("Agora é a batalha final!").
+**Não testado:** um save japonês de antes do mod carregado com ele (não havia um à mão; é o mesmo caminho do
+código, com as versões trocadas), o card da tela de carregar depois de salvar de novo, e o Windows no jogo.

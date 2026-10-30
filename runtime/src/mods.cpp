@@ -22,9 +22,11 @@
 #include <cstdio>
 #include <cstring>
 #include <deque>
+#include <future>
 #include <map>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <system_error>
 #include <thread>
 
@@ -350,15 +352,169 @@ void resolve(std::vector<Mod>& mods, std::map<uint16_t, const ModFile*>& files,
     }
 }
 
-}  // namespace
+// --- texts kept in the save ------------------------------------------------------------
+// The save keeps the place, the label ("もくてき") and the objective of the top screen as
+// text, not as an index: a save made with a translation shows its letters as "?" without it
+// (the original font has no such codes), and an older save shows Japanese with it. Those texts
+// come from instructions of the event scripts (data_iz/script/eve.pkb), so every version of
+// them is known: the game's and that of each mod in mods/, on or off. A text that belongs to
+// none of the scripts in use is swapped for the one the same instruction has in them
+// (saved_text_fix, called where the top screen draws it).
 
-void mods_apply() {
+constexpr const char* kEventIndex = "data_iz/script/eve.pkh";
+constexpr const char* kEvents = "data_iz/script/eve.pkb";
+
+struct SavedTexts {
+    std::map<std::string, std::string> replace;  // text of another version -> the one in use
+    std::set<std::string> in_use;
+};
+std::shared_future<std::shared_ptr<const SavedTexts>> g_saved_texts;
+
+bool lz10(const std::vector<uint8_t>& in, size_t at, size_t n, std::vector<uint8_t>& out) {
+    out.clear();
+    if (n < 4 || at + n > in.size() || in[at] != 0x10) return false;
+    const uint8_t* p = in.data() + at;
+    size_t size = load32(p) >> 8, i = 4;
+    out.reserve(size);
+    while (out.size() < size) {
+        if (i >= n) return false;
+        uint8_t flags = p[i++];
+        for (int bit = 0; bit < 8 && out.size() < size; bit++, flags <<= 1) {
+            if (!(flags & 0x80)) {
+                if (i >= n) return false;
+                out.push_back(p[i++]);
+                continue;
+            }
+            if (i + 2 > n) return false;
+            size_t len = (p[i] >> 4) + 3, disp = ((p[i] & 0xF) << 8 | p[i + 1]) + 1;
+            i += 2;
+            if (disp > out.size()) return false;
+            for (size_t k = 0; k < len && out.size() < size; k++) out.push_back(out[out.size() - disp]);
+        }
+    }
+    return true;
+}
+
+// (event, instruction id, record) -> text, for the records that end up in the save: the
+// place (record 3 of opcode 0x4037; record 2 is the map), the label (record 2 of 0x402F) and
+// the objective (record 3 of 0x201C and 0x201D). Scripts: [u16 id][u16 size][u16 opcode]...;
+// records: [u16 id][u8 index][u8 size][text, NUL] (tools/ntr/text.py).
+std::map<uint64_t, std::string> saved_strings(const std::vector<uint8_t>& pkh, const std::vector<uint8_t>& pkb) {
+    std::map<uint64_t, std::string> out;
+    if (pkh.size() < 0x30 || std::memcmp(pkh.data(), "PackNum", 7) != 0) return out;
+    std::vector<uint8_t> d;
+    for (size_t at = 0x30; at + 12 <= pkh.size(); at += 12) {
+        uint32_t key = load32(&pkh[at]), off = load32(&pkh[at + 4]), size = load32(&pkh[at + 8]);
+        if (!lz10(pkb, off, size, d) || d.size() < 0x20 || std::memcmp(d.data(), "SSD\0", 4) != 0) continue;
+        size_t code = load32(&d[16]), data = load32(&d[20]);
+        if (0x20 + code > d.size()) continue;
+        std::map<uint16_t, uint16_t> ops;
+        for (size_t j = 0x20; j + 6 <= 0x20 + code;) {
+            uint16_t id = uint16_t(d[j] | d[j + 1] << 8), n = uint16_t(d[j + 2] | d[j + 3] << 8);
+            if (n < 4) break;
+            ops.emplace(id, uint16_t(d[j + 4] | d[j + 5] << 8));
+            j += n;
+        }
+        size_t end = std::min(d.size(), 0x20 + code + data);
+        for (size_t i = 0x20 + code; i + 4 <= end;) {
+            uint16_t id = uint16_t(d[i] | d[i + 1] << 8);
+            uint8_t index = d[i + 2], n = d[i + 3];
+            if (n < 4) break;
+            auto op = ops.find(id);
+            uint16_t o = op == ops.end() ? 0 : op->second;
+            if ((o == 0x4037 && index == 3) || (o == 0x402F && index == 2) || ((o == 0x201C || o == 0x201D) && index == 3)) {
+                const char* s = reinterpret_cast<const char*>(&d[i + 4]);
+                out[uint64_t(key) << 24 | uint64_t(id) << 8 | index] = std::string(s, strnlen(s, std::min<size_t>(n - 4, end - i - 4)));
+            }
+            i += n;
+        }
+    }
+    return out;
+}
+
+// The file as a mod has it (whole or as a patch over the game's); false if the mod does not
+// change it.
+bool mod_file_bytes(const ModPackage& pkg, const NitroFile& nf, std::vector<uint8_t>& out) {
+    std::string error;
+    if (const ModPackage::Entry* e = pkg.find("files/" + nf.path)) return pkg.read(*e, out, error);
+    const ModPackage::Entry* e = pkg.find("files/" + nf.path + ".bps");
+    std::vector<uint8_t> patch;
+    if (!e || !pkg.read(*e, patch, error)) return false;
+    std::vector<uint8_t> base = rom_image().bytes(nf.start, nf.end - nf.start);
+    return bps_apply(patch, base.data(), base.size(), out, error);
+}
+
+std::shared_ptr<const SavedTexts> build_saved_texts(const std::vector<std::string>& in_use) {
+    auto texts = std::make_shared<SavedTexts>();
+    std::vector<NitroFile> files = nitro_files(rom_image());
+    auto find = [&](const char* path) {
+        auto it = std::find_if(files.begin(), files.end(), [&](const NitroFile& f) { return lower(f.path) == path; });
+        return it == files.end() ? nullptr : &*it;
+    };
+    const NitroFile *index = find(kEventIndex), *events = find(kEvents);
+    if (!index || !events) return texts;
+    struct Version {
+        std::vector<uint8_t> pkh, pkb;  // empty: the game's
+    };
+    const Version game{rom_image().bytes(index->start, index->end - index->start),
+                       rom_image().bytes(events->start, events->end - events->start)};
+    std::map<std::string, Version> mods;  // every mod in mods/ that changes the scripts
+    std::error_code ec;
+    for (const auto& entry : fs::directory_iterator(fs_path(mods_dir()), ec)) {
+        std::string name = utf8_string(entry.path().filename());
+        if (name[0] == '.' || !(entry.is_directory(ec) || (entry.is_regular_file(ec) && is_zip_name(name)))) continue;
+        ModPackage pkg;
+        std::string error;
+        Version v;
+        if (!pkg.open(mods_dir() + name, error)) continue;
+        bool has_pkh = mod_file_bytes(pkg, *index, v.pkh), has_pkb = mod_file_bytes(pkg, *events, v.pkb);
+        if (has_pkh || has_pkb) mods[name] = std::move(v);
+    }
+    auto strings = [&](const Version& v) {
+        return saved_strings(v.pkh.empty() ? game.pkh : v.pkh, v.pkb.empty() ? game.pkb : v.pkb);
+    };
+    // In use: a later mod wins, file by file, as in mods_apply.
+    Version use;
+    for (const std::string& folder : in_use) {
+        if (auto it = mods.find(folder); it != mods.end()) {
+            if (!it->second.pkh.empty()) use.pkh = it->second.pkh;
+            if (!it->second.pkb.empty()) use.pkb = it->second.pkb;
+        }
+    }
+    std::map<uint64_t, std::string> now = strings(use);
+    for (const auto& [key, text] : now) texts->in_use.insert(text);
+    std::vector<std::map<uint64_t, std::string>> versions{strings(game)};
+    for (const auto& [folder, v] : mods) versions.push_back(strings(v));
+    for (const auto& version : versions) {
+        for (const auto& [key, text] : version) {
+            auto it = now.find(key);
+            if (it != now.end() && !texts->in_use.count(text)) texts->replace.emplace(text, it->second);
+        }
+    }
+    return texts;
+}
+
+void saved_texts_start(std::vector<std::string> in_use) {
+    g_saved_texts = std::async(std::launch::async, [in_use = std::move(in_use)]() -> std::shared_ptr<const SavedTexts> {
+        try {
+            auto texts = build_saved_texts(in_use);
+            NTR_LOG("[mods] texts kept in saves: %zu of other versions known\n", texts->replace.size());
+            return texts;
+        } catch (const std::exception& e) {  // a bad file name in mods/
+            NTR_LOG("[mods] texts kept in saves: %s\n", e.what());
+            return std::make_shared<SavedTexts>();
+        }
+    }).share();
+}
+
+// The mods in use (no errors), in order.
+std::vector<std::string> apply_mods() {
     std::vector<std::string> enabled = enabled_list(host_config());
-    if (enabled.empty()) return;
+    if (enabled.empty()) return {};
     Game game = read_game();
     if (game.files.empty()) {
         NTR_LOG("[mods] the file table of the game could not be read; mods are off\n");
-        return;
+        return {};
     }
     // Mods are scanned once and kept: the game reads their files (mapped, or inflated on
     // demand) while it runs.
@@ -370,6 +526,7 @@ void mods_apply() {
 
     uint64_t h = 0xCBF29CE484222325ull;
     std::string used;
+    std::vector<std::string> in_use;
     for (const Mod& mod : mods) {
         for (const std::string& w : mod.warnings) NTR_LOG("[mods] %s: %s\n", mod.folder.c_str(), w.c_str());
         for (const std::string& e : mod.errors) NTR_LOG("[mods] %s: error: %s\n", mod.folder.c_str(), e.c_str());
@@ -380,10 +537,11 @@ void mods_apply() {
         NTR_LOG("[mods] %s%s%s: %zu files, %zu overlays\n", mod.folder.c_str(), mod.version.empty() ? "" : " v",
                 mod.version.c_str(), mod.files.size(), mod.overlays.size());
         h = fnv(h, &mod.fingerprint, sizeof mod.fingerprint);
+        in_use.push_back(mod.folder);
         used += (used.empty() ? "" : ", ") + mod.folder + (mod.version.empty() ? "" : " v" + mod.version);
     }
     session_info("mods", used.empty() ? "nenhum" : used);
-    if (files.empty() && overlays.empty()) return;
+    if (files.empty() && overlays.empty()) return in_use;
 
     const RomImage& rom = rom_image();
     uint32_t fat_off = rom.read32(0x48), fat_size = rom.read32(0x4C);
@@ -464,7 +622,35 @@ void mods_apply() {
     rom_override(ovt_off, ovt.data(), ovt_size);
     g_fingerprint = h;
     NTR_LOG("[mods] %zu files and %zu overlays replaced\n", files.size(), overlays.size());
+    return in_use;
 }
+
+}  // namespace
+
+void mods_apply() { saved_texts_start(apply_mods()); }
+
+void saved_text_fix(uint32_t text, uint32_t copy, uint32_t size) {
+    if (!g_saved_texts.valid()) return;
+    std::shared_ptr<const SavedTexts> texts = g_saved_texts.get();  // made in the background from the start
+    std::string old;
+    for (uint32_t i = 0; i < size; i++) {
+        char ch = char(rd8(text + i));
+        if (!ch) break;
+        old += ch;
+    }
+    if (old.empty() || texts->in_use.count(old)) return;
+    auto it = texts->replace.find(old);
+    if (it == texts->replace.end() || it->second.size() >= size) return;
+    for (uint32_t at : {text, copy}) {
+        bool same = true;
+        for (uint32_t i = 0; i <= old.size() && same; i++) same = rd8(at + i) == uint8_t(old.c_str()[i]);
+        if (!same) continue;
+        for (uint32_t i = 0; i <= it->second.size(); i++) wr8(at + i, uint8_t(it->second.c_str()[i]));
+    }
+    log_detail("[mods] a text kept in the save (%zu bytes) is now the one of the scripts in use (%zu bytes)\n", old.size(),
+               it->second.size());
+}
+
 
 uint64_t mods_fingerprint() { return g_fingerprint; }
 
