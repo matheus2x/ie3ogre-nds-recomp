@@ -74,19 +74,21 @@ compilador.
 2. Abra o `ie3-launcher.exe` e escolha o dump, ou arraste o `.nds` para a janela.
 3. O launcher confere o dump, cria o `boej.pak` (os dados do jogo, ~450 MB), baixa uma vez o compilador
    [llvm-mingw](https://github.com/mstorsjo/llvm-mingw) (~190 MB) e compila o `boej.exe`. Leva de 1 a alguns
-   minutos, conforme o processador. Depois é só clicar em **Jogar**: o dump não é mais necessário.
+   minutos, conforme o processador. Depois é só clicar em **Jogar**: o dump não é mais necessário. **Jogar**
+   oferece **Novo jogo**, **Carregar jogo** (os seus saves em cards: clique num para jogar) e **Importar save**
+   (um `.sav` do cartucho ou de emuladores).
 
 As outras páginas do menu do launcher:
 
 | Página | O que faz |
 |---|---|
 | **Configurações** | vídeo, áudio, controles e o idioma do launcher (também no menu de pausa do jogo, com Esc) |
-| **Saves** | escolhe o save que o jogo usa, cria um save novo e importa `.sav` do cartucho ou de emuladores |
 | **Mods** | adiciona, liga, ordena e remove mods; cria um mod a partir de um dump modificado |
 | **Conquistas** | as conquistas de cada save, com a data em que foram desbloqueadas; também confere um save antigo ou importado |
+| **Galeria** | as capturas de tela tiradas no jogo (F12), na pasta `screenshots/` |
 | **Atualizações** | baixa a versão nova e recompila o jogo sem pedir o dump; saves, configurações e mods ficam como estão |
 
-Tudo fica na pasta do launcher: `saves/` (com as conquistas de cada save), `savestates/`, `mods/`, `logs/` e o
+Tudo fica na pasta do launcher: `saves/` (com as conquistas de cada save), `savestates/`, `mods/`, `screenshots/`, `logs/` e o
 `boej.ini` (configurações). O [`LEIA-ME.txt`](launcher/LEIA-ME.txt) que vai na release explica cada um.
 
 ### Dump suportado
@@ -112,12 +114,13 @@ abra uma issue com o hash.
 | Atalho | Tecla |
 |---|---|
 | Menu de pausa (configurações, savestates, conquistas, reiniciar, sair) | Esc |
+| Pausar (sem menu) / congelar a imagem como está (duas vezes rápido; de novo duas vezes continua) | P / P P |
 | Avanço rápido (segurar / ligar e desligar) | Tab / F2 |
 | A automático (segurar / ligar e desligar) | C / F3 |
 | Savestate: salvar / carregar / trocar o slot (1 a 5) | F5 / F9 / F6 e F7 |
 | Voltar no tempo (rewind, segurar; até 30 s por padrão) | R |
 | Marcar um problema no log | F8 |
-| Tela cheia / captura de tela | F11 / F12 |
+| Tela cheia / captura de tela (PNG em `screenshots/`) | F11 / F12 |
 
 Tudo pode ser remapeado no launcher ou no menu de pausa. Os savestates guardam também o código recompilado em
 execução: só abrem no mesmo `boej.exe` e com os mesmos mods (uma atualização recompila o jogo).

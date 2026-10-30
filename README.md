@@ -75,20 +75,22 @@ first time, to download the compiler.
 2. Open `ie3-launcher.exe` and pick your dump, or drag the `.nds` onto the window.
 3. The launcher checks the dump, creates `boej.pak` (the game's data, ~450 MB), downloads the
    [llvm-mingw](https://github.com/mstorsjo/llvm-mingw) compiler once (~190 MB) and compiles `boej.exe`. This takes
-   one to a few minutes, depending on your CPU. Then just click **Play**: the dump is no longer needed.
+   one to a few minutes, depending on your CPU. Then just click **Play**: the dump is no longer needed. **Play**
+   offers **New game**, **Load game** (your saves as cards: click one to play it) and **Import save** (a `.sav`
+   from a cartridge or emulators).
 
 The other pages of the launcher's menu:
 
 | Page | What it does |
 |---|---|
 | **Settings** | video, audio, controls and the launcher's language (also in the in-game pause menu, with Esc) |
-| **Saves** | picks the save the game uses, creates new saves and imports `.sav` files from a cartridge or emulators |
 | **Mods** | adds, enables, orders and removes mods; creates a mod from a modified dump |
 | **Achievements** | each save's achievements, with when they were unlocked; also checks an older or imported save |
+| **Gallery** | the screenshots taken in the game (F12), in `screenshots/` |
 | **Updates** | downloads the new version and recompiles the game without asking for the dump; saves, settings and mods are kept |
 
 Everything stays in the launcher's folder: `saves/` (with each save's achievements), `savestates/`, `mods/`,
-`logs/` and `boej.ini` (settings). The [`README.txt`](launcher/README.txt) that ships with the release explains each one.
+`screenshots/`, `logs/` and `boej.ini` (settings). The [`README.txt`](launcher/README.txt) that ships with the release explains each one.
 
 ### Supported dump
 
@@ -113,12 +115,13 @@ not supported. If your dump has a different SHA-1, open an issue with the hash.
 | Shortcut | Key |
 |---|---|
 | Pause menu (settings, savestates, achievements, reset, quit) | Esc |
+| Pause (no menu) / freeze the picture as it is (twice quickly; twice again resumes) | P / P P |
 | Fast-forward (hold / toggle) | Tab / F2 |
 | Auto-A (hold / toggle) | C / F3 |
 | Savestate: save / load / change slot (1 to 5) | F5 / F9 / F6 and F7 |
 | Rewind (hold; up to 30 s by default) | R |
 | Mark a problem in the log | F8 |
-| Fullscreen / screenshot | F11 / F12 |
+| Fullscreen / screenshot (PNG in `screenshots/`) | F11 / F12 |
 
 Everything can be remapped in the launcher or the pause menu. Savestates also hold the running recompiled code:
 they only load in the same `boej.exe` and with the same mods (an update recompiles the game).

@@ -3324,3 +3324,95 @@ juntos abrem; comparação de perto com nearest em 2× e em 5× (personagem e so
 **Pasta de teste do Windows** atualizada com o FSR 1 (release 0.1.24 deste código: launcher, `SDL3.dll`, `sdk/` novo,
 `licenses/` com o `fidelityfx-fsr.txt`, `achievements/`, `.txt`; `--prepare` em 53,5 s). O `boej.ini` dela está com
 `api = d3d12`, `resolution_3d = 4` e sem `upscaler` (vale `off`).
+
+## 2026-10-30 — Launcher: submenu de "Jogar" e "Carregar jogo" no lugar da página Saves
+
+- Pedido: ao clicar em Jogar, um submenu com Novo jogo, Carregar jogo e Importar save; Carregar jogo desabilitado
+  (mais apagado, com aviso discreto) quando não há saves; cards de save mais enxutos que abrem o jogo no save
+  clicado; a opção Saves sai do menu principal.
+- **Menu da tela inicial (`main.cpp`):** "Jogar" troca os itens do menu por Novo jogo, Carregar jogo, Importar save
+  e Voltar (Esc / B também voltam). O estado é lido no começo do quadro, para não desenhar os dois menus no quadro
+  do clique. Com teclado ou controle, o foco vai para o primeiro item quando o menu muda. Item desabilitado do
+  `menu_item`: rótulo com 30% de opacidade e a nota menor e mais fraca ("nenhum save encontrado na pasta saves").
+- **Novo jogo:** a caixa pede o nome (a mesma regra de nome de antes, `<nome>-<n>.sav`), grava `[game] save` e abre
+  o jogo. Não cria mais o arquivo em branco: o runtime já começa com 0xFF quando o arquivo não existe
+  (`arm7_card.cpp`), e assim não sobra save vazio se o jogador sair sem salvar.
+- **Carregar jogo (`Screen::Load`, número 3 do `IE3_LAUNCHER_TAB`, no lugar de Saves):** só saves válidos com jogo
+  salvo (`loadable`; formato desconhecido entra, com aviso no card). Card compacto: faixa com o nome do jogador
+  (raio do cartão no save usado por último), arquivo e data à direita; embaixo, capítulo e nível, membros e tempo,
+  e os rostos do time no painel claro, alinhado de um card para outro. Clique (ou A/Enter) grava `[game] save`,
+  volta para a tela inicial e abre o jogo.
+- **Importar save:** diálogo de arquivo (.sav); o caminho passa ao laço principal pelo mesmo mutex do dump, vai
+  para `saves_drop` e a página Carregar jogo mostra o resultado. Arrastar um .sav também leva para essa página.
+  `saves_drop` agora recusa arquivos que não são save deste jogo e avisa quando o save importado ainda não tem
+  jogo.
+- Removidos `saves_tab`, a tabela, `new_save` e o card grande; textos (README/LEIA-ME, DESENVOLVIMENTO, comentários do
+  runtime e do `boej.ini`) atualizados. Variável de teste nova: `IE3_LAUNCHER_PLAY=1` abre o menu de Jogar
+  (`IE3_LAUNCHER_NEW_SAVE` também, com a caixa).
+
+**Verificação:** compila sem avisos no Linux e no cruzado para Windows. Capturas (`IE3_LAUNCHER_SHOT`) numa pasta de
+teste com os saves foxperks-1 e runmelonds-1: menu principal sem Saves, submenu com e sem saves (Carregar jogo
+apagado com o aviso), caixa do Novo jogo e a página Carregar jogo com o raio no save em uso.
+**Não testado:** cliques de verdade (abrir o jogo por um card, Novo jogo até o jogo gravar, diálogo de importação)
+e navegação por controle.
+
+**Pasta de teste do Windows** (`C:\Games\ie3-teste\ie3ogre-recomp`): atualizada com uma release 0.1.25 deste código
+(`tools/release.py`, com o submenu de Jogar): launcher, `SDL3.dll`, `sdk/` (o antigo apagado inteiro),
+`licenses/`, `achievements/` e os três `.txt`. `boej.ini`, saves, savestates, mods e cache mantidos. `--prepare`:
+189 arquivos em 43,8 s, 50,4 s no total.
+
+**Menu principal:** Mods passou para cima de Conquistas (pedido do usuário). Captura conferida; launcher da pasta de teste do Windows trocado (sdk/ igual, sem recompilar).
+
+## 2026-10-30 — Pausa com P, screenshots em `screenshots/` e Galeria no launcher
+
+- Pedido: P pausa o jogo; um botão de screenshot; uma Galeria no launcher, com a pasta `screenshots` ao lado do
+  executável.
+- **Pausa (`host.cpp`):** ação nova `pause` (teclado `P`, controle vazio; em `config.cpp` e na página Atalhos do
+  `ui.cpp`). `run_pause` para o jogo como o menu de pausa (dentro do `host_present`, som pausado, `diag_frame` para
+  o watchdog), mostra o último quadro escurecido com "Pausado" e "Aperte P para continuar" (a primeira tecla ou
+  botão da ação). P retoma; Esc sai da pausa e abre o menu; F12 e F11 continuam valendo. `is_menu_input` virou
+  `is_action_input(ev, ação)`.
+- **Screenshot:** a tecla que já existia (`screenshot`, F12) agora grava `screenshots/ie3-AAAAMMDD-HHMMSS.png`
+  (`-2`, `-3`... no mesmo segundo) ao lado do executável, com `SDL_SavePNG` (SDL 3.4): as duas telas empilhadas no
+  tamanho do 3D, como os BMPs de teste, a partir do último quadro mostrado (`g_host.shown`), o que também funciona
+  com o jogo pausado. Toast "Captura: <arquivo>". O F8 continua gravando `boej-<quadro>.bmp`
+  (`f12_frame` → `dump_shot_frame`).
+- **Galeria (`launcher/gallery.cpp`, `Screen::Gallery`, `IE3_LAUNCHER_TAB=6`):** item entre Conquistas e
+  Configurações. Grade de miniaturas (PNG e BMP, a mais nova primeiro, data embaixo), feitas duas por quadro e só as
+  visíveis (`SDL_ScaleSurface` para 300 px de altura), refeitas quando o arquivo muda. Clique abre a imagem grande
+  (ajustada à janela; pequenas por pixels inteiros), com ‹ › e setas, nome, data, "Abrir arquivo" e "Fechar" (Esc,
+  B ou clique fora fecham; o `page_header` ganhou `keys` para o Esc não voltar da página junto). O launcher cria
+  `screenshots/` ao abrir. `IE3_LAUNCHER_VIEW=1` abre a mais nova (teste).
+- READMEs (raiz e release), LEIA-ME e DESENVOLVIMENTO atualizados; os READMEs da raiz ainda citavam a página
+  Saves, trocada pela Galeria e pela explicação do Jogar.
+
+**Verificação:** compila sem avisos (Linux e Windows). Capturas do launcher: menu com Galeria, grade com três PNGs
+e o visualizador. Windows (pasta de teste, release 0.1.25 deste código, `--prepare` em 52,8 s depois de apagar o
+`build.stamp`; save numa cópia em `%TEMP%`, teclas por `SendKeys`): P pausou ("paused at frame 757", "Pausado" na
+tela), F12 com o jogo pausado e rodando gravou PNGs de 1280x1920 (3D em 5×), P retomou. O primeiro toque depois do
+`AppActivate` do script sempre se perde (foco do Windows), em qualquer tecla.
+**Não testado:** pausa por botão de controle (sem botão padrão), Galeria com muitas capturas, "Abrir arquivo".
+
+**Pausa congelada (P P):** a pedido, dois toques rápidos em `pause` (até 350 ms, `kDoubleTapNs`) congelam a imagem
+como o jogo a mostra (mesma apresentação lógica, sem escurecer nem texto); um P sozinho não faz nada nesse modo e só
+P P de novo retoma. O P simples continua sendo a pausa com "Pausado", mas a tela só escurece depois dos 350 ms, para o
+congelamento não piscar a mensagem. Evento "tela congelada" no log da sessão. Teste no Windows (pasta de teste
+recompilada; `SendKeys`): P P → "tela congelada" sem escurecer; P → continua parado; P P → "jogo retomado"; P →
+pausa escurecida com "Pausado"; P → retomado. As capturas da janela feitas pelo script saíram deslocadas (escala de
+DPI) e foram apagadas.
+
+**Menu sobre a pausa:** a pedido, Esc com o jogo pausado (P ou P P) abre o menu de pausa e, ao fechá-lo (Esc ou
+Continuar), volta para a mesma pausa, com o som ainda parado. `run_menu(from_pause)` agora devolve `true` quando o
+jogo precisa rodar mesmo assim (salvar ou carregar savestate no menu, feito no quadro do jogo): aí a pausa termina.
+Teste no Windows (pasta de teste recompilada, `SendKeys` com 1,8 s entre teclas): P, Esc, Esc → "menu de pausa
+fechado; continua pausado", P → retomado; P P, Esc, Esc → continua congelado, P → nada, P P → retomado. Numa
+primeira rodada com 1,2 s entre as teclas, um P se perdeu; com mais intervalo, não se repetiu.
+
+**Três capturas no layout 16:9:** a pedido, com `wide_layout` o F12 grava, com o mesmo nome-base, as telas do DS
+(como antes), `-ampliada` (só a tela de baixo ampliada) e `-completa` (a coluna com as duas telas, do lado de
+`wide_side`, e a tela ampliada). Saem dos pixels do último quadro (`blit_screen`, pixel mais próximo, esticados
+como no layout: 2304x1296 unidades = 384x216 vezes a escala, com escala mínima 5, ou seja 1280x1080 e 1920x1080).
+O sufixo `-2`, `-3`... vale para o grupo inteiro. Toast "Capturas: <nome> (3)". Galeria: miniaturas em fluxo, cada
+uma com a largura do seu formato (pelo sufixo do nome até a miniatura existir), e as três da mesma tecla juntas, na
+ordem DS → ampliada → completa. Teste no Windows (pasta de teste recompilada, 3D em 4×): F12 gerou 1024x1536,
+1280x1080 e 1920x1080, conferidos; captura da Galeria com elas.

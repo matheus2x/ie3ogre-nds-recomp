@@ -4,6 +4,7 @@ string(STRIP "${NTR_VERSION}" NTR_VERSION)
 
 add_executable(ie3-launcher WIN32
     achievements.cpp
+    gallery.cpp
     main.cpp
     mods.cpp
     prepare.cpp

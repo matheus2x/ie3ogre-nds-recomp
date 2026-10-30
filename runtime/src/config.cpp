@@ -63,7 +63,7 @@ fast_forward_speed = 4
 ; (5 a 120) na memória; custa um pouco de processador e até uns 256 MB de RAM.
 rewind = true
 rewind_seconds = 30
-; O save do jogo: um arquivo da pasta saves/ (a aba Saves do launcher escolhe).
+; O save do jogo: um arquivo da pasta saves/ (o launcher escolhe em Jogar).
 save = boej.sav
 
 ; Mods da pasta mods/ que estão ligados: os nomes das pastas e dos .zip, separados por vírgula.
@@ -95,7 +95,8 @@ stay_closed = false
 ; Atalhos: menu (pausa, com as configurações), fast_forward (segurar) e fast_forward_toggle
 ; (avanço rápido), turbo (segurar) e turbo_toggle (A automático), screenshot, debug_dump
 ; (estado no log da sessão, em logs), fullscreen, save_state e load_state (savestate no slot escolhido)
-; e state_slot_prev / state_slot_next (escolhem o slot, de 1 a 5), rewind (segurar: volta no tempo).
+; e state_slot_prev / state_slot_next (escolhem o slot, de 1 a 5), rewind (segurar: volta no tempo),
+; pause (pausa e retoma o jogo, sem menu; duas vezes rápido congela a imagem sem escurecer). As capturas (screenshot) vão para a pasta screenshots, em PNG.
 [keyboard]
 A = X
 B = Z
@@ -122,6 +123,7 @@ load_state = F9
 state_slot_prev = F6
 state_slot_next = F7
 rewind = R
+pause = P
 
 ; Controle: os mesmos botões e atalhos. Botões pela posição: south, east, west, north
 ; (A do DS = east, como num controle da Nintendo); também back, start, guide,
@@ -154,6 +156,7 @@ load_state =
 state_slot_prev =
 state_slot_next =
 rewind =
+pause =
 )";
 
 std::string trim(const std::string& s) {

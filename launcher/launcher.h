@@ -11,8 +11,9 @@
 //   toolchain/                         the compiler (Windows), downloaded on first use
 //   cache/modules/                     code modules extracted from the dump
 //   boej(.exe), boej.pak               made on the player's PC
+//   screenshots/                       the game's screenshots, shown in the Gallery
 //   boej.ini, saves/, mods/            settings and player data (saves/: one .sav per save,
-//                                      the one in use chosen in the Saves tab)
+//                                      the one in use chosen under Jogar)
 //   logs/                              launcher.log, historico.txt (every game session),
 //                                      sessoes/ and replays/ (log and input of the last 20)
 #pragma once
@@ -51,6 +52,7 @@ struct Paths {
     std::string mods() const { return root + "mods/"; }
     std::string saves() const { return root + "saves/"; }
     std::string logs() const { return root + "logs/"; }
+    std::string screenshots() const { return root + "screenshots/"; }  // the game's screenshots (Gallery)
 };
 const Paths& paths();
 std::string sdk_version();  // sdk/version.txt, or "" without an SDK
@@ -111,10 +113,20 @@ int mods_cli(const std::string& command, const std::string& path);  // --install
 
 // --- saves (saves.cpp) ------------------------------------------------------------------
 
-void saves_tab(SDL_Renderer* renderer);  // the team icons become textures of this renderer
 void saves_update();  // every frame: lists saves/ again when it changed, renames saves after their players
-void saves_drop(const std::string& path);  // a .sav dropped on the window: copy it to saves/
+void saves_drop(const std::string& path);  // a .sav dropped on the window or chosen: copy it to saves/
+bool saves_loadable();                     // a save in saves/ has a game saved in it
+// "Carregar jogo": the saves as cards (the team icons become textures of this renderer). True
+// when one was clicked: [game] save is that one now.
+bool saves_load_tab(SDL_Renderer* renderer);
+void new_game_open();   // opens the "Novo jogo" box (a name for the new save)
+bool new_game_popup();  // every frame on the home screen; true when the player starts: [game] save is the new one
 std::string current_save();                // the file in saves/ the game uses ([game] save)
+
+// --- gallery (gallery.cpp) ---------------------------------------------------------------
+
+void gallery_tab(SDL_Renderer* renderer);  // the thumbnails become textures of this renderer
+bool gallery_viewing();                    // a screenshot is open large (Escape closes it, not the page)
 
 // --- achievements (achievements.cpp) ------------------------------------------------------
 

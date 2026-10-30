@@ -45,13 +45,14 @@ under Mods: it takes the old one's place and stays on.
 
 SAVES
 Saves live in the "saves" folder, next to boej.exe, one .sav file per save
-(64 KB, the same format as the cartridge's save). On the launcher's Saves
-page, click the save the game will use; the page shows each one's player
-name, chapter, team level, members, play time and team faces. "New save"
-adds a blank save with the name you type: click it and start a New Game;
-the other saves do not change. To import a save (dumped from the cartridge
-or from another emulator), put the .sav in the "saves" folder or drag it
-onto the launcher's window (it is copied; the original is not touched).
+(64 KB, the same format as the cartridge's save). Under "Play", the
+launcher offers "New game" (asks for a name for the new save; the game
+makes the file when you save, and the other saves do not change), "Load
+game" (the saves with a game in them, each with the player name, chapter,
+team level, members, play time and team faces: click one to play it) and
+"Import save" (a save dumped from the cartridge or from another emulator;
+you can also drag the .sav onto the launcher's window or put it in the
+"saves" folder; it is copied and the original is not touched).
 Files are always named <name>-<number>.sav, with the name in lowercase and
 only letters and numbers: "Second Run" becomes secondrun-1.sav, and a save
 imported as My Save.sav becomes mysave-1.sav (with the game open, this
@@ -73,10 +74,11 @@ FILES CREATED IN THIS FOLDER
                       do not distribute)
 - cache\, toolchain\  code extracted from the dump, and the compiler
 - saves\              the saves (boej.sav at first; the launcher names each
-                      one after its player, and the Saves page picks the one
-                      the game uses) and each one's achievements
+                      one after its player, and the one chosen under Play is
+                      the one used) and each one's achievements
                       (.achievements.json)
 - savestates\         the savestates (slots 1 to 5)
+- screenshots\        the screenshots (F12), shown in the launcher's Gallery
 - boej.ini            settings (also editable in the launcher)
 - logs\               records for reporting problems: launcher.log,
                       historico.txt (every game session), sessoes\ and
@@ -91,7 +93,13 @@ DEFAULT CONTROLS (change them in the game's menu or the launcher's Settings)
   Touch       left mouse button on the bottom screen
   Esc         pauses and opens the menu (settings apply at once, reset
               the game, quit)
-  F11 fullscreen, F12 screenshot
+  P           pauses the game (no menu); P again resumes. P twice quickly
+              freezes the picture as it is, with nothing over it; P twice
+              quickly again resumes. Esc while paused opens the menu, and
+              closing it goes back to the pause
+  F11 fullscreen, F12 screenshot (a PNG in the "screenshots" folder, shown
+      in the launcher's Gallery; in the 16:9 layout, three: the DS screens,
+      the enlarged bottom screen (-ampliada) and the whole layout (-completa))
   F5 saves a savestate, F9 loads it, F6/F7 change the slot (1 to 5); also
       in the pause menu, under "Savestates". They only work in this build
       of the game: an update recompiles it and old savestates do not load.

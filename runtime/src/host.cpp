@@ -7,8 +7,11 @@
 //
 // Settings, key and gamepad bindings come from boej.ini (config.cpp), which also lists
 // the defaults: arrows = D-pad, X = A, Z = B, S = X, A = Y, Q = L, W = R, Enter = Start,
-// Right Shift/Backspace = Select, F12 = screenshot, F8 = state dump to the log (plus a
-// screenshot), F11 = fullscreen. The left mouse button touches the bottom screen.
+// Right Shift/Backspace = Select, F12 = screenshot (a PNG of both screens in screenshots/ next
+// to the executable, the launcher's Gallery), F8 = state dump to the log (plus a BMP), F11 =
+// fullscreen, P = pause (the game stops, dimmed, until P again; P P freezes the picture as it is,
+// until P P again). The left mouse button
+// touches the bottom screen.
 //
 // Testing shortcuts: Tab (held) or F2 (toggle) = fast forward; C (held) or F3 (toggle) =
 // auto A, which presses and releases A every few frames to skip through messages. On a
@@ -49,12 +52,15 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
+#include <ctime>
+#include <filesystem>
 #include <set>
 #include <string>
 #include <thread>
 #include <utility>
 #include <vector>
 
+#include <imgui.h>
 #include <ntr/runtime.h>
 #include <ntr/ui.h>
 
@@ -88,6 +94,7 @@ enum Action {
     kStateSlotNext,
     kMenu,
     kRewind,
+    kPause,
     kActionCount
 };
 constexpr uint32_t kButtonMask = 0xFFF;
@@ -102,7 +109,7 @@ constexpr float kWideStackWidth = 768;
 const char* const kActionNames[kActionCount] = {
     "A", "B", "SELECT", "START", "RIGHT", "LEFT", "UP", "DOWN", "R", "L", "X", "Y",
     "fast_forward", "fast_forward_toggle", "turbo", "turbo_toggle", "screenshot", "debug_dump", "fullscreen",
-    "save_state", "load_state", "state_slot_prev", "state_slot_next", "menu", "rewind"};
+    "save_state", "load_state", "state_slot_prev", "state_slot_next", "menu", "rewind", "pause"};
 
 struct KeyBinding {
     SDL_Keycode key;
@@ -152,7 +159,12 @@ struct Host {
     uint64_t run_last = 0, run_ns = 0, run_frames = 0, run_worst_ns = 0, run_worst_frame = 0, run_slow = 0;
     std::set<uint64_t> screenshot_frames;
     std::string screenshot_path = "boej-%d.bmp";  // %d = frame number
-    uint64_t f12_frame = 0, exit_frame = 0;
+    uint64_t dump_shot_frame = 0, exit_frame = 0;  // dump_shot_frame: F8's picture
+    bool screenshot_requested = false;            // the screenshot key: this frame's picture
+    // The picture shown last, for a screenshot (also while paused: the game is stopped inside
+    // host_present, so these stay valid).
+    const uint32_t* shown[2] = {};
+    int shown_scales[2] = {};
     uint64_t window_shot_frame = 0;  // NTR_WINDOW_SHOT
     std::string window_shot_path;
 
@@ -202,6 +214,7 @@ struct Host {
     bool wide = true;          // video.wide_layout
     bool stack_right = false;  // video.wide_side = right
     bool menu_requested = false;
+    bool pause_requested = false;
     bool ui_ready = false;
     int state_slot = 1;  // the savestate slot the shortcuts use
     uint64_t state_save_frame = 0, state_load_frame = 0;  // NTR_STATE_SAVE / NTR_STATE_LOAD
@@ -469,6 +482,83 @@ void show_toast(const std::string& text) {
     g_host.toast_until = SDL_GetTicksNS() + 2500000000ull;
 }
 
+// A screen of the picture shown last (0 top, 1 bottom) drawn into `rect` of `surface`, by
+// nearest pixels (stretched when the rect has another shape, as in the wide layout).
+void blit_screen(SDL_Surface* surface, int screen, const SDL_Rect& rect) {
+    const uint32_t* src = g_host.shown[screen];
+    const int from = g_host.shown_scales[screen], sw = kScreenWidth * from, sh = kScreenHeight * from;
+    for (int y = 0; y < rect.h; y++) {
+        const uint32_t* row = src + size_t(y * sh / rect.h) * sw;
+        uint32_t* dst = reinterpret_cast<uint32_t*>(static_cast<uint8_t*>(surface->pixels) + size_t(rect.y + y) * surface->pitch) + rect.x;
+        for (int x = 0; x < rect.w; x++) dst[x] = row[x * sw / rect.w];
+    }
+}
+
+// The screenshot key: both screens of the picture shown last, stacked, as large as the 3D
+// resolution (like the BMPs of the tests), as screenshots/ie3-<date>-<time>.png next to the
+// executable (-2, -3... after the time for more in the same second). In the wide layout also
+// -ampliada (the enlarged bottom screen) and -completa (the whole layout, the column of both
+// screens on its side), from the same pixels in the layout's shape (2304x1296 units, so
+// 384 x 216 times the scale; at least 1920x1080 for the whole one).
+void save_screenshot() {
+    if (!g_host.shown[0] || !g_host.shown[1]) return;
+    const int scale = std::max({g_host.shown_scales[0], g_host.shown_scales[1], gpu3d_scale()});
+    struct Picture {
+        const char* suffix;
+        SDL_Surface* surface;
+    };
+    std::vector<Picture> pictures;
+    auto make = [&](const char* suffix, int w, int h) {
+        SDL_Surface* surface = SDL_CreateSurface(w, h, SDL_PIXELFORMAT_XRGB8888);
+        if (surface) pictures.push_back({suffix, surface});
+        return surface;
+    };
+    const int w = kScreenWidth * scale, h = kScreenHeight * scale;
+    if (SDL_Surface* ds = make("", w, h * 2)) {
+        blit_screen(ds, 0, {0, 0, w, h});
+        blit_screen(ds, 1, {0, h, w, h});
+    }
+    if (g_host.wide) {
+        const int k = std::max(scale, 5);  // output pixels = layout units * k / 6
+        const int stack_w = int(kWideStackWidth) * k / 6, big_w = (kWideWidth - int(kWideStackWidth)) * k / 6, full_h = kWideHeight * k / 6;
+        if (SDL_Surface* big = make("-ampliada", big_w, full_h)) blit_screen(big, 1, {0, 0, big_w, full_h});
+        if (SDL_Surface* all = make("-completa", stack_w + big_w, full_h)) {
+            const int stack_x = g_host.stack_right ? big_w : 0;
+            blit_screen(all, 0, {stack_x, 0, stack_w, full_h / 2});
+            blit_screen(all, 1, {stack_x, full_h / 2, stack_w, full_h - full_h / 2});
+            blit_screen(all, 1, {g_host.stack_right ? 0 : stack_w, 0, big_w, full_h});
+        }
+    }
+    std::error_code ec;
+    std::filesystem::path folder = fs_path(host_base_path().empty() ? "." : host_base_path()) / "screenshots";
+    std::filesystem::create_directories(folder, ec);
+    std::time_t now = std::time(nullptr);
+    char stamp[32];
+    std::strftime(stamp, sizeof stamp, "ie3-%Y%m%d-%H%M%S", std::localtime(&now));
+    // One name for all of them, none of them taken.
+    std::string base = stamp;
+    for (int n = 2;; n++) {
+        bool taken = false;
+        for (const Picture& p : pictures) taken |= std::filesystem::exists(folder / (base + p.suffix + ".png"), ec);
+        if (!taken) break;
+        base = std::string(stamp) + "-" + std::to_string(n);
+    }
+    int saved = 0;
+    for (const Picture& p : pictures) {
+        std::string path = utf8_string(folder / (base + p.suffix + ".png"));
+        if (SDL_SavePNG(p.surface, path.c_str())) {
+            NTR_LOG("[host] screenshot saved to %s\n", path.c_str());
+            saved++;
+        } else {
+            NTR_LOG("[host] cannot save the screenshot %s: %s\n", path.c_str(), SDL_GetError());
+        }
+        SDL_DestroySurface(p.surface);
+    }
+    if (saved == 0) show_toast(L("Could not save the screenshot", "Nao foi possivel salvar a captura"));
+    else if (saved == 1) show_toast(L("Screenshot: ", "Captura: ") + base + ".png");
+    else show_toast(L("Screenshots: ", "Capturas: ") + base + " (" + std::to_string(saved) + ")");
+}
+
 // The slot the shortcuts now use, and what it holds when that is a date.
 void change_slot(int delta) {
     g_host.state_slot = (g_host.state_slot - 1 + delta + kStateSlots) % kStateSlots + 1;
@@ -504,10 +594,10 @@ void update_actions() {
     g_host.rewind_held = now & (1u << kRewind);
     if (pressed & (1u << kFastForwardToggle)) g_host.ff_toggle = !g_host.ff_toggle;
     if (pressed & (1u << kTurboToggle)) g_host.turbo_toggle = !g_host.turbo_toggle;
-    if (pressed & (1u << kScreenshot)) g_host.f12_frame = g_host.frame + 1;
+    if (pressed & (1u << kScreenshot)) g_host.screenshot_requested = true;
     if (pressed & (1u << kDebugDump)) {
         debug_dump("F8");
-        g_host.f12_frame = g_host.frame + 1;
+        g_host.dump_shot_frame = g_host.frame + 1;
     }
     if (pressed & (1u << kFullscreen)) toggle_fullscreen();
     if (pressed & (1u << kSaveState)) savestate_request_save(g_host.state_slot);
@@ -515,6 +605,7 @@ void update_actions() {
     if (pressed & (1u << kStateSlotPrev)) change_slot(-1);
     if (pressed & (1u << kStateSlotNext)) change_slot(1);
     if (pressed & (1u << kMenu)) g_host.menu_requested = true;
+    if (pressed & (1u << kPause)) g_host.pause_requested = true;
 }
 
 // The wide layout's column with both screens, and the enlarged bottom screen beside it.
@@ -1058,22 +1149,22 @@ void restart() {
     std::exit(0);
 }
 
-// The menu key or gamepad button, pressed again inside the menu.
-bool is_menu_input(const SDL_Event& ev) {
+// A key or gamepad button of `action` pressed, inside the menu or while paused.
+bool is_action_input(const SDL_Event& ev, int action) {
     if (ev.type == SDL_EVENT_KEY_DOWN && !ev.key.repeat) {
         for (const KeyBinding& b : g_host.key_bindings) {
-            if (b.action == kMenu && b.key == ev.key.key) return true;
+            if (b.action == action && b.key == ev.key.key) return true;
         }
     }
     if (ev.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN) {
         for (const PadBinding& b : g_host.pad_bindings) {
-            if (b.action == kMenu && b.button == ev.gbutton.button) return true;
+            if (b.action == action && b.button == ev.gbutton.button) return true;
         }
     }
     return false;
 }
 
-// The last frame, dimmed, behind the menu.
+// The last frame, dimmed, behind the menu or "Pausado".
 void draw_paused_frame() {
     SDL_Renderer* r = g_host.renderer;
     SDL_SetRenderLogicalPresentation(r, 0, 0, SDL_LOGICAL_PRESENTATION_DISABLED);
@@ -1094,8 +1185,10 @@ void draw_paused_frame() {
 }
 
 // Runs until the player resumes: the game is stopped inside host_present, so nothing
-// advances (the clock included) and the sound is paused.
-void run_menu() {
+// advances (the clock included) and the sound is paused. Opened from the pause (`from_pause`),
+// closing it goes back to the pause, sound still off; true when the game has to run anyway
+// (a savestate to save or load, which happens in the game's frame).
+bool run_menu(bool from_pause = false) {
     g_host.menu_requested = false;
     start_ui();
     if (g_host.audio) SDL_PauseAudioStreamDevice(g_host.audio);
@@ -1112,6 +1205,7 @@ void run_menu() {
         states.push_back(savestate_describe(slot));
         loadable.push_back(!states.back().empty() && std::isdigit(uint8_t(states.back()[0])));
     }
+    bool state_action = false;
     for (bool open = true; open;) {
         SDL_Event ev;
         while (SDL_PollEvent(&ev)) {
@@ -1123,7 +1217,7 @@ void run_menu() {
                 ui::capture_event(ev);  // the input is the new binding
                 continue;
             }
-            if (is_menu_input(ev)) {
+            if (is_action_input(ev, kMenu)) {
                 open = false;
                 continue;
             }
@@ -1138,6 +1232,7 @@ void run_menu() {
         SDL_RenderPresent(g_host.renderer);
         if (action == ui::PauseAction::Resume) open = false;
         if (action == ui::PauseAction::SaveState || action == ui::PauseAction::LoadState) {
+            state_action = true;
             g_host.state_slot = slot;  // the shortcuts go on with this slot
             if (action == ui::PauseAction::SaveState) savestate_request_save(slot);
             else savestate_request_load(slot);
@@ -1148,8 +1243,108 @@ void run_menu() {
         SDL_Delay(16);
     }
     apply_presentation();
-    if (g_host.audio) SDL_ResumeAudioStreamDevice(g_host.audio);
     // Keys pressed or released while paused went to the menu: start from what is held now.
+    g_host.keys_down.clear();
+    update_actions();
+    if (from_pause && !state_action) {
+        session_event("menu de pausa fechado; continua pausado");
+        return false;
+    }
+    if (g_host.audio) SDL_ResumeAudioStreamDevice(g_host.audio);
+    g_host.deadline = g_host.work_start = SDL_GetTicksNS();
+    session_event("jogo retomado");
+    return state_action;
+}
+
+// What resumes the game, for the hint under "Pausado": the first key of `pause`, or its
+// first gamepad button.
+std::string pause_input_name() {
+    for (const KeyBinding& b : g_host.key_bindings) {
+        if (b.action == kPause) return SDL_GetKeyName(b.key);
+    }
+    for (const PadBinding& b : g_host.pad_bindings) {
+        if (b.action == kPause && b.button != SDL_GAMEPAD_BUTTON_INVALID) {
+            if (const char* name = SDL_GetGamepadStringForButton(SDL_GamepadButton(b.button))) return name;
+        }
+    }
+    return "pause";
+}
+
+// The pause key: the game stops like in the menu, the picture dimmed with "Pausado" over it,
+// until the pause key again. Pressed twice quickly (within kDoubleTapNs), the picture stays
+// frozen as it is, with nothing over it, until pressed twice quickly again. Until the time for
+// the second press has passed the picture is not dimmed, so the frozen pause never flashes
+// "Pausado". The menu key opens the menu over the pause (closing it comes back to the same
+// pause, unless a savestate was chosen there); screenshots and fullscreen still work.
+void run_pause() {
+    constexpr uint64_t kDoubleTapNs = 350000000;
+    g_host.pause_requested = false;
+    start_ui();
+    if (g_host.audio) SDL_PauseAudioStreamDevice(g_host.audio);
+    session_event("jogo pausado");
+    NTR_LOG("[host] paused at frame %llu\n", (unsigned long long)g_host.frame);
+    const uint64_t start = SDL_GetTicksNS();
+    bool frozen = false;
+    uint64_t last_tap = 0;  // frozen: the time of a first press, waiting for the second
+    for (bool paused = true; paused;) {
+        SDL_Event ev;
+        while (SDL_PollEvent(&ev)) {
+            if (ev.type == SDL_EVENT_QUIT) quit("fechou a janela");
+            if (ev.type == SDL_EVENT_GAMEPAD_ADDED || ev.type == SDL_EVENT_GAMEPAD_REMOVED) pad_connection(ev);
+            if (is_action_input(ev, kPause)) {
+                uint64_t now = SDL_GetTicksNS();
+                if (!frozen && now - start < kDoubleTapNs) {
+                    frozen = true;
+                    session_event("tela congelada");
+                } else if (!frozen || (last_tap && now - last_tap < kDoubleTapNs)) {
+                    paused = false;
+                } else {
+                    last_tap = now;
+                }
+            }
+            if (is_action_input(ev, kMenu)) {
+                // The menu over the pause; closing it comes back here, in the same pause.
+                if (run_menu(true)) return;  // a savestate: the game runs (run_menu resumed it)
+                g_host.pause_requested = false;
+                last_tap = 0;
+                continue;
+            }
+            if (is_action_input(ev, kScreenshot)) save_screenshot();
+            if (is_action_input(ev, kFullscreen)) toggle_fullscreen();
+            ui::process_event(ev);
+        }
+        diag_frame(g_host.frame);  // paused, not stuck: keeps the watchdog quiet
+        const bool shown = !frozen && SDL_GetTicksNS() - start >= kDoubleTapNs;
+        if (shown) {
+            draw_paused_frame();
+        } else {  // exactly as the game shows it
+            apply_presentation();
+            SDL_SetRenderDrawColor(g_host.renderer, 0, 0, 0, 255);
+            SDL_RenderClear(g_host.renderer);
+            draw_screens(0, 0, 1);
+        }
+        ui::begin_frame();
+        if (shown) {
+            const ImGuiViewport* vp = ImGui::GetMainViewport();
+            ImDrawList* dl = ImGui::GetForegroundDrawList();
+            const char* text = L("Paused", "Pausado");
+            const float size = std::max(32.0f, vp->Size.y / 12);
+            ImFont* font = ui::bold_font();
+            ImVec2 t = font->CalcTextSizeA(size, FLT_MAX, 0, text);
+            ImVec2 at(vp->Pos.x + (vp->Size.x - t.x) / 2, vp->Pos.y + (vp->Size.y - t.y) / 2);
+            dl->AddText(font, size, ImVec2(at.x + 3, at.y + 3), IM_COL32(0, 0, 0, 160), text);
+            dl->AddText(font, size, at, IM_COL32_WHITE, text);
+            std::string hint = L("Press ", "Aperte ") + pause_input_name() + L(" to resume", " para continuar");
+            ImVec2 h = ImGui::CalcTextSize(hint.c_str());
+            dl->AddText(ImVec2(vp->Pos.x + (vp->Size.x - h.x) / 2, at.y + t.y + 8), IM_COL32(220, 220, 230, 220), hint.c_str());
+        }
+        ui::end_frame(g_host.renderer);
+        draw_toast();
+        SDL_RenderPresent(g_host.renderer);
+        SDL_Delay(16);
+    }
+    apply_presentation();
+    if (g_host.audio) SDL_ResumeAudioStreamDevice(g_host.audio);
     g_host.keys_down.clear();
     update_actions();
     g_host.deadline = g_host.work_start = SDL_GetTicksNS();
@@ -1494,8 +1689,16 @@ void host_present(const uint32_t* top, int top_scale, const uint32_t* bottom, in
         write_bmp(frame_path(g_host.screenshot_path), top, top_scale, bottom, bottom_scale, bmp_scale);
         debug_dump("screenshot");
     }
-    if (g_host.frame == g_host.f12_frame) {
+    if (g_host.frame == g_host.dump_shot_frame) {
         write_bmp(frame_path("boej-%d.bmp"), top, top_scale, bottom, bottom_scale, bmp_scale);
+    }
+    g_host.shown[0] = top;
+    g_host.shown[1] = bottom;
+    g_host.shown_scales[0] = top_scale;
+    g_host.shown_scales[1] = bottom_scale;
+    if (g_host.screenshot_requested) {
+        g_host.screenshot_requested = false;
+        save_screenshot();
     }
     if (g_host.exit_frame && g_host.frame >= g_host.exit_frame) {
         NTR_LOG("[host] exiting after %llu frames\n", (unsigned long long)g_host.frame);
@@ -1520,6 +1723,7 @@ void host_present(const uint32_t* top, int top_scale, const uint32_t* bottom, in
     if (fast_forward() && g_host.frame % uint64_t(g_host.ff_speed) != 0) {  // about 60 pictures a second
         pump_events();
         record_input();
+        if (g_host.pause_requested) run_pause();
         if (g_host.menu_requested) run_menu();
         pace();
         return;
@@ -1552,6 +1756,7 @@ void host_present(const uint32_t* top, int top_scale, const uint32_t* bottom, in
     SDL_RenderPresent(g_host.renderer);
     pump_events();
     record_input();
+    if (g_host.pause_requested) run_pause();
     if (g_host.menu_requested) run_menu();
     pace();
 }

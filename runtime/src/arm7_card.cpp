@@ -125,8 +125,8 @@ void card_state(StateIo& io) {
 
 void arm7_card_init(const std::string& save_path) {
     if (save_path.empty()) {
-        // saves/<[game] save> next to the executable (boej.sav unless the launcher's Saves
-        // tab chose another). Older builds used saves/boej.sav in the current directory; a
+        // saves/<[game] save> next to the executable (boej.sav unless the launcher
+        // chose another). Older builds used saves/boej.sav in the current directory; a
         // save found only there is copied over once.
         std::string name = host_config().get("game", "save");
         if (name.empty() || name == "." || name == ".." || name.find_first_of("/\\:") != std::string::npos) {

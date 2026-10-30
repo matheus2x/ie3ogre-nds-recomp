@@ -89,13 +89,16 @@ namespace {
 Job g_job;
 std::mutex g_drop_mutex;
 std::string g_dropped;  // a dump from the file dialog or dropped on the window
+std::string g_dropped_save;  // a save from "Importar save"
 bool g_quit = false;
 bool g_hidden = false;          // the window waits hidden while the game runs
 Uint32 g_game_exited_event = 0;  // pushed by the thread that waits for the game
 
-// The home menu and the pages it opens (the numbers of IE3_LAUNCHER_TAB).
-enum class Screen { Home, Settings, Mods, Saves, Updates, Achievements };
+// The home menu and the pages it opens (the numbers of IE3_LAUNCHER_TAB; Load is "Carregar jogo").
+enum class Screen { Home, Settings, Mods, Load, Updates, Achievements, Gallery };
 Screen g_screen = Screen::Home;
+bool g_play_menu = false;    // the home menu shows the items of "Jogar"
+bool g_focus_menu = false;   // focus the menu's first item (the menu changed, with keyboard or gamepad)
 double g_home_since = 0;  // when the home screen appeared, for the background's slide
 
 void on_dump(const std::string& path) {
@@ -110,6 +113,19 @@ void choose_dump(SDL_Window* window) {
     SDL_ShowOpenFileDialog(
         [](void*, const char* const* files, int) {
             if (files && files[0]) on_dump(files[0]);
+        },
+        nullptr, window, filters, 2, nullptr, false);
+}
+
+void choose_save(SDL_Window* window) {
+    static SDL_DialogFileFilter filters[2];
+    filters[0] = {L("Save (*.sav)", "Save (*.sav)"), "sav"};
+    filters[1] = {L("All files", "Todos os arquivos"), "*"};
+    SDL_ShowOpenFileDialog(
+        [](void*, const char* const* files, int) {
+            if (!files || !files[0]) return;
+            std::lock_guard lock(g_drop_mutex);
+            g_dropped_save = files[0];
         },
         nullptr, window, filters, 2, nullptr, false);
 }
@@ -246,13 +262,17 @@ bool menu_item(const char* label, const char* note = nullptr, uint32_t note_colo
         float cy = p.y + size.y / 2, x = p.x + pad + em * 0.1f, h = em * 0.26f;
         dl->AddTriangleFilled(ImVec2(x, cy - h), ImVec2(x + h * 1.3f, cy), ImVec2(x, cy + h), ntr::ui::kHighlight);
     }
-    ImU32 ink = !enabled ? ImGui::GetColorU32(ImGuiCol_TextDisabled) : lit ? IM_COL32_WHITE : ImGui::GetColorU32(ImGuiCol_Text, 0.82f);
+    ImU32 ink = !enabled ? ImGui::GetColorU32(ImGuiCol_Text, 0.3f) : lit ? IM_COL32_WHITE : ImGui::GetColorU32(ImGuiCol_Text, 0.82f);
     float x = p.x + pad + marker + (lit ? em * 0.15f : 0);
     dl->AddText(ImVec2(x, p.y + pad), ink, label, end);
     ImGui::PopFont();
     if (note) {
-        ImVec2 n = ImGui::CalcTextSize(note);
-        dl->AddText(ImVec2(x + text.x + em * 0.6f, p.y + (size.y - n.y) / 2), note_color ? note_color : ImGui::GetColorU32(ImGuiCol_TextDisabled), note);
+        // Disabled: smaller and fainter, a hint of why.
+        ImFont* font = ImGui::GetFont();
+        float font_size = ImGui::GetFontSize() * (enabled ? 1.0f : 0.9f);
+        ImVec2 n = font->CalcTextSizeA(font_size, FLT_MAX, 0, note);
+        ImU32 note_ink = note_color ? note_color : ImGui::GetColorU32(ImGuiCol_TextDisabled, enabled ? 1.0f : 0.6f);
+        dl->AddText(font, font_size, ImVec2(x + text.x + em * 0.6f, p.y + (size.y - n.y) / 2), note_ink, note);
     }
     return pressed;
 }
@@ -340,7 +360,7 @@ void home_screen(SDL_Window* window) {
     // The footer's height and the menu's, from the bottom of the window up.
     const Readiness r = readiness();
     const bool busy = g_job.running;
-    const int items = busy ? 0 : 7;
+    const int items = busy ? 0 : g_play_menu && r == Readiness::Ready ? 4 : 7;
     const float item_h = style.FontSizeBase * style.FontScaleMain * kMenuSize * 1.6f;
     const float footer_h = ImGui::GetFrameHeight() + style.WindowPadding.y;
     const float bottom = ImGui::GetWindowHeight() - footer_h - style.WindowPadding.y;
@@ -361,33 +381,60 @@ void home_screen(SDL_Window* window) {
         ImGui::SetCursorPos(ImVec2(origin.x + margin - em * kMenuSize * 1.1f, menu_y));
         ImGui::BeginGroup();
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(style.ItemSpacing.x, 0));
-        std::string save = "save: " + current_save();
-        switch (r) {
-            case Readiness::Ready:
-                if (menu_item(L("Play###main", "Jogar###main"), save.c_str())) play(window);
-                break;
-            case Readiness::NeedsDump:
-                if (menu_item(L("Choose the dump###main", "Escolher o dump###main"),
-                              L("(.nds) or drag it here", "(.nds) ou arraste para cá"))) {
-                    choose_dump(window);
-                }
-                break;
-            case Readiness::NeedsBuild:
-                if (menu_item(L("Prepare the game###main", "Preparar o jogo###main"))) prepare_start(g_job, "");
-                break;
-            case Readiness::NoSdk:
-                menu_item(L("Play###main", "Jogar###main"), nullptr, 0, false);
-                break;
+        if (r != Readiness::Ready) g_play_menu = false;
+        const bool play_menu = g_play_menu;  // as at the start of the frame: a click changes it for the next one
+        if (g_focus_menu && ImGui::GetIO().NavVisible) ImGui::SetKeyboardFocusHere();
+        g_focus_menu = false;
+        auto set_play_menu = [](bool open) {
+            g_play_menu = open;
+            g_focus_menu = true;
+        };
+        if (play_menu) {
+            // "Jogar": a new game, a save in saves/ or one imported.
+            if (menu_item(L("New game", "Novo jogo"))) new_game_open();
+            bool any = saves_loadable();
+            if (menu_item(L("Load game", "Carregar jogo"), any ? nullptr : L("no saves found in the saves folder", "nenhum save encontrado na pasta saves"),
+                          0, any)) {
+                g_screen = Screen::Load;
+            }
+            if (menu_item(L("Import save", "Importar save"), L("(.sav) or drag it here", "(.sav) ou arraste para cá"))) choose_save(window);
+            bool popup = ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId);
+            if (menu_item(L("Back", "Voltar")) ||
+                (!popup && (ImGui::IsKeyPressed(ImGuiKey_Escape, false) || ImGui::IsKeyPressed(ImGuiKey_GamepadFaceRight, false)))) {
+                set_play_menu(false);
+            }
+            if (new_game_popup()) {
+                set_play_menu(false);
+                play(window);
+            }
+        } else {
+            switch (r) {
+                case Readiness::Ready:
+                    if (menu_item(L("Play###main", "Jogar###main"))) set_play_menu(true);
+                    break;
+                case Readiness::NeedsDump:
+                    if (menu_item(L("Choose the dump###main", "Escolher o dump###main"),
+                                  L("(.nds) or drag it here", "(.nds) ou arraste para cá"))) {
+                        choose_dump(window);
+                    }
+                    break;
+                case Readiness::NeedsBuild:
+                    if (menu_item(L("Prepare the game###main", "Preparar o jogo###main"))) prepare_start(g_job, "");
+                    break;
+                case Readiness::NoSdk:
+                    menu_item(L("Play###main", "Jogar###main"), nullptr, 0, false);
+                    break;
+            }
+            if (ImGui::IsWindowAppearing()) ImGui::SetItemDefaultFocus();
+            if (menu_item("Mods")) g_screen = Screen::Mods;
+            if (menu_item(L("Achievements", "Conquistas"))) g_screen = Screen::Achievements;
+            if (menu_item(L("Gallery", "Galeria"))) g_screen = Screen::Gallery;
+            if (menu_item(L("Settings", "Configurações"))) g_screen = Screen::Settings;
+            if (menu_item(L("Updates", "Atualizações"), update_available() ? L("new version!", "versão nova!") : nullptr, ntr::ui::kMagenta)) {
+                g_screen = Screen::Updates;
+            }
+            if (menu_item(L("Quit", "Sair"))) g_quit = true;
         }
-        if (ImGui::IsWindowAppearing()) ImGui::SetItemDefaultFocus();
-        if (menu_item("Saves")) g_screen = Screen::Saves;
-        if (menu_item(L("Achievements", "Conquistas"))) g_screen = Screen::Achievements;
-        if (menu_item("Mods")) g_screen = Screen::Mods;
-        if (menu_item(L("Settings", "Configurações"))) g_screen = Screen::Settings;
-        if (menu_item(L("Updates", "Atualizações"), update_available() ? L("new version!", "versão nova!") : nullptr, ntr::ui::kMagenta)) {
-            g_screen = Screen::Updates;
-        }
-        if (menu_item(L("Quit", "Sair"))) g_quit = true;
         ImGui::PopStyleVar();
         ImGui::EndGroup();
     }
@@ -413,11 +460,12 @@ void home_screen(SDL_Window* window) {
     language_picker();
 }
 
-// A page opened from the menu: "Back" (also Escape or the gamepad's B) and its title.
-void page_header(const char* title) {
+// A page opened from the menu: "Back" (also Escape or the gamepad's B, unless the page uses
+// them: `keys` false) and its title.
+void page_header(const char* title, bool keys = true) {
     bool back = ImGui::Button(L("< Back", "< Voltar"));
     bool popup = ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId);
-    if (!popup && !ImGui::GetIO().WantTextInput &&
+    if (keys && !popup && !ImGui::GetIO().WantTextInput &&
         (ImGui::IsKeyPressed(ImGuiKey_Escape, false) || ImGui::IsKeyPressed(ImGuiKey_GamepadFaceRight, false))) {
         back = true;
     }
@@ -466,7 +514,7 @@ int prepare_cli(const std::string& dump) {
     return g_job.ok ? 0 : 1;
 }
 
-// Names in the Saves tab can be in Japanese: a system font with kana and kanji, merged into
+// Names on the saves' cards can be in Japanese: a system font with kana and kanji, merged into
 // the main one (glyphs are loaded only when shown).
 void add_japanese_font(float scale) {
     static const char* const kFonts[] = {
@@ -509,6 +557,10 @@ int main(int argc, char** argv) {
     }
     NTR_LOG("[launcher] %s in %s (sdk %s)\n", LAUNCHER_VERSION, paths().root.c_str(), sdk_version().c_str());
     update_cleanup();
+    {
+        std::error_code ec;
+        fs::create_directories(ntr::fs_path(paths().screenshots()), ec);  // where the game puts them
+    }
 
     float scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
     if (scale <= 0) scale = 1;
@@ -527,12 +579,14 @@ int main(int argc, char** argv) {
 
     if (settings().get_bool("launcher", "check_updates")) update_check_start();
 
-    // Tests: IE3_LAUNCHER_TAB opens that page (0-5 as in Screen, 5 = Achievements), IE3_LAUNCHER_MOD selects that
+    // Tests: IE3_LAUNCHER_TAB opens that page (0-6 as in Screen, 6 = Gallery), IE3_LAUNCHER_PLAY opens the menu
+    // of "Jogar" (IE3_LAUNCHER_NEW_SAVE too, with the "Novo jogo" box), IE3_LAUNCHER_MOD selects that
     // mod folder in Mods and IE3_LAUNCHER_SHOT saves the window as a BMP after a second, then quits (with the
     // home screen's background already in place).
     const char* shot = std::getenv("IE3_LAUNCHER_SHOT");
     const char* tab_env = std::getenv("IE3_LAUNCHER_TAB");
-    if (tab_env) g_screen = Screen(std::clamp(std::atoi(tab_env), 0, 5));
+    if (tab_env) g_screen = Screen(std::clamp(std::atoi(tab_env), 0, 6));
+    if (std::getenv("IE3_LAUNCHER_PLAY") || std::getenv("IE3_LAUNCHER_NEW_SAVE")) g_play_menu = true;
     if (shot) g_home_since = -10;
     int frames = 0;
 
@@ -558,7 +612,7 @@ int main(int argc, char** argv) {
                     g_screen = Screen::Mods;
                 } else if (ext == ".sav") {
                     saves_drop(path);
-                    g_screen = Screen::Saves;
+                    g_screen = Screen::Load;
                 } else if (!g_job.running) {
                     on_dump(path);
                     g_screen = Screen::Home;
@@ -573,6 +627,14 @@ int main(int argc, char** argv) {
         }
         ntr::ui::begin_frame();
         saves_update();
+        {
+            std::lock_guard lock(g_drop_mutex);
+            if (!g_dropped_save.empty()) {
+                saves_drop(g_dropped_save);
+                g_dropped_save.clear();
+                g_screen = Screen::Load;
+            }
+        }
 
         const ImGuiViewport* vp = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(vp->WorkPos);
@@ -590,13 +652,22 @@ int main(int argc, char** argv) {
                 page_header("Mods");
                 mods_tab(window);
                 break;
-            case Screen::Saves:
-                page_header("Saves");
-                saves_tab(renderer);
+            case Screen::Load:
+                page_header(L("Load game", "Carregar jogo"));
+                if (saves_load_tab(renderer)) {
+                    g_screen = Screen::Home;
+                    g_play_menu = false;
+                    g_home_since = ImGui::GetTime();
+                    play(window);
+                }
                 break;
             case Screen::Achievements:
                 page_header(L("Achievements", "Conquistas"));
                 achievements_tab(renderer);
+                break;
+            case Screen::Gallery:
+                page_header(L("Gallery", "Galeria"), !gallery_viewing());
+                gallery_tab(renderer);
                 break;
             case Screen::Updates:
                 page_header(L("Updates", "Atualizações"));

@@ -57,6 +57,7 @@ const ActionInfo kShortcuts[] = {
     {"state_slot_prev", "Previous slot", "Slot anterior"},
     {"state_slot_next", "Next slot", "Próximo slot"},
     {"rewind", "Rewind (hold)", "Voltar no tempo (segurar)"},
+    {"pause", "Pause", "Pausar"},
 };
 
 // A binding being captured. It keeps its own config pointer: the capture ends in an event,

@@ -96,7 +96,7 @@ void achievements_tab(SDL_Renderer* renderer) {
         g_scan_time = ImGui::GetTime();
         g_game_running = game_process_running();
         scan();
-        // The save in use first; another one when that one is gone (renamed in the Saves tab).
+        // The save in use first; another one when that one is gone (renamed by the launcher).
         if (g_file.empty() || std::find(g_files.begin(), g_files.end(), g_file) == g_files.end()) {
             std::string current = current_save();
             bool found = std::find(g_files.begin(), g_files.end(), current) != g_files.end();

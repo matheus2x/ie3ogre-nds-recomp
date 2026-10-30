@@ -1,5 +1,5 @@
 // The game's own save (64 KB EEPROM), read on the host: what the slot card shows and the
-// team. Shared by the launcher (the Saves tab) and the game (achievements, checked when the
+// team. Shared by the launcher (the saves of Jogar) and the game (achievements, checked when the
 // game saves).
 //
 // The save has two copies of the game, one per 32 KB half; the game loads the newer one

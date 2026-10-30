@@ -45,14 +45,14 @@ em Mods: ele toma o lugar do antigo e continua ligado.
 
 SAVES
 Os saves ficam na pasta "saves", ao lado do boej.exe, um arquivo .sav por
-save (64 KB, o mesmo formato do save do cartucho). Na página "Saves" do
-launcher, clique no save que o jogo vai usar; a página mostra o nome do
-jogador, o capítulo, o nível do time, os membros, o tempo de jogo e os
-rostos dos jogadores do time de cada um. "Novo save" cria na lista um save
-em branco com o nome que você escrever: clique nele e comece um Novo Jogo;
-os outros saves não mudam. Para importar um save (dumpado do cartucho ou
-de outro emulador), coloque o .sav na pasta "saves" ou arraste-o para a
-janela do launcher (ele é copiado; o original não é mexido). Os arquivos
+save (64 KB, o mesmo formato do save do cartucho). Em "Jogar", o launcher
+oferece "Novo jogo" (pede um nome para o save novo; o jogo cria o arquivo
+quando você salvar, e os outros saves não mudam), "Carregar jogo" (os saves
+com jogo salvo, cada um com o nome do jogador, o capítulo, o nível do time,
+os membros, o tempo de jogo e os rostos do time: clique num deles para
+jogar) e "Importar save" (um save dumpado do cartucho ou de outro
+emulador; também dá para arrastar o .sav para a janela do launcher ou
+colocá-lo na pasta "saves"; ele é copiado e o original não é mexido). Os arquivos
 ficam sempre como <nome>-<número>.sav, com o nome em minúsculas e só
 letras e números: "Segunda Jogada" vira segundajogada-1.sav, e um save
 importado como Meu Save.sav vira meusave-1.sav (com o jogo aberto, isso
@@ -74,9 +74,10 @@ ARQUIVOS CRIADOS NESTA PASTA
                       não distribua)
 - cache\, toolchain\  código extraído do dump e o compilador
 - saves\             os saves (boej.sav no começo; o launcher dá a cada um o
-                      nome do jogador, e a página Saves escolhe qual o jogo usa)
+                      nome do jogador, e o que você escolhe em Jogar é o usado)
                       e as conquistas de cada um (.achievements.json)
 - savestates\         os savestates (slots 1 a 5)
+- screenshots\        as capturas de tela (F12), vistas na Galeria do launcher
 - boej.ini            configurações (também editáveis no launcher)
 - logs\               registros para relatar problemas: launcher.log,
                       historico.txt (todas as sessões de jogo), sessoes\ e
@@ -91,7 +92,13 @@ CONTROLES PADRÃO (mude no menu do jogo ou na aba Configurações do launcher)
   Toque       botão esquerdo do mouse na tela de baixo
   Esc         pausa e abre o menu (configurações valem na hora,
               reiniciar o jogo, sair)
-  F11 tela cheia, F12 captura de tela
+  P           pausa o jogo (sem menu); P de novo continua. P duas vezes
+              rápido congela a imagem como está, sem nada por cima; P duas
+              vezes rápido de novo continua. Esc com o jogo pausado abre o
+              menu, e ao fechá-lo o jogo continua pausado
+  F11 tela cheia, F12 captura de tela (um PNG na pasta "screenshots",
+      que aparece na Galeria do launcher; no layout 16:9, três: as telas do
+      DS, a tela de baixo ampliada (-ampliada) e o layout todo (-completa))
   F5 salva savestate, F9 carrega, F6/F7 trocam o slot (1 a 5); também
       no menu de pausa, em "Savestates". Só valem nesta versão do jogo:
       uma atualização recompila o jogo e os savestates antigos não abrem.
