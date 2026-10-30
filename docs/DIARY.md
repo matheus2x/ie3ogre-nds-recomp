@@ -3058,3 +3058,170 @@ idênticas à automática; OpenGL difere em 0,05% dos pixels. Captura do combo a
   continua `auto`.
 
 **Verificação:** compila sem avisos; pasta de teste do Windows atualizada (launcher, `sdk/`, `--prepare`).
+
+## 2026-10-29 — Scout, fichário e mapa de contatos em texto (mod 1.11)
+
+- Pedido: a próxima tarefa do mod de tradução. Pelo "Próximo" da 1.10: os textos que o CyberLife deixou em
+  inglês nos overlays, começando pelo scout e pelo mapa de contatos.
+- **Onde estão:** `ov108` é a ficha do jogador no fichário (menu → Dados → Fichário: carrega `SMBinder1/2`), com
+  tabelas de ponteiros para o método de recrutar (12 strings), o lugar (42, em várias tabelas: regiões do
+  Japão, áreas de Liocott, ilhas) e a cor da moeda da máquina (3). `ov051` é a busca do scout (tabelas: o menu,
+  os valores de 能力 com "なし" à frente, os rótulos das condições, as posições); `ov020`/`ov021`/`ov050` o
+  resultado; `ov046` as mensagens do mapa de contatos (em pares, como o CyberLife as deixou em largura cheia).
+- **`text.py`:** `LABEL_OVERLAYS` (`ov020`, `ov021`, `ov050`, `ov051`, `ov108`): telas de rótulos, todas as
+  strings em texto comum, menos as mensagens de `LABEL_MESSAGES` (o "必要ゆうじょうＰ" do resultado e o "Recrute
+  para ver os dados!" do fichário). `MENUS` ganhou as colunas: condições e valores da busca, métodos e lugares
+  do fichário.
+- **Traduções** (97 strings, do japonês; termos do diálogo): ひきぬき → Contratar, とくしゅ → Especial, 仲間不可 →
+  Bloqueado, 人脈システム → Contatos, ガチャシステム → Máquina (o diálogo diz "Quer usar a máquina?"), as ilhas como
+  no diálogo (Ilha Hidra, Ilha Lince, Ilha Condor, Ilha Pavão; "Tartaruga" sozinha: "Ilha Tartaruga" passa dos
+  11 bytes), エントランスエリア → Centro de Liocott, マグニード山 → Mt. Magnitude, 北海道 → Hocaido (7 bytes), 北/南東京
+  → Tóq. N/S, あか/あお/きいろ → Verm./Azul/Amarela (a cor da moeda), 頭がいい/足がはやい/体力じまん/手先がきよう →
+  Esperto/Rápido/Resistente/Habilidoso, ほかをさがす → Buscar outro ("Procurar outro" passava 1 px).
+- **No jogo** (savestate novo no campo; o original devolvido depois): a ficha do Iinoya mostra "Contatos",
+  "Tóq. N" e a mensagem em pares. Os valores usam uma fonte menor que a de 12 px, centralizados num campo de
+  ~88 px, então a conta do `check` (12 px por letra original) tem folga. As imagens do fichário são do CyberLife
+  em inglês (Recruit mode, Where ?, Box, Coin color, Player Binder, os grupos), e o botão da busca por nome diz
+  "By names ROM HANG !". Tudo no checklist.
+
+**Verificação:** `text.py check` (5.447 ok) e `apply` duas vezes (a segunda não muda nada); `mod.py check` ok;
+`image.py check` sem problemas; 50 testes ok; `survey`: 35,4 % / 48,4 % (o inglês já contava como traduzido).
+**Não testado no jogo:** a busca e o resultado do scout e o mapa de contatos (bloqueados no save do teste), os
+outros métodos e lugares da ficha.
+
+**Próximo:** as mensagens dos baús do `ov131` (com os registros de furigana `%1F`), o torneio (`ov022`, `ov098`)
+e os recordes (`ov031`), ou as imagens do fichário.
+
+## 2026-10-29 — Mensagens dos baús e das portas (mod 1.12)
+
+- Pedido: a próxima tarefa do mod de tradução. Pelo "Próximo" da 1.11: as mensagens do `ov131`.
+- **Como o jogo monta as mensagens** (`fn_ov131` em 0x02149F98–0x0214A930, lido no código recompilado): o baú
+  dá um item (`treasurebox.dat`: registros de 16 bytes com o id e a quantidade; 0x200 = pontos de amizade,
+  0x201 = pontos de garra). A mensagem é colada com `strcat` (`fn_main_02014ee8`): o nome do item; para o
+  caderno de técnica (tipo 0x0F) "の%3F秘伝書"; para as cartas (0x0E/0x11) "\nのフォーメーションカード" ou
+  "\nのバトルカード"; para os outros, "\n"; para os pontos, "%2F熱血ポイント" + número + "\n"; e no fim
+  "を%1F手に%1F入れた！". As leituras do furigana ("ひでんしょ", "て", "い"...) vão com `strcpy` para buffers à
+  parte, um por marcador. A perda de pontos é "ねっけつＰ　" + número + "ポイント" + "\n" + o mesmo da amizade +
+  "をうしなった！"; o fichário completo, "%2F選手バインダーコンプリート！\n" + item + "\n" + "を%1F手に%1F入れた！".
+  Tudo vira um script de evento montado na hora (`fn_main_02045064`, comandos 0x30xx) e aparece na caixa de
+  diálogo, como as falas do `evet`: texto comum, com quebra automática e 3 linhas.
+- **`text.py`:** `DIALOG_OVERLAYS = {131}`: as strings levam as regras do diálogo (`table = None`). A quebra é o
+  byte 0x0A, como no original, e não o `\n` de 2 bytes dos scripts; o `check` conta 1 byte por quebra nessas
+  strings, e o `apply` grava com `table_bytes`.
+- **Traduções** (17 strings e 7 leituras marcadas com `""`): sem os marcadores `%1F` (como no diálogo), as leituras
+  ficam sem uso. O fim "を手に入れた！" serve para item, caderno, carta e pontos, então tem de valer para todos:
+  "Você ganhou!" numa linha própria (as cartas ganharam um "\n" no fim, como os outros tipos). "Garra +"/"Amizade
+  +" antes do número; " (caderno)" depois do nome da técnica (os nomes no `item.dat` são só a técnica); "Carta de
+  formação" e "Carta batalha" (com o "de" passa dos 15 bytes; o diálogo já diz "batalha de cartas"). A perda:
+  "Garra: N pontos" / "Amizade: N pontos" / "Você perdeu!". Também "Você não tem a chave desta porta.", "O baú
+  estava vazio.", "Parece que uma porta se abriu." (igual à fala do diálogo), "<nome> vai sair do time." e
+  "Fichário de jogadores completo!". "Error", "Passing", "Downloaded Team" e "Cancel" (はいし) ficaram: não sei
+  onde aparecem.
+
+**Verificação:** `text.py check` (5.464 ok, 22 pulados de propósito) e `apply` duas vezes; bytes conferidos no
+`ov131` do mod (0x0A nas quebras); `mod.py check` ok; 50 testes ok; `survey`: 35,4 % / 48,4 %.
+**Não testado no jogo:** nenhuma das mensagens. Os baús ficam nos objetos dos mapas, e não achei um perto do save
+do teste.
+
+**Próximo:** achar um baú para conferir o `ov131` no jogo; depois o torneio (`ov022`, `ov098`) e os recordes
+(`ov031`), ou as imagens do fichário.
+
+## 2026-10-29 — Torneios, recordes e mensagens em pares (mod 1.13)
+
+- Pedido: a próxima tarefa do mod de tradução. Pelo "Próximo" da 1.12: o torneio (`ov022`, `ov098`) e os
+  recordes (`ov031`). Entraram junto as mensagens em pares parecidas que ainda estavam em inglês: `ov042`,
+  `ov062`, `ov065`, `ov068` e `ov083`.
+- **As copas:** o "カップ" do `ov022` não é um rótulo solto: o código faz `"%s%s"` com o nome do
+  `TournamentNameNN.dat` e "カップ" (e o "%sカップ" é um formato). O `ov072` (Passing) faz o mesmo, e era o
+  "カップ" sem tradução do checklist. O CyberLife deixou os nomes com um espaço no fim ("Raimon Town " + "Cup").
+  Em português o "Copa" vem antes, então ele foi para o nome: os 16 arquivos (3 registros de 0x14 bytes, nome
+  em +0x00, 19 bytes) entraram em `RECORDS`, com `RECORD_AFTER` somando à largura os 36 px do sufixo, e o
+  "カップ" virou um espaço (o "%sカップ" virou "%s"). Os 48 nomes seguem a regra das técnicas e corrigem o
+  CyberLife: Fire Tornado, Rose Splash, Maou, Tamashii, Omega (estava "Epsilon"), Death Zone 2, Ogre, FF Japão
+  e "Sobrenatural" para オカルト (o time 尾刈斗).
+- **Recordes:** `ov031` entrou em `LABEL_OVERLAYS`, com as caixas num grupo de `MENUS`. No original os rótulos
+  têm duas linhas ("ミニバトル" / "　対戦回数"; visto no jogo sem mod), mas em texto comum o jogo para no `\n`:
+  testei "Mini-\nbatalhas", também com o espaço de largura cheia na frente da segunda linha, e só "Mini-"
+  aparece. Ficaram numa linha só, como o CyberLife fez, e o rótulo comum do `text.py` voltou a ter 1 linha, agora
+  com a largura medida por linha do original (antes o `\n` contava como letra).
+- **Traduções** (60 strings dos overlays e 48 nomes): Rodada 1/2!, Rodada 1/2 OK!, Rumo à final!, "Que pena!
+  Eliminado!\nEsperamos você na próxima!", os prêmios Exp./Garra/Amizade/Nada (num grupo de `MENUS`), "Jogar
+  com a chave\natual/nova do torneio.", Tempo, Artilh., Mais jogos, Minibatalhas, Jogos nas rotas, Batalhas
+  ganhas, Recrutados, Amigos agora, Fichário, Uniformes, "Usar o time do\nmodo história?", Equipar já?,
+  "%s\n\nequipou %s" (sem o "!": não cabe em pares), "Não dá para levar mais.", Falta garra!, Já sabe essa
+  técnica, Salvar e sair?, Sair sem salvar?. O `ov070` ficou: "(By Kind)" em meia largura e "（ｎａｍｅ）" em
+  largura cheia no mesmo lugar não dizem qual é o desenhista.
+- **No jogo:** os recordes (menu → Sistema → Recordes) com todos os rótulos inteiros. "Records of play",
+  "Ranking" e "Finish" são imagens do CyberLife em inglês (checklist).
+
+**Verificação:** `text.py check` (5.563 ok) e `apply` duas vezes; os nomes das copas conferidos nos arquivos do
+mod (o byte em +0x13 de cada registro intacto); `mod.py check` ok; `image.py check` ok; 50 testes ok;
+`survey`: 35,4 % / 48,4 % (overlays: 459 → 456 caracteres em japonês, o "カップ" do `ov072`).
+**Não testado no jogo:** o torneio e as copas, a loja, o ensino de técnicas, o fim da partida e o `ov042`.
+
+**Próximo:** os nomes de status nos treinos (`ov045`, `ov064`, `ov096`, `ov109`, `ov110`), que precisam ser vistos
+no jogo, os tempos da partida (`ov001`), ou as imagens (fichário, recordes).
+
+## 2026-10-29 — Status nos treinos e tempos da partida (mod 1.14)
+
+- Pedido: a próxima tarefa do mod. Pelo "Próximo" da 1.13: os nomes de status nos treinos e os tempos da partida.
+- **Onde os nomes entram:** `ov064` faz `sprintf` de "%sは%sが%s上がった！" com o jogador, o status e o valor, e a
+  mensagem vai em pares (o CyberLife a escreveu em largura cheia, com os status em meia largura, que somem). O
+  `ov096` (`fn_ov096_02125110`) copia da tabela em 0x10f8 um nome de status, ou "[経験値/けいけんち]が" nos treinos
+  de experiência, e cola "がアップした！", "ふえたぞ！" ou "たくさんふえたぞ！"; o furigana no "経験値" mostra que é o
+  leitor de furigana. O `ov109` tem duas tabelas: a segunda (com "キック力") vai para "チームの%sがアップ" (a janela
+  das descrições, em pares); a primeira passa por `fn_ov109_0212586c` e não descobri onde aparece (a tela de
+  status do jogador, Amigos → X, mostra os status como imagens do CyberLife: Chute, Corpo, Controle...).
+- **Vagas:** os ponteiros desses nomes ficam em literal pools (dentro do código), então as strings não mudam de
+  lugar: 7 bytes para キック/ボディ/ガード/ガッツ, 3 letras em pares. Ficaram siglas iguais em todo lugar: CHU, FIS
+  (a fonte não tem "Í" maiúsculo), CON, DEF, VEL, RES, COR.
+- **Traduções** (30 strings): "%s: %s +%s!" e "%s: %s +%s!\n%s: %s no máximo!" (`ov064`); "<sigla> subiu!",
+  "Exp. subiu!" e "Exp. subiu muito!" (`ov096`); "Time: %s +" (`ov109`); 1T, 2T, 1P, 2P para 前半/後半/延前/延後
+  (`ov001`, tabela em 0x2c4a4, rótulos comuns em `PLAIN_LABELS`; o CyberLife tinha HT1/HT2/ET1/ET2).
+- Sobram 46 strings em inglês nos overlays, todas de desenhista ou contexto desconhecido (lista no checklist).
+
+**Verificação:** `text.py check` (5.597 ok) e `apply` duas vezes; `mod.py check` ok; 50 testes ok; `survey`: 35,4 %
+/ 48,4 % (o inglês já contava como traduzido).
+**Não testado no jogo:** nada desta etapa (precisa de um treino e de uma partida).
+
+**Próximo:** sem um jeito de chegar a treinos e partidas no teste, as strings que sobraram nos overlays dependem do
+jogo. Dá para seguir pelas imagens (fichário, recordes, loja, menu de técnicas) ou começar a fase 3 (subeventos
+3300, que têm ~960 falas em inglês).
+
+## 2026-10-29 — Abertura: a letra da música em português (mod 1.15)
+
+- Pedido: começar a traduzir a abertura inicial do jogo.
+- **O que é:** o vídeo da abertura (`movie/op00f.mods`) mostra a letra da música com as legendas de
+  `movie/txt/op00f.dat`: 22 linhas com furigana. O CyberLife só tinha mexido na primeira (um "hi!hi!hi! o." de
+  teste). Como a `FONT12` dele não tem kanji, a abertura com o mod mostrava os kanji como "?".
+- **Formato:** registros `[u32 quadro inicial][u32 final][u32 tamanho][texto, NUL, zeros até múltiplo de 4]`, até
+  um quadro inicial 0xFFFFFFFF. O `func_ov016_020f2868` abre `/data_iz/movie/txt/%s.dat`, lê o arquivo inteiro e
+  anda de registro em registro pelo tamanho, então uma legenda pode crescer. O texto passa pelo leitor de furigana
+  da galeria (`func_ov016_020f24e8`).
+- **`text.py`:** as legendas viraram mais uma tabela (`movie`, lugar `op00f.dat:registro`, grupo `movie` no
+  `extract`); o `apply` refaz o arquivo com `subtitle_file` (`tools/ntr/text.py`). Tradução em
+  `translations/CyberLifePlus/movie.json`.
+- **O espaçador desloca as legendas:** gravadas em pares como a galeria (cada letra com o 0xDF), as linhas saíram
+  deslocadas para a direita, e as longas cortadas ("…não mudo jama"). Medindo no quadro: o desenho põe 1 px
+  depois de cada letra, também depois do 0xDF, mas a centralização não conta esse pixel (o meio de "Ha! Ha! Ha!
+  Ha!" caía em x = 136, o de uma linha de 30 letras em 142; o japonês sem o mod fica em 128). A forma nova
+  `subtitled` faz como o CyberLife: letras em largura cheia (proporcionais na fonte dele, com larguras quase iguais
+  às ASCII), o espaço como o 0xCF em par com a letra seguinte em meia largura, o acento em par com a letra
+  seguinte. Sem espaçador, as linhas ficam centradas (meio em x = 127,5–128). O `check` mede o que é desenhado
+  (até 248 px) e recusa caracteres que a fonte não tem (as aspas não têm forma de largura cheia).
+- **Tradução:** a letra adaptada para caber numa linha, sem rima: "Ha! Ha! Ha! Ha!" para o "ha ha ha 波ッ", "Com
+  garra, vira furacão!!! Ha!", "A meta que eu escolhi, não mudo jamais", "Com os amigos, a força dobra, dobra,
+  dobra", "Mas digo: Agora vai! Da próxima vai! Tudo bem!" (sem as aspas do 『』), "Garra!" para 気合い, "Homem tem
+  fibra! Vamos com garra!", "Um relâmpago dramático e estiloso!"…
+- Sobram 9 legendas em japonês em outras cenas (checklist).
+
+**Verificação:** a abertura no jogo sem janela (save do teste, START no 400, sem pular o vídeo): as 22 legendas
+aparecem inteiras, centradas e com os acentos; a mais larga ("Mas digo…", 238 px) cabe. `text.py check` (5.619 ok)
+e `apply` duas vezes; `mod.py check` ok; 51 testes ok (um novo para `subtitled`/`subtitle_file`). O `survey` não
+muda: as legendas continuam fora da conta.
+
+**Próximo:** as 9 legendas que sobraram nas outras cenas e o aviso de ficção de um jogo novo.
+
+**Pasta de teste do Windows** (`C:\Games\ie3-teste\ie3ogre-recomp`): o `mods\mod-CyberLifePlus-1.10.zip` deu lugar
+ao `mod-CyberLifePlus-1.15.zip` (`tools/mod.py pack`), e o `enabled` do `boej.ini` passou a apontar para ele. O
+programa continua o da 0.1.22; só os dados do mod mudaram.

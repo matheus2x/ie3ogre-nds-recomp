@@ -13,7 +13,8 @@ from ntr.text import (BOX_ROWS, Font, JAPANESE, PAIRED, TextError, WIDE, decode,
                       problems, read_pack, SPACER,
                       DEBUG_PRINT, objective_cost, objective_fit, objective_layout, scramble, ssd_opcodes,
                       ssd_refs,
-                      str_strings, table_bytes, unscramble, wide, write_pack)
+                      str_strings, SUBTITLED, subtitle_file, subtitle_records, subtitled, table_bytes,
+                      unscramble, wide, write_pack)
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -128,6 +129,21 @@ class TableTest(unittest.TestCase):
         font = FixedFont()
         self.assertEqual(problems(b"x", "abc", 6, font, (1, 18, PAIRED)), [])
         self.assertEqual(len(problems(b"x", "abcd", 6, font, (1, 18, PAIRED))), 2)
+
+    def test_subtitles(self):
+        # no SPACER: letters full-width, a space (0xCF) and an accent take the next letter as their pair
+        self.assertEqual(subtitled("Ha a"), wide("Ha").encode("cp932") + b"\xcfa")
+        self.assertEqual(subtitled("ão!"), encode("ão") + wide("!").encode("cp932"))
+        self.assertEqual(subtitled("é"), encode("é" + SPACER))
+        self.assertEqual(table_bytes("a", SUBTITLED), wide("a").encode("cp932"))
+        with self.assertRaises(TextError):
+            subtitled("a\nb")  # one row
+        # records [first frame][last frame][size][text, NUL, padding to 4], then 0xFFFFFFFF
+        rec = lambda a, b, t: struct.pack("<III", a, b, len(t)) + t  # noqa: E731
+        d = rec(1, 2, b"ab\0\0") + rec(3, 4, b"cdefg\0\0\0") + b"\xff" * 4
+        self.assertEqual([(at, size) for at, size, _ in subtitle_records(d)], [(0, 16), (16, 20)])
+        new = subtitle_file(d, {0: b"xyzw"})
+        self.assertEqual(new, rec(1, 2, b"xyzw\0\0\0\0") + d[16:])
 
     def test_command_name_moves_when_it_does_not_fit(self):
         dat = bytearray(0x24 * 2)

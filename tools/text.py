@@ -31,15 +31,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import mod as modtool  # noqa: E402
 from ntr import bps, lz10  # noqa: E402
 from ntr.text import (COMMAND_DESC, COMMAND_NAME, COMMAND_SIZE, FURIGANA, ITEM_NAME, ITEM_SIZE, JAPANESE,  # noqa: E402
-                      MOVIE_SIZE, MOVIE_TITLE, MOVIE_WIDTH, PAIRED, SPACER, WIDE,
+                      MOVIE_SIZE, MOVIE_TITLE, MOVIE_WIDTH, PAIRED, SPACER, SUBTITLED, WIDE,
                       OBJECTIVE_PARTS, STR_READ, STR_STEP, fit_font, objective_fit, ssd_objectives, Font, TextError, codes, decode, encode, japanese_count, lines, problems, read_pack, scramble, ssd_records,
-                      ssd_refs, ssd_string, str_strings, table_bytes, unscramble, write_pack,
+                      ssd_refs, ssd_string, str_strings, subtitle_file, subtitle_records, table_bytes,
+                      unscramble, write_pack,
                       DEBUG_PRINT, ssd_opcodes)
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = "data_iz/script"
 LOGIC = "data_iz/logic"
 FONT = "data_iz/font/FONT12.NFTR"
+MOVIE_TXT = "data_iz/movie/txt"  # subtitles of the movies (place: "op00f.dat:record")
 SCRIPTS = ("eve", "mch")  # event and match scripts (SSD, LZ10)
 PACKS = ("evet", "mcht") + SCRIPTS  # text lists, then the scripts
 # Tables of fixed records whose strings stay in their field (place: "file:byte offset"); most are
@@ -53,18 +55,28 @@ RECORDS = {**{f"PracticeGame{n}F.dat": (0x4A, ((0x0C, 22), (0x26, 22)), None) fo
            "gamerule.dat": (0x120, ((0x20, 64),), PAIRED),
            # what wins and what opens a route of matches (ov104, the furigana parser)
            "ClearCondition.dat": (0x51, ((0x01, 0x50),), PAIRED),
-           "OpenCondition.dat": (0x51, ((0x01, 0x50),), PAIRED)}
+           "OpenCondition.dat": (0x51, ((0x01, 0x50),), PAIRED),
+           # the cups: ov022 writes the name, then the word "cup" (three letters of 12 pixels)
+           **{f"TournamentName{n:02d}.dat": (0x14, ((0x00, 19),), None) for n in range(1, 17)}}
+# pixels the game draws after the field of a record table (the translation puts "Copa" first)
+RECORD_AFTER = {f"TournamentName{n:02d}.dat": 36 for n in range(1, 17)}
 # item.dat brings item.STR (names, then descriptions), command.dat the descriptions of command.STR;
-# "ov" is the strings of the overlays
-TABLES = ("item.dat", "tacticscmd.STR", "games.STR", "rpgtitle.STR", "command.dat", "sp_binder.dat", "movie_view_f.dat", "ov") + tuple(RECORDS)
+# "ov" is the strings of the overlays, "movie" the subtitles
+TABLES = ("item.dat", "tacticscmd.STR", "games.STR", "rpgtitle.STR", "command.dat", "sp_binder.dat", "movie_view_f.dat", "ov",
+          "movie") + tuple(RECORDS)
+SUBTITLE = re.compile(r"(?:op|a3[my])\d\d[a-z]\.dat")
 ID = re.compile(r"(evet|mcht|eve|mch):(\d+):(\d+)"
                 r"|(item\.dat|item\.STR|tacticscmd\.STR|games\.STR|rpgtitle\.STR|command\.dat|command\.STR|sp_binder\.dat|movie_view_f\.dat|"
-                + "|".join(map(re.escape, RECORDS)) + r"):(\d+)"
+                + "|".join(map(re.escape, RECORDS)) + "|" + SUBTITLE.pattern + r"):(\d+)"
                 r"|(ov\d{3}):(0x[0-9a-f]+)")
 ITEM_DESC = 0x2A  # item.dat (unscrambled): the index of the description in item.STR
 TACTIC_SIZE, TACTIC_DESC = 0x14, 0x0E  # tacticscmd.dat: the index of the description in tacticscmd.STR
 BINDER_SIZE, BINDER_TEXT, BINDER_READ = 12, 10, 0x100  # sp_binder.dat: u16 count, records; the copy in ov112
 COMMAND_WIDTH = 124  # px of the widest technique name of the fan translation ("Honoo no Kazamidori")
+# A subtitle is one centred row under the movie, drawn with the furigana parser (func_ov016_020f24e8,
+# loaded by func_ov016_020f2868) and a pixel after each letter; the game reads the whole file, so a
+# text takes the bytes it needs. Written as the fan translation did (subtitled), without SPACER.
+SUBTITLE_WIDTH, SUBTITLE_READ = 248, 0xF8
 # Overlay strings written as plain text: button labels whose neighbours the fan translation wrote
 # so ("Defend", "Look for other"); the messages go through the furigana parser and are PAIRED.
 PLAIN_LABELS = {"ov050:0x46c4", "ov050:0x46cc", "ov050:0x46d4", "ov050:0x46dc", "ov050:0x46e8",
@@ -72,15 +84,44 @@ PLAIN_LABELS = {"ov050:0x46c4", "ov050:0x46cc", "ov050:0x46d4", "ov050:0x46dc", 
                 "ov057:0xa504", "ov057:0xa510", "ov057:0xa51c", "ov057:0xa570", "ov057:0xa5b0", "ov057:0xa870",
                 "ov057:0xa884", "ov057:0xa898", "ov057:0xa8ac", "ov056:0x70f8",
                 "ov059:0x51fc", "ov059:0x5204", "ov059:0x5210", "ov059:0x5218",
-                "ov063:0xa5b0", "ov063:0xa5b8", "ov063:0xa5c4", "ov063:0xa8c0", "ov063:0xaa90"}
+                "ov063:0xa5b0", "ov063:0xa5b8", "ov063:0xa5c4", "ov063:0xa8c0", "ov063:0xaa90",
+                "ov022:0x8748", "ov022:0x8754", "ov022:0x88ac", "ov022:0x8e48", "ov022:0x8f08", "ov022:0x8f78",
+                "ov022:0x8fac", "ov072:0x9734", "ov001:0x2c4b4", "ov001:0x2c4bc", "ov001:0x2c4c4", "ov001:0x2c4cc"}
 # Overlays whose strings are all menus, written as plain text, where a pointer can give a whole list
 # (the field menu of ov000)
 MENU_OVERLAYS = {0}
+# Overlays of labels, written as plain text, but for the messages listed: the scout (ov020, ov021,
+# ov050, ov051), the records (ov031) and the player card of the binder (ov108)
+LABEL_OVERLAYS = {20, 21, 31, 50, 51, 108}
+LABEL_MESSAGES = {"ov020:0x4bd8", "ov050:0x4a8c", "ov108:0x2848"}
+# Overlays whose messages are lines of an event script built on the fly, shown in the dialog box
+# (plain text, wrapped, with the furigana readings as separate strings): the treasure boxes and
+# doors of ov131
+DIALOG_OVERLAYS = {131}
 # Labels of one menu window, which fit the widest original label of the menu, not their own: the
-# Y menu and the sorting list of the team screen (ov044)
+# Y menu and the sorting list of the team screen (ov044) and the columns of other screens
 MENUS = [{"ov044:0x83d8", "ov044:0x83e0", "ov044:0x83e8", "ov044:0x83f0", "ov044:0x83f8", "ov044:0x8400",
           "ov044:0x8408", "ov044:0x8410", "ov044:0x841c", "ov044:0x8428", "ov044:0x8434", "ov044:0x8440",
-          "ov044:0x844c", "ov044:0x8458", "ov044:0x84c4", "ov044:0x85a4", "ov044:0x8624"}]
+          "ov044:0x844c", "ov044:0x8458", "ov044:0x84c4", "ov044:0x85a4", "ov044:0x8624"},
+         # the boxes of the records (ov031)
+         {"ov031:0x20a0", "ov031:0x20bc", "ov031:0x20dc", "ov031:0x2104", "ov031:0x2124", "ov031:0x2144",
+          "ov031:0x2164", "ov031:0x2184", "ov031:0x21a0", "ov031:0x21c4"},
+         # the rewards of a cup (ov022)
+         {"ov022:0x8748", "ov022:0x8754", "ov022:0x88ac", "ov022:0x8f78"},
+         # the scout's search: the conditions and their values (ov051)
+         {"ov051:0x432c", "ov051:0x445c", "ov051:0x431c", "ov051:0x4324"},
+         {"ov051:0x4304", "ov051:0x430c", "ov051:0x4314", "ov051:0x43f0", "ov051:0x4474", "ov051:0x4480",
+          "ov051:0x449c", "ov051:0x44ac", "ov051:0x44bc", "ov051:0x44cc", "ov051:0x4468"},
+         # the player card of the binder: how to recruit, and where (ov108)
+         {"ov108:0x24c8", "ov108:0x24e8", "ov108:0x22d8", "ov108:0x25bc", "ov108:0x23f8", "ov108:0x2284",
+          "ov108:0x2308", "ov108:0x2508", "ov108:0x2428", "ov108:0x226c", "ov108:0x2278", "ov108:0x2544"},
+         {"ov108:0x21d4", "ov108:0x21dc", "ov108:0x21e4", "ov108:0x21ec", "ov108:0x21f4", "ov108:0x21fc",
+          "ov108:0x2204", "ov108:0x221c", "ov108:0x2234", "ov108:0x223c", "ov108:0x2244", "ov108:0x224c",
+          "ov108:0x2254", "ov108:0x225c", "ov108:0x2264", "ov108:0x2290", "ov108:0x229c", "ov108:0x22a8",
+          "ov108:0x22b4", "ov108:0x22c0", "ov108:0x22cc", "ov108:0x22e4", "ov108:0x2318", "ov108:0x2328",
+          "ov108:0x2438", "ov108:0x2448", "ov108:0x2458", "ov108:0x2468", "ov108:0x2478", "ov108:0x2488",
+          "ov108:0x2498", "ov108:0x24a8", "ov108:0x24b8", "ov108:0x24d8", "ov108:0x24f8", "ov108:0x251c",
+          "ov108:0x2530", "ov108:0x2558", "ov108:0x256c", "ov108:0x2580", "ov108:0x2594", "ov108:0x25a8"}]
 
 
 class Game:
@@ -258,6 +299,7 @@ def table_slots(game: Game, name: str):
         kind = [game.retail(f"{LOGIC}/{n}") for n, spec in RECORDS.items() if spec == RECORDS[name]]
         rules = table_rules(font, [text_at(d, at) for d in kind for f, _ in fields
                                    for at in range(f, len(d), size) if japanese_count(text_at(d, at))])
+        rules = (rules[0], rules[1] + RECORD_AFTER.get(name, 0))
         rules += (form, 1) if form else ()
         for field, room in fields:
             # the original's Shift-JIS strings (a name of full-width letters too), not the "0" of an empty field
@@ -288,6 +330,23 @@ def table_slots(game: Game, name: str):
                        text_at(sc, struct.unpack_from("<H", dc, 2 + k * BINDER_SIZE + BINDER_TEXT)[0]),
                        [visible(unscramble(items[item * ITEM_SIZE:(item + 1) * ITEM_SIZE])[:ITEM_NAME].split(b"\0")[0])],
                        rules)
+        return
+    if name == "movie":
+        for path, _ in game.rom.files():
+            if not path.startswith(MOVIE_TXT + "/"):
+                continue
+            file = path.rsplit("/", 1)[1]
+            dr, dc = game.retail(path), game.modded(path)
+            recs, cur = subtitle_records(dr), subtitle_records(dc)
+            if len(recs) != len(cur):
+                sys.exit(f"error: {path}: the mod has {len(cur)} subtitles, the game {len(recs)}")
+            context: list[str] = []
+            for k, ((_, _, at), (_, _, mat)) in enumerate(zip(recs, cur)):
+                s = Slot(f"{file}:{k}", SUBTITLE_READ - 1, text_at(dr, at), text_at(dc, mat), context[-2:],
+                         (1, SUBTITLE_WIDTH, SUBTITLED))
+                s.group = "movie"
+                yield s
+                context = context + [visible(text_at(dc, mat))]
         return
     if name == "movie_view_f.dat":
         dr, dc = game.retail(f"{LOGIC}/{name}"), game.modded(f"{LOGIC}/{name}")
@@ -377,7 +436,7 @@ def overlay_slots(game: Game, font: Font):
             [(m, room) for ms, room in lists.values() for m in ms]
         sids = {at: f"ov{oid:03d}:{at:#x}" for at, _ in places}
         plain = {sid for sid in sids.values() if sid in PLAIN_LABELS or oid in MENU_OVERLAYS or
-                 any(sid in menu for menu in MENUS)}
+                 (oid in LABEL_OVERLAYS and sid not in LABEL_MESSAGES) or any(sid in menu for menu in MENUS)}
         messages = [text_at(retail, at) for at, _ in places if sids[at] not in plain]
         rules = (table_rules(font, messages) if messages else (1, 0)) + (PAIRED, 1)
         for at, room in sorted(places):
@@ -385,8 +444,10 @@ def overlay_slots(game: Game, font: Font):
             # a label's button was made for Japanese letters of 12 pixels
             menu = next((m for m in MENUS if sids[at] in m), None) or \
                 ({f"ov{oid:03d}:{m:#x}" for m in lists[member[at][0]][0]} if at in member else {sids[at]})
-            width = 12 * max(len(visible(text_at(retail, int(sid.split(":")[1], 0)))) for sid in menu)
-            table = (1, width) if sids[at] in plain else rules
+            labels = [visible(text_at(retail, int(sid.split(":")[1], 0))).split("\\n") for sid in menu]
+            width = 12 * max(len(row) for rows in labels for row in rows)
+            # one row: the plain drawer stops at a newline (the records of ov031 have two in Japanese)
+            table = None if oid in DIALOG_OVERLAYS else (1, width) if sids[at] in plain else rules
             now = list_bytes(cur, member[at][0], member[at][1] + 1)[-1] if at in member else text_at(cur, at)
             slot = Slot(sids[at], room - 1, source, now, [], table)
             if at in member:
@@ -684,7 +745,8 @@ def cmd_lookup(args) -> int:
 def checked(game: Game, folder: Path) -> tuple[dict[str, Slot], dict[str, str], int]:
     tr = load_translations(folder)
     wanted = {"item.dat" if sid.startswith("item.") else "command.dat" if sid.startswith("command.")
-              else "ov" if sid.startswith("ov") else sid.split(":")[0] for sid in tr}
+              else "ov" if sid.startswith("ov") else "movie" if SUBTITLE.fullmatch(sid.split(":")[0])
+              else sid.split(":")[0] for sid in tr}
     by_id = {s.id: s for s in slots(game, [n for n in PACKS + TABLES if n in wanted])}
     font = game.font()
     bad = 0
@@ -696,7 +758,9 @@ def checked(game: Game, folder: Path) -> tuple[dict[str, Slot], dict[str, str], 
         elif text and s.objective and objective_fit(text, font) is None:
             print(f"!! {sid}: wider than the {OBJECTIVE_PARTS} sprites of the objective\n   {text}")
             bad += 1
-        elif text and (p := problems(s.source, placed(s, text, font), s.capacity, font, s.table)):
+        # a dialog line of an overlay has real newlines (one byte), not the \\n of the scripts
+        elif text and (p := problems(s.source, placed(s, text, font), s.capacity + (
+                text.count("\\n") if s.file.startswith("ov") and not s.table else 0), font, s.table)):
             print(f"!! {sid}: {'; '.join(p)}\n   {text[:100]}")
             bad += 1
     for (file, head), (data, room) in overlay_list_bytes(game, by_id, tr).items():
@@ -842,6 +906,7 @@ def cmd_apply(args) -> int:
     tables: dict[str, bytearray] = {}
     overlays: dict[int, bytearray] = {}
     binder: dict[int, bytes] = {}  # record of sp_binder.dat -> its new string
+    subtitles: dict[str, dict[int, bytes]] = collections.defaultdict(dict)  # movie/txt file -> record -> text
     for sid, text in tr.items():
         if not text:
             continue
@@ -852,8 +917,11 @@ def cmd_apply(args) -> int:
         if s.file.startswith("ov"):
             oid = int(s.file[2:])
             d = overlays.setdefault(oid, bytearray(game.overlay(oid, True)))
-            data = table_bytes(text, s.table[2] if len(s.table) > 2 else None) + b"\0"
+            data = table_bytes(text, s.table[2] if s.table and len(s.table) > 2 else None) + b"\0"
             d[s.offset:s.offset + room] = data + bytes(room - len(data))
+            continue
+        if s.group == "movie":
+            subtitles[f"{MOVIE_TXT}/{s.file}"][s.offset] = table_bytes(text, SUBTITLED)
             continue
         if s.table:
             rel = f"{LOGIC}/{s.file}"
@@ -887,6 +955,8 @@ def cmd_apply(args) -> int:
         tables[FONT] = bytearray(fit_font(game.modded(FONT)))  # the SPACER without ink
     if binder:
         put_binder(tables, game, binder)
+    for rel, texts in subtitles.items():
+        tables[rel] = bytearray(subtitle_file(game.modded(rel), texts))
     for rel, data in tables.items():
         if write_file(args.dir, game, rel, bytes(data)):
             print(f"{rel}: changed")

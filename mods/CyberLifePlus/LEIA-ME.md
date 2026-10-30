@@ -31,6 +31,20 @@ dá exatamente os arquivos do dump traduzido.
 
 ## Versões
 
+- **1.15:** a abertura: a letra da música do vídeo inicial em português (antes em japonês, com os kanji
+  aparecendo como "?").
+- **1.14:** as mensagens dos treinos com os status, que estavam em inglês e sumiam (em siglas: CHU, FIS, CON,
+  DEF, VEL, RES, COR, porque o espaço só dá 3 letras), "Exp. subiu!" e os tempos da partida (1T, 2T, 1P, 2P).
+- **1.13:** os torneios (rodadas, janelas de sair e salvar, eliminação, prêmios) e os nomes das copas, agora
+  "Copa Raimon Town", "Copa Fire Tornado"...; os recordes (menu → Sistema → Recordes); e as mensagens que
+  estavam em inglês na formação, na loja de equipamento, no ensino de técnicas e no fim da partida.
+- **1.12:** as mensagens dos baús e das portas, que estavam em inglês ou pela metade: o que o baú dá
+  ("Você ganhou!"), baú vazio, porta trancada, "Parece que uma porta se abriu.", a perda de pontos de garra e
+  de amizade e o prêmio do fichário completo.
+- **1.11:** o scout, o fichário e o mapa de contatos, que estavam em inglês: a ficha do jogador no fichário
+  (como se recruta, onde e a cor da moeda da máquina; "Recrute para ver os dados!"), a busca do scout (Por
+  condição, Por nome, posições e atributos), o resultado (Contratar, Buscar outro, Mesma/Mudar condição) e as
+  mensagens do mapa de contatos (Recrutável, Já está no time, Liberado!...).
 - **1.10:** os menus em texto que estavam em inglês: o menu de campo (Mochila, Formação com História,
   Batalha e Rede 1–3, Dados com Fichário, Celular, Uniformes e Resultados, Sistema com Recordes, Ajuda e
   Opções), o cartão da tela de cima (Nível do time, Amigos, Garra, Amizade), o menu Y dos Amigos (Ordenar,

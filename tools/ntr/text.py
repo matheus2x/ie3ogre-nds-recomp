@@ -164,7 +164,7 @@ def wide(text: str) -> str:
     return "".join(chr(ord(c) + 0xFEE0) if "!" <= c <= "~" else "\u3000" if c == " " else c for c in text)
 
 
-WIDE, PAIRED = "wide", "paired"  # how a table writes Latin text (table_bytes)
+WIDE, PAIRED, SUBTITLED = "wide", "paired", "subtitled"  # how a table writes Latin text (table_bytes)
 
 
 def paired(data: bytes) -> bytes:
@@ -195,11 +195,41 @@ def paired(data: bytes) -> bytes:
     return bytes(out)
 
 
+def subtitled(text: str) -> bytes:
+    """A subtitle (movie/txt) for the furigana parser, without SPACER: the subtitles put a pixel
+    after every letter, SPACER too, but centre the row without those pixels (seen in the game), so
+    SPACER pushes a row to the right. As the fan translation did: a space is FAN_SPACE and takes
+    the next letter, half-width, as its pair; an accent takes the next one-byte character; any other
+    letter goes full-width (two bytes)."""
+    out = bytearray()
+    cs = [FAN_SPACE if c == 0x20 else c for c in codes(encode(text))]
+    i = 0
+    while i < len(cs):
+        c = cs[i]
+        i += 1
+        if c > 0xFF:
+            out += bytes((c >> 8, c & 0xFF))
+        elif c >= 0x80:  # a space or an accent: the next one-byte character is its pair
+            if i < len(cs) and cs[i] <= 0xFF:
+                out += bytes((c, cs[i]))
+                i += 1
+            else:
+                out += bytes((c, ACCENTS[SPACER]))
+        else:
+            w = encode(wide(chr(c)))
+            if len(w) != 2:
+                raise TextError(f"{chr(c)!r} has no full-width form")
+            out += w
+    return bytes(out)
+
+
 def table_bytes(text: str, form: str | None = None) -> bytes:
     """A table string: \\n of the translation is a real newline there."""
     text = text.replace("\\n", "\n")
     if form == WIDE:
         return encode(wide(text))
+    if form == SUBTITLED:
+        return subtitled(text)
     return paired(encode(text)) if form == PAIRED else encode(text)
 
 
@@ -385,6 +415,35 @@ def text_records(d: bytes) -> list[tuple[int, int]]:
     return out
 
 
+def subtitle_records(d: bytes) -> list[tuple[int, int, int]]:
+    """Subtitles of a movie (movie/txt/*.dat): records [u32 first frame][u32 last frame][u32 size]
+    [text, NUL, padding to 4], until a first frame of 0xFFFFFFFF. (offset, size, offset of the text)."""
+    out = []
+    i = 0
+    while i + 12 <= len(d) and struct.unpack_from("<I", d, i)[0] != 0xFFFFFFFF:
+        size = struct.unpack_from("<I", d, i + 8)[0]
+        if size % 4 or i + 12 + size > len(d):
+            raise TextError(f"subtitle record at {i:#x} runs past the file")
+        out.append((i, 12 + size, i + 12))
+        i += 12 + size
+    return out
+
+
+def subtitle_file(d: bytes, texts: dict[int, bytes]) -> bytes:
+    """The subtitles with new texts (record -> bytes without the NUL); the frames and the end stay."""
+    recs = subtitle_records(d)
+    out = bytearray()
+    for k, (at, size, text) in enumerate(recs):
+        if k not in texts:
+            out += d[at:at + size]
+            continue
+        body = texts[k] + b"\0"
+        body += bytes(-len(body) % 4)
+        out += d[at:at + 8] + struct.pack("<I", len(body)) + body
+    end = recs[-1][0] + recs[-1][1] if recs else 0
+    return bytes(out + d[end:])
+
+
 def lines(d: bytes) -> list[tuple[int, int, bytes]]:
     """Lines of a text list: (offset of the text, end of its span, text with markers)."""
     recs = text_records(d)
@@ -479,7 +538,13 @@ def problems(source: bytes, text: str, capacity: int, font: Font, table: tuple |
         for r in rows:
             form = table[2] if len(table) > 2 else None
             gap = table[3] if len(table) > 3 else 0 if form == PAIRED else 1
-            px = font.measure(wide(r) if form == WIDE else r, gap)
+            if form == SUBTITLED:  # what is drawn: full-width letters, FAN_SPACE
+                drawn = list(codes(subtitled(r)))
+                px = sum(font.advance(c) - 1 + gap for c in drawn)
+                if missing := {decode(c.to_bytes(2 if c > 0xFF else 1, "big")) for c in drawn if c not in font.glyph}:
+                    out.append(f"not in the font: {' '.join(sorted(missing))}")
+            else:
+                px = font.measure(wide(r) if form == WIDE else r, gap)
             if px > table[1]:
                 out.append(f"row of {px} px (the table's widest is {table[1]}): {r[:40]}")
     for page in text.split("\\f") if not table else ():

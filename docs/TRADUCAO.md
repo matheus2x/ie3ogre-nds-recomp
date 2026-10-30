@@ -69,7 +69,7 @@ O diálogo fica em `script/evet.pkb`. A chave de cada entrada é o número do ev
 | Nomes de locais (talvez só internos, ver a fase 5) | `logic/fieldinf.dat` | 984 | 0 % |
 | Blog | `script/blogpost.dat`, `blogres.dat` | 3.010 | 13 % |
 | Outras tabelas (golpes, torneios, condições…) | `logic/*` | 4 (uma senha) | 96 % → 100 % (v1.5) |
-| Menus no código | overlays | 459 (senhas, nomes internos e sobras) | 28 % → 95 % (v1.4) |
+| Menus no código | overlays | 456 (senhas, nomes internos e sobras) | 28 % → 95 % (v1.4) |
 | Rótulos de quem fala nas partidas | `mch.pkb` | 0 | 0 % → 100 % (v1.4) |
 
 Fora da conta do `survey`: as leituras em kana dos nomes (`unitbase*.dat`, ~2.240 nomes ainda em kana; falta
@@ -79,9 +79,9 @@ Nos overlays ficaram de propósito as senhas e nomes internos (ver o checklist) 
 cabem na forma em pares. O ARM9 não pode ser mudado por um mod hoje (`from-dump`/`check` exigem o ARM9 igual ao
 retail).
 
-Fora da conta: as legendas dos vídeos (`movie/txt`), que o levantamento não lê. A abertura ainda mostra legendas
-em japonês ("確かに大事なところでの大失敗は辛い！"), e o aviso de ficção de um jogo novo ("この作品はフィクションです…")
-também está em japonês.
+Fora da conta: as legendas dos vídeos (`movie/txt`), que o levantamento não lê. A letra da música da abertura está
+traduzida desde a v1.15; sobram 9 legendas de outras cenas que o CyberLife deixou em japonês
+(`extract --only movie`). O aviso de ficção de um jogo novo ("この作品はフィクションです…") também está em japonês.
 
 ## Checklist
 
@@ -114,8 +114,9 @@ etapa ficam no `docs/DIARY.md`.
   (DS sem fio, Wi-Fi Connection, troca, Passing, ligação com o Inazuma Eleven 2 e o Spark/Bomber), além dos
   avisos da formação (`ov057`), do quiz do `ov023` e das janelas de scout e itens premium.
 - [ ] Rótulos curtos dos overlays sem tradução, porque em pares não cabem e não se sabe o desenhista: "そうび"
-  (`ov053`), "かう"/"うる" (`ov062`), "カップ" (`ov072`), "ファイター" (`ov082`, contexto desconhecido). Ver no jogo
-  se usam o leitor de furigana; se não usarem, entram em `PLAIN_LABELS`.
+  (`ov053`), "かう"/"うる" (`ov062`), "ファイター" (`ov082`, contexto desconhecido). Ver no jogo se usam o leitor
+  de furigana; se não usarem, entram em `PLAIN_LABELS`. O "カップ" do `ov072` saiu da lista na v1.13: é o
+  "Copa" que vem depois do nome do torneio (ver os torneios abaixo).
 - [ ] Nomes de jogador em meia largura ("Kanon") somem nas mensagens com `%s` que passam pelo leitor de furigana
   (ele descarta o ASCII depois do `sprintf`). Vale também para as mensagens do CyberLife. Precisa de correção
   no port (o leitor) ou nomes em largura cheia.
@@ -230,14 +231,56 @@ etapa ficam no `docs/DIARY.md`.
   mochila (`ov059`: Largar, Descartar?, as mensagens de GP/TP), o aprender técnicas (`ov063`: Aprender, Auto,
   Nova técnica e as mensagens) e o "Tirar equip." do `ov056`. 110 strings. O `text.py` passou a tratar as
   listas do `ov000` (um ponteiro, várias strings; ver as regras técnicas).
-- [ ] Os outros textos que o CyberLife deixou em inglês nos overlays (`extract --only ov --redo`, ~250): scout
-  e mapa de contatos (`ov108`, `ov051`, `ov020`/`ov021`/`ov050`), mensagens do campo e dos baús (`ov131`, com
-  códigos `%1F`), torneio (`ov022`, `ov098`), recordes (`ov031`), treinos e status (`ov045`, `ov064`, `ov096`,
-  `ov109`, `ov110`), compra e ensino de técnicas (`ov062`, `ov065`, `ov068`, `ov070`), os tempos da partida
-  (`ov001`: "HT1"…) e "Master" no cartão (`ov000:0x19374`, contexto desconhecido). Os nomes de status do `ov064`
-  entram por `%s` numa mensagem em pares: ver no jogo como ficam antes de traduzir.
+- [x] Scout, fichário e mapa de contatos em texto (v1.11, overlays), do japonês: a ficha do jogador no fichário
+  (`ov108`: como se recruta — Contatos, Contratar, Especial, Bloqueado, História, Máquina, Celular, Wi-Fi, DS
+  sem fio, Scout Premium, Após minibatalha, Spark/Bomber —, onde — Tóq. N/S, Hocaido, Kyoto, Fuji, B. de lojas,
+  Aeroporto, as áreas de Liocott, Centro de Liocott, as ilhas, Mt. Magnitude — e a cor da moeda da máquina:
+  Verm., Azul, Amarela; "Recrute para ver os dados!"), a busca do scout (`ov051`: Por condição, Por nome, Local,
+  Posição, Atrib., Elem., Esperto, Rápido, Resistente, Habilidoso, as posições, Nenhum), o resultado (`ov020`,
+  `ov021`, `ov050`: Contratar, Buscar outro, Mesma/Mudar condição, Amizade) e as mensagens do mapa de contatos
+  (`ov046`: Recrutável, Já está no time, Baixado por Wi-Fi, Ponto inicial, Liberado!, Bloq. história/scout).
+  97 strings. ひきぬき → Contratar, ガチャ → Máquina, 人脈 → Contatos (o diálogo diz "mapa de contatos").
+- [x] Mensagens dos baús e das portas (v1.12, `ov131`), do japonês: "Você não tem a chave desta porta.", "O
+  baú estava vazio.", "Parece que uma porta se abriu.", o que o baú dá (item, " (caderno)" depois do nome da
+  técnica, Carta de formação, Carta batalha, Garra +N, Amizade +N, e "Você ganhou!"), a perda de pontos
+  ("Garra: N pontos", "Amizade: N pontos", "Você perdeu!"), "<nome> vai sair do time." e "Fichário de
+  jogadores completo!". O `ov131` monta essas mensagens em pedaços num script de evento e as mostra na caixa
+  de diálogo: texto comum, com quebra automática, e as leituras do furigana em strings à parte (marcadas com
+  `""`; sem os `%1F` no texto ninguém as usa). Ficaram como estão "Error", "Passing", "Downloaded Team" e
+  "Cancel" (はいし), de contexto desconhecido.
+- [x] Torneios, recordes e mensagens em pares (v1.13), do japonês: o torneio (`ov022`: Rodada 1/2!, Rodada 1/2
+  OK!, Rumo à final!, as janelas de sair, salvar e desistir, "Que pena! Eliminado!", os prêmios Exp./Garra/
+  Amizade/Nada; `ov098`: a chave atual ou nova), os nomes das copas (`TournamentName01`–`16.dat`, 48: "Copa
+  Raimon Town", "Copa Fire Tornado"... O jogo escreve o nome e depois "カップ"; o "Copa" foi para o começo do
+  nome e o "カップ" do `ov022`/`ov072` virou um espaço. Os nomes seguem a regra das técnicas: o CyberLife tinha
+  "Tornado Fire", "Splash Rose", "Mahou", "Soul" e "Epsilon" para オメガ), os recordes (`ov031`: Tempo, Artilh.,
+  Mais jogos, Minibatalhas, Jogos nas rotas, Batalhas ganhas, Recrutados, Amigos agora, Fichário, Uniformes,
+  etc.), o "Usar o time do modo história?" do `ov042`, a loja de equipamento (`ov062`: Equipar já?, Equipar
+  outro?, Faltam pontos, "%s equipou %s", "Não dá para levar mais."), a garra que falta (`ov065`), o ensino de
+  técnicas (`ov068`) e o fim da partida (`ov083`: Salvar e sair?, Sair sem salvar?). 60 strings e 48 nomes.
+- [ ] Imagens dos recordes, em inglês do CyberLife: "Records of play", "Ranking", "Finish".
+- [x] Status nas mensagens dos treinos e os tempos da partida (v1.14). As mensagens com nome de status vão pelo
+  leitor de furigana (em pares), e os nomes entram por `%s` (ou colados) vindos de vagas de 7 bytes num literal
+  pool, que não podem mudar de lugar: em pares cabem 3 letras. Ficaram siglas: CHU, FIS (sem o "Í" maiúsculo,
+  que a fonte não tem), CON, DEF, VEL, RES, COR. O `ov064` ("%s: %s +%s!" e "%s: %s no máximo!"), o resultado
+  do treino do `ov096` (o nome e " subiu!", ou "Exp. subiu" e "!"/" muito!", na ordem que o código cola) e a
+  tabela do "Time: %s +" do `ov109`. Os tempos (`ov001`, rótulos comuns de 24 px): 1T, 2T, 1P, 2P (º não
+  existe na fonte). 30 strings.
+- [ ] Os outros textos que o CyberLife deixou em inglês nos overlays (`extract --only ov --redo`, 46), todos de
+  desenhista ou contexto desconhecido: as descrições dos treinos do `ov045` (duas linhas por treino, sem
+  furigana, em meia largura no CyberLife), a outra tabela de status do `ov109` (passa por `fn_ov109_0212586c`;
+  não aparece na tela de status, que é imagem), os status do `ov110`, a lista de técnicas (`ov070`: "(By Kind)"
+  em meia largura e "（ｎａｍｅ）" em largura cheia no mesmo lugar), "Master" no cartão (`ov000:0x19374`) e
+  "Error", "Passing", "Downloaded Team" e "Cancel" do `ov131`.
 - [ ] O CyberLife pôs "Corpo" no lugar de "Físico" (ボディ) nas imagens do status dos Amigos (tela de cima).
-- [ ] Legendas dos vídeos (`movie/txt`): levantar e traduzir ("確かに大事なところでの大失敗は辛い！")
+- [ ] Imagens do fichário (`pic2d/menu/SMBinder1`/`2`?), em inglês do CyberLife: Player Binder, Players, Role,
+  Recruit mode, Where ?, Box, Coin color, Rivals, os grupos (FF teams, Various teams, National teams, FFI teams
+  1/2, Alius School), By areas e os nomes das áreas ("North Tokyo"). O botão da busca por nome diz "By names
+  ROM HANG !": um aviso do CyberLife de que a busca por nome trava. Ver se trava no port.
+- [x] Abertura (`movie/txt/op00f.dat`): a letra da música, 22 legendas (v1.15). Antes ela aparecia em japonês, com
+  os kanji como "?" (a fonte do CyberLife não os tem).
+- [ ] As outras legendas dos vídeos (`movie/txt`) em japonês: 9, em 7 cenas (`a3m02a`, `a3m03a`, `a3m09a`,
+  `a3m24a`, `a3m35a`, `a3m38a`, `a3m84a`, `a3m85a`; `extract --only movie`)
 - [ ] Aviso de ficção de um jogo novo ("この作品はフィクションです…")
 
 ### Fase 3: conteúdo opcional (cerca de 4.200 únicos, 101 mil caracteres)
@@ -257,6 +300,7 @@ etapa ficam no `docs/DIARY.md`.
 ### Fase 5: conferir no jogo
 
 - [x] Galeria de vídeos: título nº 1 e o mais largo vistos no jogo (v1.4)
+- [x] Abertura (v1.15): as 22 legendas vistas no jogo, centradas, com acentos; a mais larga (238 px) inteira
 - [x] Descrição de técnica vista no jogo (v1.5): em pares, sem pixel entre as letras, com acento (menu →
   Bag → Técnicas, sessão `bug4` no quadro 44000)
 - [ ] Descrições de itens e táticas no jogo (mesma janela e mesmo leitor das técnicas; a bolsa da sessão de teste
@@ -293,6 +337,20 @@ etapa ficam no `docs/DIARY.md`.
   de "Baixar dados de time". Não vistos: as janelas de aviso, Registros/Torneio e as instruções do `SRD_O60`.
 - [x] Aviso do Passing (v1.8): visto no jogo (Conectar → Desafio Passing → A). Os painéis de download não:
   não aparecem nem no submenu Download nem em "Baixar dados de time"; devem vir depois de um download.
+- [x] Fichário (v1.11): vista no jogo a ficha do Iinoya (Contatos, Tóq. N, "Recrute para ver os dados!"). Os
+  valores vão em texto comum numa fonte menor que a de 12 px, centralizados num campo de ~88 px. Não vistos: os
+  outros métodos e lugares (o save do teste só tem o Iinoya), a busca e o resultado do scout e o mapa de
+  contatos (ainda bloqueados nesse save: os "????" do submenu Dados).
+- [x] Recordes (v1.13): vistos no jogo (menu → Sistema → Recordes). No original os rótulos têm duas linhas
+  ("ミニバトル" / "　対戦回数"), mas em texto comum o jogo para no `\n` (testado, também com o espaço de largura
+  cheia na frente): ficaram numa linha só, como o CyberLife fez. Não vistos: o torneio, as copas, a loja e o
+  ensino de técnicas.
+- [ ] Status nos treinos e tempos da partida (v1.14): só no `check`. Ver no jogo um treino (o resultado do
+  `ov096`, a mensagem do `ov064`) e uma partida (os tempos do `ov001`: se não aparecerem, o desenho é o leitor de
+  furigana e eles vão em pares).
+- [ ] Mensagens dos baús e das portas (v1.12): só no `check`. Os baús ficam nos objetos de cada mapa (o
+  `treasurebox.dat` só diz o item e a quantidade, em registros de 16 bytes); falta achar um perto do save do
+  teste. Conferir que o texto comum aparece inteiro e que as leituras que sobraram não aparecem.
 - [ ] Mensagens dos overlays: a primeira vista no jogo foi a "Precisamos de Endo!" do `ov044` (v1.10), em pares
   como as da galeria. A formação do save de teste não deixou provocar os avisos do `ov057`.
 - [ ] Rótulos de quem fala nas partidas 34010007 e 34010022 (`mch.pkb`)
@@ -426,6 +484,15 @@ etc. (vieram do patch em inglês) e devem seguir esta lista quando forem traduzi
   e o resto do ASCII é jogado fora. Por isso o `text.py` grava cada caractere de 1 byte (letra, espaço, acento)
   em par com o espaçador 0xDF, que não desenha nada: o título ocupa o dobro de bytes (cerca de 44 letras). A
   caixa não põe o pixel entre as letras, e o título vai de x = 16 até 229 px de largura.
+- **Legendas dos vídeos (`movie/txt/*.dat`, lugar `op00f.dat:registro`):** registros `[u32 quadro inicial][u32
+  final][u32 tamanho][texto, NUL, zeros até múltiplo de 4]`, até um quadro inicial 0xFFFFFFFF. O jogo lê o arquivo
+  inteiro (`func_ov016_020f2868`), então a legenda pode crescer: o `apply` refaz o arquivo (`subtitle_file`). Uma
+  linha só, centrada embaixo do vídeo, pelo mesmo leitor de furigana da galeria, mas com 1 px depois de cada
+  letra, também depois do espaçador 0xDF; a centralização não conta esse pixel, e com o espaçador as linhas saíam
+  deslocadas para a direita e cortadas (visto no jogo). Por isso as legendas são gravadas como o CyberLife fez
+  (`subtitled`): letras em largura cheia (na `FONT12` do mod elas são proporcionais), o espaço como o 0xCF em
+  par com a letra seguinte em meia largura, e o acento em par com a letra seguinte. Até 248 px; aspas (`"`) não
+  têm forma de largura cheia na fonte.
 - **Overlays (menus e mensagens no código):** o código recompilado guarda o endereço de cada string, então a
   tradução fica no mesmo lugar e cabe até o NUL e o alinhamento de 4 bytes da original (as palavras zeradas
   seguintes podem ser dados). O `text.py` só pega as strings para as quais a overlay tem um ponteiro e que estão
@@ -434,7 +501,11 @@ etc. (vieram do patch em inglês) e devem seguir esta lista quando forem traduzi
   `%s` fica inteiro para o `sprintf`. Por isso o CyberLife escreveu as mensagens dele em largura cheia. Regras:
   as linhas e a largura (com 1 px entre letras) das mensagens originais do mesmo overlay. Os rótulos de botão
   com vizinhos em meia largura (`PLAIN_LABELS` no `text.py`) vão como texto comum, com 12 px por letra do
-  original; os de um mesmo menu (`MENUS`) cabem na largura do rótulo original mais largo do menu. As strings do
+  original; os de um mesmo menu ou coluna (`MENUS`) cabem na largura do rótulo original mais largo dele. Nas
+  telas de rótulos (`LABEL_OVERLAYS`: scout e fichário) tudo vai como texto comum, menos as mensagens de
+  `LABEL_MESSAGES`. As mensagens do `ov131` (`DIALOG_OVERLAYS`) seguem as regras da caixa de diálogo, com a
+  quebra gravada como o byte 0x0A, como no original (nos scripts ela é o `\n` de 2 bytes). O rótulo em texto
+  comum tem uma linha só: o desenho para no `\n`. As strings do
   `ov000` (`MENU_OVERLAYS`) são todas de menu, em texto comum, e lá um ponteiro pode dar uma lista inteira: o
   código passa a primeira string e a quantidade, e o jogo acha as outras depois de cada NUL (o CyberLife as
   tirou do lugar). Cada string da lista tem o seu lugar (o deslocamento no original), e o `apply` reescreve a
@@ -457,7 +528,9 @@ etc. (vieram do patch em inglês) e devem seguir esta lista quando forem traduzi
   bytes, time em +0x04 (24). `BinderData_O.dat`: 0x1C bytes, nome em +0x04
   (18). `gamerule.dat`: 64 registros de 0x120 bytes, objetivo em +0x20 (64 bytes, em pares; é o "Objective" das
   batalhas de rua). `ClearCondition.dat`/`OpenCondition.dat`: 256 registros de 0x51 bytes, texto em +0x01
-  (80 bytes, em pares: cerca de 39 letras).
+  (80 bytes, em pares: cerca de 39 letras). `TournamentName01`–`16.dat`: 3 registros de 0x14 bytes, nome em +0x00
+  (19 bytes); o `ov022` e o `ov072` desenham o nome e depois "カップ", e a largura soma os 36 px desse sufixo
+  (`RECORD_AFTER`). A tradução põe "Copa" no começo do nome, e o sufixo virou um espaço.
 - **Imagens (`images.json`, `tools/image.py`):** os menus desenhados (botões, faixas, avisos) são imagens. pic3d
   guarda as texturas num par `.SPL` (índice) + `.SPD` (dados), cada uma um PAC comprimido (LZ10) com a textura
   de 4 bpp, a paleta e os quadros (os pedaços que o menu mostra: um botão normal, selecionado, apagado…). pic2d
@@ -482,9 +555,10 @@ As traduções ficam em `translations/CyberLifePlus/<grupo>.json`, um arquivo po
 (`3300.json`, `mcht.json`…), como `{"evet:33000301:4": "Alô?\\nÉ do Super Onze?"}`: o lugar da fala (arquivo,
 entrada, deslocamento do texto) e o português. Nas tabelas o lugar é `item.STR:deslocamento`, `item.dat:registro`
 `tacticscmd.STR:deslocamento`, `rpgtitle.STR:deslocamento`, `command.dat:registro` (nome da técnica), `command.STR:deslocamento` (descrição),
-`sp_binder.dat:registro`, `movie_view_f.dat:registro` ou, nas tabelas de registros, `gamerule.dat:deslocamento`
-(`item.json`, `tacticscmd.json`, `rpgtitle.json`, `command.json`, `sp_binder.json`, `movie_view_f.json`, `gamerule.json`,
-`PracticeGame.json`, `ClearCondition.json`…); nos overlays, `ov057:0xa4dc` (`overlays.json`, e
+`sp_binder.dat:registro`, `movie_view_f.dat:registro`, nas legendas `op00f.dat:registro` ou, nas tabelas de
+registros, `gamerule.dat:deslocamento`
+(`item.json`, `tacticscmd.json`, `rpgtitle.json`, `command.json`, `sp_binder.json`, `movie_view_f.json`, `movie.json`, `gamerule.json`,
+`PracticeGame.json`, `ClearCondition.json`, `TournamentName.json`…); nos overlays, `ov057:0xa4dc` (`overlays.json`, e
 `extract --only ov` lista o que falta); `extract --redo` lista também o que o mod já
 tem em outra língua (os nomes em inglês). **Nada do texto japonês vai para o repositório**: o `text.py`
 recusa traduções com japonês, só escreve listas com o texto do jogo dentro de `build/` (ignorada pelo git), e um
@@ -511,7 +585,7 @@ O `check` recusa a fala que não cabe no espaço, que passa de 3 linhas na caixa
 jogo), que perde um `%s` ou que usa um caractere fora da fonte. O `apply` escreve as falas sobre o que o mod já
 tem e regrava só os patches que mudaram. O `text.py` cobre o diálogo (`evet`, `mcht`) e as strings dos scripts
 (`eve`, `mch`), os itens (`item.dat`, `item.STR`), as táticas (`tacticscmd.STR`), os títulos do jogador (`rpgtitle.STR`), as técnicas (`command.dat`) e a
-galeria de vídeos (`movie_view_f.dat`), as tabelas de registros (`RECORDS`) e as strings dos overlays; as outras
+galeria de vídeos (`movie_view_f.dat`), as legendas dos vídeos (`movie/txt`), as tabelas de registros (`RECORDS`) e as strings dos overlays; as outras
 tabelas ainda são editadas com `tools/mod.py expand`/`patch`.
 
 O texto das imagens fica em `translations/CyberLifePlus/images.json` e vai para o mod com o `tools/image.py`:
