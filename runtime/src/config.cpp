@@ -79,6 +79,10 @@ language = en
 ; Aviso no canto da tela quando uma conquista é desbloqueada (a lista fica no menu de pausa
 ; e na aba Conquistas do launcher).
 achievement_popups = true
+; Mostrar no perfil do Discord que você está jogando, com o capítulo e o nível do time do save
+; (Rich Presence). Só com o app do Discord aberto neste PC; nada sai pela internet.
+; Ligado por padrão; o launcher desliga em Configurações -> Launcher.
+discord_presence = true
 
 ; Opções do launcher (o jogo ignora esta seção).
 [launcher]

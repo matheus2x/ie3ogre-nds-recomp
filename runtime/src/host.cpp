@@ -1113,6 +1113,7 @@ void apply_settings() {
     if (!g_host.env_scale) g_host.window_scale_applied = scale;
     if (!g_host.env_scale_3d) gpu3d_set_scale(c.get_int("video", "resolution_3d", 1, kMax3dScale));
     load_bindings();
+    discord_enable(c.get_bool("ui", "discord_presence"));
 }
 
 // --- pause menu -------------------------------------------------------------------------
@@ -1188,11 +1189,18 @@ void draw_paused_frame() {
 // advances (the clock included) and the sound is paused. Opened from the pause (`from_pause`),
 // closing it goes back to the pause, sound still off; true when the game has to run anyway
 // (a savestate to save or load, which happens in the game's frame).
+// "Paused" on the Discord profile while it lives (the pause and the pause menu).
+struct DiscordPause {
+    DiscordPause() { discord_paused(true); }
+    ~DiscordPause() { discord_paused(false); }
+};
+
 bool run_menu(bool from_pause = false) {
     g_host.menu_requested = false;
     start_ui();
     if (g_host.audio) SDL_PauseAudioStreamDevice(g_host.audio);
     session_event("menu de pausa aberto");
+    DiscordPause discord_pause;
     ui::SettingsOptions options;
     options.in_game = true;
     options.on_change = apply_settings;
@@ -1282,6 +1290,7 @@ void run_pause() {
     start_ui();
     if (g_host.audio) SDL_PauseAudioStreamDevice(g_host.audio);
     session_event("jogo pausado");
+    DiscordPause discord_pause;
     NTR_LOG("[host] paused at frame %llu\n", (unsigned long long)g_host.frame);
     const uint64_t start = SDL_GetTicksNS();
     bool frozen = false;
@@ -1446,6 +1455,7 @@ bool host_init() {
         config_load("", g_host.config);  // defaults only
     }
     set_language(g_host.config);  // the pause menu's and the messages' language
+    if (player) discord_init(g_host.config.get_bool("ui", "discord_presence"));
     const Config& config = g_host.config;
     int scale_3d = int(env_u64("NTR_3D_SCALE"));
     if (scale_3d <= 0) scale_3d = headless && !config_env ? 1 : config.get_int("video", "resolution_3d", 1, kMax3dScale);

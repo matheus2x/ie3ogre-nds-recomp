@@ -60,6 +60,7 @@ Everything the cartridge does, plus:
 | ⏩ **Speed** | normal | **fast-forward** from 2× to 10× and auto-A |
 | 🎮 **Controls** | buttons and stylus | keyboard, mouse on the touch screen and **controllers**, all remappable |
 | ⚙️ **Interface** | — | a **pause menu** (settings, savestates, achievements) and a **launcher** that prepares, updates and manages saves and mods, in English or Portuguese |
+| 💬 **Discord** | — | **Rich Presence**: your profile shows the game, the save's chapter and team level and the time played (on by default, can be turned off in the launcher; talks only to the Discord app on your PC) |
 | 🧩 **Content** | the cartridge | **mods** as folders or `.zip` files, including the PT-BR translation |
 | 🐞 **Bug reports** | — | a log, an exact replay and a history of every session (F8 marks the moment) |
 

@@ -59,6 +59,7 @@ Tudo o que o cartucho faz, e mais:
 | ⏩ **Velocidade** | normal | **avanço rápido** de 2× a 10× e A automático |
 | 🎮 **Controles** | botões e caneta | teclado, mouse na tela de toque e **controles**, tudo remapeável |
 | ⚙️ **Interface** | — | **menu de pausa** (configurações, savestates, conquistas) e um **launcher** que prepara, atualiza e cuida dos saves e mods, em português ou inglês |
+| 💬 **Discord** | — | **Rich Presence**: o seu perfil mostra o jogo, o capítulo e o nível do time do save e o tempo de jogo (ligado por padrão, dá para desligar no launcher; só conversa com o app do Discord no seu PC) |
 | 🧩 **Conteúdo** | o cartucho | **mods** em pasta ou `.zip`, inclusive a tradução PT-BR |
 | 🐞 **Relatar problemas** | — | log, replay exato e histórico de cada sessão (F8 marca o momento) |
 

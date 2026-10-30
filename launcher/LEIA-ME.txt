@@ -69,6 +69,14 @@ save antigo ou importado ("Conferir este save"). Ficam no arquivo
 saves\<save>.achievements.json, ao lado do .sav: cada conquista, se foi
 desbloqueada, quando e o ícone dela.
 
+DISCORD
+Com o app do Discord aberto neste PC, o seu perfil mostra que você está
+jogando, o capítulo e o nível do time do save, e há quanto tempo
+("Pausado" com o jogo pausado). O jogo só conversa com o app do Discord do
+seu PC. Vem ligado: para desligar, Configurações -> Launcher ("Status no
+Discord"), Atalhos no menu de pausa ou [ui] discord_presence = false no
+boej.ini.
+
 ARQUIVOS CRIADOS NESTA PASTA
 - boej.exe, boej.pak  o jogo, preparado a partir do seu dump (uso pessoal:
                       não distribua)

@@ -42,6 +42,7 @@ add_library(ntr-runtime STATIC
     src/boot.cpp
     src/cpu.cpp
     src/diag.cpp
+    src/discord.cpp
     src/fiber.cpp
     src/gpu2d.cpp
     src/gpu3d.cpp

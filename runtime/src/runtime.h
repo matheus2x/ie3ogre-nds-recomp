@@ -183,6 +183,15 @@ const Achievements& achievements();
 // The next achievement to announce, unlocked since the last call; nullptr when none.
 const Achievement* achievements_take_unlocked();
 
+// --- Discord Rich Presence (discord.cpp) ----------------------------------------------
+
+// Player sessions only; `enabled` is [ui] discord_presence. Off for good in a build without
+// an application id (unless NTR_DISCORD_APP_ID gives one).
+void discord_init(bool enabled);
+void discord_enable(bool enabled);                // the setting changed
+void discord_save_changed(const SaveSummary& save);  // at boot and after each save
+void discord_paused(bool paused);                 // the pause and the pause menu, nested
+
 // --- logging ------------------------------------------------------------------
 
 // Terminal and log file (diag.cpp); log_detail goes to the file only.

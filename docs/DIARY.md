@@ -3416,3 +3416,45 @@ O sufixo `-2`, `-3`... vale para o grupo inteiro. Toast "Capturas: <nome> (3)". 
 uma com a largura do seu formato (pelo sufixo do nome até a miniatura existir), e as três da mesma tecla juntas, na
 ordem DS → ampliada → completa. Teste no Windows (pasta de teste recompilada, 3D em 4×): F12 gerou 1024x1536,
 1280x1080 e 1920x1080, conferidos; captura da Galeria com elas.
+
+## 2026-10-30 — Discord Rich Presence
+
+A pedido, o perfil do Discord mostra que a pessoa está jogando (`runtime/src/discord.cpp`):
+
+- **Sem SDK:** fala direto com o app do Discord pelo IPC local, o mesmo protocolo dos SDKs oficiais (pipe
+  `\\.\pipe\discord-ipc-0..9` no Windows; socket `discord-ipc-N` em `$XDG_RUNTIME_DIR`, `TMPDIR`... e nas pastas do
+  Flatpak e do Snap no Linux). Mensagem = cabeçalho (opcode, tamanho, little-endian) + JSON: HANDSHAKE → READY,
+  SET_ACTIVITY, PING → PONG, CLOSE. Nada vai pela internet e nenhuma biblioteca nova entra na release (o `prepare`
+  do launcher já compila todo `.cpp` de `sdk/runtime`, e o Windows só precisa da kernel32).
+- **Uma thread própria** (destacada, estado no heap que nunca é liberado, como o `BandPool`): o jogo só troca o
+  "desejado" sob um mutex. Sem Discord aberto, tenta de novo a cada 20 s; ao Discord recusar o ID da aplicação,
+  desiste até reabrir o jogo. Entre dois SET_ACTIVITY ficam 4 s (o Discord aceita 5 em 20 s), valendo o último.
+  Fechar a conexão, ou o jogo sair, apaga o status.
+- **O que aparece:** "Capítulo N" e "Time nível X · N jogadores" do save (no idioma do `[ui] language`), ou "Jogo
+  novo"; "Pausado" durante a pausa (P) e o menu de pausa (guarda `DiscordPause`, contada porque o menu abre por
+  cima da pausa); o tempo desde que o jogo abriu; o ícone da aplicação como imagem.
+- **O save:** a mesma leitura das conquistas (`achievements_game.cpp`, ao abrir e depois de cada save, quando as
+  gravações param) agora alimenta o Discord, e roda mesmo com as conquistas desligadas.
+- **Configuração:** `[ui] discord_presence = true` e "Status no Discord" em Configurações → Atalhos (vale na hora,
+  pelo `apply_settings`). Só em sessões de jogador (com janela e sem entradas roteirizadas).
+  `NTR_DISCORD_APP_ID` troca o ID da aplicação; sem ID no código (`kAppId`), fica desligado.
+
+**Verificação:** compila sem avisos (Linux e Windows). Linux, com um servidor IPC falso em Python no
+`/run/user/1000/discord-ipc-0`: handshake, PONG e `{"details": "Chapter 1", "state": "Team level 5 · 22 players",
+"timestamps": {"start": ...}}` (na época ainda com `assets`), e a conexão fechou com o jogo. Windows
+(pasta em `%TEMP%`, save copiado), com o Discord de verdade aberto e um ID falso: o pipe abriu e o Discord
+respondeu "Invalid Client ID", como esperado.
+Depois, com a aplicação criada pelo usuário (ID 1565817315625533561 em `kAppId`): Windows, Discord de verdade,
+30 s de jogo → "[discord] connected (foxperks)" e nenhum erro do SET_ACTIVITY no log.
+**Imagem:** o usuário pôs a arte como ícone da aplicação; o status deixou de mandar `assets` (`large_image`
+"logo" não existia nas artes), e sem eles o Discord mostra o ícone do app.
+**Não testado:** "Pausado", troca de capítulo depois de salvar.
+
+**Opção no launcher, desligada por padrão:** a pedido, `[ui] discord_presence` passa a vir `false` e "Status no
+Discord" fica em Configurações → Launcher (`discord_row` em `ui.cpp`); no menu de pausa, que não tem a página
+Launcher, continua em Atalhos, para ligar ou desligar durante o jogo. READMEs, LEIA-ME e DESENVOLVIMENTO dizem
+como ligar. Captura do launcher (página aberta por uma troca temporária de `g_page`, já desfeita): a linha
+aparece embaixo de "Não reabrir ao fechar o jogo", desligada.
+
+**Ligado por padrão:** o usuário mudou de ideia: `[ui] discord_presence` volta a vir `true`; a opção continua em
+Configurações → Launcher (e Atalhos no menu de pausa) para desligar. Documentação ajustada.

@@ -276,6 +276,14 @@ void checkbox_row(const char* label, const char* hint, const char* section, cons
     ImGui::PopID();
 }
 
+// [ui] discord_presence: the launcher's page and, in game, the shortcuts page.
+void discord_row() {
+    checkbox_row(L("Discord status", "Status no Discord"),
+                 L("Shows on your Discord profile that you are playing, with the save's chapter and team level. Needs the Discord app open on this PC.",
+                   "Mostra no seu perfil do Discord que você está jogando, com o capítulo e o nível do time do save. Precisa do app do Discord aberto neste PC."),
+                 "ui", "discord_presence");
+}
+
 void page_title(const char* title, const char* subtitle) {
     push_bold(1.6f);
     ImGui::TextUnformatted(title);
@@ -783,6 +791,7 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
                         ImGui::EndCombo();
                     }
                 }
+                if (in_game) discord_row();  // in the launcher, on its own page
                 end_rows();
             }
             ImGui::Spacing();
@@ -809,6 +818,7 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
             if (config.get_bool("launcher", "close_on_play"))
                 checkbox_row(L("Do not reopen when the game closes", "Não reabrir ao fechar o jogo"), nullptr, "launcher",
                              "stay_closed");
+            discord_row();
             end_rows();
             break;
     }

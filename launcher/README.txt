@@ -69,6 +69,14 @@ check an older or imported save ("Check this save"). They are kept in
 saves\<save>.achievements.json, next to the .sav: each achievement,
 whether it was unlocked, when, and its icon.
 
+DISCORD
+With the Discord app open on this PC, your profile shows that you are
+playing, the save's chapter and team level, and for how long ("Paused"
+while the game is paused). The game only talks to the Discord app on your
+PC. It is on by default: turn it off in Settings -> Launcher ("Discord
+status"), in the pause menu under Shortcuts, or in boej.ini with
+[ui] discord_presence = false.
+
 FILES CREATED IN THIS FOLDER
 - boej.exe, boej.pak  the game, prepared from your dump (personal use only:
                       do not distribute)

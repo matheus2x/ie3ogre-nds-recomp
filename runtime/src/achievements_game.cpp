@@ -1,6 +1,7 @@
 // The achievements while the game runs (ntr/achievements.h). They are checked against the
 // game's own save: once at boot (a save that already has what an achievement asks, or
-// achievements added by a newer release) and after each save. One save is many backup
+// achievements added by a newer release) and after each save. The same reading of the save
+// feeds the Discord presence (discord.cpp). One save is many backup
 // writes over a few frames, so the check waits until the writes stop. The save is not part
 // of savestates, so loading one or rewinding never takes an achievement back or gives one.
 #include <ntr/runtime.h>
@@ -21,8 +22,11 @@ std::deque<size_t> g_announce;  // indices in g_achievements.list()
 
 void check(const char* why) {
     g_pending = false;
-    const std::vector<uint8_t>& save = card_save_data();
-    std::vector<size_t> unlocked = g_achievements.update(game_facts(read_save_data(save.data(), save.size())));
+    const std::vector<uint8_t>& data = card_save_data();
+    SaveSummary save = read_save_data(data.data(), data.size());
+    discord_save_changed(save);  // the chapter and level on the profile, achievements or not
+    if (!g_enabled) return;
+    std::vector<size_t> unlocked = g_achievements.update(game_facts(save));
     if (unlocked.empty()) {
         log_detail("[achievements] checked (%s): nothing new\n", why);
         return;
@@ -43,6 +47,7 @@ void achievements_init(const std::string& save_path) {
     std::string error;
     if (!g_achievements.load_definitions(host_base_path(), error)) {
         NTR_LOG("[achievements] off: %s\n", error.c_str());
+        check("the save at boot");  // for the Discord presence only
         return;
     }
     g_achievements.load_state(save_path);
@@ -53,7 +58,6 @@ void achievements_init(const std::string& save_path) {
 }
 
 void achievements_game_saved() {
-    if (!g_enabled) return;
     g_pending = true;
     g_quiet = 0;
 }
