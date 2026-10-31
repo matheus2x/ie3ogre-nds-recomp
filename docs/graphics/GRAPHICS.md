@@ -67,8 +67,14 @@ Full-screen passes over the screens, without touching the rasterizer. They need 
 - [x] FXAA (`runtime/shaders/fxaa.frag.hlsl`), one pass per screen at the frame size, before the upscaling filter.
   Vulkan and D3D12 give the same image (0.001% of the pixels differ, from rounding)
 - [ ] Decide whether FXAA stays: the game's textures are pixel art, and it takes the texel steps for aliasing and
-  softens the characters. Even with subpixel 0.25 and threshold 0.166 the loss shows
-- [ ] SMAA 1x
+  softens the characters. Even with subpixel 0.25 and threshold 0.166 the loss shows. SMAA now does the same job
+  with smoother geometry edges
+- [x] SMAA 1x (`runtime/shaders/smaa_edges`, `smaa_weights` and `smaa_blend.frag.hlsl` over the unmodified
+  `smaa/SMAA.hlsl` from iryoku/smaa, MIT, high preset): luma edges, blending weights (with the area and search
+  textures, embedded in `shaders_embedded.h`) and blending, one set per screen at the frame size. An edge only
+  counts between two pixels of the mask, so the 2D is never blended. Vulkan and D3D12 give identical images. On
+  the field it smooths the field lines, the slanted wall and the shadow better than FXAA; it also softens the
+  characters' pixel art about as much as FXAA does
 - [x] FSR 1 (EASU + RCAS, `runtime/shaders/easu.frag.hlsl` and `rcas.frag.hlsl`, from AMD's FidelityFX FSR 1, MIT):
   each place where a screen shows is upscaled to the pixels it takes in the window, instead of the filter. Only the
   3D of the mask goes through EASU and RCAS; the 2D goes through sharp bilinear. Places smaller than the frame (the
@@ -80,11 +86,16 @@ Full-screen passes over the screens, without touching the rasterizer. They need 
   `runtime/src/shaders_embedded.h` (`tools/shaders.py`), so the player's PC needs no shader compiler. SPIR-V by
   glslc, DXIL by dxc (`~/tools/dxc-*/bin/dxc`). The fragment shader inputs are `TEXCOORD0` (colour) and
   `TEXCOORD1` (uv), as in SDL's vertex shader
-- [x] `[video] post_aa = off|fxaa`, in the launcher and the pause menu (Video → Anti-aliasing). With an API other
+- [x] `[video] post_aa = off|fxaa|smaa`, in the launcher and the pause menu (Video → Anti-aliasing). With an API other
   than `vulkan`/`d3d12`, the log says the pass stayed off
-- [x] `[video] upscaler = off|fsr1`, in the launcher and the pause menu (Video → 3D upscaling); FXAA may come
-  first (it keeps the mask in the alpha)
-- [ ] `post_aa = smaa`
+- [x] `[video] upscaler = off|fsr1`, in the launcher and the pause menu (Video → 3D upscaling); FXAA or SMAA may
+  come first (they keep the mask in the alpha)
+- [x] `post_aa = smaa`
+- [x] Video page (launcher and pause menu): the 3D resolution, the scaling filter, the graphics API,
+  anti-aliasing and 3D upscaling under "Advanced settings", a section that opens and closes, hidden by default and
+  left as the player last left it (`[ui] video_advanced`). Under the anti-aliasing and upscaling dropdowns, a short
+  note on the option chosen. Anti-aliasing and FSR 1 can only be chosen with `vulkan` or `d3d12`; choosing another
+  API turns them off
 
 ## Phase 2 — 3D rasterizer on the GPU
 

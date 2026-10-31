@@ -3733,3 +3733,131 @@ GitHub (`../../releases`, `../../issues`). Launcher compila sem avisos; 68 teste
 
 **Verificação:** nenhum link relativo quebrado nos `.md` (fora os do GitHub, `../../releases` e `../../issues`);
 nenhuma menção ao caminho antigo fora do diário; launcher compila sem avisos; 68 testes ok.
+
+## 2026-10-31 — Fase 1 dos gráficos: SMAA 1x
+
+- Pedido: seguir a próxima etapa do `GRAPHICS.md`. Os itens "decidir se o FXAA/FSR 1 ficam" são escolhas do
+  usuário; o próximo item de código era o SMAA 1x (`post_aa = smaa`).
+- **Shaders:** o `SMAA.hlsl` do iryoku/smaa (MIT, commit 71c806a) entra sem mudanças em `runtime/shaders/smaa/`, com
+  o `AreaTex.h` e o `SearchTex.h`; licença em `runtime/shaders/LICENSE-smaa.txt` (o `release.py` copia para
+  `licenses/smaa.txt`, e o `TERCEIROS.txt` ganhou a entrada). `smaa.hlsli` tem as macros de porte: o SDL liga cada
+  textura com o seu sampler (t0/s0 é a textura desenhada, t1/s1 em diante as do render state), então a textura `x`
+  é lida com `x_sampler`; cada passe diz qual é (`SMAA_PASS_EDGES`/`_WEIGHTS`/`_BLEND`) e os samplers das funções
+  que ele não chama apontam para um sampler de mentira, que os compiladores descartam (conferido no SPIR-V e no
+  DXIL). Preset high. Três passes: `smaa_edges` (bordas por luma; só conta borda entre dois pixels da máscara do 3D,
+  então o HUD 2D nunca é misturado), `smaa_weights` (pesos, com as texturas de área e de busca) e `smaa_blend`
+  (mistura; o 2D é copiado e a máscara segue no alpha, para o FSR 1 depois).
+- **`tools/shaders.py`:** também tira os bytes do `AreaTex.h` (160×560, R8G8) e do `SearchTex.h` (64×16, R8) para o
+  `shaders_embedded.h` (`kSmaaAreaTex`, `kSmaaSearchTex`); o header foi de 142 KB para 754 KB. Os shaders que já
+  existiam saíram iguais.
+- **`host.cpp`:** o `GpuPass` ganhou o número de samplers e as texturas extras do render state (`bound`); o
+  `pass_state` refaz o render state quando elas mudam (a textura dos pesos é refeita quando o tamanho do quadro
+  muda; o tamanho entra na comparação para um endereço reaproveitado não enganar). `smaa_lookup` cria as duas
+  texturas de consulta (RGBA, pelo SDL_Renderer, e o `SDL_GPUTexture` por `SDL_PROP_TEXTURE_GPU_TEXTURE_POINTER`)
+  e os samplers (área linear, busca point). `run_smaa` faz os três passes por tela; o de bordas limpa o alvo antes
+  (o SMAA descarta os pixels sem borda; `run_pass` ganhou `clear`). Mudar o `post_aa` agora zera também o
+  `post_frame`: com o jogo pausado o número do quadro não anda, e trocar FXAA por SMAA no menu podia deixar a
+  imagem do passe anterior.
+- **`[video] post_aa = off|fxaa|smaa`**: comentário do `boej.ini` padrão, aviso de valor desconhecido e o combo
+  "Anti-aliasing" (launcher e menu de pausa) com SMAA.
+- **Resultado** (campo, quadro 3400, sem mod): o SMAA alisa as linhas do campo, o muro inclinado e a borda da
+  sombra melhor que o FXAA. Também amolece a pixel art do personagem, mais ou menos como o FXAA (no recorte do
+  personagem em 1×, 2,0% dos pixels mudam com o SMAA e 1,5% com o FXAA). Na imagem inteira, em RGB, muda 0,25% dos
+  pixels em 1× e 0,09% em 3×.
+
+**Verificação:** compila sem avisos no Linux e no cruzado para Windows; 68 testes ok. Linux (OpenGL): "post_aa needs
+api = vulkan or d3d12 (now opengl); off" (a primeira versão ficava desligada sem avisar; corrigido) e `post_aa = foo`
+avisa "is not off, fxaa or smaa". Windows, numa pasta em `%TEMP%` (`ie3-smaa`, já apagada), layout empilhado em 3×: Vulkan e
+D3D12 abrem os três passes; sem AA as duas APIs saem idênticas e com SMAA também (0 pixels de diferença). A tela de
+cima (2D) não muda. Layout largo com o 3D em 2× e SMAA + FSR 1 juntos no D3D12: abre os cinco passes e a imagem
+sai certa. Atenção ao comparar capturas da janela: o BMP traz o alpha (a máscara), que difere em ~30% dos pixels
+entre `off` e um passe; comparar com `-alpha off`.
+**Não testado:** troca de `post_aa` com o menu de pausa aberto, mudança de `resolution_3d` com o SMAA ligado (o
+caminho que refaz o render state da mistura), partida e desempenho medido.
+
+## 2026-10-31 — Página Vídeo: só combinações compatíveis e configurações avançadas
+
+- Pedido: no launcher, só deixar escolher configurações compatíveis entre si, e separar as avançadas numa parte da
+  página Vídeo que expande e esconde.
+- **Avançadas:** a API gráfica, o anti-aliasing e a ampliação do 3D foram para "Configurações avançadas" (um
+  `CollapsingHeader` no fim da página, em `runtime/ui/ui.cpp`, que o launcher e o menu de pausa usam). A seção
+  começa fechada, ou aberta se algum dos três não estiver no padrão (`api = auto`, `post_aa`/`upscaler = off`), e
+  guarda o estado enquanto o programa está aberto. A API vem primeiro, porque as outras duas dependem dela.
+- **Compatibilidade:** o anti-aliasing e o FSR 1 só existem na SDL_GPU. Com outra API, os dois combos ficam
+  desligados (cinza, mostrando "Desligado") com a nota "precisam de Vulkan ou Direct3D 12 na API gráfica"; escolher
+  uma API que não é a SDL_GPU grava `post_aa = off` e `upscaler = off`. No jogo, se a API escolhida é SDL_GPU mas o
+  jogo abriu com outra, a nota diz que valem quando o jogo abrir de novo. O filtro de ampliação continua livre com
+  o FSR 1: ele ainda vale para o 2D e para os lugares que o FSR 1 não amplia (telas pequenas da tela larga com o 3D
+  acima de 2×). As outras dependências já eram respeitadas (tamanho da janela e múltiplos inteiros só aparecem
+  sem a tela larga; Direct3D 11/12 só no Windows).
+- A dica do anti-aliasing passou a comparar FXAA e SMAA, e as dicas tiraram o "só com Vulkan ou Direct3D 12" (agora
+  é a nota).
+
+**Verificação:** jogo e launcher compilam sem avisos no Linux e no cruzado para Windows. Capturas do launcher
+(`IE3_LAUNCHER_TAB=1`, `IE3_LAUNCHER_SHOT`, com uma rolagem temporária até o fim da página, já removida): com `api =
+auto`, a seção fechada; com `vulkan` + `smaa`, aberta, com SMAA escolhido; com `opengl` + `smaa` (editado à mão),
+aberta, os dois combos desligados mostrando "Desligado" e a nota.
+**Não testado:** o menu de pausa (o mesmo código), clicar no cabeçalho e trocar de API pelo combo (o que desliga os
+dois).
+
+**Pasta de teste do Windows** (`C:\Games\ie3-teste\ie3ogre-recomp`): atualizada com uma release 0.1.30 deste código
+(`tools/release.py`, com o SMAA e a página Vídeo nova): launcher, `SDL3.dll`, `sdk/` (o antigo apagado inteiro),
+`licenses/` (agora com o `smaa.txt`), `achievements/` e os três `.txt`. `boej.ini`, saves, savestates, mods e cache
+mantidos (o mod ligado continua o `mod-CyberLifePlus-1.15.zip`). `--prepare` depois de apagar `cache/build.stamp`:
+190 arquivos em 54,3 s, 62,2 s no total. O `boej.ini` dela está com `api = d3d12`, `resolution_3d = 4`, `post_aa` e
+`upscaler = off`.
+
+## 2026-10-31 — Página Vídeo: notas por opção e mais itens nas avançadas
+
+- Pedido: no anti-aliasing e na ampliação do 3D, deixar só o começo da descrição e pôr uma nota sutil sobre a
+  opção escolhida embaixo do combo; levar a resolução do 3D e o filtro de ampliação para as configurações
+  avançadas; a seção escondida por padrão, aberta só se o usuário a deixou aberta da última vez.
+- **Descrições:** anti-aliasing: "Suaviza os serrilhados do 3D; o HUD e os textos não mudam."; ampliação do 3D:
+  "Amplia o 3D até o tamanho da janela.". Embaixo do combo, em itálico pequeno (`italic_note`, como a da API), uma
+  frase por opção: Desligado / FXAA (leve, amolece o 3D inteiro, a pixel art também) / SMAA (alisa melhor as bordas
+  da geometria e mexe menos no resto; a pixel art também amolece um pouco); Desligado (o filtro de ampliação amplia
+  o 3D) / FSR 1 (perto de bem mais alto com o 3D em 2× ou 3×, substitui o filtro no 3D, pode arredondar a pixel
+  art). Com uma API sem SDL_GPU, as notas por opção somem e fica só a de "precisam de Vulkan ou Direct3D 12".
+- **Avançadas:** resolução do 3D, filtro de ampliação, API gráfica, anti-aliasing, ampliação do 3D, nessa ordem. O
+  estado da seção agora fica no `boej.ini` (`[ui] video_advanced`, padrão `false`, com comentário no `boej.ini`
+  padrão): clicar no cabeçalho grava. Sai a regra anterior de abrir sozinha quando algo não estava no padrão.
+
+**Verificação:** jogo e launcher compilam sem avisos; o jogo lê `[ui] video_advanced` sem aviso. Capturas do
+launcher (rolagem temporária, já removida): sem a chave e com `api = vulkan`, a seção fechada; com `video_advanced =
+true`, aberta com as cinco linhas e as notas de SMAA e FSR 1; com `opengl`, os combos desligados e só a nota da API.
+**Não testado:** clicar no cabeçalho (gravar o estado) e o menu de pausa.
+
+**Pasta de teste do Windows** atualizada de novo (release 0.1.30 deste código: launcher, `SDL3.dll`, `sdk/`,
+`licenses/`, `achievements/`, `.txt`; `boej.ini`, saves, savestates, mods e cache mantidos). `--prepare` depois de
+apagar `cache/build.stamp`: 190 arquivos em 42,2 s, 49,2 s no total. O `boej.ini` dela não tem `video_advanced`
+(vale `false`, a seção começa escondida).
+
+## 2026-10-31 — Filtro de ampliação com nota por opção; "Presença no Discord"
+
+- Pedido: descrição mais curta no filtro de ampliação, com uma nota por opção embaixo do combo como nos outros; na
+  página Launcher, tirar a descrição do status no Discord e chamá-lo "Presença no Discord".
+- **Filtro:** descrição "Como as telas são ampliadas até a janela."; notas: Nítido (pixels) = cada pixel vira um
+  bloco nítido, em escalas não inteiras alguns saem maiores; Suavizado = mistura os pixels vizinhos, a imagem
+  inteira fica macia; Nítido suave = pixels nítidos e todos do mesmo tamanho, só com as bordas suavizadas; LCD =
+  nítido suave com a grade da tela do DS por cima.
+- **Discord:** `discord_row` (página Launcher e Atalhos do menu de pausa) virou "Presença no Discord" / "Discord
+  presence", sem descrição. O `LEIA-ME.txt` e o `README.txt` do launcher citam o nome novo.
+
+**Verificação:** jogo e launcher compilam sem avisos; capturas do launcher (com ajustes temporários de rolagem e de
+página, já removidos): o filtro em LCD com a nota embaixo, e a página Launcher com "Presença no Discord" sem
+descrição. Pasta de teste do Windows atualizada de novo da mesma forma (`--prepare`: 190 arquivos em 42,2 s, 48,8 s
+no total). **Não testado:** o menu de pausa.
+
+## 2026-10-31 — Comparação das configurações de vídeo numa técnica
+
+- Pedido: rodar a técnica do savestate do slot 2 da pasta de teste do Windows com várias configurações de vídeo e
+  salvar uma captura de cada.
+- Numa cópia em `%TEMP%` (já apagada; o slot 2 virou o slot 1 da cópia, o save `runmelonds-1.sav` copiado), com o
+  `boej.exe` da pasta de teste e o mod 1.15: a técnica é a Jet Stream, seguida da defesa Great Barrier Reef e do
+  gol (quadros ~10 a ~1450 depois de carregar). Onze configurações, cada uma rodando até o quadro 1450, com a
+  janela gravada no quadro 100 (close no jogador, estádio atrás, texto 2D por cima): 1× nearest / sharp / LCD
+  (D3D11), 1× SMAA, 4×, 4× FXAA, 4× SMAA, 2× FSR 1, 2× SMAA + FSR 1, 4× FSR 1, 4× SMAA + FSR 1 (D3D12). O log de
+  cada uma confirma a API e os passes abertos.
+- Saída em `C:\Games\ie3-teste\ie3ogre-recomp\screenshots\comparacao-tecnica\` (PNG, 2176×1224, alpha removido) e
+  `comparacao-rosto.png` (o rosto recortado das onze, lado a lado). O aviso "Slot 1 loaded" aparece no canto da tela
+  de cima em todas.

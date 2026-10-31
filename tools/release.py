@@ -222,6 +222,7 @@ def main() -> int:
     shutil.copy2(out / "_deps" / "imgui-src" / "LICENSE.txt", licenses / "imgui.txt")
     shutil.copy2(ROOT / "runtime" / "ui" / "fonts" / "OFL.txt", licenses / "rubik.txt")
     shutil.copy2(ROOT / "runtime" / "shaders" / "LICENSE-fidelityfx-fsr.txt", licenses / "fidelityfx-fsr.txt")
+    shutil.copy2(ROOT / "runtime" / "shaders" / "LICENSE-smaa.txt", licenses / "smaa.txt")
     shutil.copy2(fetch(*DSD_LICENSE), licenses / "dsd.txt")
     if platform == "windows":
         shutil.copy2(sdl.parent / "LICENSE.txt", licenses / "SDL3.txt")

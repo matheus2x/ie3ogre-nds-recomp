@@ -74,7 +74,7 @@ With the Discord app open on this PC, your profile shows that you are
 playing, the save's chapter and team level, and for how long ("Paused"
 while the game is paused). The game only talks to the Discord app on your
 PC. It is on by default: turn it off in Settings -> Launcher ("Discord
-status"), in the pause menu under Shortcuts, or in boej.ini with
+presence"), in the pause menu under Shortcuts, or in boej.ini with
 [ui] discord_presence = false.
 
 FILES CREATED IN THIS FOLDER

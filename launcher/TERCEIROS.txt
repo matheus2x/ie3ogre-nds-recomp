@@ -17,6 +17,11 @@ Distribuídos com o launcher:
   sdk/runtime/shaders_embedded.h) - MIT License
   Copyright (c) 2021 Advanced Micro Devices, Inc. https://github.com/GPUOpen-Effects/FidelityFX-FSR
 
+- SMAA (os shaders e as texturas de consulta do SMAA 1x do jogo, em
+  sdk/runtime/shaders_embedded.h) - MIT License
+  Copyright (C) 2013 Jorge Jimenez, Jose I. Echevarria, Belen Masia, Fernando Navarro
+  e Diego Gutierrez. https://github.com/iryoku/smaa
+
 - ds-decomp / dsd (sdk/bin/dsd) - MIT License
   Copyright (c) 2025 Aetias. https://github.com/AetiasHax/ds-decomp
   Usado no PC do jogador para extrair o ARM9 e as overlays do dump, incluindo a

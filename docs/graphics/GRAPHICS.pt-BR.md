@@ -63,8 +63,14 @@ vetores de movimento.
 - [x] FXAA (`runtime/shaders/fxaa.frag.hlsl`), um passe por tela no tamanho do quadro, antes do filtro de
   ampliação. Vulkan e D3D12 dão a mesma imagem (0,001% dos pixels diferem, por arredondamento)
 - [ ] Decidir se o FXAA fica: as texturas do jogo são pixel art, e ele toma os degraus dos texels por serrilhado
-  e amolece os personagens. Mesmo com subpixel 0,25 e limiar 0,166 a perda aparece
-- [ ] SMAA 1x
+  e amolece os personagens. Mesmo com subpixel 0,25 e limiar 0,166 a perda aparece. O SMAA agora faz o mesmo
+  trabalho, com as bordas da geometria mais lisas
+- [x] SMAA 1x (`runtime/shaders/smaa_edges`, `smaa_weights` e `smaa_blend.frag.hlsl` sobre o `smaa/SMAA.hlsl`
+  do iryoku/smaa sem mudanças, MIT, preset high): bordas por luma, pesos de mistura (com as texturas de área e de
+  busca, embutidas no `shaders_embedded.h`) e mistura, um conjunto por tela no tamanho do quadro. Uma borda só
+  conta entre dois pixels da máscara, então o 2D nunca é misturado. Vulkan e D3D12 dão imagens idênticas. No campo
+  alisa as linhas do campo, o muro inclinado e a sombra melhor que o FXAA; também amolece a pixel art dos
+  personagens, mais ou menos como o FXAA
 - [x] FSR 1 (EASU + RCAS, `runtime/shaders/easu.frag.hlsl` e `rcas.frag.hlsl`, a partir do FidelityFX FSR 1 da
   AMD, MIT): cada lugar onde uma tela aparece é ampliado até os pixels que ocupa na janela, no lugar do filtro.
   Só o 3D da máscara passa pelo EASU e pelo RCAS; o 2D vai por sharp bilinear. Lugares menores que o quadro (as
@@ -76,11 +82,16 @@ vetores de movimento.
   pré-compilados em `runtime/src/shaders_embedded.h` (`tools/shaders.py`), para o PC do jogador não precisar de
   compilador de shader. SPIR-V pelo glslc, DXIL pelo dxc (`~/tools/dxc-*/bin/dxc`). As entradas do fragment
   shader são `TEXCOORD0` (cor) e `TEXCOORD1` (uv), como no vertex shader do SDL
-- [x] `[video] post_aa = off|fxaa`, no launcher e no menu de pausa (Vídeo → Anti-aliasing). Com outra API que
+- [x] `[video] post_aa = off|fxaa|smaa`, no launcher e no menu de pausa (Vídeo → Anti-aliasing). Com outra API que
   não `vulkan`/`d3d12`, o log diz que o passe ficou desligado
-- [x] `[video] upscaler = off|fsr1`, no launcher e no menu de pausa (Vídeo → Ampliação do 3D); o FXAA pode vir
-  antes (mantém a máscara no alpha)
-- [ ] `post_aa = smaa`
+- [x] `[video] upscaler = off|fsr1`, no launcher e no menu de pausa (Vídeo → Ampliação do 3D); o FXAA ou o SMAA
+  podem vir antes (mantêm a máscara no alpha)
+- [x] `post_aa = smaa`
+- [x] Página Vídeo (launcher e menu de pausa): a resolução do 3D, o filtro de ampliação, a API gráfica, o
+  anti-aliasing e a ampliação do 3D em "Configurações avançadas", uma seção que abre e fecha, escondida por padrão
+  e do jeito que o jogador a deixou da última vez (`[ui] video_advanced`). Embaixo dos combos de anti-aliasing e de
+  ampliação, uma nota curta sobre a opção escolhida. O anti-aliasing e o FSR 1 só podem ser escolhidos com `vulkan`
+  ou `d3d12`; escolher outra API os desliga
 
 ## Fase 2 — Rasterizador 3D na GPU
 

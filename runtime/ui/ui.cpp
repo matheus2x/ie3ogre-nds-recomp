@@ -278,10 +278,7 @@ void checkbox_row(const char* label, const char* hint, const char* section, cons
 
 // [ui] discord_presence: the launcher's page and, in game, the shortcuts page.
 void discord_row() {
-    checkbox_row(L("Discord status", "Status no Discord"),
-                 L("Shows on your Discord profile that you are playing, with the save's chapter and team level. Needs the Discord app open on this PC.",
-                   "Mostra no seu perfil do Discord que você está jogando, com o capítulo e o nível do time do save. Precisa do app do Discord aberto neste PC."),
-                 "ui", "discord_presence");
+    checkbox_row(L("Discord presence", "Presença no Discord"), nullptr, "ui", "discord_presence");
 }
 
 void page_title(const char* title, const char* subtitle) {
@@ -648,6 +645,18 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
             checkbox_row(in_game ? L("Fullscreen", "Tela cheia") : L("Start in fullscreen", "Abrir em tela cheia"),
                          L("The fullscreen shortcut also toggles it.", "O atalho de tela cheia também alterna."), "video",
                          "fullscreen");
+            end_rows();
+
+            // Advanced: the 3D resolution, the filter, the graphics API and what depends on it. Hidden
+            // by default; open or hidden as the player last left it ([ui] video_advanced).
+            ImGui::Spacing();
+            bool advanced = config.get_bool("ui", "video_advanced");
+            ImGui::SetNextItemOpen(advanced, ImGuiCond_Always);
+            if (ImGui::CollapsingHeader(L("Advanced settings", "Configurações avançadas")) != advanced) {
+                advanced = !advanced;
+                set("ui", "video_advanced", advanced ? "true" : "false");
+            }
+            if (!advanced || !begin_rows("video_advanced")) break;
             row(L("3D resolution", "Resolução do 3D"),
                 L("Higher is sharper and heavier. Above 4× it needs a processor with several cores.",
                   "Mais alta fica mais nítida e pesa mais. Acima de 4× precisa de um processador com vários núcleos."));
@@ -665,8 +674,7 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
                 ImGui::EndCombo();
             }
             row(L("Scaling filter", "Filtro de ampliação"),
-                L("Sharp smooth keeps the pixels crisp without uneven sizes; LCD adds the DS screen's grid.",
-                  "Nítido suave mantém os pixels sem tamanhos desiguais; LCD acrescenta a grade da tela do DS."));
+                L("How the screens are enlarged to the window.", "Como as telas são ampliadas até a janela."));
             const char* kFilterValues[] = {"nearest", "linear", "sharp", "lcd"};
             const char* kFilters[] = {L("Sharp (pixels)", "Nítido (pixels)"), L("Smooth", "Suavizado"),
                                       L("Sharp smooth", "Nítido suave"), "LCD"};
@@ -675,22 +683,16 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
                 if (SDL_strcasecmp(config.get("video", "filter").c_str(), kFilterValues[i]) == 0) filter = i;
             }
             if (ImGui::Combo("##filter", &filter, kFilters, 4)) set("video", "filter", kFilterValues[filter]);
-            row(L("Anti-aliasing", "Anti-aliasing"),
-                L("Smooths the jagged edges of the 3D; the HUD and the text stay as they are. Only with Vulkan or Direct3D 12.",
-                  "Suaviza os serrilhados do 3D; o HUD e os textos não mudam. Só com Vulkan ou Direct3D 12."));
-            const char* kPostAaValues[] = {"off", "fxaa"};
-            const char* kPostAa[] = {L("Off", "Desligado"), "FXAA"};
-            int post_aa = SDL_strcasecmp(config.get("video", "post_aa").c_str(), "fxaa") == 0;
-            if (ImGui::Combo("##post_aa", &post_aa, kPostAa, 2)) set("video", "post_aa", kPostAaValues[post_aa]);
-            row(L("3D upscaling", "Ampliação do 3D"),
-                L("FSR 1 enlarges the 3D to the window size: with the 3D at 2× or 3× it looks close to much higher, "
-                  "without the processor cost. Replaces the scaling filter. Only with Vulkan or Direct3D 12.",
-                  "O FSR 1 amplia o 3D até o tamanho da janela: com o 3D em 2× ou 3× fica perto de bem mais alto, "
-                  "sem o custo no processador. Substitui o filtro de ampliação. Só com Vulkan ou Direct3D 12."));
-            const char* kUpscalerValues[] = {"off", "fsr1"};
-            const char* kUpscalers[] = {L("Off", "Desligado"), "AMD FSR 1"};
-            int upscaler = SDL_strcasecmp(config.get("video", "upscaler").c_str(), "fsr1") == 0;
-            if (ImGui::Combo("##upscaler", &upscaler, kUpscalers, 2)) set("video", "upscaler", kUpscalerValues[upscaler]);
+            const char* kFilterNotes[] = {
+                L("Every pixel a crisp block; at uneven scales some come out bigger.",
+                  "Cada pixel vira um bloco nítido; em escalas não inteiras alguns saem maiores."),
+                L("Blends the pixels together; the whole picture gets soft.",
+                  "Mistura os pixels vizinhos; a imagem inteira fica macia."),
+                L("Crisp pixels, all the same size, with only their borders smoothed.",
+                  "Pixels nítidos e todos do mesmo tamanho, só com as bordas suavizadas."),
+                L("Sharp smooth with the DS screen's grid over it.", "Nítido suave com a grade da tela do DS por cima."),
+            };
+            italic_note(kFilterNotes[filter]);
             std::string api_hint = L("Takes effect when the game starts again.", "Vale quando o jogo abrir de novo.");
             if (!options.active_renderer.empty()) api_hint += std::string(" ") + L("In use: ", "Em uso: ") + options.active_renderer;
             row(L("Graphics API", "API gráfica"), api_hint.c_str());
@@ -698,7 +700,7 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
                 const char* value;
                 const char* name;
                 const char* hint;
-                bool beta;  // the SDL_GPU ones: nothing uses the GPU beyond showing the picture yet
+                bool beta;  // the SDL_GPU ones, also the only ones with anti-aliasing and FSR 1
             };
             // Default first, the others in alphabetical order.
             const ApiOption kApiOptions[] = {
@@ -734,7 +736,14 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
             }
             if (open) {
                 for (int i = 0; i < int(std::size(kApiOptions)); i++) {
-                    if (ImGui::Selectable(kApiOptions[i].name, i == api)) set("video", "api", kApiOptions[i].value);
+                    if (ImGui::Selectable(kApiOptions[i].name, i == api)) {
+                        set("video", "api", kApiOptions[i].value);
+                        // Anti-aliasing and FSR 1 only exist on SDL_GPU: another API turns them off.
+                        if (!kApiOptions[i].beta) {
+                            set("video", "post_aa", "off");
+                            set("video", "upscaler", "off");
+                        }
+                    }
                     if (kApiOptions[i].beta) {
                         draw_chip(ImGui::GetWindowDrawList(),
                                   ImVec2(ImGui::GetItemRectMin().x + ImGui::CalcTextSize(kApiOptions[i].name).x +
@@ -746,6 +755,53 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
                 ImGui::EndCombo();
             }
             italic_note(kApiOptions[api].hint);
+            bool gpu = kApiOptions[api].beta;
+            // Only on SDL_GPU (Vulkan, Direct3D 12): with another API they stay off and cannot be chosen.
+            // In game, the API chosen only opens with the game again.
+            bool restart = gpu && in_game && options.active_renderer.rfind("SDL_GPU", 0) != 0;
+            row(L("Anti-aliasing", "Anti-aliasing"),
+                L("Smooths the jagged edges of the 3D; the HUD and the text stay as they are.",
+                  "Suaviza os serrilhados do 3D; o HUD e os textos não mudam."));
+            const char* kPostAaValues[] = {"off", "fxaa", "smaa"};
+            const char* kPostAa[] = {L("Off", "Desligado"), "FXAA", "SMAA"};
+            int post_aa = 0;
+            for (int i = 0; gpu && i < 3; i++) {
+                if (SDL_strcasecmp(config.get("video", "post_aa").c_str(), kPostAaValues[i]) == 0) post_aa = i;
+            }
+            ImGui::BeginDisabled(!gpu);
+            if (ImGui::Combo("##post_aa", &post_aa, kPostAa, 3)) set("video", "post_aa", kPostAaValues[post_aa]);
+            ImGui::EndDisabled();
+            const char* kPostAaNotes[] = {
+                L("The 3D as the game draws it.", "O 3D do jeito que o jogo desenha."),
+                L("Light; softens the whole 3D a little, the pixel art too.",
+                  "Leve; amolece um pouco o 3D inteiro, a pixel art também."),
+                L("Smooths the geometry's edges better and touches less of the rest; the pixel art also softens a little.",
+                  "Alisa melhor as bordas da geometria e mexe menos no resto; a pixel art também amolece um pouco."),
+            };
+            if (gpu) italic_note(kPostAaNotes[post_aa]);
+            row(L("3D upscaling", "Ampliação do 3D"),
+                L("Enlarges the 3D to the window size.", "Amplia o 3D até o tamanho da janela."));
+            const char* kUpscalerValues[] = {"off", "fsr1"};
+            const char* kUpscalers[] = {L("Off", "Desligado"), "AMD FSR 1"};
+            int upscaler = gpu && SDL_strcasecmp(config.get("video", "upscaler").c_str(), "fsr1") == 0;
+            ImGui::BeginDisabled(!gpu);
+            if (ImGui::Combo("##upscaler", &upscaler, kUpscalers, 2)) set("video", "upscaler", kUpscalerValues[upscaler]);
+            ImGui::EndDisabled();
+            const char* kUpscalerNotes[] = {
+                L("The scaling filter enlarges the 3D.", "O filtro de ampliação amplia o 3D."),
+                L("With the 3D at 2× or 3× it looks close to much higher, without the processor cost; replaces the "
+                  "scaling filter on the 3D and may round the pixel art.",
+                  "Com o 3D em 2× ou 3× fica perto de bem mais alto, sem o custo no processador; substitui o filtro "
+                  "de ampliação no 3D e pode arredondar a pixel art."),
+            };
+            if (gpu) italic_note(kUpscalerNotes[upscaler]);
+            if (!gpu) {
+                italic_note(L("Anti-aliasing and FSR 1 need Vulkan or Direct3D 12 in Graphics API.",
+                              "Anti-aliasing e FSR 1 precisam de Vulkan ou Direct3D 12 na API gráfica."));
+            } else if (restart) {
+                italic_note(L("They take effect when the game starts again, with the new graphics API.",
+                              "Valem quando o jogo abrir de novo, com a nova API gráfica."));
+            }
             end_rows();
             break;
         }

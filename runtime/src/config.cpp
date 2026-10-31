@@ -37,8 +37,9 @@ fullscreen = false
 ; Ampliação da imagem: nearest (pixels nítidos), linear (suavizada), sharp (pixels nítidos
 ; sem tamanhos desiguais, para escalas não inteiras) ou lcd (sharp com a grade da tela do DS).
 filter = nearest
-; Anti-aliasing do 3D, sobre a imagem pronta: off (desligado) ou fxaa (suaviza os serrilhados;
-; o HUD e os textos não mudam). Só com api = vulkan ou d3d12; nas outras fica desligado.
+; Anti-aliasing do 3D, sobre a imagem pronta: off (desligado), fxaa ou smaa (suavizam os
+; serrilhados; o SMAA mexe menos no resto da imagem; o HUD e os textos não mudam). Só com
+; api = vulkan ou d3d12; nas outras fica desligado.
 post_aa = off
 ; Ampliação do 3D pela GPU até o tamanho da janela: off ou fsr1 (AMD FSR 1: com o 3D em 2x
 ; ou 3x, fica perto de uma resolução bem mais alta, sem o custo no processador). Substitui o
@@ -83,6 +84,9 @@ achievement_popups = true
 ; (Rich Presence). Só com o app do Discord aberto neste PC; nada sai pela internet.
 ; Ligado por padrão; o launcher desliga em Configurações -> Launcher.
 discord_presence = true
+; Página Vídeo das configurações (launcher e menu de pausa): a seção "Configurações avançadas"
+; aberta (true) ou escondida (false), como foi deixada da última vez.
+video_advanced = false
 
 ; Opções do launcher (o jogo ignora esta seção).
 [launcher]

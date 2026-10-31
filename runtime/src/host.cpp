@@ -137,8 +137,11 @@ struct GpuPass {
     const EmbeddedShader* code;
     const char* setting;  // for the log
     const char* name;
+    int samplers = 1;  // the texture drawn (t0) and the render state's own (t1 and up)
     SDL_GPUShader* shader = nullptr;
     SDL_GPURenderState* state = nullptr;
+    SDL_GPUTextureSamplerBinding bound[2] = {};  // the render state's textures
+    int bound_size[2] = {};                      // and the size of the first one
     bool failed = false;  // said once in the log; the pass stays off
 };
 
@@ -194,10 +197,24 @@ struct Host {
     // Shader passes, only on SDL's GPU renderer. video.post_aa: one over each screen's picture
     // at its own size, before the filter enlarges it (post[i] then stands in for
     // textures[i]). video.upscaler: FSR 1 enlarges each place a screen is drawn to its size
-    // in the window (EASU, then RCAS), in place of the filter.
-    enum class PostAa { Off, Fxaa } post_aa = PostAa::Off;
+    // in the window (EASU, then RCAS), in place of the filter. SMAA 1x takes three passes
+    // (edges, blending weights, blending), the second with SMAA's two lookup textures and
+    // the third with the weights of its screen.
+    enum class PostAa { Off, Fxaa, Smaa } post_aa = PostAa::Off;
     enum class Upscaler { Off, Fsr1 } upscaler = Upscaler::Off;
     GpuPass fxaa = {&kFxaaShader, "post_aa", "fxaa"};
+    GpuPass smaa_edges = {&kSmaaEdgesShader, "post_aa", "smaa (edges)"};
+    GpuPass smaa_weights = {&kSmaaWeightsShader, "post_aa", "smaa (weights)", 3};
+    GpuPass smaa_blend[2] = {{&kSmaaBlendShader, "post_aa", "smaa (blend)", 2},
+                             {&kSmaaBlendShader, "post_aa", "smaa (blend)", 2}};
+    SDL_Texture* smaa_area = nullptr;    // SMAA's lookup textures
+    SDL_Texture* smaa_search = nullptr;
+    SDL_GPUSampler* smaa_linear = nullptr;
+    SDL_GPUSampler* smaa_point = nullptr;
+    bool smaa_failed = false;
+    SDL_Texture* smaa_edge_tex[2] = {};
+    SDL_Texture* smaa_weight_tex[2] = {};
+    uint64_t smaa_edge_frame[2] = {}, smaa_weight_frame[2] = {};
     GpuPass easu = {&kEasuShader, "upscaler", "fsr1 (easu)"};
     GpuPass rcas = {&kRcasShader, "upscaler", "fsr1 (rcas)"};
     SDL_Texture* post[2] = {};
@@ -794,11 +811,36 @@ SDL_ScaleMode screen_scale_mode() {
     return g_host.filter == Host::Filter::Linear ? SDL_SCALEMODE_LINEAR : SDL_SCALEMODE_NEAREST;
 }
 
-// A pass's render state, made the first time it is needed. Only SDL's GPU renderer (api =
+// A pass's render state, made the first time it is needed, with the textures it samples
+// besides the one drawn (bound[], at t1 and up; size = the first one's, so a texture made
+// again at the same address still makes the state again). Only SDL's GPU renderer (api =
 // vulkan or d3d12) takes shaders of its own; with another API, or when the shader cannot be
 // made, the pass stays off and the log says why, once.
-SDL_GPURenderState* pass_state(GpuPass& pass) {
-    if (pass.state || pass.failed) return pass.state;
+SDL_GPURenderState* pass_state(GpuPass& pass, const SDL_GPUTextureSamplerBinding* bound = nullptr, int w = 0,
+                               int h = 0) {
+    int n = pass.samplers - 1;
+    if (pass.state) {
+        bool same = pass.bound_size[0] == w && pass.bound_size[1] == h;
+        for (int i = 0; i < n; i++) {
+            same = same && pass.bound[i].texture == bound[i].texture && pass.bound[i].sampler == bound[i].sampler;
+        }
+        if (same) return pass.state;
+        SDL_DestroyGPURenderState(pass.state);
+        pass.state = nullptr;
+    }
+    if (pass.shader) {
+        SDL_GPURenderStateCreateInfo state = {};
+        state.fragment_shader = pass.shader;
+        state.num_sampler_bindings = n;
+        state.sampler_bindings = bound;
+        pass.state = SDL_CreateGPURenderState(g_host.renderer, &state);
+        if (!pass.state) return nullptr;
+        std::copy(bound, bound + n, pass.bound);
+        pass.bound_size[0] = w;
+        pass.bound_size[1] = h;
+        return pass.state;
+    }
+    if (pass.failed) return nullptr;
     pass.failed = true;
     SDL_GPUDevice* device = SDL_GetGPURendererDevice(g_host.renderer);
     if (!device) {
@@ -822,11 +864,13 @@ SDL_GPURenderState* pass_state(GpuPass& pass) {
     }
     info.entrypoint = "main";
     info.stage = SDL_GPU_SHADERSTAGE_FRAGMENT;
-    info.num_samplers = 1;
+    info.num_samplers = Uint32(pass.samplers);
     info.num_uniform_buffers = 1;
     SDL_GPUShader* shader = SDL_CreateGPUShader(device, &info);
     SDL_GPURenderStateCreateInfo state = {};
     state.fragment_shader = shader;
+    state.num_sampler_bindings = pass.samplers - 1;
+    state.sampler_bindings = bound;
     pass.state = shader ? SDL_CreateGPURenderState(g_host.renderer, &state) : nullptr;
     if (!pass.state) {
         NTR_LOG("[host] %s: the %s shader did not start: %s; off\n", pass.setting, pass.name, SDL_GetError());
@@ -835,15 +879,19 @@ SDL_GPURenderState* pass_state(GpuPass& pass) {
     }
     pass.shader = shader;
     pass.failed = false;
+    std::copy(bound, bound + n, pass.bound);
+    pass.bound_size[0] = w;
+    pass.bound_size[1] = h;
     NTR_LOG("[host] %s: %s\n", pass.setting, pass.name);
     return pass.state;
 }
 
 // src through a pass into target, (re)made at w x h when its size changed; once per frame
 // (the paused menu redraws the same one). src is read with linear filtering during the pass.
-// False when the target cannot be made.
+// clear: the target cleared to 0 first (a shader that discards pixels). False when the
+// target cannot be made.
 bool run_pass(GpuPass& pass, SDL_Texture* src, SDL_Texture*& target, int w, int h, uint64_t& frame,
-              const float* uniforms, size_t size) {
+              const float* uniforms, size_t size, bool clear = false) {
     SDL_Renderer* r = g_host.renderer;
     float tw = 0, th = 0;
     if (target) SDL_GetTextureSize(target, &tw, &th);
@@ -860,6 +908,10 @@ bool run_pass(GpuPass& pass, SDL_Texture* src, SDL_Texture*& target, int w, int 
     SDL_ScaleMode mode = SDL_SCALEMODE_NEAREST;
     SDL_GetTextureScaleMode(src, &mode);
     SDL_SetRenderTarget(r, target);
+    if (clear) {
+        SDL_SetRenderDrawColor(r, 0, 0, 0, 0);
+        SDL_RenderClear(r);
+    }
     SDL_SetTextureScaleMode(src, SDL_SCALEMODE_LINEAR);
     SDL_SetGPURenderState(r, pass.state);
     SDL_RenderTexture(r, src, nullptr, nullptr);
@@ -870,16 +922,80 @@ bool run_pass(GpuPass& pass, SDL_Texture* src, SDL_Texture*& target, int w, int 
     return true;
 }
 
+SDL_GPUTexture* gpu_texture(SDL_Texture* t) {
+    return static_cast<SDL_GPUTexture*>(
+        SDL_GetPointerProperty(SDL_GetTextureProperties(t), SDL_PROP_TEXTURE_GPU_TEXTURE_POINTER, nullptr));
+}
+
+// SMAA's lookup textures (from smaa/AreaTex.h, R8G8, and smaa/SearchTex.h, R8) as RGBA
+// textures of the renderer, and the samplers the weights pass reads them with (area:
+// linear, search: point). Made once; false (and said in the log) when they cannot be.
+bool smaa_lookup() {
+    if (g_host.smaa_area) return true;
+    if (g_host.smaa_failed) return false;
+    g_host.smaa_failed = true;
+    SDL_GPUDevice* device = SDL_GetGPURendererDevice(g_host.renderer);
+    if (!device) return false;
+    auto make = [](const unsigned char* bytes, int w, int h, int channels) {
+        std::vector<uint8_t> rgba(size_t(w) * h * 4);
+        for (size_t i = 0; i < size_t(w) * h; i++) {
+            for (int c = 0; c < channels; c++) rgba[i * 4 + c] = bytes[i * channels + c];
+        }
+        SDL_Texture* t = SDL_CreateTexture(g_host.renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, w, h);
+        if (t) SDL_UpdateTexture(t, nullptr, rgba.data(), w * 4);
+        return t;
+    };
+    g_host.smaa_area = make(kSmaaAreaTex, kSmaaAreaTexWidth, kSmaaAreaTexHeight, 2);
+    g_host.smaa_search = make(kSmaaSearchTex, kSmaaSearchTexWidth, kSmaaSearchTexHeight, 1);
+    SDL_GPUSamplerCreateInfo info = {};
+    info.address_mode_u = info.address_mode_v = info.address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE;
+    info.min_filter = info.mag_filter = SDL_GPU_FILTER_LINEAR;
+    g_host.smaa_linear = SDL_CreateGPUSampler(device, &info);
+    info.min_filter = info.mag_filter = SDL_GPU_FILTER_NEAREST;
+    g_host.smaa_point = SDL_CreateGPUSampler(device, &info);
+    if (!g_host.smaa_area || !g_host.smaa_search || !g_host.smaa_linear || !g_host.smaa_point ||
+        !gpu_texture(g_host.smaa_area) || !gpu_texture(g_host.smaa_search)) {
+        NTR_LOG("[host] post_aa: smaa's lookup textures did not start: %s; off\n", SDL_GetError());
+        if (g_host.smaa_area) SDL_DestroyTexture(g_host.smaa_area);
+        g_host.smaa_area = nullptr;
+        return false;
+    }
+    g_host.smaa_failed = false;
+    return true;
+}
+
+// SMAA 1x over a screen's picture into post[screen]: edges, blending weights, blending.
+bool run_smaa(int screen, SDL_Texture* src, int w, int h, const float* metrics, size_t size) {
+    if (!pass_state(g_host.smaa_edges) || !smaa_lookup()) return false;
+    SDL_GPUTextureSamplerBinding lookup[2] = {{gpu_texture(g_host.smaa_area), g_host.smaa_linear},
+                                              {gpu_texture(g_host.smaa_search), g_host.smaa_point}};
+    if (!pass_state(g_host.smaa_weights, lookup)) return false;
+    SDL_Texture*& edges = g_host.smaa_edge_tex[screen];
+    SDL_Texture*& weights = g_host.smaa_weight_tex[screen];
+    if (!run_pass(g_host.smaa_edges, src, edges, w, h, g_host.smaa_edge_frame[screen], metrics, size, true) ||
+        !run_pass(g_host.smaa_weights, edges, weights, w, h, g_host.smaa_weight_frame[screen], metrics, size)) {
+        return false;
+    }
+    SDL_GPUTextureSamplerBinding blend = {gpu_texture(weights), g_host.smaa_linear};
+    GpuPass& pass = g_host.smaa_blend[screen];
+    return blend.texture && pass_state(pass, &blend, w, h) &&
+           run_pass(pass, src, g_host.post[screen], w, h, g_host.post_frame[screen], metrics, size);
+}
+
 // A screen's picture as the window shows it: the screen texture, or its copy through the
-// post_aa pass (FXAA, which keeps the 3D mask in the alpha).
+// post_aa pass (FXAA or SMAA, which keep the 3D mask in the alpha).
 SDL_Texture* screen_texture(int screen) {
     SDL_Texture* src = g_host.textures[screen];
-    if (g_host.post_aa == Host::PostAa::Off || !src || !pass_state(g_host.fxaa)) return src;
+    if (g_host.post_aa == Host::PostAa::Off || !src) return src;
+    if (g_host.post_aa == Host::PostAa::Fxaa && !pass_state(g_host.fxaa)) return src;
     float w = 0, h = 0;
     SDL_GetTextureSize(src, &w, &h);
     float texel[4] = {1 / w, 1 / h, w, h};
     SDL_Texture*& t = g_host.post[screen];
-    if (!run_pass(g_host.fxaa, src, t, int(w), int(h), g_host.post_frame[screen], texel, sizeof texel)) return src;
+    bool done = g_host.post_aa == Host::PostAa::Smaa
+                    ? run_smaa(screen, src, int(w), int(h), texel, sizeof texel)
+                    : run_pass(g_host.fxaa, src, t, int(w), int(h), g_host.post_frame[screen], texel, sizeof texel);
+    if (!done) return src;
     SDL_SetTextureScaleMode(t, screen_scale_mode());
     return t;
 }
@@ -1067,8 +1183,10 @@ void apply_presentation() {
     for (SDL_Texture* t : g_host.textures) {
         if (t) SDL_SetTextureScaleMode(t, screen_scale_mode());
     }
-    Host::PostAa post_aa = SDL_strcasecmp(c.get("video", "post_aa").c_str(), "fxaa") == 0 ? Host::PostAa::Fxaa
-                                                                                          : Host::PostAa::Off;
+    std::string aa = c.get("video", "post_aa");
+    Host::PostAa post_aa = SDL_strcasecmp(aa.c_str(), "fxaa") == 0   ? Host::PostAa::Fxaa
+                           : SDL_strcasecmp(aa.c_str(), "smaa") == 0 ? Host::PostAa::Smaa
+                                                                     : Host::PostAa::Off;
     Host::Upscaler upscaler = SDL_strcasecmp(c.get("video", "upscaler").c_str(), "fsr1") == 0 ? Host::Upscaler::Fsr1
                                                                                              : Host::Upscaler::Off;
     if (post_aa != g_host.post_aa || upscaler != g_host.upscaler) {
@@ -1078,6 +1196,7 @@ void apply_presentation() {
         std::fill(std::begin(g_host.sharp_frame), std::end(g_host.sharp_frame), 0);
         std::fill(std::begin(g_host.fsr_easu_frame), std::end(g_host.fsr_easu_frame), 0);
         std::fill(std::begin(g_host.fsr_frame), std::end(g_host.fsr_frame), 0);
+        std::fill(std::begin(g_host.post_frame), std::end(g_host.post_frame), 0);
     }
 }
 
@@ -1493,8 +1612,9 @@ bool host_init() {
     for (const char* name : {"nearest", "linear", "sharp", "lcd"}) known |= SDL_strcasecmp(filter.c_str(), name) == 0;
     if (!known) config.warn(*config.find("video", "filter"), "\"" + filter + "\" is not nearest, linear, sharp or lcd");
     std::string post_aa = config.get("video", "post_aa");
-    if (SDL_strcasecmp(post_aa.c_str(), "off") != 0 && SDL_strcasecmp(post_aa.c_str(), "fxaa") != 0) {
-        config.warn(*config.find("video", "post_aa"), "\"" + post_aa + "\" is not off or fxaa");
+    if (SDL_strcasecmp(post_aa.c_str(), "off") != 0 && SDL_strcasecmp(post_aa.c_str(), "fxaa") != 0 &&
+        SDL_strcasecmp(post_aa.c_str(), "smaa") != 0) {
+        config.warn(*config.find("video", "post_aa"), "\"" + post_aa + "\" is not off, fxaa or smaa");
     }
     std::string upscaler = config.get("video", "upscaler");
     if (SDL_strcasecmp(upscaler.c_str(), "off") != 0 && SDL_strcasecmp(upscaler.c_str(), "fsr1") != 0) {

@@ -11,11 +11,15 @@ SPIR-V comes from glslc (shaderc, also in the Vulkan SDK) or from dxc; DXIL only
 (github.com/microsoft/DirectXShaderCompiler, release package, which signs the DXIL itself).
 dxc is looked for in $DXC, in PATH and in ~/tools/dxc-*/bin/. Without it, the header gets
 no DXIL and the game turns the passes off under Direct3D 12 (it says so in the log).
+
+SMAA's lookup textures (runtime/shaders/smaa/AreaTex.h and SearchTex.h, as published) go in
+the header too, as plain bytes: R8G8 and R8, made into textures by host.cpp.
 """
 
 import glob
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import sys
@@ -58,6 +62,28 @@ def array(name: str, data: bytes) -> str:
     return f"inline const unsigned char {name}[{len(data)}] = {{\n" + "\n".join(rows) + "\n};\n"
 
 
+def texture_bytes(header: pathlib.Path, name: str) -> bytes:
+    match = re.search(name + r"\[\] = \{(.*?)\};", header.read_text(encoding="latin-1"), re.S)
+    if not match:
+        sys.exit(f"shaders.py: no {name} in {header}")
+    return bytes(int(v, 16) for v in re.findall(r"0x[0-9a-fA-F]+", match.group(1)))
+
+
+def smaa_textures() -> list[str]:
+    parts = []
+    for header, name, ident_, width, height, channels in (
+        ("AreaTex.h", "areaTexBytes", "kSmaaAreaTex", 160, 560, 2),
+        ("SearchTex.h", "searchTexBytes", "kSmaaSearchTex", 64, 16, 1),
+    ):
+        data = texture_bytes(SOURCES / "smaa" / header, name)
+        if len(data) != width * height * channels:
+            sys.exit(f"shaders.py: {header} has {len(data)} bytes, not {width}x{height}x{channels}")
+        parts.append(f"// smaa/{header}: {width}x{height}, {channels} byte(s) per pixel.\n")
+        parts.append(f"inline constexpr int {ident_}Width = {width}, {ident_}Height = {height};\n")
+        parts.append(array(ident_, data) + "\n")
+    return parts
+
+
 def ident(stem: str) -> str:
     return "".join(part.capitalize() for part in stem.replace(".", "_").split("_"))
 
@@ -91,6 +117,7 @@ def main() -> None:
                 dxil_ref = f"k{name}Dxil, sizeof k{name}Dxil"
             parts.append(f"inline constexpr EmbeddedShader k{name}Shader = {{k{name}Spirv, sizeof k{name}Spirv, {dxil_ref}}};\n\n")
             print(f"{src.name}: {name}")
+    parts += smaa_textures()
     OUT.write_text("".join(parts).rstrip("\n") + "\n")
     print(f"wrote {OUT.relative_to(ROOT)}")
 

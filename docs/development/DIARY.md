@@ -13,7 +13,7 @@ What it covers, roughly in order:
 - mods: the file replacement, BPS patches, `.zip` mods, the launcher's Mods page and the text kept in saves;
 - the PT-BR translation (CyberLifePlus): every version, what was found in the game's formats and how each text
   type is written; the translation tools (`tools/text.py`, `image.py`, `font.py`, `translate.py`);
-- graphics: the SDL_GPU presentation, FXAA, FSR 1, the wide layout;
+- graphics: the SDL_GPU presentation, FXAA, SMAA, FSR 1, the wide layout;
 - savestates, rewind, achievements, the gallery, Discord Rich Presence.
 
 For the current state of each area, the English documents are the place to start: [`DEVELOPMENT.md`](DEVELOPMENT.md),
