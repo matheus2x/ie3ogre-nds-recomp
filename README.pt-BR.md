@@ -25,7 +25,7 @@
   <a href="#controles">Controles</a> ·
   <a href="#mods-e-a-tradução-pt-br">Mods</a> ·
   <a href="#compilando">Compilando</a> ·
-  <a href="docs/DESENVOLVIMENTO.md">Desenvolvimento</a> ·
+  <a href="docs/DEVELOPMENT.pt-BR.md">Desenvolvimento</a> ·
   <a href="#relatando-problemas">Problemas</a>
 </p>
 
@@ -130,14 +130,14 @@ execução: só abrem no mesmo `boej.exe` e com os mesmos mods (uma atualizaçã
 
 Mods trocam arquivos do jogo (textos, fontes, imagens, tabelas) sem alterar o `boej.pak`. Cada mod é uma pasta
 ou um `.zip` na pasta `mods/`: coloque o mod lá (ou arraste-o para o launcher) e ligue-o em **Mods**, no launcher. Como
-fazer um mod: [`docs/MODS.md`](docs/MODS.md).
+fazer um mod: [`docs/MODS.pt-BR.md`](docs/MODS.pt-BR.md).
 
 Os mods oficiais ficam na pasta [`mods/`](mods/) e saem como `.zip` separados em cada release, só com patches,
 sem dados do jogo:
 
 | Mod | O que é |
 |---|---|
-| [`CyberLifePlus`](mods/CyberLifePlus/LEIA-ME.md) | Tradução PT-BR. Feita originalmente pelo grupo **CyberLife** e continuada aqui: a história está toda em português, e o que falta está em [`docs/TRADUCAO.md`](docs/TRADUCAO.md) |
+| [`CyberLifePlus`](mods/CyberLifePlus/README.pt-BR.md) | Tradução PT-BR. Feita originalmente pelo grupo **CyberLife** e continuada aqui: a história está toda em português, e o que falta está em [`docs/TRANSLATION-STATUS.pt-BR.md`](docs/TRANSLATION-STATUS.pt-BR.md) |
 
 ## Relatando problemas
 
@@ -165,7 +165,7 @@ com as partes do BIOS e do NitroSDK que o jogo usa.
 - [ ] Release para Linux (hoje só compilando)
 - [ ] Conquistas pelo estado ao vivo do jogo (hoje são conferidas no save)
 - [ ] Mods: formatos documentados, texturas em alta resolução, editor de técnicas
-- [ ] Renderização opcional pela GPU (Vulkan/D3D12), anti-aliasing melhor, TAA, FSR e DLSS ([roadmap](docs/GRAFICOS.md))
+- [ ] Renderização opcional pela GPU (Vulkan/D3D12), anti-aliasing melhor, TAA, FSR e DLSS ([roadmap](docs/GRAPHICS.pt-BR.md))
 
 ## Compilando
 
@@ -180,31 +180,35 @@ python3 -m unittest discover -s tools/tests -t tools   # testes (não precisam d
 ```
 
 Build para Windows a partir do Linux/WSL, release, análise com Ghidra e variáveis de ambiente para testes:
-[`docs/DESENVOLVIMENTO.md`](docs/DESENVOLVIMENTO.md).
+[`docs/DEVELOPMENT.pt-BR.md`](docs/DEVELOPMENT.pt-BR.md).
 
 ## Documentação
 
+Cada um também em inglês (o mesmo nome, sem o `.pt-BR`); o diário é só em português.
+
 | Documento | Conteúdo |
 |---|---|
-| [Desenvolvimento](docs/DESENVOLVIMENTO.md) | estrutura do repositório, build, release, análise estática, configurações, logs e variáveis de ambiente |
-| [Mods](docs/MODS.md) | formato dos mods, patches BPS, ferramentas e como funciona por dentro |
-| [Tradução PT-BR](docs/TRADUCAO.md) | o que falta traduzir, checklist, padrão de nomes e regras técnicas do texto |
-| [CyberLifePlus](mods/CyberLifePlus/LEIA-ME.md) | créditos, versões e como continuar a tradução |
-| [Diário](docs/DIARY.md) | o histórico do projeto, passo a passo, com as descobertas sobre o jogo |
+| [Desenvolvimento](docs/DEVELOPMENT.pt-BR.md) | estrutura do repositório, build, release, análise estática, configurações, logs e variáveis de ambiente |
+| [Mods](docs/MODS.pt-BR.md) | formato dos mods, patches BPS, ferramentas e como funciona por dentro |
+| [Traduzir](docs/TRANSLATING.pt-BR.md) | traduzir o jogo para outro idioma: só `.json` e `.png` para editar, e o `tools/translate.py` gera o mod |
+| [Tradução PT-BR](docs/TRANSLATION-STATUS.pt-BR.md) | o que falta traduzir, checklist, padrão de nomes e regras técnicas do texto |
+| [CyberLifePlus](mods/CyberLifePlus/README.pt-BR.md) | créditos, versões e como continuar a tradução |
+| [Diário](docs/DIARY.pt-BR.md) | o histórico do projeto, passo a passo, com as descobertas sobre o jogo |
 
 ## Contribuindo
 
 - Nunca envie ROMs, dumps, arquivos extraídos ou trechos de código do jogo (o `.gitignore` bloqueia os casos
-  comuns). Mods vão como patches `.bps`, e as traduções em `translations/` só com o texto novo.
-- Registre descobertas e mudanças relevantes em `docs/DIARY.md`, e as da tradução também no checklist do
-  `docs/TRADUCAO.md`.
+  comuns). Mods vão como patches `.bps`, e as traduções em `translations/` só com o texto traduzido (e as
+  fontes e imagens desenhadas para elas).
+- Registre descobertas e mudanças relevantes em `docs/DIARY.pt-BR.md`, e as da tradução também no checklist do
+  `docs/TRANSLATION-STATUS.pt-BR.md`. Uma mudança num documento vai para a versão em inglês e para a `.pt-BR.md`.
 - Rode os testes (`python3 -m unittest discover -s tools/tests -t tools`) antes de abrir um pull request.
 
 ## Créditos
 
 **Tradução**
 
-- Grupo **CyberLife**, pela tradução PT-BR que é a base do mod [`CyberLifePlus`](mods/CyberLifePlus/LEIA-ME.md).
+- Grupo **CyberLife**, pela tradução PT-BR que é a base do mod [`CyberLifePlus`](mods/CyberLifePlus/README.pt-BR.md).
 
 **Projetos e bibliotecas**
 

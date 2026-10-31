@@ -1,84 +1,88 @@
-# Remaster: plano do mod remasterizador
+# Remaster: plan for the remastering mod
 
-Checklist para um modo "remaster" opcional: o jogo com cara de versão nova, e não de DS ampliado. Fica separado do
-[`GRAFICOS.md`](GRAFICOS.md), que cuida da estrutura (GPU, AA, upscalers) e mantém o visual do DS. Nada daqui foi
-feito ainda; o roadmap fica no radar até a estrutura de GPU estar pronta.
+*Em português: [`REMASTER.pt-BR.md`](REMASTER.pt-BR.md).*
 
-**De onde veio:** no teste do FXAA (diário, 2026-10-30) ficou claro que, com o 3D em resolução alta, o que ainda
-parece "DS" não são as bordas dos polígonos, e sim as texturas de baixa resolução ampliadas sem filtro (cabelo,
-roupa, chão) e o 2D esticado (HUD, retratos, nomes das técnicas). AA e upscalers não mexem nisso.
+Checklist for an optional "remaster" mode: the game looking like a new release, not like an enlarged DS. It is
+separate from [`GRAPHICS.md`](GRAPHICS.md), which covers the structure (GPU, AA, upscalers) and keeps the DS look.
+Nothing here is done yet; the roadmap stays on the radar until the GPU structure is ready.
 
-**Regras:**
-- Opcional e desligado por padrão. O visual do DS continua a referência e o que os testes conferem.
-- O jogo não percebe: o `g_native` de 256×192, a captura de tela do DS e a VRAM saem iguais com o remaster ligado.
-  Tudo acontece só na imagem grande que vai para a janela.
-- Funciona na CPU (rasterizador por software, `gpu3d.cpp`, e composição 2D, `gpu2d.cpp`) e na GPU (Fase 2 do
-  `GRAFICOS.md`), com o mesmo resultado dentro da tolerância. O que só fizer sentido na GPU fica marcado.
-- Duas partes: **recursos do runtime** (filtros, sem dado nenhum, valem para qualquer jogador) e **pacote de
-  dados** (texturas e imagens refeitas, distribuído como mod na pasta `mods/`, ligado pela aba Mods).
-- Release sem nada do jogo, como hoje: o repositório não guarda texturas extraídas nem refeitas a partir delas.
+**Where it came from:** in the FXAA test (diary, 2026-10-30) it became clear that, with the 3D at high
+resolution, what still looks "DS" is not the polygon edges but the low-resolution textures enlarged without
+filtering (hair, clothes, floor) and the stretched 2D (HUD, portraits, technique names). AA and upscalers do not
+touch that.
 
-## Fase 0 — Base
+**Rules:**
+- Optional and off by default. The DS look stays the reference and what the tests check.
+- The game does not notice: the 256×192 `g_native`, the DS screen capture and the VRAM come out the same with the
+  remaster on. Everything happens only in the large image that goes to the window.
+- Works on the CPU (software rasterizer, `gpu3d.cpp`, and 2D composition, `gpu2d.cpp`) and on the GPU (Phase 2 of
+  `GRAPHICS.md`), with the same result within tolerance. What only makes sense on the GPU is marked.
+- Two parts: **runtime features** (filters, no data at all, valid for any player) and a **data pack** (redone
+  textures and images, distributed as a mod in the `mods/` folder, turned on in the Mods tab).
+- A release with nothing from the game, as today: the repository keeps no extracted textures nor ones redone from
+  them.
 
-- [ ] Ponto único onde uma textura decodificada vira a textura usada no desenho (`decode_textures` em
-  `gpu3d.cpp` hoje; o upload da Fase 2 do `GRAFICOS.md` depois), para filtro e troca entrarem nos dois caminhos
-- [ ] Identificar cada textura de forma estável: hash dos texels + paleta + formato + tamanho, independente do
-  endereço na VRAM
-- [ ] Texturas ampliadas com tamanho próprio (2×, 4×…), sem mudar as coordenadas de textura do jogo
-  (amostrar pela coordenada normalizada)
-- [ ] Cache das texturas ampliadas por hash, invalidado quando a VRAM de textura ou de paleta mudar
-- [ ] O mesmo para o 2D: identificar tiles, sprites (OBJ) e bitmaps por hash, e um caminho para a composição da
-  imagem grande (`compose_hi_line`) desenhar camadas 2D em resolução maior do que a nativa
-- [ ] `[remaster]` no `boej.ini` (ou `[video]`), no launcher e no menu de pausa, com um interruptor geral
+## Phase 0 — Base
 
-## Fase 1 — Filtros sem dados (runtime)
+- [ ] A single point where a decoded texture becomes the texture used for drawing (`decode_textures` in
+  `gpu3d.cpp` today; the upload of Phase 2 of `GRAPHICS.md` later), so filtering and replacement enter both paths
+- [ ] Identify each texture stably: hash of the texels + palette + format + size, independent of the VRAM address
+- [ ] Enlarged textures with their own size (2×, 4×…), without changing the game's texture coordinates (sample by
+  the normalized coordinate)
+- [ ] Cache of the enlarged textures by hash, invalidated when the texture or palette VRAM changes
+- [ ] The same for 2D: identify tiles, sprites (OBJ) and bitmaps by hash, and a path for the large-image
+  composition (`compose_hi_line`) to draw 2D layers at a higher resolution than native
+- [ ] `[remaster]` in `boej.ini` (or `[video]`), in the launcher and in the pause menu, with a master switch
 
-Melhoram qualquer textura na hora, sem pacote nenhum.
+## Phase 1 — Filters without data (runtime)
 
-- [ ] `texture_filter = off|bilinear` para o 3D (o DS não filtra): bilinear na amostragem, respeitando
-  repeat/flip/clamp e as bordas com alpha 0
-- [ ] Filtros de pixel art aplicados uma vez por textura, na CPU, guardados no cache: xBR/xBRZ, ScaleFX ou
-  MMPX (escolher pela qualidade nos personagens e pelo custo; ver licenças)
-- [ ] O mesmo filtro nas camadas 2D da imagem grande: HUD, retratos, letreiros das técnicas
-- [ ] Texto: as fontes do jogo (e as do mod de tradução) ampliadas por filtro, ou fontes vetoriais desenhadas
-  na resolução da janela (investigar onde o jogo monta o texto)
-- [ ] Mipmaps para as texturas ampliadas, para o chão ao longe não tremer
-- [ ] Opcional, só GPU: filtragem anisotrópica
+They improve any texture on the fly, with no pack at all.
 
-## Fase 2 — Pacotes de texturas (dados)
+- [ ] `texture_filter = off|bilinear` for the 3D (the DS does not filter): bilinear sampling, respecting
+  repeat/flip/clamp and the edges with alpha 0
+- [ ] Pixel-art filters applied once per texture, on the CPU, kept in the cache: xBR/xBRZ, ScaleFX or MMPX
+  (choose by quality on the characters and by cost; check the licenses)
+- [ ] The same filter on the 2D layers of the large image: HUD, portraits, technique banners
+- [ ] Text: the game's fonts (and the translation mod's) enlarged by a filter, or vector fonts drawn at the
+  window's resolution (investigate where the game builds the text)
+- [ ] Mipmaps for the enlarged textures, so the distant floor does not shimmer
+- [ ] Optional, GPU only: anisotropic filtering
 
-- [ ] Despejo das texturas usadas (`NTR_TEXTURE_DUMP=pasta`), em PNG com o hash no nome, para quem for refazer
-- [ ] Formato do pacote no mod: `textures/<hash>.png` (3D) e `images/<hash>.png` (2D), com tamanho livre
-  (múltiplo do original); documentar em `MODS.md` (a linha "Texturas em alta resolução" já está lá)
-- [ ] Troca na hora do desenho, pelo hash; texturas sem troca seguem pelos filtros da Fase 1
-- [ ] Paletas: a mesma textura com paletas diferentes (uniformes dos times) — trocar por textura+paleta ou
-  aplicar a paleta sobre uma textura em índices refeita
-- [ ] Texturas animadas e escritas na VRAM a cada quadro (efeitos das técnicas): conferir se o hash fica estável
-- [ ] `tools/` com um comando para montar e conferir um pacote (hashes que não existem, tamanhos errados)
-- [ ] Carga sem travar o jogo: ler e decodificar os PNG em segundo plano, com cache em disco
-- [ ] Pacotes de terceiros (inclusive feitos com IA) só como mods separados, fora da release
+## Phase 2 — Texture packs (data)
 
-## Fase 3 — Visual
+- [ ] Dump of the textures in use (`NTR_TEXTURE_DUMP=folder`), as PNG with the hash in the name, for whoever
+  redoes them
+- [ ] Pack format in the mod: `textures/<hash>.png` (3D) and `images/<hash>.png` (2D), with free size (a multiple
+  of the original); document it in `MODS.md` (the "High-resolution textures" row is already there)
+- [ ] Replacement at draw time, by hash; textures without a replacement go through the Phase 1 filters
+- [ ] Palettes: the same texture with different palettes (team uniforms) — replace by texture+palette or apply
+  the palette over a redone indexed texture
+- [ ] Animated textures written to VRAM every frame (technique effects): check that the hash stays stable
+- [ ] A command in `tools/` to assemble and check a pack (hashes that do not exist, wrong sizes)
+- [ ] Loading without stalling the game: read and decode the PNGs in the background, with a disk cache
+- [ ] Third-party packs (including AI-made ones) only as separate mods, outside the release
 
-- [ ] Cor de 8 bits por canal no 3D (`color_depth = full`, já no `GRAFICOS.md` Fase 2): menos faixas no fog e na
-  translucidez
-- [ ] Contorno dos personagens proporcional à resolução (`outline_scale`, `GRAFICOS.md` Fase 3)
-- [ ] Widescreen no 3D: abrir o campo de visão da câmera em vez de esticar (investigar a matriz de projeção e
-  o que o jogo deixa de desenhar fora da tela)
-- [ ] Vídeos Mobiclip (abertura, cenas) ampliados por filtro
-- [ ] Investigar: a taxa de quadros do 3D nas partidas e se dá para interpolar sem mudar a lógica (provavelmente
-  fora do escopo, como o frame generation no `GRAFICOS.md`)
+## Phase 3 — Look
 
-## Fase 4 — Distribuição
+- [ ] 8 bits per channel colour in the 3D (`color_depth = full`, already in `GRAPHICS.md` Phase 2): less banding
+  in the fog and the translucency
+- [ ] Character outlines proportional to the resolution (`outline_scale`, `GRAPHICS.md` Phase 3)
+- [ ] Widescreen in the 3D: widen the camera's field of view instead of stretching (investigate the projection
+  matrix and what the game stops drawing off screen)
+- [ ] Mobiclip videos (opening, cutscenes) enlarged by a filter
+- [ ] Investigate: the 3D frame rate in matches and whether it can be interpolated without changing the logic
+  (probably out of scope, like frame generation in `GRAPHICS.md`)
 
-- [ ] Perfil "Remaster" no launcher que liga os filtros e mostra se há um pacote de texturas ligado
-- [ ] Capturas de comparação DS × remaster nas cenas de referência (campo, partida, técnica, menu)
-- [ ] Testes: o `g_native` e a captura de tela do DS idênticos com o remaster ligado e desligado
+## Phase 4 — Distribution
 
-## Decisões em aberto
+- [ ] A "Remaster" profile in the launcher that turns the filters on and shows whether a texture pack is on
+- [ ] DS × remaster comparison captures in the reference scenes (field, match, technique, menu)
+- [ ] Tests: the `g_native` and the DS screen capture identical with the remaster on and off
 
-- [ ] Qual filtro de pixel art (qualidade × custo na CPU com 3D em 4× ou mais)
-- [ ] O remaster é um mod oficial (só os arquivos de configuração, sem texturas) ou só uma opção do runtime
-  mais pacotes de terceiros
-- [ ] Hash das texturas: qual (o mesmo `hash.cpp` das outras partes?) e o que entra nele
-- [ ] Onde o 2D em resolução alta entra sem refazer a composição inteira por pixel grande
+## Open decisions
+
+- [ ] Which pixel-art filter (quality × CPU cost with the 3D at 4× or more)
+- [ ] Whether the remaster is an official mod (only the configuration files, no textures) or only a runtime
+  option plus third-party packs
+- [ ] Texture hash: which one (the same `hash.cpp` as the other parts?) and what goes into it
+- [ ] Where high-resolution 2D fits without redoing the whole composition per large pixel

@@ -37,7 +37,7 @@ mod para a pasta "mods", e Remover só apaga essa cópia: o arquivo ou a pasta
 original não é alterado. A página também cria um mod a partir de um dump
 modificado (uma tradução, por exemplo), desde que o código dele seja o do
 jogo original. As mudanças valem na próxima vez que o jogo abrir. Como fazer um mod: veja
-docs/MODS.md no repositório do projeto (endereço no fim deste arquivo).
+docs/MODS.pt-BR.md no repositório do projeto (endereço no fim deste arquivo).
 Os mods oficiais saem como .zip separados nas releases (por exemplo, o
 mod-CyberLifePlus-<versão>.zip, a tradução PT-BR): coloque o .zip na
 pasta "mods" sem descompactar. Para atualizar um mod, adicione o .zip novo

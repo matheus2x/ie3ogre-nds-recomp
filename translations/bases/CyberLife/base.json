@@ -1,0 +1,8 @@
+{
+  "name": "CyberLife 1.0",
+  "description": "A tradução PT-BR do grupo CyberLife como saiu do dump deles: o layout que todo idioma usa (falas que mudaram de lugar no evet, scripts do eve com strings maiores, command.STR reorganizado), as fontes latinas, as imagens e os textos. Os textos e as fontes por cima vêm do idioma (translations/<idioma>).",
+  "credits": "Grupo CyberLife",
+  "retail_sha1": "9380f1d7ee75e7c6ef24f1b76c88ecdc85088957",
+  "dump_sha1": "a70e9a336f6ea8ff78003938dcd024533f034a68",
+  "made_with": "tools/mod.py from-dump --patch (commit 26e92e2)"
+}

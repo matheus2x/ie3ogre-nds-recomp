@@ -1,20 +1,22 @@
 #!/usr/bin/env python3
-"""Translation of the game's text into a mod (formats in tools/ntr/text.py, state in docs/TRADUCAO.md).
+"""Translation of the game's text into a mod (formats in tools/ntr/text.py, state in docs/TRANSLATION-STATUS.md).
 
   python3 tools/text.py survey boej.pak mods/CyberLifePlus
   python3 tools/text.py extract boej.pak mods/CyberLifePlus build/text [--only 3300,3611] [--translations DIR]
   python3 tools/text.py lookup build/text 円堂 ゴッドハンド
-  python3 tools/text.py check boej.pak mods/CyberLifePlus translations/CyberLifePlus
-  python3 tools/text.py apply boej.pak mods/CyberLifePlus translations/CyberLifePlus
+  python3 tools/text.py check boej.pak mods/CyberLifePlus translations/pt-BR
+  python3 tools/text.py apply boej.pak mods/CyberLifePlus translations/pt-BR
 
 survey measures how much of the game a mod still leaves in Japanese, by area. extract lists
 the lines still in Japanese, with the room each one has and the translated lines around
 it, and lookup shows how a term was translated in the lines already done; both write the
 game's Japanese text, so they only write under build/ (never versioned).
 
-A translation is a folder of .json files, {"evet:32010110:4": "Ah, Endo!\\nBom dia!", ...}:
-the place of the line (file, entry, offset of the text; for a table, "item.STR:offset" or
-"item.dat:record") and the Portuguese, without any Japanese. "" skips a line on purpose (debug, unused furigana). check tells what does not
+A translation is a folder, translations/<language> (tools/language.py: language.json says
+which letters the language has and which files hold its lines), of .json files,
+{"evet:32010110:4": "Ah, Endo!\\nBom dia!", ...}: the place of the line (file, entry, offset of
+the text; for a table, "item.STR:offset" or "item.dat:record") and the translated text, without
+any Japanese. "" skips a line on purpose (debug, unused furigana). check tells what does not
 fit; apply writes the lines into the mod as patches (the mod keeps carrying no game data).
 """
 
@@ -28,12 +30,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import language  # noqa: E402
 import mod as modtool  # noqa: E402
 from ntr import bps, lz10  # noqa: E402
 from ntr.text import (COMMAND_DESC, COMMAND_NAME, COMMAND_SIZE, FURIGANA, ITEM_NAME, ITEM_SIZE, JAPANESE,  # noqa: E402
                       MOVIE_SIZE, MOVIE_TITLE, MOVIE_WIDTH, PAIRED, SPACER, SUBTITLED, WIDE,
                       OBJECTIVE_PARTS, STR_READ, STR_STEP, fit_font, objective_fit, ssd_objectives, Font, TextError, codes, decode, encode, japanese_count, lines, problems, read_pack, scramble, ssd_records,
-                      ssd_refs, ssd_string, str_strings, subtitle_file, subtitle_records, table_bytes,
+                      ssd_refs, ssd_rewrite, ssd_string, str_strings, subtitle_file, subtitle_records, table_bytes,
                       unscramble, write_pack,
                       DEBUG_PRINT, ssd_opcodes)
 
@@ -57,20 +60,26 @@ RECORDS = {**{f"PracticeGame{n}F.dat": (0x4A, ((0x0C, 22), (0x26, 22)), None) fo
            "ClearCondition.dat": (0x51, ((0x01, 0x50),), PAIRED),
            "OpenCondition.dat": (0x51, ((0x01, 0x50),), PAIRED),
            # the cups: ov022 writes the name, then the word "cup" (three letters of 12 pixels)
-           **{f"TournamentName{n:02d}.dat": (0x14, ((0x00, 19),), None) for n in range(1, 17)}}
+           **{f"TournamentName{n:02d}.dat": (0x14, ((0x00, 19),), None) for n in range(1, 17)},
+           # the players: full name, the name the lists show and its reading (in kana in the game)
+           "unitbase.dat": (0x68, ((0x00, 28), (0x1C, 16), (0x2C, 32)), None),
+           "unitbase_npc.dat": (0x50, ((0x00, 16), (0x10, 16), (0x20, 32)), None)}
+# record tables whose fields are measured each against its own originals (not against all of them)
+FIELD_RULES = {"unitbase.dat", "unitbase_npc.dat"}
 # pixels the game draws after the field of a record table (the translation puts "Copa" first)
 RECORD_AFTER = {f"TournamentName{n:02d}.dat": 36 for n in range(1, 17)}
 # item.dat brings item.STR (names, then descriptions), command.dat the descriptions of command.STR;
 # "ov" is the strings of the overlays, "movie" the subtitles
-TABLES = ("item.dat", "tacticscmd.STR", "games.STR", "rpgtitle.STR", "command.dat", "sp_binder.dat", "movie_view_f.dat", "ov",
+TABLES = ("item.dat", "tacticscmd.STR", "unitbase.STR", "games.STR", "rpgtitle.STR", "command.dat", "sp_binder.dat", "movie_view_f.dat", "ov",
           "movie") + tuple(RECORDS)
 SUBTITLE = re.compile(r"(?:op|a3[my])\d\d[a-z]\.dat")
 ID = re.compile(r"(evet|mcht|eve|mch):(\d+):(\d+)"
-                r"|(item\.dat|item\.STR|tacticscmd\.STR|games\.STR|rpgtitle\.STR|command\.dat|command\.STR|sp_binder\.dat|movie_view_f\.dat|"
+                r"|(item\.dat|item\.STR|tacticscmd\.STR|unitbase\.STR|games\.STR|rpgtitle\.STR|command\.dat|command\.STR|sp_binder\.dat|movie_view_f\.dat|"
                 + "|".join(map(re.escape, RECORDS)) + "|" + SUBTITLE.pattern + r"):(\d+)"
                 r"|(ov\d{3}):(0x[0-9a-f]+)")
 ITEM_DESC = 0x2A  # item.dat (unscrambled): the index of the description in item.STR
 TACTIC_SIZE, TACTIC_DESC = 0x14, 0x0E  # tacticscmd.dat: the index of the description in tacticscmd.STR
+UNIT_SIZE, UNIT_PROFILE = 0x68, 0x66  # unitbase.dat: the index of the player's profile in unitbase.STR
 BINDER_SIZE, BINDER_TEXT, BINDER_READ = 12, 10, 0x100  # sp_binder.dat: u16 count, records; the copy in ov112
 COMMAND_WIDTH = 124  # px of the widest technique name of the fan translation ("Honoo no Kazamidori")
 # A subtitle is one centred row under the movie, drawn with the furigana parser (func_ov016_020f24e8,
@@ -217,19 +226,39 @@ def slots(game: Game, names=PACKS + TABLES):
                     context = context + [decode(text)]
 
 
+def script_rooms(game: Game, name: str) -> dict[int, int]:
+    """Opcode -> the longest string of the game's scripts for it: a string of an instruction
+    may grow up to that (apply makes its record larger), as the game takes one that long for
+    the same instruction (the place of the top screen goes to a field of 0x20 bytes, its
+    longest Japanese string has 23)."""
+    out: dict[int, int] = {}
+    for d in game.pack(name, False).values():
+        ops = ssd_opcodes(d)
+        for at, size in ssd_records(d):
+            op = ops.get(d[at:at + 2])
+            text = ssd_string(d, at, size)
+            if op is not None and text and not text.startswith(b"@") and text[:1] >= b" ":
+                out[op] = max(out.get(op, 0), len(text))
+    return out
+
+
 def script_slots(game: Game, name: str):
     """Strings of the scripts' data, but the "@offset,length" pointers and the debug prints."""
     retail, modded = game.pack(name, False), game.pack(name, True)
+    longest = script_rooms(game, name)
     for key, cur in modded.items():
         base = retail[key]
         objectives, ops = ssd_objectives(cur), ssd_opcodes(cur)
-        for at, size in ssd_records(cur):
+        # the fan translation made strings longer: the original of a record is the game's in the same order
+        records, originals = ssd_records(cur), ssd_records(base)
+        same = len(records) == len(originals)
+        for k, (at, size) in enumerate(records):
             text = ssd_string(cur, at, size)
             if not text or text.startswith(b"@") or text[:1] < b" " or ops.get(cur[at:at + 2]) == DEBUG_PRINT:
                 continue
-            source = ssd_string(base, at, size) if len(base) == len(cur) else text
-            yield Slot(f"{name}:{key}:{at + 4}", size - 5, FURIGANA.sub(b"", source), text, [],
-                       objective=at in objectives)
+            source = ssd_string(base, *originals[k]) if same else text
+            yield Slot(f"{name}:{key}:{at + 4}", max(size - 5, longest.get(ops.get(cur[at:at + 2]), 0)),
+                       FURIGANA.sub(b"", source), text, [], objective=at in objectives)
 
 
 RUBY = re.compile(r"\[([^/\]]*)/[^\]]*\]")
@@ -302,6 +331,9 @@ def table_slots(game: Game, name: str):
         rules = (rules[0], rules[1] + RECORD_AFTER.get(name, 0))
         rules += (form, 1) if form else ()
         for field, room in fields:
+            if name in FIELD_RULES:
+                rules = table_rules(font, [text_at(d, at) for d in kind for at in range(field, len(d), size)
+                                           if japanese_count(text_at(d, at))]) + ((form, 1) if form else ())
             # the original's Shift-JIS strings (a name of full-width letters too), not the "0" of an empty field
             places = [k * size + field for k in recs if max(text_at(dr, k * size + field), default=0) >= 0x81]
             if not places:
@@ -361,13 +393,16 @@ def table_slots(game: Game, name: str):
     strs = str_strings(retail)
     rules = table_rules(font, [text_at(retail, at) for at, _ in strs if not DEBUG.search(visible(text_at(retail, at)))])
     # the descriptions of the tactics go to the box of the item descriptions (PAIRED)
+    # (the players' profiles too: the box of the friends draws them with the furigana parser)
     descs: dict[int, int] = {}  # original place -> where the mod has it
-    if name == "tacticscmd.STR":
-        dat, mdat = game.retail(f"{LOGIC}/tacticscmd.dat"), game.modded(f"{LOGIC}/tacticscmd.dat")
-        descs = {struct.unpack_from("<H", dat, k + TACTIC_DESC)[0] * STR_STEP:
-                 struct.unpack_from("<H", mdat, k + TACTIC_DESC)[0] * STR_STEP for k in range(0, len(dat), TACTIC_SIZE)}
+    if name in DESCRIPTIONS and not DESCRIPTIONS[name][3] and name != "command.STR":
+        dat_name, size, field, _ = DESCRIPTIONS[name]
+        dat, mdat = game.retail(f"{LOGIC}/{dat_name}"), game.modded(f"{LOGIC}/{dat_name}")
+        descs = {struct.unpack_from("<H", dat, k + field)[0] * STR_STEP:
+                 struct.unpack_from("<H", mdat, k + field)[0] * STR_STEP for k in range(0, len(dat), size)}
         desc_rules = table_rules(font, [text_at(retail, at) for at, _ in strs if at in descs]) + (PAIRED,)
-        rules = table_rules(font, [text_at(retail, at) for at, _ in strs if at not in descs])
+        others = [text_at(retail, at) for at, _ in strs if at not in descs]
+        rules = table_rules(font, others) if others else desc_rules
     context: list[str] = []
     for at, room in strs:
         text = text_at(cur, descs.get(at, at))
@@ -464,16 +499,23 @@ def under_build(path: Path):
 
 
 def load_translations(folder: Path) -> dict[str, str]:
+    """The lines of a translation folder (its language.json says which files), with the
+    language's letters active for encode and decode from now on."""
     out: dict[str, str] = {}
-    for f in sorted(folder.glob("*.json")):
-        if f.name == "images.json":  # the text drawn on images (tools/image.py)
-            continue
-        for sid, text in json.loads(f.read_text(encoding="utf-8")).items():
+    lang = language.load(folder).activate()
+    for f in lang.texts:
+        try:
+            lines = json.loads(f.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as e:
+            sys.exit(f"error: {f}: not valid JSON ({e})")
+        if not isinstance(lines, dict) or not all(isinstance(t, str) for t in lines.values()):
+            sys.exit(f'error: {f}: a file of lines is {{"place": "text", ...}}')
+        for sid, text in lines.items():
             if not ID.fullmatch(sid):
                 sys.exit(f"error: {f.name}: {sid!r} is not a place (evet|mcht|eve|mch:entry:offset, "
                          "item.STR:offset, item.dat:record, movie_view_f.dat:record…)")
             if JAPANESE.search(text):
-                sys.exit(f"error: {f.name}: {sid} has Japanese; translations carry only Portuguese")
+                sys.exit(f"error: {f.name}: {sid} has Japanese; translations carry no Japanese, only the translated text")
             if sid in out and out[sid] != text:
                 sys.exit(f"error: {sid} is in two files with different texts")
             out[sid] = text
@@ -670,7 +712,7 @@ def cmd_survey(args) -> int:
           f"({total[1]} de {total[0]} caracteres japoneses ainda no jogo)")
     print(f"traduzido, textos únicos:  {100 * (1 - total[3] / total[2]):.1f}% "
           f"({total[3]} de {total[2]})")
-    print("\nFora da conta: imagens, legendas dos vídeos e o ARM9 (veja docs/TRADUCAO.md).")
+    print("\nFora da conta: imagens, legendas dos vídeos e o ARM9 (veja docs/TRANSLATION-STATUS.md).")
     return 0
 
 
@@ -755,12 +797,7 @@ def checked(game: Game, folder: Path) -> tuple[dict[str, Slot], dict[str, str], 
         if s is None:
             print(f"!! {sid}: there is no line there")
             bad += 1
-        elif text and s.objective and objective_fit(text, font) is None:
-            print(f"!! {sid}: wider than the {OBJECTIVE_PARTS} sprites of the objective\n   {text}")
-            bad += 1
-        # a dialog line of an overlay has real newlines (one byte), not the \\n of the scripts
-        elif text and (p := problems(s.source, placed(s, text, font), s.capacity + (
-                text.count("\\n") if s.file.startswith("ov") and not s.table else 0), font, s.table)):
+        elif text and (p := line_problems(s, text, font)):
             print(f"!! {sid}: {'; '.join(p)}\n   {text[:100]}")
             bad += 1
     for (file, head), (data, room) in overlay_list_bytes(game, by_id, tr).items():
@@ -790,14 +827,48 @@ def overlay_list_bytes(game: Game, by_id: dict[str, Slot],
     return {key: (b"\0".join(strs) + b"\0", rooms[key]) for key, strs in out.items()}
 
 
+def line_problems(s: Slot, text: str, font: Font) -> list[str]:
+    """Why a translated line does not fit in its place."""
+    if s.objective and objective_fit(text, font) is None:
+        return [f"wider than the {OBJECTIVE_PARTS} sprites of the objective"]
+    # a dialog line of an overlay has real newlines (one byte), not the \\n of the scripts
+    return problems(s.source, placed(s, text, font), s.capacity + (
+        text.count("\\n") if s.file.startswith("ov") and not s.table else 0), font, s.table)
+
+
+def written(s: Slot, text: str, font: Font) -> bytes:
+    """The bytes apply writes for a line, without its NUL."""
+    if s.group == "movie":
+        return table_bytes(text, SUBTITLED)
+    if s.table or s.file.startswith("ov"):
+        return table_bytes(text, s.table[2] if s.table and len(s.table) > 2 else None)
+    return encode(placed(s, text, font))
+
+
+UNWIDE = {0x3000: " "} | {c: chr(c - 0xFEE0) for c in range(0xFF01, 0xFF5F)}
+
+
+def as_written(s: Slot, raw: bytes) -> str:
+    """The text of a line as a translation writes it (the inverse of written)."""
+    if s.group == "movie" or s.table or s.file.startswith("ov"):
+        t = visible(raw)
+        form = s.table[2] if s.table and len(s.table) > 2 else SUBTITLED if s.group == "movie" else None
+        return t.translate(UNWIDE) if form in (WIDE, SUBTITLED) else t
+    return decode(raw).replace(SPACER, "")
+
+
 def placed(s: Slot, text: str, font: Font) -> str:
     """The text as written into the game: an objective gets the spaces of objective_fit."""
     return objective_fit(text, font) if s.objective else text
 
 
+def check(image: Path, mod: Path, folder: Path) -> int:
+    """How many lines of a translation do not fit in the mod."""
+    return checked(Game(image, mod), folder)[2]
+
+
 def cmd_check(args) -> int:
-    _, _, bad = checked(Game(args.image, args.dir), args.translations)
-    return 1 if bad else 0
+    return 1 if check(args.image, args.dir, args.translations) else 0
 
 
 def put_command_name(tables: dict[str, bytearray], game: Game, record: int, data: bytes):
@@ -820,7 +891,8 @@ def put_command_name(tables: dict[str, bytearray], game: Game, record: int, data
 # A table of descriptions -> the table that points at them: (file, record size, field of the index, scrambled)
 DESCRIPTIONS = {"item.STR": ("item.dat", ITEM_SIZE, ITEM_DESC, True),
                 "command.STR": ("command.dat", COMMAND_SIZE, COMMAND_DESC, False),
-                "tacticscmd.STR": ("tacticscmd.dat", TACTIC_SIZE, TACTIC_DESC, False)}
+                "tacticscmd.STR": ("tacticscmd.dat", TACTIC_SIZE, TACTIC_DESC, False),
+                "unitbase.STR": ("unitbase.dat", UNIT_SIZE, UNIT_PROFILE, False)}
 
 
 def put_description(tables: dict[str, bytearray], game: Game, name: str, at: int, data: bytes):
@@ -896,8 +968,13 @@ def write_overlay(mod: Path, game: Game, oid: int, data: bytes) -> bool:
 
 
 def cmd_apply(args) -> int:
-    game = Game(args.image, args.dir)
-    by_id, tr, bad = checked(game, args.translations)
+    return apply(args.image, args.dir, args.translations)
+
+
+def apply(image: Path, mod: Path, folder: Path) -> int:
+    """Write the lines of a translation into the mod as patches; 1 if some do not fit (nothing written)."""
+    game = Game(image, mod)
+    by_id, tr, bad = checked(game, folder)
     if bad:
         print("nothing written: fix the problems first")
         return 1
@@ -907,6 +984,7 @@ def cmd_apply(args) -> int:
     overlays: dict[int, bytearray] = {}
     binder: dict[int, bytes] = {}  # record of sp_binder.dat -> its new string
     subtitles: dict[str, dict[int, bytes]] = collections.defaultdict(dict)  # movie/txt file -> record -> text
+    strings: dict[tuple[str, int], dict[int, bytes]] = collections.defaultdict(dict)  # script -> record -> string
     for sid, text in tr.items():
         if not text:
             continue
@@ -914,6 +992,8 @@ def cmd_apply(args) -> int:
         room = s.capacity + 1
         if s.list:
             continue  # with its list, below
+        if s.current == written(s, text, font):
+            continue  # the mod has it so already: its bytes after the NUL stay too
         if s.file.startswith("ov"):
             oid = int(s.file[2:])
             d = overlays.setdefault(oid, bytearray(game.overlay(oid, True)))
@@ -944,11 +1024,18 @@ def cmd_apply(args) -> int:
             else:
                 d[s.offset:s.offset + room] = data + bytes(room - len(data))
             continue
+        if s.file in SCRIPTS:  # a string may outgrow its record: the script is written again, below
+            strings[s.file, s.key][s.offset - 4] = encode(placed(s, text, font))
+            continue
         d = changed[s.file].setdefault(s.key, bytearray(game.pack(s.file, True)[s.key]))
         data = encode(placed(s, text, font)) + b"\0"
         d[s.offset:s.offset + room] = data + bytes(room - len(data))
+    for (name, key), new in strings.items():
+        changed[name][key] = bytearray(ssd_rewrite(game.pack(name, True)[key], new))
     for (file, head), (data, room) in overlay_list_bytes(game, by_id, tr).items():
         oid = int(file[2:])
+        if game.overlay(oid, True)[head:head + len(data)] == data:
+            continue
         d = overlays.setdefault(oid, bytearray(game.overlay(oid, True)))
         d[head:head + room] = data + bytes(room - len(data))
     if any(by_id[sid].objective or PAIRED in (by_id[sid].table or ())[2:3] for sid, text in tr.items() if text):
@@ -958,10 +1045,10 @@ def cmd_apply(args) -> int:
     for rel, texts in subtitles.items():
         tables[rel] = bytearray(subtitle_file(game.modded(rel), texts))
     for rel, data in tables.items():
-        if write_file(args.dir, game, rel, bytes(data)):
+        if write_file(mod, game, rel, bytes(data)):
             print(f"{rel}: changed")
     for oid, data in overlays.items():
-        if write_overlay(args.dir, game, oid, bytes(data)):
+        if write_overlay(mod, game, oid, bytes(data)):
             print(f"overlay {oid}: changed")
     for name, entries in changed.items():
         pkh = game.modded(f"{SCRIPT}/{name}.pkh")
@@ -977,9 +1064,89 @@ def cmd_apply(args) -> int:
             continue
         h, b = write_pack(pkh, new)
         for ext, data in ((".pkh", h), (".pkb", b)):
-            write_file(args.dir, game, f"{SCRIPT}/{name}{ext}", data)
+            write_file(mod, game, f"{SCRIPT}/{name}{ext}", data)
         print(f"{name}: {updated} entries changed")
-    print(f"{args.dir}: done; raise the version in mod.ini and check with tools/mod.py check")
+    print(f"{mod}: done; raise the version in mod.ini and check with tools/mod.py check")
+    return 0
+
+
+def place_map(a: Game, b: Game) -> dict[str, str]:
+    """The places of the scripts' strings and of the lines of evet in a's layout that are
+    elsewhere in b's (the fan translation made strings of eve longer and moved lines): the
+    records of a script are in the same order in both, as are its "@offset,length" pointers."""
+    out = {}
+    for name in SCRIPTS:
+        pa, pb = a.pack(name, True), b.pack(name, True)
+        for key, da in pa.items():
+            ra, rb = ssd_records(da), ssd_records(pb.get(key, b""))
+            if len(ra) == len(rb):
+                out |= {f"{name}:{key}:{x + 4}": f"{name}:{key}:{y + 4}" for (x, _), (y, _) in zip(ra, rb) if x != y}
+            if name == "eve":
+                fa, fb = list(ssd_refs(da)), list(ssd_refs(pb.get(key, b"")))
+                if len(fa) == len(fb):
+                    out |= {f"evet:{key}:{x + 4}": f"evet:{key}:{y + 4}" for x, y in zip(fa, fb) if x != y}
+    return out
+
+
+def file_of(s: Slot) -> str:
+    """The .json file a new line of a group goes to (the PT-BR files are named so)."""
+    if s.file.startswith("ov"):
+        return "overlays.json"
+    group = re.sub(r"^(PracticeGame)\dF$|^(TournamentName)\d\d$", r"\1\2", s.group)
+    return f"{group}.json"
+
+
+def cmd_export(args) -> int:
+    """The lines the mod has translated and the translation does not, into its .json files, when
+    apply would write them back to the same bytes and check takes them."""
+    lang = language.load(args.translations)
+    tr = load_translations(args.translations)
+    files: dict[str, str] = {}  # place -> file
+    for f in lang.texts:
+        files.update(dict.fromkeys(json.loads(f.read_text(encoding="utf-8")), f.name))
+    game = Game(args.image, args.dir)
+    font = game.font()
+    by_group: dict[str, str] = {}  # group -> file of the lines it already has
+    new: dict[str, dict[str, str]] = collections.defaultdict(dict)
+    kept: collections.Counter = collections.Counter()
+    examples: dict[str, list[str]] = collections.defaultdict(list)
+    all_slots = list(slots(game))
+    for s in all_slots:
+        if s.id in files:
+            by_group.setdefault(s.group, files[s.id])
+    for s in all_slots:
+        if s.id in tr or not s.current.strip() or japanese_count(s.current) or s.current == s.source:
+            continue
+        text = as_written(s, s.current)
+        why = ("not written back the same" if "<" in text and re.search(r"<[0-9a-f]{2}>", text)
+               or written(s, text, font) != s.current else "; ".join(line_problems(s, text, font)))
+        if why:
+            kept[s.group] += 1
+            if len(examples[s.group]) < 2:
+                examples[s.group].append(f"{s.id}: {why}: {text[:60]}")
+            continue
+        new[by_group.get(s.group) or file_of(s)][s.id] = text
+    for name, lines in sorted(new.items()):
+        print(f"{name}: {len(lines)} lines")
+    print(f"{sum(map(len, new.values()))} lines to export; {sum(kept.values())} stay only in the base:")
+    for group, n in sorted(kept.items()):
+        print(f"  {group}: {n}  ({'; '.join(examples[group])})")
+    if not args.write:
+        print("nothing written (--write to write them)")
+        return 0
+    folder = lang.texts[0].parent if lang.texts else lang.folder
+    for name, lines in sorted(new.items()):
+        f = folder / name
+        body = ",\n".join(f" {json.dumps(k)}: {json.dumps(v, ensure_ascii=False)}" for k, v in lines.items())
+        if f.exists():
+            old = f.read_text(encoding="utf-8").rstrip()
+            if not old.endswith("}"):
+                sys.exit(f"error: {f} does not end in }}")
+            head = old[:-1].rstrip()
+            f.write_text(head + (",\n" if head != "{" else "\n") + body + "\n}\n", encoding="utf-8")
+        else:
+            f.write_text("{\n" + body + "\n}\n", encoding="utf-8")
+    print(f"{folder}: written")
     return 0
 
 
@@ -1007,6 +1174,13 @@ def main() -> int:
     p.add_argument("terms", nargs="+")
     p.add_argument("--examples", type=int, default=3)
     p.set_defaults(fn=cmd_lookup)
+
+    p = sub.add_parser("export", help="the lines a mod has translated into the translation's .json files")
+    p.add_argument("image", type=Path)
+    p.add_argument("dir", type=Path, help="the mod whose lines to take")
+    p.add_argument("translations", type=Path, help="the translation folder")
+    p.add_argument("--write", action="store_true", help="write them (without it, only count)")
+    p.set_defaults(fn=cmd_export)
 
     for name, fn, text in (("check", cmd_check, "what in a translation does not fit"),
                            ("apply", cmd_apply, "write a translation into the mod, as patches")):

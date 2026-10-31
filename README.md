@@ -25,7 +25,7 @@
   <a href="#controls">Controls</a> ·
   <a href="#mods-and-the-pt-br-translation">Mods</a> ·
   <a href="#building">Building</a> ·
-  <a href="docs/DESENVOLVIMENTO.md">Development</a> ·
+  <a href="docs/DEVELOPMENT.md">Development</a> ·
   <a href="#reporting-problems">Problems</a>
 </p>
 
@@ -46,7 +46,7 @@
 > [!NOTE]
 > The game itself is the Japanese version. The launcher and the in-game pause menu are in English by default, with
 > Brazilian Portuguese as an option ("Language / Idioma" on the launcher's home screen). The documentation in `docs/` is in
-> Brazilian Portuguese; this README is the English overview.
+> English, each document with a Brazilian Portuguese version next to it (`*.pt-BR.md`); only the diary is Portuguese-only.
 
 ## What the port adds
 
@@ -131,14 +131,14 @@ they only load in the same `boej.exe` and with the same mods (an update recompil
 
 Mods replace game files (text, fonts, images, tables) without touching `boej.pak`. Each mod is a folder or a
 `.zip` in the `mods/` folder: put it there (or drag it onto the launcher) and enable it under **Mods** in the launcher. How
-to make a mod (in Portuguese): [`docs/MODS.md`](docs/MODS.md).
+to make a mod: [`docs/MODS.md`](docs/MODS.md).
 
 Official mods live in [`mods/`](mods/) and ship as separate `.zip` files with each release, as patches only,
 with no game data:
 
 | Mod | What it is |
 |---|---|
-| [`CyberLifePlus`](mods/CyberLifePlus/LEIA-ME.md) | Brazilian Portuguese translation. Originally made by the **CyberLife** group and continued here: the story is fully translated, and what is left is tracked in [`docs/TRADUCAO.md`](docs/TRADUCAO.md) |
+| [`CyberLifePlus`](mods/CyberLifePlus/README.md) | Brazilian Portuguese translation. Originally made by the **CyberLife** group and continued here: the story is fully translated, and what is left is tracked in [`docs/TRANSLATION-STATUS.md`](docs/TRANSLATION-STATUS.md) |
 
 ## Reporting problems
 
@@ -167,7 +167,7 @@ on the PC, along with the parts of the BIOS and the NitroSDK the game uses.
 - [ ] Linux release (source builds only for now)
 - [ ] Achievements from live game state (today they are checked against the save)
 - [ ] Mods: documented formats, high-resolution textures, a special move editor
-- [ ] Optional GPU rendering (Vulkan/D3D12), better anti-aliasing, TAA, FSR and DLSS ([roadmap](docs/GRAFICOS.md), in Portuguese)
+- [ ] Optional GPU rendering (Vulkan/D3D12), better anti-aliasing, TAA, FSR and DLSS ([roadmap](docs/GRAPHICS.md))
 
 ## Building
 
@@ -182,33 +182,36 @@ python3 -m unittest discover -s tools/tests -t tools   # tests (no ROM needed)
 ```
 
 Windows builds from Linux/WSL, releases, Ghidra analysis and the environment variables used for testing:
-[`docs/DESENVOLVIMENTO.md`](docs/DESENVOLVIMENTO.md).
+[`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md).
 
 ## Documentation
 
-All in Portuguese.
+Each one also in Brazilian Portuguese (`*.pt-BR.md`).
 
 | Document | Contents |
 |---|---|
-| [Development](docs/DESENVOLVIMENTO.md) | repository layout, building, releases, static analysis, settings, logs and environment variables |
+| [Development](docs/DEVELOPMENT.md) | repository layout, building, releases, static analysis, settings, logs and environment variables |
 | [Mods](docs/MODS.md) | the mod format, BPS patches, tools and how it works inside |
-| [PT-BR translation](docs/TRADUCAO.md) | what is left to translate, the checklist, naming conventions and technical text rules |
-| [CyberLifePlus](mods/CyberLifePlus/LEIA-ME.md) | credits, versions and how to continue the translation |
-| [Diary](docs/DIARY.md) | the project's step-by-step history, with what was learned about the game |
+| [Translating](docs/TRANSLATING.md) | translating the game into another language: only `.json` and `.png` to edit, and `tools/translate.py` makes the mod |
+| [PT-BR translation](docs/TRANSLATION-STATUS.md) | what is left to translate, the checklist, naming conventions and technical text rules |
+| [CyberLifePlus](mods/CyberLifePlus/README.md) | credits, versions and how to continue the translation |
+| [Diary](docs/DIARY.pt-BR.md) | the project's step-by-step history, with what was learned about the game (in Portuguese; [summary](docs/DIARY.md)) |
 
 ## Contributing
 
 - Never commit ROMs, dumps, extracted files or snippets of the game's code (`.gitignore` blocks the common
-  cases). Mods go in as `.bps` patches, and translations in `translations/` hold only the new text.
-- Log relevant findings and changes in `docs/DIARY.md`, and translation work in the `docs/TRADUCAO.md` checklist
-  too.
+  cases). Mods go in as `.bps` patches, and translations in `translations/` hold only the translated text (and the
+  fonts and pictures drawn for them).
+- Log relevant findings and changes in `docs/DIARY.pt-BR.md` (the diary is in Portuguese), and translation work in the
+  `docs/TRANSLATION-STATUS.md` checklist too. A change to a document goes into both its English and its `.pt-BR.md`
+  version.
 - Run the tests (`python3 -m unittest discover -s tools/tests -t tools`) before opening a pull request.
 
 ## Credits
 
 **Translation**
 
-- The **CyberLife** group, for the PT-BR translation that the [`CyberLifePlus`](mods/CyberLifePlus/LEIA-ME.md) mod
+- The **CyberLife** group, for the PT-BR translation that the [`CyberLifePlus`](mods/CyberLifePlus/README.md) mod
   is built on.
 
 **Projects and libraries**

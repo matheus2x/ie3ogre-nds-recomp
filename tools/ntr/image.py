@@ -1,4 +1,4 @@
-"""The images of the game (data_iz/pic2d, pic3d) and the text drawn on them (docs/TRADUCAO.md).
+"""The images of the game (data_iz/pic2d, pic3d) and the text drawn on them (docs/TRANSLATION-STATUS.md).
 
 SFP archive: "SFP\\0", u32 0, u32 5, u32 0x20, u32 size at 0x10, then from 0x20 entries of
 (u32 offset of the name, u32 size, u32 offset / 0x20, u32 0) and the names. The data is a second
@@ -18,9 +18,9 @@ pixel, rows MSB first); CWDH gives (left, glyph width, advance) of each glyph.
 """
 
 import struct
-import zlib
 
 from . import lz10
+from .png import read_png, write_png  # noqa: F401 (write_png: also imported from here)
 
 
 class ImageError(ValueError):
@@ -195,6 +195,34 @@ class Picture:
             return bytes(c for r in cell for c in r)
         return bytes(r[x] | r[x + 1] << 4 for r in cell for x in range(0, 8, 2))
 
+    def draw_png(self, png: bytes) -> int:
+        """The picture drawn as a PNG (export's, edited; any PNG an editor saves, of the same
+        size): each pixel takes the palette index of its colour among those it can take (bank),
+        the one it had when the colour is the same, 0 when it is see-through. The number of
+        pixels whose colour is not in the palette (they take the nearest)."""
+        w, h, rows = read_png(png)
+        if (w, h) != (self.w, self.h):
+            raise ImageError(f"the PNG is {w}x{h}, the picture {self.w}x{self.h}")
+        pal = colours(self.pal)
+        span = 256 if self.bpp == 8 else 16
+        near = 0
+        for y in range(h):
+            for x in range(w):
+                r, g, b, a = rows[y][x]
+                old = self.rows[y][x]
+                if a < 128:
+                    self.rows[y][x] = self.bank(x, y)
+                    continue
+                if old < len(pal) and pal[old] == (r, g, b):
+                    continue
+                first = self.bank(x, y)
+                choices = range(first + 1, min(first + span, len(pal)))
+                best = min(choices, key=lambda i: (pal[i][0] - r) ** 2 + (pal[i][1] - g) ** 2 + (pal[i][2] - b) ** 2,
+                           default=first)
+                near += pal[best] != (r, g, b)
+                self.rows[y][x] = best
+        return near
+
     def png(self, scale: int = 1) -> bytes:
         """Indexed PNG (index 0 transparent), each pixel scale x scale."""
         pal = colours(self.pal)
@@ -220,14 +248,6 @@ def guess_width(p: Picture) -> int:
         if cnt and (best is None or diff / cnt < best[0]):
             best = (diff / cnt, cols)
     return best[1] if best else n
-
-
-def write_png(w: int, h: int, pal: list[tuple[int, int, int]], rows: list[bytes]) -> bytes:
-    def chunk(kind: bytes, data: bytes) -> bytes:
-        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
-    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 3, 0, 0, 0))
-            + chunk(b"PLTE", bytes(v for c in pal for v in c)) + chunk(b"tRNS", b"\0")
-            + chunk(b"IDAT", zlib.compress(b"".join(b"\0" + r for r in rows))) + chunk(b"IEND", b""))
 
 
 # --- fonts and text -------------------------------------------------------------------

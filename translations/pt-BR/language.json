@@ -1,0 +1,22 @@
+{
+  "type": "translation",
+  "language": "pt-BR",
+  "mod": "CyberLifePlus",
+  "base": "CyberLife",
+  "name": "CyberLifePlus (tradução PT-BR)",
+  "version": "1.16",
+  "author": "CyberLife (tradução original), matheus2x (continuação)",
+  "description": "Tradução para o português do Brasil. Feita originalmente pelo grupo CyberLife e continuada aqui, completando o que faltou.",
+  "charset": {
+    "à": "B1", "á": "B2", "â": "B3", "ã": "B4", "ç": "B8", "é": "BA", "ê": "BB", "í": "BE",
+    "ó": "C4", "ô": "C5", "õ": "C6", "ú": "CA", "ü": "CC",
+    "À": "D0", "Á": "D1", "Â": "D2", "Ã": "D3", "Ç": "D7", "É": "D9", "Ê": "DA",
+    "Ó": "AB", "Ô": "AC", "Õ": "AD", "Ú": "A2"
+  },
+  "spacer": "DF",
+  "space": "CF",
+  "plain": {"…": "...", "“": "\"", "”": "\"", "‘": "'", "’": "'", "—": "-", "–": "-"},
+  "texts": "texts/*.json",
+  "images": "images.json",
+  "fonts": "font"
+}

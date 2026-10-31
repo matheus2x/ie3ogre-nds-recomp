@@ -2,10 +2,12 @@
 
 import struct
 import unittest
+import zlib
 
 import image as imagetool
 from ntr import lz10
-from ntr.image import Picture, guess_width, read_spf, read_spl, sections, write_spf, write_spl
+from ntr.image import ImageError, Picture, colours, guess_width, read_spf, read_spl, sections, write_spf, write_spl
+from ntr.png import read_png
 
 
 def pac(parts: list[bytes]) -> bytes:
@@ -50,6 +52,44 @@ def tiled(cols: int, rows: int) -> bytes:
     cells = [(0 | 1 << 12) if (c + r) % 3 == 0 else (0 | 1 << 10 | 1 << 12) if (c + r) % 3 == 1 else (1 | 1 << 12)
              for r in range(rows) for c in range(cols)]
     return pac([struct.pack("<32H", *range(32)), struct.pack(f"<{len(cells)}H", *cells), grad + plain])
+
+
+def rgba_png(rows) -> bytes:
+    """What an image editor saves: RGBA, no palette."""
+    def chunk(kind, data):
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+    raw = b"".join(b"\0" + bytes(v for px in r for v in px) for r in rows)
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", len(rows[0]), len(rows), 8, 6, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b""))
+
+
+class DrawPngTest(unittest.TestCase):
+    def test_texture(self):
+        p = Picture(texture(16, 8, [(0, 0, 16, 8)]), "3d")
+        before = [r[:] for r in p.rows]
+        self.assertEqual(p.draw_png(p.png()), 0)  # export's own PNG: nothing changes
+        self.assertEqual(p.rows, before)
+        _, _, rows = read_png(p.png())
+        pal = colours(p.pal)
+        rows[2][3] = (*pal[5], 255)          # a colour of the palette
+        rows[4][4] = (pal[7][0] + 2, 0, 0, 255)  # one that is not: the nearest
+        rows[5][5] = (0, 0, 0, 0)            # see-through
+        self.assertEqual(p.draw_png(rgba_png(rows)), 1)
+        self.assertEqual((p.rows[2][3], p.rows[4][4], p.rows[5][5]), (5, 7, 0))
+        q = Picture(p.encode(), "3d")
+        self.assertEqual(q.rows, p.rows)
+        with self.assertRaises(ImageError):
+            p.draw_png(rgba_png([[(0, 0, 0, 255)] * 4] * 4))  # not the picture's size
+
+    def test_tiles_keep_their_bank(self):
+        p = Picture(tiled(4, 2), "2d", 4)
+        _, _, rows = read_png(p.png())
+        pal = colours(p.pal)
+        rows[1][1] = (*pal[20], 255)  # bank 1 (16-31): index 20
+        rows[1][2] = (*pal[3], 255)   # bank 0's colour: the nearest of bank 1, but its see-through 16
+        p.draw_png(rgba_png(rows))
+        self.assertEqual((p.rows[1][1], p.rows[1][2]), (20, 17))
+        self.assertEqual(Picture(p.encode(), "2d", 4).rows, p.rows)
 
 
 class PacTest(unittest.TestCase):

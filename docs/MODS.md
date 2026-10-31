@@ -1,219 +1,228 @@
 # Mods
 
-Cada mod é **uma pasta ou um `.zip`** dentro da pasta `mods/`, ao lado do `boej.exe` e do launcher. Para
-adicionar um mod, basta colocá-lo lá: o launcher mostra os mods dessa pasta na página **Mods**, onde cada um é
-ligado, desligado e ordenado. O jogo lê os arquivos do mod no lugar dos originais, direto da pasta ou de dentro do
-`.zip` (sem extrair); o `boej.pak` nunca é alterado.
+*Em português: [`MODS.pt-BR.md`](MODS.pt-BR.md).*
 
-## O que um mod pode mudar
+Each mod is **a folder or a `.zip`** inside the `mods/` folder, next to `boej.exe` and the launcher. To add a mod,
+just put it there: the launcher shows that folder's mods on the **Mods** page, where each one is turned on, off
+and ordered. The game reads the mod's files instead of the original ones, straight from the folder or from inside
+the `.zip` (without extracting it); `boej.pak` is never changed.
 
-| Pode | Como |
+## What a mod can change
+
+| Can | How |
 |---|---|
-| Qualquer arquivo do NitroFS (`data_iz/...`): textos, fontes, imagens, modelos, sons, vídeos, tabelas | `files/<caminho no jogo>`, o arquivo inteiro; o tamanho pode mudar |
-| Dados das overlays (textos e tabelas que ficam dentro do código, como os menus) | `overlays/ovNNN.bin`, a overlay como fica na RAM (descomprimida) |
-| Os mesmos, só com a diferença | `files/<caminho>.bps` ou `overlays/ovNNN.bin.bps`: um patch BPS sobre o arquivo original (ver **Patches** abaixo) |
+| Any NitroFS file (`data_iz/...`): text, fonts, images, models, sounds, videos, tables | `files/<path in the game>`, the whole file; its size may change |
+| Overlay data (text and tables kept inside the code, like the menus) | `overlays/ovNNN.bin`, the overlay as it sits in RAM (decompressed) |
+| The same, only the difference | `files/<path>.bps` or `overlays/ovNNN.bin.bps`: a BPS patch over the original file (see **Patches** below) |
 
-| Não pode (por enquanto) | Por quê |
+| Cannot (for now) | Why |
 |---|---|
-| Código do jogo (ARM9, código das overlays) | o código foi recompilado para o PC; mudar os bytes dele não teria efeito. O jogo confere isso e recusa o mod |
-| A overlay 129 | é a proteção contra cópia, cifrada na ROM |
-| O ARM7, o banner e o cabeçalho | o ARM7 é reimplementado no PC; os outros não são lidos pelo jogo |
+| The game's code (ARM9, overlay code) | the code was recompiled for the PC; changing its bytes would have no effect. The game checks this and refuses the mod |
+| Overlay 129 | it is the copy protection, encrypted in the ROM |
+| The ARM7, the banner and the header | the ARM7 is reimplemented on the PC; the others are not read by the game |
 
-## Estrutura
+## Layout
 
 ```
 boej.exe
 ie3-launcher.exe
 mods/
-  fontes-maiores.zip                     um mod em .zip (mesmo conteúdo da pasta abaixo)
-  minha-traducao/                        um mod em pasta
+  bigger-fonts.zip                       a mod as a .zip (same content as the folder below)
+  my-translation/                        a mod as a folder
     mod.ini
     files/
-      data_iz/logic/CapsuleComment.dat   substitui /data_iz/logic/CapsuleComment.dat
-      data_iz/font/FONT12.NFTR.bps       patch sobre o /data_iz/font/FONT12.NFTR original
+      data_iz/logic/CapsuleComment.dat   replaces /data_iz/logic/CapsuleComment.dat
+      data_iz/font/FONT12.NFTR.bps       patch over the original /data_iz/font/FONT12.NFTR
     overlays/
-      ov022.bin                          overlay 22 inteira, descomprimida
-      ov023.bin.bps                      patch sobre a overlay 23 descomprimida
+      ov022.bin                          the whole overlay 22, decompressed
+      ov023.bin.bps                      patch over the decompressed overlay 23
 ```
 
 `mod.ini`:
 
 ```ini
 [mod]
-name = Minha tradução
+name = My translation
 version = 1.0
-author = Seu nome
-description = O que o mod faz, numa frase ou duas.
+author = Your name
+description = What the mod does, in a sentence or two.
 game = BOEJ
 ```
 
-Só `game` é conferido (se existir, tem que ser `BOEJ`); o resto aparece no launcher. O nome da pasta ou do
-`.zip` identifica o mod e não pode ter vírgula. Arquivos ao lado do `mod.ini` (um leia-me, uma imagem) são
-ignorados.
+Only `game` is checked (if present, it must be `BOEJ`); the rest shows in the launcher. A translation mod made by
+`tools/translate.py` also has `type = translation` and `language = <language>`, and the launcher shows it as
+"Translation (<language>)" ([`TRANSLATING.md`](TRANSLATING.md)). The name of the folder or of the `.zip`
+identifies the mod and cannot have a comma. Files next to `mod.ini` (a readme, a picture) are ignored.
 
-**Mod em `.zip`.** O zip tem o mesmo conteúdo da pasta: o `mod.ini` na raiz do zip ou dentro de uma única pasta
-(é o que o `tools/mod.py pack` gera e o que o Windows faz ao "Compactar" uma pasta). Compressão "Deflate" ou
-nenhuma; zip com senha ou zip64 (acima de 4 GB) não são aceitos. Os arquivos comprimidos são descomprimidos na
-memória logo ao abrir o jogo, em segundo plano (a tradução de fãs, 77 MB, leva menos de 1 s); um mod em pasta
-é lido direto do disco. Para criar e testar um mod, a pasta é mais prática; para distribuir, o `.zip`.
+**A mod as a `.zip`.** The zip has the same content as the folder: `mod.ini` at the root of the zip or inside a
+single folder (what `tools/mod.py pack` makes and what Windows does when it "Compresses" a folder). "Deflate"
+compression or none; password-protected zips and zip64 (above 4 GB) are not accepted. Compressed files are
+decompressed in memory as soon as the game opens, in the background (the fan translation, 77 MB, takes less than
+1 s); a folder mod is read straight from disk. To make and test a mod, the folder is handier; to distribute it,
+the `.zip`.
 
-**Ordem.** Os mods ligados ficam em `boej.ini`, na ordem da lista do launcher:
+**Order.** The mods turned on are in `boej.ini`, in the order of the launcher's list:
 
 ```ini
 [mods]
-enabled = minha-traducao, fontes-maiores.zip
+enabled = my-translation, bigger-fonts.zip
 ```
 
-Quando dois mods trocam o mesmo arquivo (ou a mesma overlay), vale o que vem depois, e o launcher mostra um
-aviso no outro. Para testes sem mexer no `boej.ini`, a variável `NTR_MODS=pasta1,mod2.zip` tem prioridade.
+When two mods replace the same file (or the same overlay), the later one wins, and the launcher shows a warning on
+the other. For tests without touching `boej.ini`, the variable `NTR_MODS=folder1,mod2.zip` takes priority.
 
-**Overlays.** O arquivo é a overlay inteira, como o jogo a coloca na RAM. Só os bytes fora do código podem
-mudar: o jogo compara o mod com a overlay original nos trechos de que o código recompilado depende (corpos das
-funções, literal pools e tabelas de salto, gravados pelo `ntr-recomp` no `registry.cpp`) e recusa o mod se algum
-byte ali mudou, dizendo o endereço. Uma overlay menor que a original é completada com os bytes originais; uma
-maior aumenta o espaço da overlay (até 64 KiB a mais).
+**Overlays.** The file is the whole overlay, as the game puts it in RAM. Only the bytes outside the code may
+change: the game compares the mod with the original overlay in the ranges the recompiled code depends on
+(function bodies, literal pools and jump tables, recorded by `ntr-recomp` in `registry.cpp`) and refuses the mod
+if any byte there changed, saying the address. An overlay smaller than the original is completed with the
+original bytes; a larger one grows the overlay's space (up to 64 KiB more).
 
-**Patches.** Um arquivo `<caminho>.bps` no lugar do arquivo inteiro é um patch [BPS](https://www.romhacking.net/documents/746/)
-(o formato do beat e do Floating IPS) aplicado sobre o arquivo original do jogo; numa overlay, sobre ela
-descomprimida. O mod só leva o que mudou (textos traduzidos, pixels editados), e não os dados do jogo: é o formato
-para distribuir um mod. O patch confere o CRC-32 do original, do resultado e de si mesmo; um patch feito para outro
-arquivo, ou danificado, dá erro e deixa o mod de fora. O tamanho do arquivo pode mudar.
+**Patches.** A `<path>.bps` file in place of the whole file is a [BPS](https://www.romhacking.net/documents/746/)
+patch (the format of beat and Floating IPS) applied over the game's original file; for an overlay, over it
+decompressed. The mod carries only what changed (translated text, edited pixels), not the game's data: it is the
+format for distributing a mod. The patch checks the CRC-32 of the original, of the result and of itself; a patch
+made for another file, or damaged, gives an error and leaves the mod out. The file's size may change.
 
-Num mesmo mod, um caminho tem o arquivo inteiro ou o patch, não os dois. O patch é sempre sobre o original do
-jogo, nunca sobre o arquivo de outro mod (o último mod da lista que troca o arquivo vale, como sempre).
+In one mod, a path has either the whole file or the patch, not both. The patch is always over the game's
+original, never over another mod's file (the last mod in the list that replaces the file wins, as always).
 
-Os patches são aplicados ao abrir o jogo, em segundo plano, como os arquivos comprimidos de um `.zip`. A tradução
-inteira (512 arquivos, 9 MB de patches para 76 MB de arquivos) custa uns 0,1 s a mais no começo.
+The patches are applied when the game opens, in the background, like the compressed files of a `.zip`. The whole
+translation (512 files, 9 MB of patches for 76 MB of files) costs about 0.1 s more at start.
 
-**Mod com erro** fica de fora inteiro (o jogo abre sem ele). Arquivos com caminho que o jogo não tem são
-ignorados, com um aviso. Os erros e avisos aparecem na página Mods e no log da sessão em `logs/sessoes/` (linhas `[mods]`).
+**A mod with an error** is left out entirely (the game opens without it). Files with a path the game does not have
+are ignored, with a warning. Errors and warnings show on the Mods page and in the session log in `logs/sessoes/`
+(`[mods]` lines).
 
-**Savestates** guardam quais mods estavam em uso: um slot salvo com outros mods (ou com outra versão de um
-arquivo do mod) não abre, porque o jogo já tinha lido os arquivos antigos.
+**Savestates** keep which mods were in use: a slot saved with other mods (or with another version of one of the
+mod's files) does not open, because the game had already read the old files.
 
-## Ferramentas
+## Tools
 
-### Launcher (página Mods)
+### Launcher (Mods page)
 
-- A lista mostra o que está na pasta `mods/` e se atualiza sozinha quando algo é colocado ou tirado de lá.
-- **Adicionar mod (.zip):** copia o `.zip` para a pasta `mods/` (o mesmo que copiar à mão). Também dá para
-  arrastar um `.zip` ou a pasta de um mod para a janela. Um mod com o mesmo nome é substituído.
-- **Criar de um dump modificado:** escolha um `.nds` de uma tradução ou hack. O launcher compara com o jogo
-  original (`boej.pak`) e cria um mod com os arquivos e overlays que mudaram. Só dá certo se o código do dump
-  for o do retail (o caso das traduções que só mudam textos, fontes e imagens).
-- **Remover** (na linha do mod ou nos detalhes, com confirmação) apaga a pasta ou o `.zip` de dentro de `mods/`.
-- Adicionar e remover mexem só na cópia que está em `mods/`: o `.zip` ou a pasta de onde o mod foi adicionado
-  nunca é alterado nem apagado. A página e a confirmação de remover dizem isso.
-- Ligar/desligar e mudar a ordem com as setas.
+- The list shows what is in the `mods/` folder and updates by itself when something is put there or taken out.
+- **Add mod (.zip):** copies the `.zip` into the `mods/` folder (the same as copying it by hand). A `.zip` or a mod
+  folder can also be dragged onto the window. A mod with the same name is replaced.
+- **Make from a modified dump:** choose a `.nds` of a translation or hack. The launcher compares it with the
+  original game (`boej.pak`) and makes a mod with the files and overlays that changed. It only works if the dump's
+  code is the retail one (the case of translations that only change text, fonts and images).
+- **Remove** (on the mod's row or in the details, with confirmation) deletes the folder or the `.zip` inside
+  `mods/`.
+- Adding and removing only touch the copy in `mods/`: the `.zip` or folder the mod was added from is never changed
+  or deleted. The page and the remove confirmation say so.
+- Turn on/off and reorder with the arrows.
 
-Pela linha de comando: `ie3-launcher --install-mod mod.zip` e `ie3-launcher --mod-from-dump hack.nds`.
-O próprio jogo faz a checagem com `boej --check-mods` (uma linha por mod e por problema).
+From the command line: `ie3-launcher --install-mod mod.zip` and `ie3-launcher --mod-from-dump hack.nds`. The game
+itself does the check with `boej --check-mods` (one line per mod and per problem).
 
 ### `tools/mod.py` (Python 3.12+)
 
 ```sh
-# pasta vazia com o mod.ini
-python3 tools/mod.py new mods/minha-traducao --name "Minha tradução" --author "Eu"
+# empty folder with the mod.ini
+python3 tools/mod.py new mods/my-translation --name "My translation" --author "Me"
 
-# arquivos originais para editar (o retail pode ser o boej.pak ou o .nds)
+# original files to edit (the retail can be boej.pak or the .nds)
 python3 tools/mod.py unpack boej.pak build/original --only 'data_iz/logic/*'
 python3 tools/mod.py unpack boej.pak build/original --overlays
 
-# mod a partir de um dump modificado (o mesmo que o botão do launcher); --patch: só patches .bps
+# mod from a modified dump (the same as the launcher's button); --patch: only .bps patches
 python3 tools/mod.py from-dump boej.pak hack.nds mods/hack --name "Hack" --patch
 
-# arquivos inteiros do mod viram patches (um arquivo igual ao original sai, com o patch dele)
+# the mod's whole files become patches (a file equal to the original goes, with its patch)
 python3 tools/mod.py patch mods/hack boej.pak
 
-# cópia do mod com os patches aplicados (arquivos inteiros), para editar
+# copy of the mod with the patches applied (whole files), to edit
 python3 tools/mod.py expand mods/hack boej.pak build/hack
 
-# procura problemas (caminhos que não existem, overlays com código mudado); pasta ou .zip
-python3 tools/mod.py check mods/minha-traducao boej.pak
+# looks for problems (paths that do not exist, overlays with changed code); folder or .zip
+python3 tools/mod.py check mods/my-translation boej.pak
 
-# .zip para distribuir (é só colocar na pasta mods/)
-python3 tools/mod.py pack mods/minha-traducao
+# .zip to distribute (just put it in the mods/ folder)
+python3 tools/mod.py pack mods/my-translation
 ```
 
-O `check` do Python usa os tamanhos de função do ds-decomp (`config/boej/dsd`); a checagem que vale é a do
-jogo, que usa exatamente o que o recompilador usou.
+The Python `check` uses ds-decomp's function sizes (`config/boej/dsd`); the check that counts is the game's,
+which uses exactly what the recompiler used.
 
-### Descobrir qual arquivo mudar
+### Finding which file to change
 
-O log da sessão (`logs/sessoes/<data e hora>.log`) registra cada arquivo que o jogo abre, com o número do quadro e a hora:
+The session log (`logs/sessoes/<date and time>.log`) records every file the game opens, with the frame number and
+the time:
 
 ```
   12345 14:03:12| [fs] open /data_iz/logic/CapsuleComment.dat
 ```
 
-Jogue até a cena que interessa, aperte **F8** (marca o momento no log) e veja os últimos arquivos abertos.
+Play up to the scene you care about, press **F8** (marks the moment in the log) and look at the last files opened.
 
-## Fluxo de trabalho
+## Workflow
 
-1. `tools/mod.py unpack` para ter os originais; edite com as ferramentas do formato.
-2. Coloque só os arquivos alterados em `mods/<seu-mod>/files/` (mesmo caminho do jogo).
-3. Ligue o mod no launcher e abra o jogo. Não precisa recompilar nada: o mod é lido ao abrir o jogo.
-4. Confira a página Mods (ou o log da sessão) se algo não aparecer.
-5. `tools/mod.py patch` para trocar os arquivos inteiros por patches e `tools/mod.py pack` (ou "Compactar" no
-   Windows) para gerar o `.zip` que os jogadores colocam na pasta `mods/`.
+1. `tools/mod.py unpack` to get the originals; edit them with the format's tools.
+2. Put only the changed files in `mods/<your-mod>/files/` (same path as in the game).
+3. Turn the mod on in the launcher and open the game. Nothing needs recompiling: the mod is read when the game
+   opens.
+4. Check the Mods page (or the session log) if something does not show.
+5. `tools/mod.py patch` to turn the whole files into patches and `tools/mod.py pack` (or "Compress" on Windows) to
+   make the `.zip` players put in the `mods/` folder.
 
-**Distribuição.** Um mod com arquivos inteiros leva dados do jogo (o arquivo original modificado); com patches,
-só o que mudou. Distribua mods em patches. O "Criar de um dump modificado" do launcher gera arquivos inteiros,
-para uso no próprio PC.
+**Distribution.** A mod with whole files carries game data (the modified original file); with patches, only what
+changed. Distribute mods as patches. The launcher's "Make from a modified dump" makes whole files, for use on
+your own PC.
 
-## Mods oficiais
+## Official mods
 
-A pasta [`mods/`](../mods/) do repositório tem os mods mantidos pelo projeto, um por pasta, só com patches. Cada um
-sai na release como `mod-<nome>-<version>.zip` (`tools/release.py`). O nome do arquivo muda a cada versão, mas o
-launcher reconhece o mesmo mod pelo `name` do `mod.ini`: adicionado pelo launcher, o novo apaga a cópia antiga da
-pasta `mods` e fica no lugar dela na lista (ligado, se ela estava); colocado à mão, uma versão mais nova fica no
-lugar da antiga, que continua na pasta, desligada. A versão é o `version` do `mod.ini`: aparece no nome do
-`.zip`, na seção "Mods oficiais" das notas (com "atualizado nesta versão" quando o mod mudou) e, no launcher, na
-lista e nos detalhes da página Mods. A release é recusada se um mod oficial tiver um arquivo inteiro do jogo ou se
-tiver mudado desde a release anterior sem um `version` novo.
+The repository's [`mods/`](../mods/) folder has the mods the project maintains, one per folder, patches only. Each
+one ships in the release as `mod-<name>-<version>.zip` (`tools/release.py`). The file name changes with each
+version, but the launcher recognizes the same mod by the `name` in `mod.ini`: added through the launcher, the new
+one deletes the old copy from the `mods` folder and takes its place in the list (on, if it was); put there by
+hand, a newer version takes the old one's place, which stays in the folder, off. The version is the `version` in
+`mod.ini`: it shows in the `.zip` name, in the "Official mods" section of the notes (with "updated in this
+version" when the mod changed) and, in the launcher, in the list and the details of the Mods page. The release is
+refused if an official mod has a whole game file or changed since the previous release without a new `version`.
 
-| Mod | O que é |
+| Mod | What it is |
 |---|---|
-| [`CyberLifePlus`](../mods/CyberLifePlus/LEIA-ME.md) | Tradução PT-BR, feita originalmente pelo grupo CyberLife e continuada aqui. O `LEIA-ME.md` dele tem os créditos e como continuar a tradução |
+| [`CyberLifePlus`](../mods/CyberLifePlus/README.md) | PT-BR translation, originally made by the CyberLife group and continued here; made from `translations/pt-BR/` by `tools/translate.py`. Its `README.md` has the credits and how to continue the translation |
 
-## Tipos de mod planejados
+## Planned kinds of mod
 
-O que já dá para fazer com a troca de arquivos, e o que ainda falta no port para cada tipo:
+What file replacement can already do, and what is still missing in the port for each kind:
 
-| Tipo | Hoje | Falta |
+| Kind | Today | Missing |
 |---|---|---|
-| **Tradução** | sim: textos (`data_iz/logic`, `data_iz/movie/txt`), fontes (`data_iz/font`), imagens com texto e strings das overlays. Uma tradução já pronta em `.nds` vira mod pelo botão "Criar de um dump modificado" (ou `tools/mod.py from-dump --patch`) e roda igual ao dump traduzido (testado byte a byte com uma tradução de fãs, em arquivos inteiros e em patches) | documentar os formatos de texto e fonte e ter conversores para texto editável em `tools/` |
-| **Troca de sprites e imagens** | sim, trocando o arquivo (`data_iz/pic2d`, `obj2d`, `spr`, `face2d`, `pic3d`) no formato do jogo | documentar os formatos e ter conversores para PNG |
-| **Texturas em alta resolução (upscaling)** | não: um arquivo do jogo só pode ter o tamanho que cabe na VRAM do DS | pacotes de texturas por hash (`textures/` no mod), aplicados pelo renderizador 3D na resolução interna e pela composição 2D (plano em [`REMASTER.md`](REMASTER.md)) |
-| **Gerenciador de técnicas (estilo Mini Hack)** | em parte: as tabelas de jogadores e técnicas são arquivos e podem ser trocadas inteiras | mapear o formato das tabelas e fazer um editor que gere a pasta do mod |
+| **Translation** | yes, as its own kind: a `translations/<language>/` folder with only `.json` (text) and `.png` (fonts and images), and `tools/translate.py` makes the mod (patches, `mod.ini`, `.zip`) from the original game, or from the CyberLife base for PT-BR and its copies ([`TRANSLATING.md`](TRANSLATING.md)). A ready-made translation as a `.nds` becomes a mod through the "Make from a modified dump" button (or `tools/mod.py from-dump --patch`) and runs the same as the translated dump | videos (`.mods`; today only the subtitles), tables without a converter (`BattleRouteTitle.dat`, blog), two-byte letters in the charset |
+| **Sprite and image replacement** | yes, by replacing the file (`data_iz/pic2d`, `obj2d`, `spr`, `face2d`, `pic3d`) in the game's format | document the formats and have PNG converters |
+| **High-resolution textures (upscaling)** | no: a game file can only have the size that fits in the DS's VRAM | texture packs by hash (`textures/` in the mod), applied by the 3D renderer at the internal resolution and by the 2D composition (plan in [`REMASTER.md`](REMASTER.md)) |
+| **Technique manager (Mini Hack style)** | partly: the player and technique tables are files and can be replaced whole | map the tables' format and make an editor that produces the mod folder |
 
-Próximos passos da infraestrutura, em ordem:
+Next infrastructure steps, in order:
 
-1. ~~Patches por arquivo~~ (feito: `.bps`, ver **Patches** em Estrutura).
-2. **Formatos documentados** e conversores em `tools/` (texto, fonte, imagem, tabelas).
-3. **Pacotes de texturas** para o upscaling.
-4. **Editor de técnicas** gerando um mod.
-5. Mods que mudam comportamento (ganchos em C++ chamados pelo código recompilado), a longo prazo.
+1. ~~Per-file patches~~ (done: `.bps`, see **Patches** in Layout).
+2. **Documented formats** and converters in `tools/`: text, font and image done (`text.py`, `font.py`, `image.py`,
+   together in `translate.py`); some tables (`BattleRouteTitle.dat`, blog, techniques) and video are missing.
+3. **Texture packs** for upscaling.
+4. **Technique editor** producing a mod.
+5. Mods that change behaviour (C++ hooks called by the recompiled code), in the long run.
 
-## Como funciona por dentro
+## How it works inside
 
-`runtime/src/mods.cpp`: ao abrir, o jogo lê os mods ligados, resolve cada caminho pela FNT do NitroFS e coloca
-os arquivos do mod em endereços da ROM depois do fim da imagem. Uma cópia da FAT (e, para overlays, da tabela de
-overlays, com a overlay marcada como não comprimida) aponta o jogo para eles (`rom_override` em `rom.cpp`). O
-jogo lê os arquivos do mod pelos mesmos caminhos de sempre, sem saber que vieram de fora. Pastas e zips passam
-pelo `ModPackage` (`runtime/src/package.cpp`, com um leitor de zip e um inflate próprios, conferidos pelo CRC-32).
-Os patches BPS são aplicados pelo `bps_apply` (no mesmo arquivo) sobre os bytes originais do `boej.pak`; o
-`tools/ntr/bps.py` gera e aplica os mesmos patches em Python.
-Os arquivos de uma pasta e os guardados sem compressão num zip ficam mapeados em memória; os comprimidos são
-descomprimidos por uma thread em segundo plano, ou na hora, se o jogo pedir um antes dela.
+`runtime/src/mods.cpp`: on opening, the game reads the mods turned on, resolves each path through the NitroFS FNT
+and places the mod's files at ROM addresses after the end of the image. A copy of the FAT (and, for overlays, of
+the overlay table, with the overlay marked as not compressed) points the game at them (`rom_override` in
+`rom.cpp`). The game reads the mod's files through the usual paths, without knowing they came from outside.
+Folders and zips go through `ModPackage` (`runtime/src/package.cpp`, with its own zip reader and inflate, checked
+by CRC-32). BPS patches are applied by `bps_apply` (same file) over the original bytes of `boej.pak`;
+`tools/ntr/bps.py` makes and applies the same patches in Python. The files of a folder and the ones stored
+uncompressed in a zip are memory-mapped; compressed ones are decompressed by a background thread, or on the spot if
+the game asks for one before it.
 
-**Textos gravados no save.** O save guarda o lugar, o rótulo ("もくてき") e o objetivo da faixa de cima como texto
-pronto, não como índice. Por isso um save feito com uma tradução mostra "????" sem ela (a fonte original não tem
-aquelas letras), e um save de antes dela mostra japonês. Esses textos vêm das instruções dos scripts
-(`data_iz/script/eve.pkb`: lugar no opcode 0x4037, rótulo no 0x402F, objetivo no 0x201C e no 0x201D). Ao abrir,
-uma thread em segundo plano lê os scripts do jogo e os de todos os mods da pasta `mods/`, ligados ou não, e
-monta uma tabela que leva o texto de cada versão ao texto da mesma instrução nos scripts em uso. Quando a faixa
-de cima vai ser desenhada (gancho no `Font_DrawString`, `hle.cpp`), um texto que não é dos scripts em uso é
-trocado pelo certo, na cópia desenhada e na estrutura em `0x020AA044` que vai para o save. O card da tela de
-carregar lê o save direto e só muda depois de salvar de novo. Um save feito com um mod que já não está na pasta
-não é reconhecido.
+**Text kept in the save.** The save keeps the place, the label ("もくてき") and the objective of the top strip as
+ready text, not as an index. That is why a save made with a translation shows "????" without it (the original font
+does not have those letters), and a save from before it shows Japanese. This text comes from the scripts'
+instructions (`data_iz/script/eve.pkb`: place in opcode 0x4037, label in 0x402F, objective in 0x201C and 0x201D). On
+opening, a background thread reads the game's scripts and those of every mod in the `mods/` folder, on or not, and
+builds a table that takes the text of each version to the text of the same instruction in the scripts in use. When
+the top strip is about to be drawn (a hook on `Font_DrawString`, `hle.cpp`), a text that is not from the scripts in
+use is replaced by the right one, in the drawn copy and in the structure at `0x020AA044` that goes to the save. The
+load screen's card reads the save directly and only changes after saving again. A save made with a mod that is no
+longer in the folder is not recognized.

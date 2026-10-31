@@ -2,8 +2,8 @@
 """Text drawn on the game's images, for a translation mod (formats in tools/ntr/image.py).
 
   python3 tools/image.py export boej.pak mods/CyberLifePlus build/images [--only 'pic2d/menu/MMSlot*'] [--retail]
-  python3 tools/image.py check boej.pak mods/CyberLifePlus translations/CyberLifePlus [--png build/images/check]
-  python3 tools/image.py apply boej.pak mods/CyberLifePlus translations/CyberLifePlus
+  python3 tools/image.py check boej.pak mods/CyberLifePlus translations/pt-BR [--png build/images/check]
+  python3 tools/image.py apply boej.pak mods/CyberLifePlus translations/pt-BR
 
 export writes each picture of the archives (pic2d .SPF_, pic3d .SPL/.SPD) as an indexed PNG,
 <archive>/<entry>.png, to look at; it is game data, so only under build/.
@@ -43,16 +43,17 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import language  # noqa: E402
 import text as texttool  # noqa: E402
 from ntr import lz10  # noqa: E402
 from ntr.image import Glyphs, ImageError, Picture, read_spf, read_spl, write_spf, write_spl  # noqa: E402
+from ntr.png import PngError  # noqa: E402
 from ntr.text import codes, encode, fit_font  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = "data_iz"
 SHADOW = ((1, 0), (0, 1), (1, 1))
 OUTLINE = tuple((dx, dy) for dy in (-1, 0, 1) for dx in (-1, 0, 1) if dx or dy)
-FILE = "images.json"
 
 
 def archives(game: texttool.Game) -> list[str]:
@@ -220,8 +221,15 @@ class Painter:
 
 
 def edits_of(folder: Path) -> dict:
-    path = folder / FILE
-    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    """The images.json of a translation folder (its language.json may name another file), with
+    the language's letters active."""
+    lang = language.load(folder).activate()
+    if lang.images is None:
+        return {}
+    try:
+        return json.loads(lang.images.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        sys.exit(f"error: {lang.images}: not valid JSON ({e})")
 
 
 def placed(pic: Picture, e: dict) -> list[dict]:
@@ -247,10 +255,21 @@ def placed(pic: Picture, e: dict) -> list[dict]:
 
 
 def pictures(game: texttool.Game, folder: Path):
-    """(archive, {entry: edited Picture}, problems)."""
+    """(archive, {entry: edited Picture}, problems): the retail picture, drawn anew from a PNG
+    of the language's pictures folder if it has one, then the edits of images.json."""
     painter = Painter(game)
-    for arc, entries in edits_of(folder).items():
-        kind, stored = load(game.retail, arc)
+    edits = edits_of(folder)
+    pngs = language.load(folder).pictures
+    for arc, _ in pngs:
+        edits.setdefault(arc, {})
+    for (arc, name), _ in pngs.items():
+        edits[arc].setdefault(name, [])
+    for arc, entries in edits.items():
+        try:
+            kind, stored = load(game.retail, arc)
+        except (SystemExit, ImageError) as e:
+            yield arc, {}, [f"{arc}: not an archive of pictures ({e})"]
+            continue
         stored = dict(stored)
         done, bad = {}, []
         for name, spec in entries.items():
@@ -259,6 +278,14 @@ def pictures(game: texttool.Game, folder: Path):
                 continue
             width = spec.get("width") if isinstance(spec, dict) else None
             pic = Picture(stored[name], kind, width)
+            if (arc, name) in pngs:
+                try:
+                    near = pic.draw_png(pngs[arc, name].read_bytes())
+                except (ImageError, PngError) as e:
+                    bad.append(f"{arc}:{name}: {e}")
+                    continue
+                if near:
+                    print(f"{arc}:{name}: {near} pixels of colours not in its palette took the nearest")
             for edit in spec["edits"] if isinstance(spec, dict) else spec:
                 try:
                     edits = placed(pic, edit)
@@ -274,27 +301,37 @@ def pictures(game: texttool.Game, folder: Path):
 
 
 def cmd_check(args) -> int:
-    game = texttool.Game(args.image, args.dir)
+    return 1 if check(args.image, args.dir, args.translations, args.png, args.scale) else 0
+
+
+def check(image: Path, mod: Path, folder: Path, png: Path | None = None, scale: int = 1) -> int:
+    """How many problems the edited images of a translation have (png: write them there)."""
+    game = texttool.Game(image, mod)
     total = count = 0
-    if args.png:
-        texttool.under_build(args.png)
-    for arc, done, bad in pictures(game, args.translations):
+    if png:
+        texttool.under_build(png)
+    for arc, done, bad in pictures(game, folder):
         for p in bad:
             print(p)
-        for name, pic in done.items() if args.png else ():
-            out = args.png / arc / f"{name}.png"
+        for name, pic in done.items() if png else ():
+            out = png / arc / f"{name}.png"
             out.parent.mkdir(parents=True, exist_ok=True)
-            out.write_bytes(pic.png(args.scale))
+            out.write_bytes(pic.png(scale))
         total += len(bad)
         count += len(done)
     print(f"{count} pictures, {total} problems")
-    return 1 if total else 0
+    return total
 
 
 def cmd_apply(args) -> int:
-    game = texttool.Game(args.image, args.dir)
+    return apply(args.image, args.dir, args.translations)
+
+
+def apply(image: Path, mod: Path, folder: Path) -> int:
+    """Write the edited images of a translation into the mod as patches; 1 if some have problems."""
+    game = texttool.Game(image, mod)
     failed = False
-    for arc, done, bad in pictures(game, args.translations):
+    for arc, done, bad in pictures(game, folder):
         if bad:
             for p in bad:
                 print(p)
@@ -302,12 +339,12 @@ def cmd_apply(args) -> int:
             continue
         new = {name: pic.encode() for name, pic in done.items()}
         for rel, data in save(game.modded, arc, new).items():
-            if texttool.write_file(args.dir, game, rel, data):
+            if texttool.write_file(mod, game, rel, data):
                 print(f"{rel}: changed")
     if failed:
         print("some archives were not written: fix the problems first")
         return 1
-    print(f"{args.dir}: done; raise the version in mod.ini and check with tools/mod.py check")
+    print(f"{mod}: done; raise the version in mod.ini and check with tools/mod.py check")
     return 0
 
 

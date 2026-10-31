@@ -31,6 +31,7 @@ struct ModEntry {
     std::string folder;  // the name in mods/: a folder or "name.zip"
     bool zip = false;
     std::string name, version, author, description;
+    std::string type, language;  // type = translation (tools/translate.py) and its language
     bool enabled = false;
     bool checked = false;  // the game's check ran
     size_t files = 0, overlays = 0;
@@ -194,6 +195,8 @@ ModEntry read_mod(const std::string& folder) {
     m.version = ini.get("mod", "version");
     m.author = ini.get("mod", "author");
     m.description = ini.get("mod", "description");
+    m.type = ini.get("mod", "type");
+    m.language = ini.get("mod", "language");
     if (m.name.empty()) m.name = folder;
     return m;
 }
@@ -309,7 +312,7 @@ void install(const std::string& source) {
         return;
     }
     if (!package.find("mod.ini")) {
-        set_status(name + L(" is not a mod: it has no mod.ini (see docs/MODS.md).", " não é um mod: falta o mod.ini (veja docs/MODS.md)."), true);
+        set_status(name + L(" is not a mod: it has no mod.ini (see docs/MODS.md).", " não é um mod: falta o mod.ini (veja docs/MODS.pt-BR.md)."), true);
         return;
     }
     if (folder) {
@@ -482,6 +485,8 @@ void details(ModEntry& m) {
         ImGui::TextDisabled(L("version %s", "versão %s"), m.version.c_str());
     }
     if (!m.author.empty()) ImGui::TextDisabled(L("by %s", "por %s"), m.author.c_str());
+    if (m.type == "translation")
+        ImGui::TextDisabled(L("Translation (%s)", "Tradução (%s)"), m.language.empty() ? "?" : m.language.c_str());
     if (!m.description.empty()) ImGui::TextWrapped("%s", m.description.c_str());
     ImGui::TextDisabled("%s: mods/%s", m.zip ? L("File", "Arquivo") : L("Folder", "Pasta"), m.folder.c_str());
     if (m.checked) ImGui::TextDisabled(L("Replaces %zu files and %zu overlays.", "Troca %zu arquivos e %zu overlays."), m.files, m.overlays);
@@ -674,6 +679,10 @@ void mods_tab(SDL_Window* window) {
                 ImGui::SameLine();
                 ImGui::TextDisabled("v%s", m.version.c_str());
             }
+            if (m.type == "translation" && !m.language.empty()) {
+                ImGui::SameLine();
+                ImGui::TextDisabled("%s", m.language.c_str());
+            }
             if (m.name != m.folder) {
                 ImGui::SameLine();
                 ImGui::TextDisabled("%s", m.folder.c_str());  // two mods can have the same name
@@ -722,7 +731,7 @@ void mods_tab(SDL_Window* window) {
         details(g_mods[g_selected]);
     } else {
         ImGui::TextDisabled("%s", L("Pick a mod in the list to see its details. To make your own, see docs/MODS.md.",
-                                    "Escolha um mod na lista para ver os detalhes. Para fazer o seu, veja docs/MODS.md."));
+                                    "Escolha um mod na lista para ver os detalhes. Para fazer o seu, veja docs/MODS.pt-BR.md."));
     }
     remove_dialog();
 }

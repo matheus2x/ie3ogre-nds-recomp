@@ -40,7 +40,7 @@ if(NTR_BUILD_LAUNCHER)
     add_subdirectory(launcher)
 endif()
 
-# Output of ntr-recomp (see tools/analyze.py manifest and docs/DESENVOLVIMENTO.md). The game target is
+# Output of ntr-recomp (see tools/analyze.py manifest and docs/DEVELOPMENT.md). The game target is
 # only available once code has been generated.
 set(NTR_GENERATED_DIR "${CMAKE_SOURCE_DIR}/build/recomp/gen" CACHE PATH "ntr-recomp output directory")
 if(EXISTS "${NTR_GENERATED_DIR}/funcs.h")

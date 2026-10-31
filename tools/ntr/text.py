@@ -1,4 +1,4 @@
-"""The text of the game and of the PT-BR translation (docs/TRADUCAO.md).
+"""The text of the game and of its translations (docs/TRANSLATING.md; PT-BR in docs/TRANSLATION-STATUS.md).
 
 Packs (.pkh + .pkb): "PackNum 20080626", u32 size of the .pkh at 0x10, u16 count at 0x16,
 u32 alignment (16) at 0x18, u32 largest stored entry (rounded up) at 0x1C, then from 0x30
@@ -32,27 +32,33 @@ The gallery parses the furigana with a signed char (func_ov016_020f24e8): it cop
 from 0x80 up together with the next one and drops the rest of the ASCII, so a Latin title is
 written paired (each one-byte character next to SPACER), and it draws with no pixel between letters.
 
-The translation writes Latin text: ASCII, the accents below as one byte each (where the
-half-width kana were; the font was redrawn) and \\n / \\f as two characters.
+The translation writes Latin text: ASCII, the letters of its language as one byte each (where
+the half-width kana were; the font was redrawn, see set_charset) and \\n / \\f as two characters.
 """
 
 import functools
 import re
 import struct
 
-ACCENTS = {
+# The letters of PT-BR (the fan translation's font has them); a language.json sets its own with
+# set_charset. Bytes 0xA1-0xDF (the half-width kana) are the one-byte places for them.
+LETTERS = {
     "à": 0xB1, "á": 0xB2, "â": 0xB3, "ã": 0xB4, "ç": 0xB8, "é": 0xBA, "ê": 0xBB, "í": 0xBE,
     "ó": 0xC4, "ô": 0xC5, "õ": 0xC6, "ú": 0xCA, "ü": 0xCC,
     "À": 0xD0, "Á": 0xD1, "Â": 0xD2, "Ã": 0xD3, "Ç": 0xD7, "É": 0xD9, "Ê": 0xDA,
     "Ó": 0xAB, "Ô": 0xAC, "Õ": 0xAD, "Ú": 0xA2,
-    "\u200a": 0xDF,  # a blank of no width (fit_font): spaces objectives, pairs PAIRED text
 }
-SPACER = "\u200a"
+SPACER = "\u200a"  # a blank of no width (fit_font): spaces objectives, pairs PAIRED text
+SPACER_BYTE = 0xDF
+ACCENTS = LETTERS | {SPACER: SPACER_BYTE}  # what encode writes as one byte (set_charset changes it)
+ONE_BYTE = range(0xA1, 0xE0)
 # 0xCF is the space of the fan translation's font, 4 pixels wide: its subtitles, scripts and
 # tables write "letter, 0xCF, letter" (fit_font keeps its width).
 FAN_SPACE, FAN_SPACE_WIDTHS = 0xCF, bytes((0, 0, 3))
 _FROM_BYTE = {v: k for k, v in ACCENTS.items()} | {FAN_SPACE: " "}
-_PLAIN = {"…": "...", "“": '"', "”": '"', "‘": "'", "’": "'", "—": "-", "–": "-"}
+PLAIN = {"…": "...", "“": '"', "”": '"', "‘": "'", "’": "'", "—": "-", "–": "-"}
+_PLAIN = dict(PLAIN)  # what encode writes in place of a character the font lacks
+
 FURIGANA = re.compile(rb"%\d+F")
 JAPANESE = re.compile(r"[ぁ-ヿ一-鿿]")
 BOX_WIDTH = 226  # pixels of a dialogue line before the game wraps it
@@ -68,6 +74,38 @@ _SWAPS = ((2, 3), (4, 5), (6, 7), (1, 2))  # (distance, step) of the byte swaps 
 
 class TextError(ValueError):
     pass
+
+
+def check_charset(letters: dict[str, int], spacer: int = SPACER_BYTE, space: int = FAN_SPACE) -> None:
+    """TextError if the letters of a language cannot be written (see set_charset)."""
+    used = {spacer: "the spacer", space: "the space"}
+    if spacer == space:
+        raise TextError(f"the spacer and the space are both {spacer:#x}")
+    for ch, b in letters.items():
+        if len(ch) != 1 or ord(ch) < 0x80:
+            raise TextError(f"{ch!r}: a letter of the charset is one character, not ASCII")
+        if b not in ONE_BYTE:
+            raise TextError(f"{ch}: byte {b:#x} is not one of the free bytes {ONE_BYTE.start:#x}-{ONE_BYTE.stop - 1:#x}")
+        if b in used:
+            raise TextError(f"{ch}: byte {b:#x} is already {used[b]}")
+        used[b] = ch
+
+
+def set_charset(letters: dict[str, int], spacer: int = SPACER_BYTE, space: int = FAN_SPACE,
+                plain: dict[str, str] | None = None) -> None:
+    """The letters of a language (letter -> byte), where SPACER and the 4-pixel space are, and
+    what to write in place of characters the font lacks (by default PLAIN). The tables are
+    changed in place, so every module that imported them sees the language."""
+    global FAN_SPACE
+    check_charset(letters, spacer, space)
+    ACCENTS.clear()
+    ACCENTS.update(letters)
+    ACCENTS[SPACER] = spacer
+    FAN_SPACE = space
+    _FROM_BYTE.clear()
+    _FROM_BYTE.update({v: k for k, v in ACCENTS.items()} | {space: " "})
+    _PLAIN.clear()
+    _PLAIN.update(PLAIN if plain is None else plain)
 
 
 def is_lead(c: int) -> bool:
@@ -266,6 +304,32 @@ def ssd_records(d: bytes) -> list[tuple[int, int]]:
         out.append((i, size))
         i += size
     return out
+
+
+def ssd_rewrite(d: bytes, new: dict[int, bytes]) -> bytes:
+    """The script with the strings of some records replaced (record offset -> string without
+    its NUL). A string that does not fit makes its record larger (4-aligned, up to 252 bytes)
+    and moves the records after it; the code finds a record by its id, not by its place, so
+    only the sizes in the header change (word 2 the file, word 5 the data), as the fan
+    translation did."""
+    words = list(struct.unpack_from("<8I", d, 0))
+    start = 0x20 + words[4]
+    records = ssd_records(d)
+    end = records[-1][0] + records[-1][1] if records else start
+    out = bytearray()
+    for at, size in records:
+        if at not in new:
+            out += d[at:at + size]
+            continue
+        text = new[at] + b"\0"
+        grown = max(size, (4 + len(text) + 3) & ~3)
+        if grown > 252:
+            raise TextError(f"a string of {len(new[at])} bytes does not fit in a record of the script")
+        out += d[at:at + 3] + bytes((grown,)) + text + bytes(grown - 4 - len(text))
+    words[5] += len(out) - (end - start)
+    body = d[:start] + bytes(out) + d[end:]
+    words[2] = len(body)
+    return struct.pack("<8I", *words) + body[0x20:]
 
 
 def ssd_string(d: bytes, at: int, size: int) -> bytes:

@@ -7,12 +7,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import language
 import text as texttool
 from ntr import lz10
+from ntr import text as ntrtext
 from ntr.text import (BOX_ROWS, Font, JAPANESE, PAIRED, TextError, WIDE, decode, encode, lines, paired,
                       problems, read_pack, SPACER,
                       DEBUG_PRINT, objective_cost, objective_fit, objective_layout, scramble, ssd_opcodes,
-                      ssd_refs,
+                      ssd_records, ssd_refs, ssd_rewrite, ssd_string,
                       str_strings, SUBTITLED, subtitle_file, subtitle_records, subtitled, table_bytes,
                       unscramble, wide, write_pack)
 
@@ -263,7 +265,71 @@ class ObjectiveTest(unittest.TestCase):
         self.assertEqual(objective_fit("aa bb", font), "aa bb")
 
 
+class ScriptRewriteTest(unittest.TestCase):
+    @staticmethod
+    def script(strings: list[bytes]) -> bytes:
+        code = struct.pack("<HHHBB", 1, 8, 0x4037, 0, 0)  # one instruction, id 1
+        data = b""
+        for k, t in enumerate(strings):
+            body = t + b"\0"
+            size = (4 + len(body) + 3) & ~3
+            data += struct.pack("<HBB", 1, k, size) + body + bytes(size - 4 - len(body))
+        head = struct.pack("<8I", int.from_bytes(b"SSD\0", "little"), 0x30001, 0x20 + len(code) + len(data), 7,
+                           len(code), len(data), 0, 0)
+        return head + code + data
+
+    def test_a_string_grows_and_the_rest_moves(self):
+        d = self.script([b"ab", b"@0,96", b"xyz"])
+        recs = ssd_records(d)
+        new = ssd_rewrite(d, {recs[0][0]: b"Raimon Town"})
+        words = struct.unpack_from("<8I", new, 0)
+        self.assertEqual(words[2], len(new))
+        self.assertEqual(words[3], 7)  # the rest of the header stays
+        self.assertEqual(words[5], len(new) - 0x20 - words[4])
+        self.assertEqual([ssd_string(new, *r) for r in ssd_records(new)], [b"Raimon Town", b"@0,96", b"xyz"])
+        self.assertEqual(ssd_refs(new), ssd_refs(d))
+        self.assertEqual(new[:0x20 + words[4]][0x20:], d[0x20:0x20 + words[4]])  # the code does not change
+        same = ssd_rewrite(d, {recs[2][0]: b"ab"})  # fits: nothing moves
+        self.assertEqual(len(same), len(d))
+        with self.assertRaises(TextError):
+            ssd_rewrite(d, {recs[0][0]: b"x" * 300})
+
+
 class TranslationsTest(unittest.TestCase):
+    def tearDown(self):
+        ntrtext.set_charset(ntrtext.LETTERS)  # the other tests are in PT-BR
+
+    def test_charset(self):
+        ntrtext.set_charset({"ñ": 0xB1, "Ñ": 0xD1})
+        self.assertEqual(encode("Año"), b"A\xb1o")
+        self.assertEqual(decode(b"A\xb1o\xcf"), "Año ")
+        with self.assertRaises(TextError):
+            encode("ã")  # a letter of PT-BR, not of this language
+        for bad in ({"ñ": 0x41}, {"ñ": 0xDF}, {"ñ": 0xB1, "Ñ": 0xB1}, {"n": 0xB1}):
+            with self.assertRaises(TextError):
+                ntrtext.set_charset(bad)
+
+    def test_language_manifest(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            (d / "texts").mkdir()
+            (d / "texts" / "a.json").write_text(json.dumps({"evet:1:4": "Año"}), encoding="utf-8")
+            (d / "notes.json").write_text("{}", encoding="utf-8")  # not in "texts"
+            m = {"type": "translation", "language": "es", "mod": "Spanish", "name": "Español",
+                 "version": "0.1", "charset": {"ñ": "B1"}, "texts": "texts/*.json"}
+            (d / "language.json").write_text(json.dumps(m), encoding="utf-8")
+            lang = language.load(d)
+            self.assertEqual((lang.code, lang.mod, lang.charset), ("es", "Spanish", {"ñ": 0xB1}))
+            self.assertEqual(lang.info, {"name": "Español", "version": "0.1"})
+            self.assertEqual(lang.texts, [d / "texts" / "a.json"])
+            self.assertEqual(texttool.load_translations(d), {"evet:1:4": "Año"})
+            self.assertEqual(encode("ñ"), b"\xb1")  # loading the lines made the language active
+            for bad in ({"charset": {"ñ": "41"}}, {"charset": {"ñ": "zz"}}, {"mod": "a/b"}, {"colour": 1},
+                        {"type": "font"}, {"language": ""}):
+                (d / "language.json").write_text(json.dumps(m | bad), encoding="utf-8")
+                with self.assertRaises(SystemExit, msg=bad):
+                    language.load(d)
+
     def test_rejects_japanese_and_bad_places(self):
         with tempfile.TemporaryDirectory() as tmp:
             f = Path(tmp) / "a.json"
@@ -279,21 +345,46 @@ class TranslationsTest(unittest.TestCase):
                 texttool.load_translations(Path(tmp))
 
     def test_versioned_translations_have_no_game_text(self):
-        """translations/ is versioned: only places and Portuguese, never the game's Japanese."""
-        for f in sorted((ROOT / "translations").rglob("*")):
-            if f.is_file():
-                self.assertEqual(f.suffix, ".json", f)
-                data = json.loads(f.read_text(encoding="utf-8"))
-                if f.name == "images.json":  # archive -> entry -> edits; the texts are what is drawn
-                    texts = [e["text"] for entries in data.values() for edits in entries.values()
-                             for e in (edits["edits"] if isinstance(edits, dict) else edits) if "text" in e]
-                    self.assertTrue(texts)
-                    for t in texts:
-                        self.assertIsNone(JAPANESE.search(t), f"{f.name}: {t}")
-                    continue
-                for sid, t in data.items():
+        """translations/ is versioned: only places and the translated text, never the game's Japanese."""
+        folders = [d for d in sorted((ROOT / "translations").iterdir()) if d.is_dir() and d.name != language.BASES]
+        self.assertTrue(folders)
+        for d in folders:
+            lang = language.load(d)
+            self.assertTrue(lang.manifest, f"{d.name}: no {language.MANIFEST}")
+            self.assertTrue(lang.texts, d)
+            fonts = {f for pair in lang.fonts.values() for f in pair}
+            for f in sorted(d.rglob("*")):
+                if f.is_file():
+                    self.assertIn(f, {*lang.texts, lang.images, d / language.MANIFEST, *fonts, *lang.pictures.values()},
+                                  f"{f}: not in the manifest")
+            manifest = (d / language.MANIFEST).read_text(encoding="utf-8")
+            self.assertIsNone(JAPANESE.search(manifest), f"{d.name}/{language.MANIFEST}")
+            if lang.images:  # archive -> entry -> edits; the texts are what is drawn
+                data = json.loads(lang.images.read_text(encoding="utf-8"))
+                texts = [e["text"] for entries in data.values() for edits in entries.values()
+                         for e in (edits["edits"] if isinstance(edits, dict) else edits) if "text" in e]
+                self.assertTrue(texts)
+                for t in texts:
+                    self.assertIsNone(JAPANESE.search(t), f"{lang.images.name}: {t}")
+            for f in lang.texts:
+                for sid, t in json.loads(f.read_text(encoding="utf-8")).items():
                     self.assertRegex(sid, texttool.ID.pattern)
                     self.assertIsNone(JAPANESE.search(t), f"{f.name}: {sid}")
+
+    def test_official_mods_match_their_language(self):
+        """The mod.ini of an official translation mod says what its language.json says."""
+        for d in sorted((ROOT / "translations").iterdir()):
+            if not d.is_dir() or d.name == language.BASES:
+                continue
+            lang = language.load(d)
+            ini = ROOT / "mods" / lang.mod / "mod.ini"
+            if not ini.exists():
+                continue
+            fields = dict(line.split("=", 1) for line in ini.read_text(encoding="utf-8").splitlines()
+                          if "=" in line and not line.startswith(";"))
+            fields = {k.strip(): v.strip() for k, v in fields.items()}
+            for key, value in lang.info.items():
+                self.assertEqual(fields.get(key), value, f"{ini}: {key}")
 
     def test_extract_writes_only_under_build(self):
         with self.assertRaises(SystemExit):
