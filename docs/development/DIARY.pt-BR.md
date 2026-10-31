@@ -3861,3 +3861,29 @@ no total). **Não testado:** o menu de pausa.
 - Saída em `C:\Games\ie3-teste\ie3ogre-recomp\screenshots\comparacao-tecnica\` (PNG, 2176×1224, alpha removido) e
   `comparacao-rosto.png` (o rosto recortado das onze, lado a lado). O aviso "Slot 1 loaded" aparece no canto da tela
   de cima em todas.
+
+## 2026-10-31 — Objetivo do save em outro idioma: opcodes que faltavam
+
+- Pedido: com o CyberLifePlus desligado, o `runmelonds-1.sav` (合宿所 1F) ainda mostra o objetivo como "????"; o
+  lugar e o "もくてき" já eram corrigidos.
+- **Causa:** decifrando o save, o objetivo gravado é "This is the final battle!" (linha que o CyberLife deixou em
+  inglês). Ele é o registro 3 de um **0x201A** do evento 32112400 (original "さあ　これが最終決戦だ！"), e o
+  `saved_strings` só pareava objetivos de 0x201C/0x201D. Varrendo o `eve.pkb` original, há objetivos (registro 3)
+  em 0x2019 (8), 0x201A (9), 0x201C (105), 0x201D (102) e 0x2024 (1).
+- **Correção (`mods.cpp`):** `kObjectiveOps` com os cinco opcodes; o registro 3 de qualquer um deles entra na tabela.
+
+**Verificação:** compila sem avisos (Linux e Windows). Sessão sem janela com uma cópia do `runmelonds-1.sav`, até o
+campo (A até o quadro 1700):
+- Sem o mod: tabela com 522 textos de outras versões (antes 508); três trocas no quadro 1726 (objetivo de 25 para
+  24 bytes); a faixa mostra "合宿所　1F", "もくてき" e "さあ　これが最終決戦だ！".
+- Com o mod: nenhuma troca; "Alojamento 1P", "Objetivo" e "This is the final battle!".
+
+**Pendente (fora desta mudança):** "This is the final battle!" continua sem tradução no PT-BR
+(`eve:32112400:65412`), e o `ssd_objectives` do `tools/ntr/text.py` só reconhece 0x201D, então os objetivos dos
+outros quatro opcodes não passam pelo `objective_fit`.
+
+**Pasta de teste do Windows** (`C:\Games\ie3-teste\ie3ogre-recomp`): atualizada com uma release 0.1.31 deste código
+(`tools/release.py`, com a correção acima; no `sdk/` só mudam o `mods.cpp` e o `version.txt`): launcher, `SDL3.dll`,
+`sdk/` (o antigo apagado inteiro), `licenses/`, `achievements/` e os três `.txt`. `boej.ini`, saves, savestates, mods
+e cache mantidos (o mod continua o `mod-CyberLifePlus-1.15.zip`). `--prepare` depois de apagar `cache/build.stamp`:
+190 arquivos em 46,8 s, 53,8 s no total.

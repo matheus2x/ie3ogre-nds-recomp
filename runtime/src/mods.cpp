@@ -395,9 +395,12 @@ bool lz10(const std::vector<uint8_t>& in, size_t at, size_t n, std::vector<uint8
     return true;
 }
 
+// Opcodes whose record 3 is an objective ("さあ　これが最終決戦だ！" is a 0x201A).
+constexpr uint16_t kObjectiveOps[] = {0x2019, 0x201A, 0x201C, 0x201D, 0x2024};
+
 // (event, instruction id, record) -> text, for the records that end up in the save: the
 // place (record 3 of opcode 0x4037; record 2 is the map), the label (record 2 of 0x402F) and
-// the objective (record 3 of 0x201C and 0x201D). Scripts: [u16 id][u16 size][u16 opcode]...;
+// the objective (record 3 of kObjectiveOps). Scripts: [u16 id][u16 size][u16 opcode]...;
 // records: [u16 id][u8 index][u8 size][text, NUL] (tools/ntr/text.py).
 std::map<uint64_t, std::string> saved_strings(const std::vector<uint8_t>& pkh, const std::vector<uint8_t>& pkb) {
     std::map<uint64_t, std::string> out;
@@ -422,7 +425,8 @@ std::map<uint64_t, std::string> saved_strings(const std::vector<uint8_t>& pkh, c
             if (n < 4) break;
             auto op = ops.find(id);
             uint16_t o = op == ops.end() ? 0 : op->second;
-            if ((o == 0x4037 && index == 3) || (o == 0x402F && index == 2) || ((o == 0x201C || o == 0x201D) && index == 3)) {
+            bool objective = index == 3 && std::find(std::begin(kObjectiveOps), std::end(kObjectiveOps), o) != std::end(kObjectiveOps);
+            if ((o == 0x4037 && index == 3) || (o == 0x402F && index == 2) || objective) {
                 const char* s = reinterpret_cast<const char*>(&d[i + 4]);
                 out[uint64_t(key) << 24 | uint64_t(id) << 8 | index] = std::string(s, strnlen(s, std::min<size_t>(n - 4, end - i - 4)));
             }
