@@ -1171,7 +1171,7 @@ Pedido: a 4× o FPS caía abaixo de 60 e o som engasgava. O usuário também ped
 
 ## 2026-10-23 — Mods: troca de arquivos e dados das overlays, aba Mods e tools/mod.py
 
-Pedido: a próxima etapa para facilitar a criação de mods. Os mods planejados pelo usuário são tradução, troca de sprites, upscaling e um gerenciador de técnicas (estilo Mini Hack). Esta etapa monta a base comum a todos: o jogo ler arquivos de mods sem mexer no `boej.pak`, o launcher gerenciar os mods e ferramentas para quem os cria. Formato e fluxo em [`docs/MODS.md`](MODS.md).
+Pedido: a próxima etapa para facilitar a criação de mods. Os mods planejados pelo usuário são tradução, troca de sprites, upscaling e um gerenciador de técnicas (estilo Mini Hack). Esta etapa monta a base comum a todos: o jogo ler arquivos de mods sem mexer no `boej.pak`, o launcher gerenciar os mods e ferramentas para quem os cria. Formato e fluxo em [`docs/MODS.md`](../modding/MODS.md).
 
 **Análise.**
 - Todo acesso do jogo ao cartucho passa por `rom_read` (o `CARDi_ReadRomWithCPU` é HLE). Então dá para trocar arquivos do lado do host, sem tocar no código recompilado.
@@ -3721,3 +3721,15 @@ atual. Teste do `ssd_rewrite` sem ROM; 68 testes ok. Idioma de teste apagado.
 
 **Verificação:** todos os links relativos dos `.md` (menos o diário) apontam para arquivos que existem, fora os do
 GitHub (`../../releases`, `../../issues`). Launcher compila sem avisos; 68 testes ok.
+
+## 2026-10-31 — `docs/` em subpastas
+
+- Pedido: organizar os `.md` de `docs/` em subpastas. Ficou `development/` (`DEVELOPMENT`, `DIARY`), `modding/`
+  (`MODS`, `TRANSLATING`, `TRANSLATION-STATUS`) e `graphics/` (`GRAPHICS`, `REMASTER`), cada um com a versão
+  `.pt-BR.md`; `assets/` continua onde estava (o README o usa).
+- Os links relativos dos `.md` foram recalculados a partir do lugar novo de cada arquivo, e as menções a
+  `docs/<nome>` no código, nos comentários, no launcher (mensagens e `LEIA-ME.txt`/`README.txt`), no
+  `tools/changelog.py` e nos READMEs passaram para o caminho novo. As entradas antigas do diário ficaram como estavam.
+
+**Verificação:** nenhum link relativo quebrado nos `.md` (fora os do GitHub, `../../releases` e `../../issues`);
+nenhuma menção ao caminho antigo fora do diário; launcher compila sem avisos; 68 testes ok.

@@ -25,7 +25,7 @@
   <a href="#controls">Controls</a> ·
   <a href="#mods-and-the-pt-br-translation">Mods</a> ·
   <a href="#building">Building</a> ·
-  <a href="docs/DEVELOPMENT.md">Development</a> ·
+  <a href="docs/development/DEVELOPMENT.md">Development</a> ·
   <a href="#reporting-problems">Problems</a>
 </p>
 
@@ -131,14 +131,14 @@ they only load in the same `boej.exe` and with the same mods (an update recompil
 
 Mods replace game files (text, fonts, images, tables) without touching `boej.pak`. Each mod is a folder or a
 `.zip` in the `mods/` folder: put it there (or drag it onto the launcher) and enable it under **Mods** in the launcher. How
-to make a mod: [`docs/MODS.md`](docs/MODS.md).
+to make a mod: [`docs/modding/MODS.md`](docs/modding/MODS.md).
 
-Official mods live in [`mods/`](mods/) and ship as separate `.zip` files with each release, as patches only,
+Official mods live in [`mods/`](mods) and ship as separate `.zip` files with each release, as patches only,
 with no game data:
 
 | Mod | What it is |
 |---|---|
-| [`CyberLifePlus`](mods/CyberLifePlus/README.md) | Brazilian Portuguese translation. Originally made by the **CyberLife** group and continued here: the story is fully translated, and what is left is tracked in [`docs/TRANSLATION-STATUS.md`](docs/TRANSLATION-STATUS.md) |
+| [`CyberLifePlus`](mods/CyberLifePlus/README.md) | Brazilian Portuguese translation. Originally made by the **CyberLife** group and continued here: the story is fully translated, and what is left is tracked in [`docs/modding/TRANSLATION-STATUS.md`](docs/modding/TRANSLATION-STATUS.md) |
 
 ## Reporting problems
 
@@ -167,7 +167,7 @@ on the PC, along with the parts of the BIOS and the NitroSDK the game uses.
 - [ ] Linux release (source builds only for now)
 - [ ] Achievements from live game state (today they are checked against the save)
 - [ ] Mods: documented formats, high-resolution textures, a special move editor
-- [ ] Optional GPU rendering (Vulkan/D3D12), better anti-aliasing, TAA, FSR and DLSS ([roadmap](docs/GRAPHICS.md))
+- [ ] Optional GPU rendering (Vulkan/D3D12), better anti-aliasing, TAA, FSR and DLSS ([roadmap](docs/graphics/GRAPHICS.md))
 
 ## Building
 
@@ -182,7 +182,7 @@ python3 -m unittest discover -s tools/tests -t tools   # tests (no ROM needed)
 ```
 
 Windows builds from Linux/WSL, releases, Ghidra analysis and the environment variables used for testing:
-[`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md).
+[`docs/development/DEVELOPMENT.md`](docs/development/DEVELOPMENT.md).
 
 ## Documentation
 
@@ -190,20 +190,20 @@ Each one also in Brazilian Portuguese (`*.pt-BR.md`).
 
 | Document | Contents |
 |---|---|
-| [Development](docs/DEVELOPMENT.md) | repository layout, building, releases, static analysis, settings, logs and environment variables |
-| [Mods](docs/MODS.md) | the mod format, BPS patches, tools and how it works inside |
-| [Translating](docs/TRANSLATING.md) | translating the game into another language: only `.json` and `.png` to edit, and `tools/translate.py` makes the mod |
-| [PT-BR translation](docs/TRANSLATION-STATUS.md) | what is left to translate, the checklist, naming conventions and technical text rules |
+| [Development](docs/development/DEVELOPMENT.md) | repository layout, building, releases, static analysis, settings, logs and environment variables |
+| [Mods](docs/modding/MODS.md) | the mod format, BPS patches, tools and how it works inside |
+| [Translating](docs/modding/TRANSLATING.md) | translating the game into another language: only `.json` and `.png` to edit, and `tools/translate.py` makes the mod |
+| [PT-BR translation](docs/modding/TRANSLATION-STATUS.md) | what is left to translate, the checklist, naming conventions and technical text rules |
 | [CyberLifePlus](mods/CyberLifePlus/README.md) | credits, versions and how to continue the translation |
-| [Diary](docs/DIARY.pt-BR.md) | the project's step-by-step history, with what was learned about the game (in Portuguese; [summary](docs/DIARY.md)) |
+| [Diary](docs/development/DIARY.pt-BR.md) | the project's step-by-step history, with what was learned about the game (in Portuguese; [summary](docs/development/DIARY.md)) |
 
 ## Contributing
 
 - Never commit ROMs, dumps, extracted files or snippets of the game's code (`.gitignore` blocks the common
   cases). Mods go in as `.bps` patches, and translations in `translations/` hold only the translated text (and the
   fonts and pictures drawn for them).
-- Log relevant findings and changes in `docs/DIARY.pt-BR.md` (the diary is in Portuguese), and translation work in the
-  `docs/TRANSLATION-STATUS.md` checklist too. A change to a document goes into both its English and its `.pt-BR.md`
+- Log relevant findings and changes in `docs/development/DIARY.pt-BR.md` (the diary is in Portuguese), and translation work in the
+  `docs/modding/TRANSLATION-STATUS.md` checklist too. A change to a document goes into both its English and its `.pt-BR.md`
   version.
 - Run the tests (`python3 -m unittest discover -s tools/tests -t tools`) before opening a pull request.
 

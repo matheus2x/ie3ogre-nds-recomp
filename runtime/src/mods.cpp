@@ -1,6 +1,6 @@
 // Mods: one folder or .zip per mod in mods/ next to the executable, turned on in boej.ini
 // ([mods] enabled = name, name.zip; a later one wins over an earlier one). Inside each
-// (ntr/package.h finds the root of a zip), as described in docs/MODS.md:
+// (ntr/package.h finds the root of a zip), as described in docs/modding/MODS.md:
 //
 //   mod.ini              name, version, author, description, game = BOEJ
 //   files/<path>         replaces the NitroFS file at <path> (data_iz/...)

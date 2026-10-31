@@ -17,5 +17,5 @@ What it covers, roughly in order:
 - savestates, rewind, achievements, the gallery, Discord Rich Presence.
 
 For the current state of each area, the English documents are the place to start: [`DEVELOPMENT.md`](DEVELOPMENT.md),
-[`MODS.md`](MODS.md), [`TRANSLATING.md`](TRANSLATING.md), [`TRANSLATION-STATUS.md`](TRANSLATION-STATUS.md),
-[`GRAPHICS.md`](GRAPHICS.md) and [`REMASTER.md`](REMASTER.md).
+[`MODS.md`](../modding/MODS.md), [`TRANSLATING.md`](../modding/TRANSLATING.md), [`TRANSLATION-STATUS.md`](../modding/TRANSLATION-STATUS.md),
+[`GRAPHICS.md`](../graphics/GRAPHICS.md) and [`REMASTER.md`](../graphics/REMASTER.md).

@@ -89,7 +89,7 @@ traduzida desde a v1.15; sobram 9 legendas de outras cenas que o CyberLife deixo
 
 O que já foi feito e o que está previsto, por fase. Cada etapa da tradução atualiza esta lista: marca o que
 terminou (com a versão do mod) e acrescenta, na fase certa, o que descobriu no caminho. Os detalhes de cada
-etapa ficam no `docs/DIARY.pt-BR.md`.
+etapa ficam no `docs/development/DIARY.pt-BR.md`.
 
 ### Fase 1: fechar a história
 

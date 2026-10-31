@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tools for making mods (format in docs/MODS.md).
+"""Tools for making mods (format in docs/modding/MODS.md).
 
   python3 tools/mod.py new mods/minha-traducao --name "Minha tradução"
   python3 tools/mod.py unpack boej.pak build/original [--only 'data_iz/logic/*'] [--overlays]
@@ -43,7 +43,7 @@ PROTECTED_OVERLAYS = {129}
 PATCH = ".bps"
 
 MOD_INI = """\
-; Mod de Inazuma Eleven 3 - The Ogre (formato em docs/MODS.md).
+; Mod de Inazuma Eleven 3 - The Ogre (formato em docs/modding/MODS.md).
 [mod]
 name = {name}
 version = 1.0
@@ -167,7 +167,7 @@ def cmd_unpack(args) -> int:
             if ov.id in PROTECTED_OVERLAYS:
                 continue
             (out / "overlays" / f"ov{ov.id:03d}.bin").write_bytes(rom.overlay_decompressed(ov))
-        print(f"overlays in {out / 'overlays'} (only data may change, see docs/MODS.md)")
+        print(f"overlays in {out / 'overlays'} (only data may change, see docs/modding/MODS.md)")
     return 0
 
 

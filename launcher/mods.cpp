@@ -1,4 +1,4 @@
-// The Mods tab: the mods in mods/, one folder or .zip each (format in docs/MODS.md), which
+// The Mods tab: the mods in mods/, one folder or .zip each (format in docs/modding/MODS.md), which
 // of them are on and in what order ([mods] enabled in boej.ini), adding one (a copy into
 // mods/; dropping it there by hand does the same), removing one, and making one from a
 // modified dump (a fan translation or ROM hack with the retail code).
@@ -312,7 +312,7 @@ void install(const std::string& source) {
         return;
     }
     if (!package.find("mod.ini")) {
-        set_status(name + L(" is not a mod: it has no mod.ini (see docs/MODS.md).", " não é um mod: falta o mod.ini (veja docs/MODS.pt-BR.md)."), true);
+        set_status(name + L(" is not a mod: it has no mod.ini (see docs/modding/MODS.md).", " não é um mod: falta o mod.ini (veja docs/modding/MODS.pt-BR.md)."), true);
         return;
     }
     if (folder) {
@@ -730,8 +730,8 @@ void mods_tab(SDL_Window* window) {
     if (g_selected >= 0 && g_selected < int(g_mods.size())) {
         details(g_mods[g_selected]);
     } else {
-        ImGui::TextDisabled("%s", L("Pick a mod in the list to see its details. To make your own, see docs/MODS.md.",
-                                    "Escolha um mod na lista para ver os detalhes. Para fazer o seu, veja docs/MODS.pt-BR.md."));
+        ImGui::TextDisabled("%s", L("Pick a mod in the list to see its details. To make your own, see docs/modding/MODS.md.",
+                                    "Escolha um mod na lista para ver os detalhes. Para fazer o seu, veja docs/modding/MODS.pt-BR.md."));
     }
     remove_dialog();
 }

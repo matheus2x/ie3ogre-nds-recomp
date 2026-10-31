@@ -171,7 +171,7 @@ your own PC.
 
 ## Official mods
 
-The repository's [`mods/`](../mods/) folder has the mods the project maintains, one per folder, patches only. Each
+The repository's [`mods/`](../../mods) folder has the mods the project maintains, one per folder, patches only. Each
 one ships in the release as `mod-<name>-<version>.zip` (`tools/release.py`). The file name changes with each
 version, but the launcher recognizes the same mod by the `name` in `mod.ini`: added through the launcher, the new
 one deletes the old copy from the `mods` folder and takes its place in the list (on, if it was); put there by
@@ -182,7 +182,7 @@ refused if an official mod has a whole game file or changed since the previous r
 
 | Mod | What it is |
 |---|---|
-| [`CyberLifePlus`](../mods/CyberLifePlus/README.md) | PT-BR translation, originally made by the CyberLife group and continued here; made from `translations/pt-BR/` by `tools/translate.py`. Its `README.md` has the credits and how to continue the translation |
+| [`CyberLifePlus`](../../mods/CyberLifePlus/README.md) | PT-BR translation, originally made by the CyberLife group and continued here; made from `translations/pt-BR/` by `tools/translate.py`. Its `README.md` has the credits and how to continue the translation |
 
 ## Planned kinds of mod
 
@@ -192,7 +192,7 @@ What file replacement can already do, and what is still missing in the port for 
 |---|---|---|
 | **Translation** | yes, as its own kind: a `translations/<language>/` folder with only `.json` (text) and `.png` (fonts and images), and `tools/translate.py` makes the mod (patches, `mod.ini`, `.zip`) from the original game, or from the CyberLife base for PT-BR and its copies ([`TRANSLATING.md`](TRANSLATING.md)). A ready-made translation as a `.nds` becomes a mod through the "Make from a modified dump" button (or `tools/mod.py from-dump --patch`) and runs the same as the translated dump | videos (`.mods`; today only the subtitles), tables without a converter (`BattleRouteTitle.dat`, blog), two-byte letters in the charset |
 | **Sprite and image replacement** | yes, by replacing the file (`data_iz/pic2d`, `obj2d`, `spr`, `face2d`, `pic3d`) in the game's format | document the formats and have PNG converters |
-| **High-resolution textures (upscaling)** | no: a game file can only have the size that fits in the DS's VRAM | texture packs by hash (`textures/` in the mod), applied by the 3D renderer at the internal resolution and by the 2D composition (plan in [`REMASTER.md`](REMASTER.md)) |
+| **High-resolution textures (upscaling)** | no: a game file can only have the size that fits in the DS's VRAM | texture packs by hash (`textures/` in the mod), applied by the 3D renderer at the internal resolution and by the 2D composition (plan in [`REMASTER.md`](../graphics/REMASTER.md)) |
 | **Technique manager (Mini Hack style)** | partly: the player and technique tables are files and can be replaced whole | map the tables' format and make an editor that produces the mod folder |
 
 Next infrastructure steps, in order:

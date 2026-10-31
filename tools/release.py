@@ -153,7 +153,7 @@ def check_version(folder: Path, version: str):
 
 def official_mods(release: Path) -> list[Path]:
     """mods/<name>/ -> mod-<name>-<version>.zip, as tools/mod.py pack makes it (shown with that
-    name on the release page). Whole game files are refused: an official mod carries only patches (docs/MODS.md)."""
+    name on the release page). Whole game files are refused: an official mod carries only patches (docs/modding/MODS.md)."""
     out = []
     for folder in sorted((ROOT / "mods").iterdir()) if (ROOT / "mods").is_dir() else []:
         if not (folder / "mod.ini").is_file():

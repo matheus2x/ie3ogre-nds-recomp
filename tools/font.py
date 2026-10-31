@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The fonts of a translation as PNG sheets (formats in tools/ntr/font.py; docs/TRANSLATING.md).
+"""The fonts of a translation as PNG sheets (formats in tools/ntr/font.py; docs/modding/TRANSLATING.md).
 
   python3 tools/font.py export boej.pak mods/CyberLifePlus translations/pt-BR/font
   python3 tools/font.py export boej.pak mods/CyberLifePlus translations/es/font --layer

@@ -1,4 +1,4 @@
-"""The images of the game (data_iz/pic2d, pic3d) and the text drawn on them (docs/TRANSLATION-STATUS.md).
+"""The images of the game (data_iz/pic2d, pic3d) and the text drawn on them (docs/modding/TRANSLATION-STATUS.md).
 
 SFP archive: "SFP\\0", u32 0, u32 5, u32 0x20, u32 size at 0x10, then from 0x20 entries of
 (u32 offset of the name, u32 size, u32 offset / 0x20, u32 0) and the names. The data is a second

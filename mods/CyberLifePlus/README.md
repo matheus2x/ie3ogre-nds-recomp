@@ -33,6 +33,7 @@ gives exactly the files of the translated dump.
 
 ## Versions
 
+- **1.17:** only the documentation links, which moved to other folders. Nothing changes in the game.
 - **1.16:** the mod is now made from the text in `translations/pt-BR/` (in the repository), with
   `tools/translate.py`. In the game, the text is the same as in 1.15.
 - **1.15:** the opening: the lyrics of the intro video's song in Portuguese (before in Japanese, with the kanji
@@ -114,7 +115,7 @@ gives exactly the files of the translated dump.
   Tettsui" instead of "Divine Stamp") and are the same in the technique list and in the notebooks.
 - **1.1:** the whole story in Portuguese: what was missing from chapters 1 to 11, chapter 12 (the epilogue with
   Tenma), the field and shop messages, the player search machine and the recruitment notices (1,268 lines). What
-  is still missing is in `docs/TRANSLATION-STATUS.md`, in the repository.
+  is still missing is in `docs/modding/TRANSLATION-STATUS.md`, in the repository.
 - **1.0:** CyberLife's translation, as it was.
 
 ## How to continue the translation
@@ -137,5 +138,5 @@ python3 tools/translate.py build pt-BR --install           # raise "version" in 
 python3 tools/text.py survey boej.pak mods/CyberLifePlus     # how much is already translated
 ```
 
-The text rules (room, accents, line breaks, names) are in `docs/TRANSLATION-STATUS.md`. To translate the game into
-another language starting from this one, see `docs/TRANSLATING.md`.
+The text rules (room, accents, line breaks, names) are in `docs/modding/TRANSLATION-STATUS.md`. To translate the game into
+another language starting from this one, see `docs/modding/TRANSLATING.md`.

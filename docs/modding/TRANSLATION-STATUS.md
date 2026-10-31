@@ -89,7 +89,7 @@ movie`). The fiction notice of a new game ("この作品はフィクションで
 
 What was done and what is planned, by phase. Each translation step updates this list: it checks what finished
 (with the mod's version) and adds, in the right phase, what it found along the way. The details of each step are
-in `docs/DIARY.pt-BR.md`.
+in `docs/development/DIARY.pt-BR.md`.
 
 ### Phase 1: close the story
 

@@ -33,6 +33,7 @@ dá exatamente os arquivos do dump traduzido.
 
 ## Versões
 
+- **1.17:** só os links da documentação, que mudou de pasta. No jogo, nada muda.
 - **1.16:** o mod passa a ser gerado dos textos em `translations/pt-BR/` (no repositório), com o
   `tools/translate.py`. No jogo, o texto é o mesmo da 1.15.
 - **1.15:** a abertura: a letra da música do vídeo inicial em português (antes em japonês, com os kanji
@@ -115,7 +116,7 @@ dá exatamente os arquivos do dump traduzido.
   ("Sabaki no Tettsui" no lugar de "Divine Stamp") e são os mesmos na lista de técnicas e nos cadernos.
 - **1.1:** a história fica toda em português: o que faltava dos capítulos 1 a 11, o capítulo 12 (o epílogo com
   o Tenma), as mensagens de campo e das lojas, a máquina de busca de jogadores e os avisos de recrutamento
-  (1.268 falas). O que ainda falta está em `docs/TRANSLATION-STATUS.pt-BR.md`, no repositório.
+  (1.268 falas). O que ainda falta está em `docs/modding/TRANSLATION-STATUS.pt-BR.md`, no repositório.
 - **1.0:** a tradução do CyberLife, como estava.
 
 ## Como continuar a tradução
@@ -138,5 +139,5 @@ python3 tools/translate.py build pt-BR --install           # suba antes o "versi
 python3 tools/text.py survey boej.pak mods/CyberLifePlus     # quanto já está traduzido
 ```
 
-As regras do texto (espaço, acentos, quebra de linha, nomes) estão em `docs/TRANSLATION-STATUS.pt-BR.md`. Para traduzir o jogo
-para outro idioma a partir deste, veja `docs/TRANSLATING.pt-BR.md`.
+As regras do texto (espaço, acentos, quebra de linha, nomes) estão em `docs/modding/TRANSLATION-STATUS.pt-BR.md`. Para traduzir o jogo
+para outro idioma a partir deste, veja `docs/modding/TRANSLATING.pt-BR.md`.

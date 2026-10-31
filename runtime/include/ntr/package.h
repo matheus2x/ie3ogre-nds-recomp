@@ -1,4 +1,4 @@
-// A mod as the player leaves it in mods/: a folder or a .zip (docs/MODS.md). Both look the
+// A mod as the player leaves it in mods/: a folder or a .zip (docs/modding/MODS.md). Both look the
 // same from here: the files under the mod's root, with '/' separators. The root is the
 // folder itself; in a zip, the top of the zip or its only folder, whichever has mod.ini.
 // Shared by the game (runtime/src/mods.cpp) and the launcher (the Mods tab).

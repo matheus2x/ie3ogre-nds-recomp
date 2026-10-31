@@ -167,7 +167,7 @@ para uso no próprio PC.
 
 ## Mods oficiais
 
-A pasta [`mods/`](../mods/) do repositório tem os mods mantidos pelo projeto, um por pasta, só com patches. Cada um
+A pasta [`mods/`](../../mods) do repositório tem os mods mantidos pelo projeto, um por pasta, só com patches. Cada um
 sai na release como `mod-<nome>-<version>.zip` (`tools/release.py`). O nome do arquivo muda a cada versão, mas o
 launcher reconhece o mesmo mod pelo `name` do `mod.ini`: adicionado pelo launcher, o novo apaga a cópia antiga da
 pasta `mods` e fica no lugar dela na lista (ligado, se ela estava); colocado à mão, uma versão mais nova fica no
@@ -178,7 +178,7 @@ tiver mudado desde a release anterior sem um `version` novo.
 
 | Mod | O que é |
 |---|---|
-| [`CyberLifePlus`](../mods/CyberLifePlus/README.pt-BR.md) | Tradução PT-BR, feita originalmente pelo grupo CyberLife e continuada aqui; gerada de `translations/pt-BR/` pelo `tools/translate.py`. O `README.pt-BR.md` dele tem os créditos e como continuar a tradução |
+| [`CyberLifePlus`](../../mods/CyberLifePlus/README.pt-BR.md) | Tradução PT-BR, feita originalmente pelo grupo CyberLife e continuada aqui; gerada de `translations/pt-BR/` pelo `tools/translate.py`. O `README.pt-BR.md` dele tem os créditos e como continuar a tradução |
 
 ## Tipos de mod planejados
 
@@ -188,7 +188,7 @@ O que já dá para fazer com a troca de arquivos, e o que ainda falta no port pa
 |---|---|---|
 | **Tradução** | sim, como tipo próprio: uma pasta `translations/<idioma>/` só com `.json` (textos) e `.png` (fontes e imagens), e o `tools/translate.py` gera o mod (patches, `mod.ini`, `.zip`) a partir do jogo original, ou da base do CyberLife no PT-BR e nas cópias dele ([`TRANSLATING.pt-BR.md`](TRANSLATING.pt-BR.md)). Uma tradução já pronta em `.nds` vira mod pelo botão "Criar de um dump modificado" (ou `tools/mod.py from-dump --patch`) e roda igual ao dump traduzido | vídeos (`.mods`; hoje só as legendas), tabelas sem conversor (`BattleRouteTitle.dat`, blog), letras de 2 bytes no charset |
 | **Troca de sprites e imagens** | sim, trocando o arquivo (`data_iz/pic2d`, `obj2d`, `spr`, `face2d`, `pic3d`) no formato do jogo | documentar os formatos e ter conversores para PNG |
-| **Texturas em alta resolução (upscaling)** | não: um arquivo do jogo só pode ter o tamanho que cabe na VRAM do DS | pacotes de texturas por hash (`textures/` no mod), aplicados pelo renderizador 3D na resolução interna e pela composição 2D (plano em [`REMASTER.pt-BR.md`](REMASTER.pt-BR.md)) |
+| **Texturas em alta resolução (upscaling)** | não: um arquivo do jogo só pode ter o tamanho que cabe na VRAM do DS | pacotes de texturas por hash (`textures/` no mod), aplicados pelo renderizador 3D na resolução interna e pela composição 2D (plano em [`REMASTER.pt-BR.md`](../graphics/REMASTER.pt-BR.md)) |
 | **Gerenciador de técnicas (estilo Mini Hack)** | em parte: as tabelas de jogadores e técnicas são arquivos e podem ser trocadas inteiras | mapear o formato das tabelas e fazer um editor que gere a pasta do mod |
 
 Próximos passos da infraestrutura, em ordem:

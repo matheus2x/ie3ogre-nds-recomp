@@ -90,7 +90,7 @@ def main() -> int:
             out.append(f"<sub>{short}</sub>\n")
     else:
         out.append("## Primeira release\n")
-        out.append("Tudo o que entrou até aqui (o histórico completo está em `docs/DIARY.pt-BR.md`):\n")
+        out.append("Tudo o que entrou até aqui (o histórico completo está em `docs/development/DIARY.pt-BR.md`):\n")
         out.extend(f"- {subject} ({short})" for short, subject, _ in entries)
         out.append("")
 

@@ -37,7 +37,7 @@ to the "mods" folder, and Remove only deletes that copy: the original file
 or folder is not changed. The page also creates a mod from a modified dump
 (a translation, for example), as long as its code is the original game's.
 Changes apply the next time the game starts. How to make a mod: see
-docs/MODS.md in the project's repository (address at the end of this file).
+docs/modding/MODS.md in the project's repository (address at the end of this file).
 Official mods ship as separate .zip files in the releases (for example
 mod-CyberLifePlus-<version>.zip, the PT-BR translation): put the .zip in
 the "mods" folder without extracting it. To update a mod, add the new .zip

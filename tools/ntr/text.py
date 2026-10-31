@@ -1,4 +1,4 @@
-"""The text of the game and of its translations (docs/TRANSLATING.md; PT-BR in docs/TRANSLATION-STATUS.md).
+"""The text of the game and of its translations (docs/modding/TRANSLATING.md; PT-BR in docs/modding/TRANSLATION-STATUS.md).
 
 Packs (.pkh + .pkb): "PackNum 20080626", u32 size of the .pkh at 0x10, u16 count at 0x16,
 u32 alignment (16) at 0x18, u32 largest stored entry (rounded up) at 0x1C, then from 0x30

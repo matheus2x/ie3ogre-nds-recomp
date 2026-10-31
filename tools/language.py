@@ -1,4 +1,4 @@
-"""The language of a translation: translations/<language>/language.json (docs/TRANSLATING.md).
+"""The language of a translation: translations/<language>/language.json (docs/modding/TRANSLATING.md).
 
   {
     "type": "translation",

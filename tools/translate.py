@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """A translation mod made from its folder, translations/<language>, with nothing but .json and .png
-to edit (how to translate: docs/TRANSLATING.md).
+to edit (how to translate: docs/modding/TRANSLATING.md).
 
   python3 tools/translate.py new es --mod Traduccion-ES --name "Traducción al español" --author "Yo"
   python3 tools/translate.py todo es [--only 3300] [--reference pt-BR]
@@ -144,7 +144,7 @@ def cmd_check(args) -> int:
     out = OUT / ".check" / lang.mod
     stage(lang, image, out)
     bad = steps(lang, image, out, False)
-    print("ok: build it with translate.py build" if not bad else "fix the problems above (docs/TRANSLATING.md)")
+    print("ok: build it with translate.py build" if not bad else "fix the problems above (docs/modding/TRANSLATING.md)")
     return 1 if bad else 0
 
 
@@ -164,7 +164,7 @@ def cmd_build(args) -> int:
     out = OUT / lang.mod
     stage(lang, image, out)
     if steps(lang, image, out, True):
-        print("nothing built: fix the problems above (docs/TRANSLATING.md)")
+        print("nothing built: fix the problems above (docs/modding/TRANSLATING.md)")
         return 1
     errors, warnings = modtool.check(out, modtool.load_image(image))
     for w in warnings:

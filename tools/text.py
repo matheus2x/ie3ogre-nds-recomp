@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Translation of the game's text into a mod (formats in tools/ntr/text.py, state in docs/TRANSLATION-STATUS.md).
+"""Translation of the game's text into a mod (formats in tools/ntr/text.py, state in docs/modding/TRANSLATION-STATUS.md).
 
   python3 tools/text.py survey boej.pak mods/CyberLifePlus
   python3 tools/text.py extract boej.pak mods/CyberLifePlus build/text [--only 3300,3611] [--translations DIR]
@@ -712,7 +712,7 @@ def cmd_survey(args) -> int:
           f"({total[1]} de {total[0]} caracteres japoneses ainda no jogo)")
     print(f"traduzido, textos únicos:  {100 * (1 - total[3] / total[2]):.1f}% "
           f"({total[3]} de {total[2]})")
-    print("\nFora da conta: imagens, legendas dos vídeos e o ARM9 (veja docs/TRANSLATION-STATUS.md).")
+    print("\nFora da conta: imagens, legendas dos vídeos e o ARM9 (veja docs/modding/TRANSLATION-STATUS.md).")
     return 0
 
 
