@@ -5,6 +5,7 @@ add_library(ntr-common STATIC
     src/files.cpp
     src/hash.cpp
     src/json.cpp
+    src/mod_settings.cpp
     src/nitro.cpp
     src/package.cpp
     src/savedata.cpp
@@ -58,6 +59,7 @@ add_library(ntr-runtime STATIC
     src/rom.cpp
     src/savestate.cpp
     src/task.cpp
+    src/text_hd.cpp
     src/thread.cpp
     src/timing.cpp
     src/trace.cpp

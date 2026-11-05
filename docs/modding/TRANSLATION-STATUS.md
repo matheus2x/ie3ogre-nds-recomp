@@ -68,7 +68,7 @@ and the prefix says the kind.
 | Player names (without the kana readings) | `logic/unitbase*.dat` | 1,947 (almost all "未定") | 84 % |
 | Tactics | `logic/tacticscmd.STR` | 0 | 0 % → 100 % (v1.2) |
 | Video gallery titles | `logic/movie_view_f.dat` | 0 | 0 % → 100 % (v1.4) |
-| Place names (maybe internal only, see phase 5) | `logic/fieldinf.dat` | 984 | 0 % |
+| Place names (maybe internal only, see phase 6) | `logic/fieldinf.dat` | 984 | 0 % |
 | Blog | `script/blogpost.dat`, `blogres.dat` | 3,010 | 13 % → 88 % (v1.18) |
 | Other tables (moves, tournaments, conditions…) | `logic/*` | 4 (a password) | 96 % → 100 % (v1.5) |
 | Menus in the code | overlays | 456 (passwords, internal names and leftovers) | 28 % → 95 % (v1.4) |
@@ -296,7 +296,56 @@ in `docs/development/DIARY.pt-BR.md`.
   é uma obra fictícia…") and `mpd_m00.pac_` ("Os treinamentos e as técnicas especiais…"), which CyberLife had
   already translated. Seen in the game (2026-11-04, windowless session with a new save); the item was wrong
 
-### Phase 3: optional content (about 4,200 unique, 101 thousand characters)
+### Phase 3: a more readable font
+
+Replace the letters' drawing with a cleaner, less pixelated one. It comes before the volume phases because all the
+fitting of the text (line breaks at ~226 px, the objectives' spacers, the px widths of the tables and overlays,
+abbreviations) depends on the width of each letter. **Rule of the phase: the metrics do not change** (in the fonts'
+JSON, `cell`, `baseline` and, in each glyph, `left`, `width` and `advance`); only the drawing changes. That way no
+already translated line has to be redone.
+
+- [x] Freeze the metrics (2026-11-04): `font.py freeze translations/pt-BR` writes `font/metrics.lock` (cell,
+  baseline, line height and `left`/`width`/`advance` of each of the 1,605 codes of the three fonts), and
+  `font.py check`, `translate.py check`/`build` (the "fonts" step) and a test (`tools/tests/test_font.py`, no ROM)
+  refuse a font with a different metric. A new letter passes (freeze again). Tested: moving `FONT12`'s "A" 2 px
+  further already pushes story lines past 3 rows in the box
+- [x] Does the game accept 2 bpp? (2026-11-04) **Not in `FONT12`, `FONT8` and `RUBI8`.** The factory
+  `func_02029a24` creates the four fonts: the first three with the base class (vtable 0x0208FFEC) and `FONT12T`
+  with the subclass (0x02091290). Every letter goes through the font's vtable +0x10/+0x14/+0x18/+0x1C (4 bpp
+  tiled, 4 bpp linear, 8 bpp tiled, 8 bpp linear). In the base class all four read **1 bit per pixel** and paint a
+  single colour (`func_02042b4c` etc.): a 2 bpp font there would come out scrambled. In the subclass
+  (`func_0206ba24` etc.) value 1 is the text colour and 2 and 3 are the colours of bytes +0x1C/+0x1D of the object
+  (outline and shadow chosen by the caller), not greys. So at 1× greys to smooth the edges need a change in the
+  port, and even then each screen would need free in-between colours in its 16-colour palette: the real gain is the
+  HD font (below)
+- [x] **HD font from the port** (2026-11-04, `runtime/src/text_hd.cpp`; format in [`MODS.md`](MODS.md), "HD
+  text"). With the 3D above 1× and Atkinson chosen in Settings → Mods → CyberLifePlus → Text font (default: the
+  game's pixel font), the letters are drawn again at the high resolution with **Atkinson Hyperlegible** (OFL, in `translations/pt-BR/hd/`, chosen comparing it with Rubik, Fira
+  Sans, Noto Sans and Nunito). How it works: hooks on the eight draw functions of the fonts (both classes) and on
+  `NNS_G2dCharCanvasDrawChar` tag every pixel of the letter's box (which letter, which pixel of it); the tags follow
+  the copies (DMA, `MIi_CpuCopy*`, `memcpy`) to VRAM and go away on clears; the 2D composition (BGs and sprites, in
+  the large picture) and the 3D texture reads (the field menus are 4 bpp textures) replace every tagged pixel with
+  the vector letter, fitted to the height and center of the original ink. Metrics untouched: the text stays in the
+  same place. Seen in the game, at 3×, 4× and 8×: dialogue, objective, top screen card, save card, field menu (3D),
+  name screen, "Garra/Amizade". Cost measured at 4×: 6.44 → 6.61 ms per frame
+- [x] The font as an option of the mod (2026-11-05): Settings → **Mods** (launcher and pause menu) lists the mods with
+  options (`settings.json`) and opens the submenu of each. In the launcher's Mods tab, "Settings" on the mod's row goes to
+  the submenu (both only with the mod on). CyberLifePlus has "Text font (HD)": Default (the game's pixel font) or
+  Atkinson Hyperlegible; in the pause menu the change applies at once. The choice goes to
+  `[mod_settings]` of `boej.ini`, by the mod's name. The "HD text" box of Video is gone
+- [ ] See the other paths in HD: `NNS_G2dCharCanvasDrawChar` (the hook is there, but no screen seen used it), the
+  `FONT12T` subclass (same; the HD outline is the letter grown by 1 px), the video subtitles, the paired
+  descriptions, the binder and the communication screens
+- [ ] HD text with the 3D at 1×: the large picture exists only with the 3D above 1× today. A scale of the 2D's own
+  (`[video] text_scale`?) would make the text sharp without paying for the 3D at high resolution
+- [ ] Smooth edges: each sample of the HD letter is ink or not (at 3× it already looks smooth); mix the colors on
+  the edge by the TrueType coverage, where the layer's effect allows it
+- [ ] Savestate: the tags are not in the state; after a load, the text already on screen stays native until the game
+  draws it again (a new box, another menu)
+- [ ] Optional (HD covers the case that matters): redraw `FONT12` on the same grid in 1 bpp, for those who play at 1×
+- [ ] New languages (`translate.py new`): suggest the same `hd_fonts` as PT-BR
+
+### Phase 4: optional content (about 4,200 unique, 101 thousand characters)
 
 - [ ] Sub-events 3300: 2,353, including the ~960 lines in English
 - [x] Scout and battle routes, 3611/3613/3618 (v1.18): 1,326 places in Japanese (269 unique texts: the NPCs of the
@@ -329,13 +378,13 @@ in `docs/development/DIARY.pt-BR.md`.
 - [ ] Blog pictures: CyberLife's English header ("Get all the latest Inazuma Japan news here!", "Check back often
   for new entries!", "Football Blog") and the Japanese labels (トピックス, まえへ, とじる, つぎへ).
 
-### Phase 4: volume (about 6,500 unique, 117 thousand characters)
+### Phase 5: volume (about 6,500 unique, 117 thousand characters)
 
 - [ ] Player lines in matches, 3700 (4,154; 250 thousand characters with repetitions). It can be split by team:
   each entry is one player's.
 - [ ] Player profiles, `unitbase.STR` (2,309), also by team
 
-### Phase 5: check in the game
+### Phase 6: check in the game
 
 - [x] Video gallery: title no. 1 and the widest one seen in the game (v1.4)
 - [x] Opening (v1.15): the 22 subtitles seen in the game, centred, with accents; the widest (238 px) whole
@@ -360,7 +409,7 @@ in `docs/development/DIARY.pt-BR.md`.
 - [x] Team menus (v1.9): seen in the game the Friends screen (Friends banner, X Data, Swap, Menu, End, OK, Exit),
   the sorting (Order/Name banner, B Friends). Not seen: Equipment, the Formation screens (the test save only opens
   the submenu), Copy/Open and the Yes/No and "Shirt number" windows. Kageto's profile shows as "?から?まれた??の???"
-  (kanji outside the font): it is the untranslated `unitbase.STR` (phase 4).
+  (kanji outside the font): it is the untranslated `unitbase.STR` (phase 5).
 - [x] Text menus (v1.10): seen in the game the field menu and the Formation submenu, the top screen card ("Título"
   does not fit in the tab: "Tít."; Grit and Friendship below), the Y menu and the Friends sorting with the attribute
   list, and the "Precisamos de Endo!" window (in pairs). "Dismiss" is greyed out in the test save. Not seen: the

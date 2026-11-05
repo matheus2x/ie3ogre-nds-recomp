@@ -36,6 +36,11 @@ mods/
     overlays/
       ov022.bin                          overlay 22 inteira, descomprimida
       ov023.bin.bps                      patch sobre a overlay 23 descomprimida
+    hd/
+      fonts.json                         texto em HD: as fontes TrueType que o mod oferece
+      MinhaFonte.ttf                     a fonte (de licença livre)
+      OFL.txt                            a licença dela
+    settings.json                        as opções do mod (Configurações → Mods)
 ```
 
 `mod.ini`:
@@ -88,6 +93,53 @@ jogo, nunca sobre o arquivo de outro mod (o último mod da lista que troca o arq
 
 Os patches são aplicados ao abrir o jogo, em segundo plano, como os arquivos comprimidos de um `.zip`. A tradução
 inteira (512 arquivos, 9 MB de patches para 76 MB de arquivos) custa uns 0,1 s a mais no começo.
+
+**Opções do mod.** Um `settings.json` ao lado do `mod.ini` lista o que o jogador pode escolher no mod. As opções
+aparecem em Configurações → **Mods** (no launcher e no menu de pausa, tecla Esc): a lista dos mods que têm
+opções e, ao abrir um, o submenu dele, com um dropdown por opção; na aba Mods do launcher, o botão "Configurar" da
+linha do mod leva direto ao submenu. O submenu e o botão só funcionam com o mod ligado. A escolha vai para o `boej.ini`, em
+`[mod_settings]`, pelo nome do mod (o `name` do `mod.ini`), então vale também para as versões novas do mod:
+
+```json
+{"settings": [{
+  "id": "hd_font",
+  "label": {"en": "Text font (HD)", "pt": "Fonte do texto (HD)"},
+  "hint": {"en": "...", "pt": "..."},
+  "default": "default",
+  "options": [{"id": "default", "label": {"en": "Default", "pt": "Padrão"}},
+              {"id": "minha-fonte", "label": "Minha Fonte"}]
+}]}
+```
+
+```ini
+[mod_settings]
+Minha tradução / hd_font = minha-fonte
+```
+
+Rótulo e dica são um texto (qualquer idioma) ou `{"en": ..., "pt": ...}`. O que uma opção faz é o port que sabe;
+hoje existe uma: `hd_font`, a fonte do texto em HD (abaixo), com `default` para as letras do próprio jogo.
+
+**Texto em HD.** Com a resolução do 3D acima de 1×, o port pode desenhar as letras do jogo de novo na resolução
+alta com uma fonte TrueType do mod. O `hd/fonts.json` lista as fontes que o mod oferece, cada uma com o arquivo
+para cada fonte do jogo (`FONT12`, `FONT12T`, `FONT8`, `RUBI8`) e o caractere Unicode de cada glyph dela, na
+ordem dos glyphs da fonte que o mod dá ao jogo (0: nenhum):
+
+```json
+{
+  "minha-fonte": {"name": "Minha Fonte", "fonts": {
+    "FONT12": {"file": "hd/MinhaFonte.ttf", "codepoints": [32, 33, 34, 0, 65, ...]},
+    "FONT8": {"file": "hd/MinhaFonte.ttf", "codepoints": [...]}
+  }}
+}
+```
+
+A opção `hd_font` do `settings.json` escolhe uma delas pelo id (`default`: nenhuma); sem a opção, vale a primeira.
+No menu de pausa a troca vale na hora. Um mod de tradução gera os dois arquivos sozinho (`"hd_fonts"` no
+`language.json`, [`TRANSLATING.pt-BR.md`](TRANSLATING.pt-BR.md)). Cada letra HD é encaixada na letra da fonte do
+jogo, na altura e no centro da tinta dela (estreitada se ficar mais larga), então o texto fica no mesmo lugar e com
+o mesmo espaço; uma letra que a fonte TrueType não tem (kana, kanji) fica como o jogo desenha. Vale para o texto na
+tela de cima e de baixo, em BG e em sprites (2D) e nas texturas dos menus 3D. O último mod da lista que desenha
+uma fonte do jogo vence. A fonte vai junto com o mod: use uma de licença livre (OFL) e ponha a licença em `hd/`.
 
 **Mod com erro** fica de fora inteiro (o jogo abre sem ele). Arquivos com caminho que o jogo não tem são
 ignorados, com um aviso. Os erros e avisos aparecem na página Mods e no log da sessão em `logs/sessoes/` (linhas `[mods]`).

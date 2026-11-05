@@ -68,7 +68,7 @@ O diálogo fica em `script/evet.pkb`. A chave de cada entrada é o número do ev
 | Nomes de jogadores (sem as leituras em kana) | `logic/unitbase*.dat` | 1.947 (quase tudo "未定") | 84 % |
 | Táticas | `logic/tacticscmd.STR` | 0 | 0 % → 100 % (v1.2) |
 | Títulos da galeria de vídeos | `logic/movie_view_f.dat` | 0 | 0 % → 100 % (v1.4) |
-| Nomes de locais (talvez só internos, ver a fase 5) | `logic/fieldinf.dat` | 984 | 0 % |
+| Nomes de locais (talvez só internos, ver a fase 6) | `logic/fieldinf.dat` | 984 | 0 % |
 | Blog | `script/blogpost.dat`, `blogres.dat` | 3.010 | 13 % → 88 % (v1.18) |
 | Outras tabelas (golpes, torneios, condições…) | `logic/*` | 4 (uma senha) | 96 % → 100 % (v1.5) |
 | Menus no código | overlays | 456 (senhas, nomes internos e sobras) | 28 % → 95 % (v1.4) |
@@ -301,7 +301,55 @@ etapa ficam no `docs/development/DIARY.pt-BR.md`.
   jogo é uma obra fictícia…") e `mpd_m00.pac_` ("Os treinamentos e as técnicas especiais…"), que o CyberLife já
   tinha traduzido. Visto no jogo (2026-11-04, sessão sem janela com um save novo); o item estava errado
 
-### Fase 3: conteúdo opcional (cerca de 4.200 únicos, 101 mil caracteres)
+### Fase 3: fonte mais legível
+
+Trocar o desenho das letras por um mais limpo e menos pixelado. Vem antes das fases de volume porque todo o
+encaixe do texto (quebra das linhas em ~226 px, espaçadores dos objetivos, larguras em px das tabelas e dos
+overlays, abreviações) depende da largura de cada letra. **Regra da fase: as métricas não mudam** (no JSON das
+fontes, `cell`, `baseline` e, em cada glifo, `left`, `width` e `advance`); muda só o desenho. Assim nenhuma fala já
+traduzida precisa ser refeita.
+
+- [x] Congelar as métricas (2026-11-04): `font.py freeze translations/pt-BR` grava o
+  `font/metrics.lock` (célula, baseline, altura da linha e `left`/`width`/`advance` de cada um dos 1.605 códigos
+  das três fontes), e o `font.py check`, o `translate.py check`/`build` (passo "fonts") e um teste
+  (`tools/tests/test_font.py`, sem ROM) recusam uma fonte com métrica diferente. Letra nova passa (é só congelar
+  de novo). Testado: avançar o "A" da `FONT12` 2 px já faz falas da história passarem de 3 linhas na caixa
+- [x] O jogo aceita 2 bpp? (2026-11-04) **Não na `FONT12`, `FONT8` e `RUBI8`.** A fábrica `func_02029a24` cria as
+  quatro fontes: as três primeiras com a classe base (vtable 0x0208FFEC) e a `FONT12T` com a subclasse
+  (0x02091290). Toda letra passa pela vtable +0x10/+0x14/+0x18/+0x1C da fonte (4 bpp em tiles, 4 bpp linear,
+  8 bpp em tiles, 8 bpp linear). Na classe base as quatro leem **1 bit por pixel** e pintam uma cor só
+  (`func_02042b4c` etc.): uma fonte de 2 bpp ali sairia embaralhada. Na subclasse (`func_0206ba24` etc.) o valor
+  1 é a cor do texto e o 2 e o 3 são as cores dos bytes +0x1C/+0x1D do objeto (contorno e sombra que quem chama
+  escolhe), não tons de cinza. Então, no 1×, cinzas para suavizar só com mudança no port, e mesmo assim cada tela
+  precisaria de cores intermediárias livres na paleta de 16: o ganho de verdade fica com a fonte HD (abaixo)
+- [x] **Fonte HD pelo port** (2026-11-04, `runtime/src/text_hd.cpp`; formato em [`MODS.pt-BR.md`](MODS.pt-BR.md),
+  "Texto em HD"). Com o 3D acima de 1× e a Atkinson escolhida em Configurações → Mods → CyberLifePlus → Fonte do texto
+  (padrão: a fonte pixelada do jogo), as letras são desenhadas de novo na resolução alta com a **Atkinson Hyperlegible** (OFL, em `translations/pt-BR/hd/`, escolhida comparando
+  com Rubik, Fira Sans, Noto Sans e Nunito). Como funciona: hooks nas oito funções de desenho das fontes (as duas
+  classes) e no `NNS_G2dCharCanvasDrawChar` marcam cada pixel da caixa da letra (qual letra, qual pixel dela); as
+  marcas seguem as cópias (DMA, `MIi_CpuCopy*`, `memcpy`) até a VRAM e somem nas limpezas; a composição 2D (BG e
+  sprites, na imagem grande) e a leitura de texturas do 3D (os menus do campo são texturas de 4 bpp) trocam cada
+  pixel marcado pela letra vetorial, encaixada na altura e no centro da tinta original. Métricas intocadas: o texto
+  fica no mesmo lugar. Visto no jogo, em 3×, 4× e 8×: diálogo, objetivo, cartão da tela de cima, card do save,
+  menu de campo (3D), tela de nome, "Garra/Amizade". Custo medido em 4×: 6,44 → 6,61 ms por quadro
+- [x] A fonte como opção do mod (2026-11-05): Configurações → **Mods** (launcher e menu de pausa) lista os mods com
+  opções (`settings.json`) e abre o submenu de cada um. Na aba Mods do launcher, "Configurar" na linha do mod leva ao
+  submenu (os dois só com o mod ligado). O CyberLifePlus tem "Fonte do texto (HD)": Padrão (a fonte pixelada do jogo)
+  ou Atkinson Hyperlegible; no menu de pausa a troca vale na hora. A escolha fica no
+  `[mod_settings]` do `boej.ini`, pelo nome do mod. Saiu a caixa "Texto em HD" do Vídeo
+- [ ] Ver em HD os outros caminhos: o `NNS_G2dCharCanvasDrawChar` (o hook existe, mas nenhuma tela vista o usou), a
+  subclasse da `FONT12T` (idem; o contorno HD é a letra crescida 1 px), as legendas dos vídeos, as descrições em
+  pares, o fichário e as telas de comunicação
+- [ ] Texto em HD com o 3D em 1×: hoje a imagem grande só existe com o 3D acima de 1×. Uma escala própria do 2D
+  (`[video] text_scale`?) deixaria o texto nítido sem pagar o 3D em alta
+- [ ] Bordas suaves: cada amostra da letra HD é tinta ou não (em 3× já fica liso); misturar as cores na borda
+  pela cobertura da TrueType, onde o efeito da camada deixar
+- [ ] Savestate: as marcas não vão no estado; depois de carregar, o texto que já estava na tela fica nativo até o
+  jogo desenhar de novo (uma caixa nova, outro menu)
+- [ ] Opcional (o HD cobre o caso que importa): redesenhar a `FONT12` na mesma grade em 1 bpp, para quem joga em 1×
+- [ ] Idiomas novos (`translate.py new`): sugerir a mesma `hd_fonts` do PT-BR
+
+### Fase 4: conteúdo opcional (cerca de 4.200 únicos, 101 mil caracteres)
 
 - [ ] Subeventos 3300: 2.353, incluindo as ~960 falas em inglês
 - [x] Scout e rotas de batalha, 3611/3613/3618 (v1.18): 1.326 lugares em japonês (269 textos únicos: os NPCs das
@@ -334,13 +382,13 @@ etapa ficam no `docs/development/DIARY.pt-BR.md`.
 - [ ] Imagens do blog: o cabeçalho em inglês do CyberLife ("Get all the latest Inazuma Japan news here!", "Check
   back often for new entries!", "Football Blog") e os rótulos em japonês (トピックス, まえへ, とじる, つぎへ).
 
-### Fase 4: volume (cerca de 6.500 únicos, 117 mil caracteres)
+### Fase 5: volume (cerca de 6.500 únicos, 117 mil caracteres)
 
 - [ ] Falas dos jogadores nas partidas, 3700 (4.154; 250 mil caracteres com as repetições). Dá para dividir
   por time: cada entrada é de um jogador.
 - [ ] Perfis dos jogadores, `unitbase.STR` (2.309), também por time
 
-### Fase 5: conferir no jogo
+### Fase 6: conferir no jogo
 
 - [x] Galeria de vídeos: título nº 1 e o mais largo vistos no jogo (v1.4)
 - [x] Abertura (v1.15): as 22 legendas vistas no jogo, centradas, com acentos; a mais larga (238 px) inteira
@@ -365,7 +413,7 @@ etapa ficam no `docs/development/DIARY.pt-BR.md`.
 - [x] Menus do time (v1.9): vistos no jogo a tela dos Amigos (faixa Amigos, X Dados, Trocar, Menu, Fim, OK,
   Sair), a ordenação (faixa Ordem/Nome, B Amigos). Não vistos: Equipamento, as telas da Formação (o save do
   teste abre só o submenu), Copiar/Abrir e as janelas Sim/Não e "Número da camisa". O perfil do Kageto aparece
-  como "?から?まれた??の???" (kanji fora da fonte): é o `unitbase.STR` sem tradução (fase 4).
+  como "?から?まれた??の???" (kanji fora da fonte): é o `unitbase.STR` sem tradução (fase 5).
 - [x] Menus em texto (v1.10): vistos no jogo o menu de campo e o submenu da Formação, o cartão da tela de cima
   ("Título" não cabe na aba: "Tít."; Garra e Amizade embaixo), o menu Y e a ordenação dos Amigos com a lista de
   atributos, e a janela "Precisamos de Endo!" (em pares). "Dispensar" está apagado no save do teste. Não vistos:

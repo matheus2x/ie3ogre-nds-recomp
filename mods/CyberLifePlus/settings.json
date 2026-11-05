@@ -1,0 +1,29 @@
+{
+  "settings": [
+    {
+      "id": "hd_font",
+      "label": {
+        "en": "Text font (HD)",
+        "pt": "Fonte do texto (HD)"
+      },
+      "hint": {
+        "en": "Drawn at the high resolution, with the 3D resolution above 1×. The text stays in the same place.",
+        "pt": "Desenhada na resolução alta, com a resolução do 3D acima de 1×. O texto fica no mesmo lugar."
+      },
+      "default": "default",
+      "options": [
+        {
+          "id": "default",
+          "label": {
+            "en": "Default",
+            "pt": "Padrão"
+          }
+        },
+        {
+          "id": "atkinson-hyperlegible",
+          "label": "Atkinson Hyperlegible"
+        }
+      ]
+    }
+  ]
+}

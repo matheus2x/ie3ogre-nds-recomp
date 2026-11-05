@@ -18,6 +18,7 @@
 // layer, 0 elsewhere. The post-processing passes of the window (host.cpp) only touch those
 // pixels, so the HUD and the text stay as they are.
 #include <algorithm>
+#include <cstring>
 #include <vector>
 
 #include "pool.h"
@@ -45,8 +46,17 @@ struct HiPixel {
     uint8_t mask;       // window
     uint8_t obj_alpha;
 };
+// A pixel whose top layer is a letter with an HD version: its tag and the color each value
+// of the HD letter takes there (0: what is under the letter, 1: fill, 2/3: outline).
+struct HiText {
+    uint32_t tag;  // 0: none
+    uint16_t color[4];
+};
+constexpr uint16_t kNoColor = 0x8000;  // a value not drawn: the native pixel stays
 struct HiLine {
     bool composed;  // BG0 shows the 3D frame on this line; otherwise the native line is repeated
+    bool text;      // some pixels are HD letters (text[])
+    HiText text_px[kScreenWidth];
     bool bg0_on;
     uint8_t bg0_key;
     uint16_t bright;  // MASTER_BRIGHT
@@ -85,7 +95,14 @@ struct Line {
     uint8_t alpha3d[kScreenWidth];     // BG0 in 3D mode: 3D alpha (31 = opaque)
     bool top3d[kScreenWidth];          // the 3D frame is the top layer (the host's mask)
     bool bg0_is_3d;
+    // HD text (text_hd.cpp): per layer (BG0-3, OBJ), the checked tag of the letter at each
+    // pixel, with the bitmap's value there in kTagValue (0: no ink), also where the layer is
+    // transparent.
+    uint32_t tag[5][kScreenWidth];
+    uint8_t obj_tag_prio[kScreenWidth];
 };
+constexpr uint32_t kTagValue = 0xC0, kTagValueShift = 6;
+
 Line g_line;
 
 // Display capture runs from line 0 of the frame after it was enabled.
@@ -95,6 +112,17 @@ uint16_t r16(const Engine& e, uint32_t off) { return memory().io[e.io + off] | m
 uint32_t r32(const Engine& e, uint32_t off) { return load32(memory().io.data() + e.io + off); }
 uint16_t pal16(uint32_t off) { return memory().palette[off] | memory().palette[off + 1] << 8; }
 uint16_t oam16(uint32_t off) { return memory().oam[off] | memory().oam[off + 1] << 8; }
+
+// The tag of a pixel the engine shows (color index idx), if the letter it names is still
+// there: the color of the bitmap's value where it has ink, not the fill's where it has none.
+uint32_t checked_tag(const uint8_t* p, int nibble, uint32_t idx) {
+    uint32_t t = text_tag(p, nibble);
+    if (!t) return 0;
+    const TextGlyph* g = text_glyph(t);
+    int v = text_glyph_value(*g, t);
+    if (v ? idx != g->colors[v] : idx == g->colors[1]) return 0;
+    return t | uint32_t(v) << kTagValueShift;
+}
 
 int32_t ref_reg(const Engine& e, uint32_t off) { return int32_t(r32(e, off) << 4) >> 4; }
 
@@ -120,7 +148,7 @@ uint16_t bg_ext_color(const Engine& e, int slot, uint32_t index) {
     return vram_view(e.bg_ext).read16(slot * 0x2000 + index * 2);
 }
 
-void render_text_bg(const Engine& e, int bg, uint32_t line, uint16_t* out) {
+void render_text_bg(const Engine& e, int bg, uint32_t line, uint16_t* out, uint32_t* tags) {
     const VramView& vram = vram_view(e.bg);
     uint32_t dispcnt = r32(e, 0);
     uint16_t cnt = r16(e, 0x08 + 2 * bg);
@@ -145,12 +173,16 @@ void render_text_bg(const Engine& e, int bg, uint32_t line, uint16_t* out) {
         if (entry & 0x800) py = 7 - py;
         uint16_t color;
         if (c256) {
-            uint32_t idx = vram.read8(char_base + tile * 64 + py * 8 + px);
+            const uint8_t* p = vram.ptr(char_base + tile * 64 + py * 8 + px);
+            uint32_t idx = p ? *p : 0;
+            tags[x] = checked_tag(p, 0, idx);
             if (idx == 0) continue;
             color = ext ? bg_ext_color(e, slot, (entry >> 12) * 256 + idx) : pal16(e.pal + idx * 2);
         } else {
-            uint8_t b = vram.read8(char_base + tile * 32 + py * 4 + px / 2);
+            const uint8_t* p = vram.ptr(char_base + tile * 32 + py * 4 + px / 2);
+            uint8_t b = p ? *p : 0;
             uint32_t idx = (px & 1) ? b >> 4 : b & 0xF;
+            tags[x] = checked_tag(p, px & 1, idx);
             if (idx == 0) continue;
             color = pal16(e.pal + ((entry >> 12) * 16 + idx) * 2);
         }
@@ -158,7 +190,7 @@ void render_text_bg(const Engine& e, int bg, uint32_t line, uint16_t* out) {
     }
 }
 
-void render_affine_bg(const Engine& e, int bg, BgKind kind, uint16_t* out) {
+void render_affine_bg(const Engine& e, int bg, BgKind kind, uint16_t* out, uint32_t* tags) {
     const VramView& vram = vram_view(e.bg);
     uint32_t dispcnt = r32(e, 0);
     uint16_t cnt = r16(e, 0x08 + 2 * bg);
@@ -206,7 +238,9 @@ void render_affine_bg(const Engine& e, int bg, BgKind kind, uint16_t* out) {
         switch (fmt) {
             case Map8: {
                 uint32_t tile = vram.read8(screen_base + (py >> 3) * (w >> 3) + (px >> 3));
-                uint32_t i = vram.read8(char_base + tile * 64 + (py & 7) * 8 + (px & 7));
+                const uint8_t* p = vram.ptr(char_base + tile * 64 + (py & 7) * 8 + (px & 7));
+                uint32_t i = p ? *p : 0;
+                tags[x] = checked_tag(p, 0, i);
                 if (i == 0) continue;
                 color = pal16(e.pal + i * 2);
                 break;
@@ -216,7 +250,9 @@ void render_affine_bg(const Engine& e, int bg, BgKind kind, uint16_t* out) {
                 uint32_t tx = px & 7, ty = py & 7;
                 if (entry & 0x400) tx = 7 - tx;
                 if (entry & 0x800) ty = 7 - ty;
-                uint32_t i = vram.read8(char_base + (entry & 0x3FF) * 64 + ty * 8 + tx);
+                const uint8_t* p = vram.ptr(char_base + (entry & 0x3FF) * 64 + ty * 8 + tx);
+                uint32_t i = p ? *p : 0;
+                tags[x] = checked_tag(p, 0, i);
                 if (i == 0) continue;
                 color = ext ? bg_ext_color(e, bg, (entry >> 12) * 256 + i) : pal16(e.pal + i * 2);
                 break;
@@ -224,7 +260,9 @@ void render_affine_bg(const Engine& e, int bg, BgKind kind, uint16_t* out) {
             case Bitmap256:
             case LargeBitmap: {
                 uint32_t base = fmt == LargeBitmap ? 0 : bitmap_base;
-                uint32_t i = vram.read8(base + py * w + px);
+                const uint8_t* p = vram.ptr(base + py * w + px);
+                uint32_t i = p ? *p : 0;
+                tags[x] = checked_tag(p, 0, i);
                 if (i == 0) continue;
                 color = pal16(e.pal + i * 2);
                 break;
@@ -327,19 +365,24 @@ void render_objs(const Engine& e, uint32_t line, Line& L) {
                 color = vram.read16(off);
                 if (!(color & 0x8000)) continue;
             } else {
-                uint32_t idx;
+                uint32_t at;
                 if (dispcnt & 0x10) {  // 1D mapping
                     uint32_t cell = (ty >> 3) * (w >> 3) + (tx >> 3);
-                    uint32_t at = (tile << boundary_shift) + cell * (c256 ? 64 : 32);
-                    idx = c256 ? vram.read8(at + (ty & 7) * 8 + (tx & 7)) : vram.read8(at + (ty & 7) * 4 + (tx & 7) / 2);
+                    at = (tile << boundary_shift) + cell * (c256 ? 64 : 32) + (c256 ? (ty & 7) * 8 + (tx & 7) : (ty & 7) * 4 + (tx & 7) / 2);
                 } else if (c256) {
-                    uint32_t at = (tile & ~1u) * 32 + (ty >> 3) * 1024 + (tx >> 3) * 64;
-                    idx = vram.read8(at + (ty & 7) * 8 + (tx & 7));
+                    at = (tile & ~1u) * 32 + (ty >> 3) * 1024 + (tx >> 3) * 64 + (ty & 7) * 8 + (tx & 7);
                 } else {
-                    uint32_t at = tile * 32 + (ty >> 3) * 1024 + (tx >> 3) * 32;
-                    idx = vram.read8(at + (ty & 7) * 4 + (tx & 7) / 2);
+                    at = tile * 32 + (ty >> 3) * 1024 + (tx >> 3) * 32 + (ty & 7) * 4 + (tx & 7) / 2;
                 }
+                const uint8_t* p = vram.ptr(at);
+                uint32_t idx = p ? *p : 0;
                 if (!c256) idx = (tx & 1) ? idx >> 4 : idx & 0xF;
+                if (mode != 2 && (!L.tag[4][sx] || L.obj_tag_prio[sx] > prio)) {
+                    if (uint32_t t = checked_tag(p, c256 ? 0 : tx & 1, idx)) {
+                        L.tag[4][sx] = t;
+                        L.obj_tag_prio[sx] = prio;
+                    }
+                }
                 if (idx == 0) continue;
                 if (mode == 2) {
                     L.obj_win[sx] = true;
@@ -448,6 +491,26 @@ void top_layers(const Line& L, const bool* bg_on, const uint8_t* bg_prio, uint16
     }
 }
 
+// The tag of the letter at pixel x, when its layer is the top one there (opaque, or
+// transparent but tagged, above every opaque layer); *layer gets the layer (4 = OBJ).
+uint32_t text_on_top(const Line& L, const bool* bg_on, const uint8_t* bg_prio, int x, int* layer) {
+    uint8_t mask = L.win[x];
+    for (int p = 0; p < 4; p++) {
+        if ((mask & 0x10) && ((L.obj[x] & kOpaque) ? L.obj_prio[x] == p : (L.tag[4][x] && L.obj_tag_prio[x] == p))) {
+            *layer = kLayerObj;
+            return (L.obj[x] & kOpaque) && L.obj_prio[x] != L.obj_tag_prio[x] ? 0 : L.tag[4][x];
+        }
+        for (int bg = 0; bg < 4; bg++) {
+            if (!bg_on[bg] || bg_prio[bg] != p || !(mask & (1u << bg))) continue;
+            if ((L.bg[bg][x] & kOpaque) || L.tag[bg][x]) {
+                *layer = bg;
+                return L.tag[bg][x];
+            }
+        }
+    }
+    return 0;
+}
+
 // Special effects on the top two layers of a pixel.
 uint16_t finish_pixel(const Effects& fx, const uint16_t* color, const int* layer, uint8_t mask, bool bg0_is_3d,
                       uint32_t a3d, uint8_t obj_alpha) {
@@ -489,6 +552,12 @@ void compose(const Engine& e, Line& L, const bool* bg_on, uint16_t* out_line) {
         top_layers(L, bg_on, bg_prio, backdrop, x, false, color, layer, key);
         out_line[x] = finish_pixel(fx, color, layer, L.win[x], L.bg0_is_3d, L.alpha3d[x], L.obj_alpha[x]);
         L.top3d[x] = L.bg0_is_3d && layer[0] == 0;
+    }
+    if (text_hd_debug()) {
+        for (int x = 0; x < kScreenWidth; x++) {
+            int at;
+            if (uint32_t t = text_on_top(L, bg_on, bg_prio, x, &at)) out_line[x] = (t & kTagValue) == 1u << kTagValueShift ? 0x001F : (t & kTagValue) ? 0x03E0 : (out_line[x] >> 1 & 0x3DEF) | 0x5000;
+        }
     }
 }
 
@@ -558,11 +627,54 @@ void output_line(Engine& e, uint32_t line, const Line& L) {
     output_pixels(r16(e, 0x6C), L.out, L.top3d, kScreenWidth, e.fb + line * kScreenWidth);
 }
 
+// The HD letters of a line: for each pixel whose top layer is a letter with an HD version,
+// the color of each value. A value the native pixel has is its color as shown; the others
+// are taken from the nearest pixel of the same letter on the line that shows them (so the
+// effects, the palette the game set and the canvas under the letter come along). A value no
+// pixel of the letter shows on the line is not drawn (kNoColor): a letter the game hides by
+// its colors, the HD letter going past the game's by a row. True when there are any.
+bool record_text(const Engine& e, const Line& L, const bool* bg_on, HiLine& h) {
+    uint8_t bg_prio[4];
+    bg_priorities(e, bg_prio);
+    bool any = false;
+    for (int x = 0; x < kScreenWidth; x++) {
+        int layer = 0;
+        uint32_t t = text_on_top(L, bg_on, bg_prio, x, &layer);
+        h.text_px[x].tag = t && text_hd_value(t, 0.5f, 0.5f) >= 0 ? t : 0;
+        any |= h.text_px[x].tag != 0;
+    }
+    if (!any) return false;
+    for (int x = 0; x < kScreenWidth; x++) {
+        HiText& p = h.text_px[x];
+        if (!p.tag) continue;
+        const uint32_t native = (p.tag & kTagValue) >> kTagValueShift;
+        for (uint32_t v = 0; v < 4; v++) {
+            if (v == native) {
+                p.color[v] = L.out[x] & 0x7FFF;
+                continue;
+            }
+            int found = -1;
+            for (int d = 1; d <= 6 && found < 0; d++) {
+                for (int nx : {x - d, x + d}) {
+                    if (nx < 0 || nx >= kScreenWidth || found >= 0) continue;
+                    uint32_t nt = h.text_px[nx].tag;
+                    if (nt && (nt >> 16) == (p.tag >> 16) && ((nt & kTagValue) >> kTagValueShift) == v) found = nx;
+                }
+            }
+            p.color[v] = found >= 0 ? L.out[found] & 0x7FFF : kNoColor;
+        }
+    }
+    return true;
+}
+
 // What the large picture needs from this line (see HiLine).
 void record_hi(Engine& e, uint32_t line, const Line& L, const bool* bg_on, bool composed) {
     if (e.hi_lines.size() != kScreenHeight) e.hi_lines.resize(kScreenHeight);
     HiLine& h = e.hi_lines[line];
     h.composed = composed && L.bg0_is_3d && bg_on[0];
+    h.text = composed && record_text(e, L, bg_on, h);
+    h.bright = r16(e, 0x6C);
+    if (h.text) e.hi_frame = true;
     if (!h.composed) return;
     e.hi_frame = true;
     uint8_t bg_prio[4];
@@ -584,6 +696,24 @@ void record_hi(Engine& e, uint32_t line, const Line& L, const bool* bg_on, bool 
     }
 }
 
+// The HD letters of a line without 3D, over the native line already repeated in `rows`.
+void compose_hi_text(const HiLine& h, uint32_t line, int scale, uint32_t* rows, int width) {
+    for (int x = 0; x < kScreenWidth; x++) {
+        const HiText& t = h.text_px[x];
+        if (!t.tag) continue;
+        for (int r = 0; r < scale; r++) {
+            uint32_t* dst = rows + size_t(r) * width + x * scale;
+            for (int c = 0; c < scale; c++) {
+                int v = text_hd_value(t.tag, (float(c) + 0.5f) / float(scale), (float(r) + 0.5f) / float(scale));
+                if (v < 0 || t.color[v] == kNoColor) continue;
+                bool top3d = false;
+                output_pixels(h.bright, &t.color[v], &top3d, 1, dst + c);
+            }
+        }
+    }
+    (void)line;
+}
+
 // The rows of one line in the large picture: the 3D sub-rows put between the recorded
 // layers, or the native line repeated.
 void compose_hi_line(Engine& e, uint32_t line, int scale) {
@@ -596,6 +726,7 @@ void compose_hi_line(Engine& e, uint32_t line, int scale) {
             uint32_t* dst = rows + size_t(r) * width;
             for (int x = 0; x < width; x++) dst[x] = src[x / scale];
         }
+        if (h.text) compose_hi_text(h, line, scale, rows, width);
         return;
     }
     int32_t hofs = h.hofs * scale;
@@ -625,6 +756,16 @@ void compose_hi_line(Engine& e, uint32_t line, int scale) {
             }
             out[xo] = finish_pixel(h.fx, color, layer, p.mask, true, a3d, p.obj_alpha);
             top3d[xo] = layer[0] == 0;
+        }
+        if (h.text) {  // the HD letters over the 3D sub-rows
+            for (int xo = 0; xo < width; xo++) {
+                const HiText& t = h.text_px[xo / scale];
+                if (!t.tag) continue;
+                int v = text_hd_value(t.tag, (float(xo % scale) + 0.5f) / float(scale), (float(r) + 0.5f) / float(scale));
+                if (v < 0 || uint32_t(v) == (t.tag & kTagValue) >> kTagValueShift || t.color[v] == kNoColor) continue;
+                out[xo] = t.color[v];
+                top3d[xo] = false;
+            }
         }
         output_pixels(h.bright, out, top3d, width, rows + size_t(r) * width);
     }
@@ -661,6 +802,7 @@ void render_engine_line(Engine& e, int id, uint32_t line) {
     } else {
         composed = true;
         L.bg0_is_3d = id == 0 && (dispcnt & 8);
+        std::memset(L.tag, 0, sizeof L.tag);
         for (int bg = 0; bg < 4; bg++) {
             std::fill(std::begin(L.bg[bg]), std::end(L.bg[bg]), 0);
             BgKind kind = bg_kind(dispcnt, bg);
@@ -670,8 +812,8 @@ void render_engine_line(Engine& e, int id, uint32_t line) {
                 render_3d_layer(e, line, L);
                 continue;
             }
-            if (kind == BgKind::Text) render_text_bg(e, bg, line, L.bg[bg]);
-            else render_affine_bg(e, bg, kind, L.bg[bg]);
+            if (kind == BgKind::Text) render_text_bg(e, bg, line, L.bg[bg], L.tag[bg]);
+            else render_affine_bg(e, bg, kind, L.bg[bg], L.tag[bg]);
         }
         std::fill(std::begin(L.obj), std::end(L.obj), 0);
         std::fill(std::begin(L.obj_alpha), std::end(L.obj_alpha), 0);
@@ -760,6 +902,11 @@ void gpu2d_state(StateIo& io) {
         io.value(e.fb);
         io.value(e.hi_frame);
         if (e.hi_frame) io.vector(e.hi_lines);
+        // The tags of the HD letters are not in the state (text_hd.cpp): those lines show the
+        // native letters until the game draws them again.
+        if (io.loading()) {
+            for (HiLine& h : e.hi_lines) h.text = false;
+        }
     }
     io.value(g_capturing);
 }

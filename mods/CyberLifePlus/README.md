@@ -11,6 +11,8 @@ ie3ogre-recomp.
   theirs: translated text, fonts and images. The translation has had no updates for months, and this mod continues
   from where it stopped.
 - **Continuation:** matheus2x, completing what was left untranslated.
+- **HD text font:** [Atkinson Hyperlegible](https://www.brailleinstitute.org/freefont/), by the Braille Institute of
+  America, under the SIL Open Font License 1.1 (`hd/OFL.txt`).
 
 If you are from CyberLife and want something in these credits changed (names, links, how the translation is cited),
 open an issue in the repository.
@@ -22,7 +24,9 @@ the launcher's **Mods** tab. To update, add the new `.zip` through the launcher:
 leaves the new one on in its place.
 
 The mod only carries **patches** (`.bps`, only the difference from the original game): it contains no game data and
-needs the retail dump, the same one the launcher asks for.
+needs the retail dump, the same one the launcher asks for. It also carries the font of the **HD text** (`hd/`): with
+the 3D resolution above 1×, choose Atkinson Hyperlegible in Settings → Mods → CyberLifePlus → Text font (the default
+is the game's pixel font) and the letters come out sharp at the high resolution.
 
 ## Origin
 
@@ -33,6 +37,9 @@ gives exactly the files of the translated dump.
 
 ## Versions
 
+- **1.19:**
+  - HD text: with the 3D resolution above 1×, the Atkinson Hyperlegible font draws the letters at the high
+    resolution, in the same place (Settings → Mods → CyberLifePlus → Text font; the default is the game's pixel font).
 - **1.18:**
   - the top screen's objectives that come from other script commands (123, about 80 still in English, like "This
     is the final battle!"), in Portuguese and with the letters not overlapping;

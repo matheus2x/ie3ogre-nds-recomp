@@ -18,6 +18,7 @@ __pycache__/
 *.rep/
 *.lock
 *.lock~
+!translations/**/metrics.lock
 
 # Editors / OS
 .vscode/

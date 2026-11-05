@@ -10,6 +10,7 @@
 #include <SDL3/SDL.h>
 
 #include <ntr/common.h>
+#include <ntr/mod_settings.h>
 
 struct ImFont;
 
@@ -60,12 +61,17 @@ struct SettingsOptions {
     std::vector<Page> extra_pages;
     // The graphics API the game window uses (pause menu only), shown beside video.api.
     std::string active_renderer;
+    // The mods with options (settings.json), for the Mods page: in the pause menu the ones in
+    // use; in the launcher every installed one (`enabled` false for those off).
+    std::vector<ModSettings> mods;
 };
 
 // The settings: a side list of sections (video, audio, controls...) and the chosen one
 // beside it, filling the space left in the current window. Every change is saved to `path` at
 // once and then reported through on_change.
 void settings_panel(Config& config, const std::string& path, const SettingsOptions& options);
+// The next settings_panel shows the Mods page with that mod's settings (the launcher's Mods tab).
+void open_mod_settings(const std::string& mod);
 // Waiting for a key or gamepad input to bind: those events go to capture_event instead.
 bool capturing();
 void capture_event(const SDL_Event& ev);

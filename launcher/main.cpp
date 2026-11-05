@@ -651,6 +651,7 @@ int main(int argc, char** argv) {
             case Screen::Mods:
                 page_header("Mods");
                 mods_tab(window);
+                if (mods_take_settings_request()) g_screen = Screen::Settings;
                 break;
             case Screen::Load:
                 page_header(L("Load game", "Carregar jogo"));

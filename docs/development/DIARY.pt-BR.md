@@ -4165,3 +4165,183 @@ ranking com "Artilheiros", "Mais jogos" e "Sair". **Pendente:** o quadro da tela
 **Verificação:** `image.py check` sem problemas; `build --install` muda só o `msup_bg02.pac_`. No jogo (menu →
 Amigos), a tela de cima com Chute, Físico, Controle, Defesa, Veloc., Resist., Coragem e Experiência, sem encostar
 nos ícones nem nos valores.
+
+## 2026-11-04 — Nova fase no roadmap da tradução: fonte mais legível (só documentação)
+
+- Pedido: uma fase no roadmap do mod de tradução para trocar o texto por uma fonte mais legível e menos
+  pixelada, priorizada para não haver re-trabalho.
+- Hoje o texto sai das NFTR do mod (`FONT12` 11×12, `FONT12T`, `FONT8`, 1 bpp), desenhadas pelo jogo no 2D
+  nativo e esticadas na janela. O re-trabalho viria das métricas: a quebra das linhas, os espaçadores dos
+  objetivos (`objective_fit`), as larguras em px das tabelas e dos overlays e as abreviações dependem da largura
+  de cada letra.
+- Decisão (com o usuário): as duas partes, com as métricas congeladas. Primeiro um redesenho no mod na mesma
+  grade (2 bpp se o jogo aceitar cinzas em todos os caminhos); depois uma versão HD da mesma fonte desenhada pelo
+  port na resolução da janela, que depende do 2D em resolução alta do `REMASTER`.
+- `TRANSLATION-STATUS` (.md e .pt-BR.md): nova Fase 3, "fonte mais legível", antes do conteúdo opcional; as
+  seguintes viraram 4 (conteúdo opcional), 5 (volume) e 6 (conferir no jogo), com as referências cruzadas
+  atualizadas. O item "Texto" da Fase 1 do `REMASTER` (.md e .pt-BR.md) aponta para ela.
+
+## 2026-11-04 — Fase 3 da tradução: métricas congeladas e o 2 bpp no jogo
+
+- Pedido: começar a fase 3 (fonte mais legível). Feitos os dois primeiros itens; o redesenho ficou para depois de
+  decidir com o usuário (ver o fim).
+- **Métricas congeladas.** `Nftr.metrics()` (`tools/ntr/font.py`): célula, baseline, altura da linha (`finf[1]`)
+  e `left`/`width`/`advance` por código. `tools/font.py freeze <idioma>` grava isso em `font/metrics.lock` (JSON
+  com um código por linha, para o diff mostrar a letra; extensão `.lock` para o `language.py` não ler como fonte),
+  e `check_lock` compara: mudança ou código sumido é problema, letra ou fonte nova só aviso. Entra no
+  `font.py check`, num passo "fonts" do `translate.py check`/`build` e em `MetricsTest` (sem ROM, roda no CI). O
+  teste dos arquivos versionados (`test_text.py`) aceita o `.lock`. Gravado o do PT-BR: 3 fontes, 1.605 códigos.
+- Teste da trava: com o avanço do "A" da `FONT12` de 7 para 9, o `font.py check` aponta `41 [0, 7, 7] -> [0, 7, 9]`
+  e o `translate.py check` acha falas com 4 linhas na caixa (32041500, 32070950): é o re-trabalho que a trava
+  evita. O `report` do `translate.py` esconde linhas com "changed"; a mensagem diz "differ in".
+- **2 bpp no jogo.** A fábrica `func_02029a24` abre as fontes (`FONT8`, `RUBI8`, `FONT12`, `FONT12T`) e cria as
+  três primeiras com `func_02042188` (vtable 0x0208FFEC) e a `FONT12T` com `func_0206b9c4` (subclasse, vtable
+  0x02091290). O `Font_DrawString` desenha cada letra pela vtable +0x10 (e as variantes +0x14/+0x18/+0x1C: 4 bpp
+  em tiles, 4 bpp linear, 8 bpp em tiles, 8 bpp linear). Na classe base (`func_02042b4c`, `02042298`, `02042cf4`,
+  `02042420`) o glifo é lido 1 bit por pixel e pinta uma cor só; na subclasse (`func_0206ba24`, `0206bc20`…), 2
+  bits, com o valor 1 = cor do texto e 2/3 = os bytes +0x1C/+0x1D do objeto (contorno e sombra). Conclusão: sem
+  cinzas na `FONT12`/`FONT8`; no 1× só dá para melhorar o traço em 1 bpp. As oito funções são o ponto único por
+  onde passa cada letra: é ali que a fonte HD vai se pendurar.
+- Docs: checklist da fase 3 (dois itens marcados, os outros ajustados), `TRANSLATING` (.md e .pt-BR.md) com as
+  métricas congeladas e o 1 bpp.
+
+**Verificação:** `python3 -m unittest discover -s tools/tests -t tools`: 70 testes, ok. `font.py check
+translations/pt-BR`: 0 problemas. `translate.py check translations/pt-BR`: fonts ok, 25.403 falas ok, 190 imagens.
+
+## 2026-11-04/05 — Texto em HD: as letras do jogo de novo, com uma fonte TrueType do mod
+
+- Pedido: "fonte HD primeiro" (fase 3 da tradução), no lugar do redesenho em 1 bpp. Resultado: com o 3D acima de
+  1× e `[video] hd_text` ligado, todo texto desenhado pelas fontes do jogo sai na resolução alta com uma fonte
+  vetorial do mod, no mesmo lugar e com o mesmo espaço. Código em `runtime/src/text_hd.cpp`.
+- **Onde estão as letras.** Um log temporário no `Font_DrawString` mostrou os dois destinos: direto na VRAM (o
+  objetivo, `06601640`) e em buffers na RAM (`022eedac`, 224×128, 4 bpp) copiados por DMA (`→ 0600c4e0`). Mas só 17
+  textos passavam por ali: o menu do campo não. As outras chamadas do `Font_GlyphIndex` levaram ao
+  `func_02019170`, o `NNS_G2dCharCanvasDrawChar` da NitroSystem (canvas: +0 caracteres, +4/+8 tamanho em
+  caracteres, +0xC bpp, +0x10 param, +0x14 vtable: 0x0208BF08 BG, 0x0208BF14 OBJ 1D, cujo índice de caractere
+  vem do `func_020184f0`, portado). Esse hook nunca foi chamado nas telas vistas. O menu do campo é outra coisa: o
+  log das funções de desenho mostrou o `Font_BlitLinear4` em buffers de 128 px (`0219c5a8`…) e o DMA os levava para
+  `0685xxxx`, o banco C, textura: **os menus da tela de baixo são polígonos 3D com textura de 16 cores**.
+- **Marcas.** Hooks (`hle.tsv`) nas quatro funções de desenho de cada classe (`Font_Blit*`, `Font2_Blit*`, nomes em
+  `names.tsv`) e no `NNS_G2dCharCanvasDrawChar`: depois do original, cada pixel da caixa da letra (colunas
+  desenhadas × linhas da célula) ganha uma marca `id << 16 | linha << 8 | coluna`; o id aponta para um anel de
+  65.535 letras desenhadas (fonte, glyph, bitmap, cores de cada valor). As marcas ficam em páginas de 4 KiB criadas
+  na primeira marca, dois por byte (os dois nibbles de 4 bpp), no espaço "RAM principal + `Memory::vram`" (pelo
+  ponteiro do host, então valem qualquer que seja o mapeamento dos bancos). A fonte é identificada pelo objeto
+  (`0x02099E8C` +0x44 FONT8, +0x90 RUBI8, +0xC4 FONT12, +0x50 FONT12T; conferido pela célula: 7×8 e 11×12).
+- **Cópias.** O `run_dma` copia as marcas junto (ou limpa, no fill); hooks em `MIi_CpuCopy16/32/Fast`,
+  `MI_CpuCopy8`, `memcpy` (copiam) e `MIi_CpuClear16/32/Fast`, `MI_CpuFill8`, `memset` (limpam). O que o jogo escreve
+  de outro jeito por cima fica com marca velha: por isso a leitura confere a marca com o bitmap (o pixel tem a cor
+  do valor do bitmap onde há tinta, e não a do preenchimento onde não há).
+- **2D.** As camadas (BG texto, afim, bitmap; sprites) guardam a marca conferida de cada pixel, também onde a
+  camada é transparente. `text_on_top` acha a letra que é a camada de cima. Na linha, `record_text` guarda para cada
+  pixel a cor de cada valor da letra HD, tirada do pixel mais próximo da mesma letra que mostra esse valor (assim
+  vêm os efeitos, a paleta e o fundo da caixa). Sem nenhum, `kNoColor` deixa o pixel nativo: isso resolveu os
+  pontinhos de outras linhas do objetivo que o jogo esconde com a cor do painel (a primeira versão pegava a cor da
+  paleta) e o verde do 3D atrás de uma letra "invisível" no painel de Garra (a primeira versão usava a camada de
+  baixo). A imagem grande passa a existir também em quadros sem 3D quando há letras HD (`hi_frame`), e
+  `compose_hi_text` desenha cada subpixel; nas linhas com 3D, as letras vão por cima das sub-linhas.
+- **3D.** No cache de texturas (`decode_textures`), uma textura de 16 ou 256 cores com marcas ganha um `TexText`
+  (marca e cor de cada valor por texel, a cor do vizinho mais próximo da mesma letra num raio de 3, ou
+  `kKeepTexel`). O `sample` pergunta à letra HD pela fração do texel (espelhada nos modos flip).
+- **Letra HD.** stb_truetype (cópia estática do `imstb_truetype.h` da ImGui), 8 amostras por pixel nativo, feita
+  na primeira vez que a letra é desenhada (na thread da CPU; o 2D e o 3D só leem, por ponteiro atômico). Encaixe: a
+  escala geral vem do "H" do jogo (altura da maiúscula); cada letra é ajustada à altura da tinta original (±35% da
+  escala geral, para os traços não variarem), centrada nela e estreitada se passar da largura original + 1 px;
+  cortada meio pixel além da tinta dos lados e 1 px em cima e embaixo. O primeiro encaixe só pela altura da
+  maiúscula deixava o "i" da `FONT8` (o menu do campo usa a `FONT8`, ampliada 2× pelo quad) sem o pingo e baixo.
+  Letra que a TrueType não tem (`stbtt_FindGlyphIndex` = 0: kana, kanji) fica nativa. Na `FONT12T` (2 bpp) o
+  contorno HD é o preenchimento crescido 1 px.
+- **Mod.** `hd/fonts.json` (fonte do jogo → arquivo e o caractere de cada glyph), lido pelo `mods.cpp`
+  (`load_hd_fonts`; `hd/` não gera mais o aviso de "fora de files/ e overlays/"). Do lado das ferramentas:
+  `"hd_fonts"` no `language.json`, `font.py codepoints`/`hd_files` (ASCII, o charset em A1–DF, Shift-JIS com a
+  largura cheia levada à letra comum por NFKC; o espaçador e o espaço de 4 px ficam sem letra) e o
+  `translate.py build` grava o `hd/` (com a licença ao lado da fonte, obrigatória) e o `install` o copia.
+- **Fonte.** Comparadas em 3× (diálogo, cartão, menu 3D): Rubik (já no repositório), Atkinson Hyperlegible, Fira
+  Sans, Noto Sans e Nunito, baixadas do repositório google/fonts (OFL). A Nunito variável abre no peso mais fino e o
+  "l" quebrava. O usuário escolheu a **Atkinson Hyperlegible** (Braille Institute, OFL sem nome reservado):
+  `translations/pt-BR/hd/AtkinsonHyperlegible-Regular.ttf` + `OFL.txt`, 485 glyphs mapeados em cada fonte.
+- **Opção.** `[video] hd_text = true` (config.cpp), "Texto em HD" na página Vídeo avançada (launcher e menu de
+  pausa), aplicada em `apply_presentation`; `NTR_HD_TEXT=0` desliga de vez e `NTR_HD_TEXT_DEBUG=1` pinta os pixels
+  marcados (vermelho tinta, verde contorno, azul fundo da caixa) na imagem nativa.
+- Savestate: as marcas não vão no estado; ao carregar, as linhas da imagem grande perdem o texto HD até o jogo
+  redesenhar.
+- Engano no caminho: para medir o custo, um `git stash` guardou tudo o que estava sem commit e o build quebrou (o
+  código gerado já chamava os hooks novos); `git stash pop` devolveu tudo na hora.
+
+**Verificação:** sessões sem janela com `NTR_3D_SCALE` 3, 4 e 8: diálogo da abertura de um jogo novo, objetivo,
+cartão e menu do campo, card do save, tela de nome, "Garra/Amizade". Custo em 4× (a mesma sessão de 3.500
+quadros): 6,44 ms por quadro sem a fonte HD, 6,61 com. `python3 -m unittest discover -s tools/tests -t tools`: 72
+testes, ok. `translate.py build translations/pt-BR --install`: fonts ok, 25.403 falas ok; muda só o `hd/` do mod.
+
+**Pasta de teste do Windows** (`C:\Games\ie3-teste\ie3ogre-recomp`): atualizada com uma release 0.1.33 deste código
+(`tools/release.py --platform windows`, com o texto em HD): launcher, `SDL3.dll`, `sdk/` (o antigo apagado inteiro;
+agora com o `text_hd.cpp`), `licenses/`, `achievements/` e os três `.txt`. O `mod-CyberLifePlus-1.15.zip` deu lugar
+ao `mod-CyberLifePlus-1.18.zip` da mesma release (com o `hd/`: a Atkinson Hyperlegible, o `OFL.txt` e o
+`fonts.json`). `boej.ini`, saves, savestates e cache mantidos; o `enabled` do `[mods]` estava vazio e ficou assim.
+`--prepare` depois de apagar `cache/build.stamp`: 191 arquivos em 47,5 s, 55,9 s no total. `boej.exe --check-mods`:
+o mod 1.18 sem erros nem avisos (517 arquivos, 61 overlays).
+
+## 2026-11-05 — Opções de mod (aba Mods nas configurações) e a fonte HD como uma delas
+
+- Pedido: coisas do mod configuráveis pelo jogador. Nas configurações (launcher e menu de pausa, Esc), uma aba
+  Mods; um mod que permitir tem um submenu com as opções dele. A primeira: a fonte, num dropdown com "Padrão" (a
+  fonte de antes, a pixelada do jogo) e a opção com o nome da fonte.
+- **Declaração:** `settings.json` na raiz do mod (`ntr/mod_settings.h`, `runtime/src/mod_settings.cpp`, na
+  `ntr-common` para o launcher e o jogo lerem igual): lista de opções de escolha (`id`, `label`, `hint`, `default`,
+  `options`), com rótulos em texto ou `{"en", "pt"}`. A escolha fica no `boej.ini`, `[mod_settings]`,
+  `<name do mod.ini> / <id> = <escolha>`: o nome é o que identifica um mod entre versões (o zip muda de nome a cada
+  versão). O `config_save` só regravava as chaves do modelo; agora o modelo termina em `[mod_settings]` e as
+  escolhas vão depois dele. Escolha desconhecida volta ao `default`.
+- **Tela (`ui.cpp`):** `Page::Mods`, entre Atalhos e Launcher, nos dois lugares. Lista os mods com opções (no menu
+  de pausa os em uso; no launcher todos os instalados, os desligados com "(desligado)" e um aviso no submenu); cada
+  um abre o submenu com "< Mods" e uma linha com dropdown por opção. O launcher monta a lista
+  (`mods_settings_list`) quando a pasta `mods/` ou o `[mods] enabled` mudam, olhando no máximo uma vez por segundo.
+  Para testes, `NTR_UI_PAGE=mods` e `NTR_UI_MOD=<nome>` abrem a página e o submenu.
+- **Fonte HD como opção:** o `hd/fonts.json` passou a ter conjuntos (`{"atkinson-hyperlegible": {"name": ...,
+  "fonts": {"FONT12": ...}}}`); o `mods.cpp` carrega todos os conjuntos dos mods em uso (`text_hd_load` devolve um
+  handle) e `mods_apply_settings` escolhe, fonte por fonte do jogo, o do último mod em uso conforme a opção
+  `hd_font` (`default` = nenhuma; sem a opção, o primeiro conjunto) e chama `text_hd_use`. Isso roda depois de
+  carregar os mods e a cada mudança no menu de pausa (`apply_settings`); ao trocar, as letras já desenhadas ganham a
+  versão da fonte nova na hora (o anel de letras guarda o `cglp` de cada uma). Saíram o `[video] hd_text` e a caixa
+  "Texto em HD" do Vídeo: quem escolhe agora é o mod.
+- **Ferramentas:** `"hd_fonts"` do `language.json` passou a ser por nome (`{"Atkinson Hyperlegible": {"FONT12":
+  ...}}`); o `font.py hd_files` gera o `hd/fonts.json` (id do nome: `atkinson-hyperlegible`) e o `settings.json`
+  ("Fonte do texto (HD)": Padrão (a fonte pixelada do jogo) ou a fonte), e o `translate.py install` copia o
+  `settings.json`.
+
+**Verificação:** sem janela, com `NTR_CONFIG`: sem escolha o cartão sai com a fonte pixelada; com
+`CyberLifePlus (tradução PT-BR) / hd_font = atkinson-hyperlegible`, em HD. Capturas do launcher de Linux
+(`IE3_LAUNCHER_TAB=1`, `NTR_UI_PAGE=mods`): a lista com "CyberLifePlus (tradução PT-BR) v1.18 (desligado)" e o
+submenu com "Fonte do texto (HD)" em "Padrão (a fonte pixelada do jogo)". Um programa ligado à `ntr-common` confirmou
+a ida e a volta pelo `boej.ini` (e que escolha inválida volta ao padrão). 72 testes das ferramentas ok. A troca na
+hora pelo menu de pausa não foi vista (sem clicar).
+
+**Pasta de teste do Windows** (`C:\Games\ie3-teste\ie3ogre-recomp`): atualizada com uma release 0.1.33 deste código
+com a aba Mods (launcher, `SDL3.dll`, `sdk/` trocado inteiro, `licenses/`, `achievements/`, os três `.txt`) e o
+`mod-CyberLifePlus-1.18.zip` novo (com o `settings.json`). `--prepare`: 192 arquivos em 43,8 s, 51,0 s no total;
+`--check-mods`: sem erros nem avisos. O mod já estava ligado no `boej.ini`; o `hd_text = true` que sobrou nele não
+faz mais nada e sai no próximo salvamento das configurações.
+
+## 2026-11-05 — Aba Mods: só mod ligado tem submenu, atalho "Configurar" e textos
+
+- Pedido: o submenu de um mod só clicável com o mod ligado; na aba Mods do launcher, um botão na linha do mod que leva
+  às configurações dele (também só com o mod ligado); "Opções dos mods instalados." vira "Configurações dos mods
+  instalados."; no dropdown da fonte do CyberLifePlus, "Padrão (a fonte pixelada do jogo)" vira "Padrão".
+- **Configurações → Mods (`ui.cpp`):** mod desligado fica apagado na lista, sem a seta, com a dica "Ligue o mod na
+  aba Mods para mudar as configurações dele."; o submenu só abre para mod ligado (o aviso de "desligado" dentro dele
+  saiu, porque não se chega mais lá). Os subtítulos: "Configurações dos mods instalados." e, no menu de pausa,
+  "Configurações dos mods em uso." (o mesmo termo, por coerência).
+- **Aba Mods (`launcher/mods.cpp`):** "Configurar" entre as setas e "Remover", só nos mods que têm `settings.json`,
+  desativado com o mod desligado (com dica). O clique chama `ui::open_mod_settings(nome)` e o `main.cpp` troca para a
+  tela de Configurações (`mods_take_settings_request`), que relê a lista na hora (o mod pode ter sido ligado no
+  instante anterior; a lista era relida no máximo uma vez por segundo).
+- **`font.py hd_settings`:** a escolha padrão é "Padrão" / "Default"; mod remontado (`translate.py build --install`).
+
+**Verificação:** capturas do launcher de Linux (`IE3_LAUNCHER_TAB=2` e `1`, `NTR_UI_PAGE=mods`, `NTR_UI_MOD`), com o
+mod desligado (botão apagado, linha apagada com a dica) e ligado ("Configurar" ativo, submenu com "Padrão"). 72
+testes das ferramentas ok.
+
+**Pasta de teste do Windows** (`C:\Games\ie3-teste\ie3ogre-recomp`): atualizada de novo com uma release 0.1.33 deste
+código (com o "Configurar" na aba Mods e o "Padrão"): launcher, `SDL3.dll`, `sdk/` trocado inteiro, `licenses/`,
+`achievements/`, os três `.txt` e o `mod-CyberLifePlus-1.18.zip`. `--prepare`: 192 arquivos em 43,9 s, 50,6 s no
+total; `--check-mods`: sem erros nem avisos.

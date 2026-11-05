@@ -95,6 +95,7 @@ translations/es/
 | `spacer`, `space` | reserved bytes (a spacer of no width and the 4-pixel space of the subtitles): leave `DF` and `CF` |
 | `plain` | what to write in place of characters the font lacks (ellipsis, curly quotes) |
 | `texts`, `images`, `pictures`, `fonts` | where the files are (the values above are the default) |
+| `hd_fonts` | optional: the TrueType fonts (under a free licence, with the licence in the same folder) the player can choose for the HD text, by name: `{"My Font": {"FONT12": "hd/Font.ttf", "FONT12T": "hd/Font.ttf", "FONT8": "hd/Font.ttf"}}`. `build` makes the mod's `hd/` and `settings.json`, with the option "Text font (HD)" (default: the game's font; [`MODS.md`](MODS.md), "Mod options"). PT-BR offers Atkinson Hyperlegible |
 
 ## Letters and font
 
@@ -117,6 +118,13 @@ CyberLife); redraw any you like. Each font is a PNG sheet and a JSON:
 - For a new letter: find its byte's line in the JSON, draw in the matching cell of the sheet (the position on the
   sheet is the order in the JSON) and set `left`, `width` and `advance`. `python3 tools/font.py check es` checks
   that every letter of `charset` has a drawing.
+- `FONT12` and `FONT8` stay 1 bpp (the game draws these fonts with 1 bit per pixel; a 2 bpp one comes out
+  scrambled). In `FONT12T` the shades are fill, outline and shadow, in the colours each screen chooses.
+- **Frozen metrics:** `python3 tools/font.py freeze es` writes `font/metrics.lock` with `left`, `width` and
+  `advance` of each letter (and the cell, the baseline and the line height). From then on `font.py check` and
+  `translate.py check` refuse a font with a different metric, because lines already fitted may stop fitting:
+  redraw freely, but without changing the numbers. A new letter does not count; to change a metric on purpose,
+  freeze again and pass the whole `translate.py check`.
 
 Alphabets that do not fit in 63 letters (Cyrillic, Greek) need two-byte letters: the format accepts new codes (one
 more line in the JSON and one more cell on the sheet), but `charset` does not write them yet.

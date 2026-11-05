@@ -43,8 +43,11 @@ They improve any texture on the fly, with no pack at all.
 - [ ] Pixel-art filters applied once per texture, on the CPU, kept in the cache: xBR/xBRZ, ScaleFX or MMPX
   (choose by quality on the characters and by cost; check the licenses)
 - [ ] The same filter on the 2D layers of the large image: HUD, portraits, technique banners
-- [ ] Text: the game's fonts (and the translation mod's) enlarged by a filter, or vector fonts drawn at the
-  window's resolution (investigate where the game builds the text)
+- [x] Text: the game's fonts (and the translation mod's) enlarged by a filter, or vector fonts drawn at the
+  window's resolution (investigate where the game builds the text). Planned in Phase 3 of
+  [`TRANSLATION-STATUS.md`](../modding/TRANSLATION-STATUS.md): the high resolution font keeps the same metrics
+  (width and advance of each letter) as the game's/mod's font, so the fitting of the translated texts does not change.
+  Done (2026-11-04) with TrueType fonts of a mod (`hd/`, `runtime/src/text_hd.cpp`): only missing with the 3D at 1×
 - [ ] Mipmaps for the enlarged textures, so the distant floor does not shimmer
 - [ ] Optional, GPU only: anisotropic filtering
 

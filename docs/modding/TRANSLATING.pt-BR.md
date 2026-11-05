@@ -94,6 +94,7 @@ translations/es/
 | `spacer`, `space` | bytes reservados (um espaçador sem largura e o espaço de 4 px das legendas): deixe `DF` e `CF` |
 | `plain` | o que escrever no lugar de caracteres que a fonte não tem (reticências, aspas curvas) |
 | `texts`, `images`, `pictures`, `fonts` | onde ficam os arquivos (os valores acima são o padrão) |
+| `hd_fonts` | opcional: as fontes TrueType (de licença livre, com a licença na mesma pasta) que o jogador pode escolher para o texto em HD, pelo nome: `{"Minha Fonte": {"FONT12": "hd/Fonte.ttf", "FONT12T": "hd/Fonte.ttf", "FONT8": "hd/Fonte.ttf"}}`. O `build` gera o `hd/` e o `settings.json` do mod, com a opção "Fonte do texto (HD)" (padrão: a fonte do jogo; [`MODS.pt-BR.md`](MODS.pt-BR.md), "Opções do mod"). O PT-BR oferece a Atkinson Hyperlegible |
 
 ## Letras e fonte
 
@@ -117,6 +118,13 @@ do PT-BR (desenho do CyberLife); redesenhe as que quiser. Cada fonte é uma folh
 - Para uma letra nova: ache a linha do byte dela no JSON, desenhe na célula correspondente da folha (a posição
   na folha é a ordem no JSON) e acerte `left`, `width` e `advance`. `python3 tools/font.py check es` confere
   se toda letra do `charset` tem desenho.
+- A `FONT12` e a `FONT8` ficam em 1 bpp (o jogo desenha essas fontes com 1 bit por pixel; uma de 2 bpp sai
+  embaralhada). Na `FONT12T`, os tons são preenchimento, contorno e sombra, nas cores que cada tela escolhe.
+- **Métricas congeladas:** `python3 tools/font.py freeze es` grava `font/metrics.lock` com `left`, `width` e
+  `advance` de cada letra (e a célula, o baseline e a altura da linha). Depois disso o `font.py check` e o
+  `translate.py check` recusam uma fonte com métrica diferente, porque as falas já encaixadas podem deixar de
+  caber: redesenhe à vontade, mas sem mudar os números. Letra nova não conta; para mudar uma métrica de
+  propósito, congele de novo e passe o `translate.py check` inteiro.
 
 Alfabetos que não cabem em 63 letras (cirílico, grego) precisam de letras de 2 bytes: o formato aceita códigos
 novos (uma linha a mais no JSON e uma célula a mais na folha), mas o `charset` ainda não as escreve.

@@ -301,6 +301,14 @@ class Nftr:
                 out.codes[c] = index[g]
         return out
 
+    # --- metrics ---------------------------------------------------------------------------
+
+    def metrics(self) -> dict:
+        """What the layout of a text depends on, without the drawing: the cell, the baseline, the
+        line height and (left, width, advance) of each code. tools/font.py freezes it."""
+        return {"cell": list(self.cell), "baseline": self.baseline, "line": self.finf[1],
+                "glyphs": {f"{c:X}": list(self.widths[g]) for c, g in sorted(self.codes.items())}}
+
     # --- JSON ----------------------------------------------------------------------------
 
     def to_json(self, names: dict[int, str] | None = None) -> str:

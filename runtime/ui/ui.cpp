@@ -232,8 +232,9 @@ std::string pretty_list(const std::string& value) {
 }
 
 // The page being shown; kept between frames and between the launcher's tabs.
-enum class Page { Extra, Video, Audio, Buttons, Shortcuts, Launcher };
+enum class Page { Extra, Video, Audio, Buttons, Shortcuts, Mods, Launcher };
 Page g_page = Page::Video;
+std::string g_mod;  // the mod whose options the Mods page shows ("" = the list of mods)
 size_t g_extra = 0;  // which of the caller's pages, with Page::Extra
 bool g_gamepad_view = false;  // the controls pages show the keyboard or the gamepad bindings
 
@@ -561,11 +562,87 @@ void capture_event(const SDL_Event& ev) {
     }
 }
 
+// The Mods page: the mods with options, and the options of the one chosen (its submenu). A
+// choice is saved under [mod_settings] at once; the game applies it right away (on_change).
+void mods_page(const SettingsOptions& options) {
+    const ModSettings* mod = nullptr;
+    for (const ModSettings& m : options.mods) {
+        if (m.name == g_mod && m.enabled) mod = &m;  // a mod that is off has no submenu
+    }
+    if (!mod) {
+        g_mod.clear();
+        page_title("Mods", options.in_game ? L("Settings of the mods in use.", "Configurações dos mods em uso.")
+                                           : L("Settings of the installed mods.", "Configurações dos mods instalados."));
+        if (options.mods.empty()) {
+            italic_note(options.in_game ? L("No mod in use has options.", "Nenhum mod em uso tem opções.")
+                                        : L("No installed mod has options. Mods are added in the Mods tab.",
+                                            "Nenhum mod instalado tem opções. Os mods se adicionam na aba Mods."));
+            return;
+        }
+        ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0, 0.5f));
+        for (const ModSettings& m : options.mods) {
+            std::string label = m.name + (m.version.empty() ? "" : "  v" + m.version) +
+                                (m.enabled ? "" : std::string("  ") + L("(off)", "(desligado)")) + "##" + m.name;
+            ImGui::BeginDisabled(!m.enabled);
+            if (ImGui::Selectable(label.c_str(), false, 0, ImVec2(0, ImGui::GetFrameHeight() * 1.3f))) g_mod = m.name;
+            ImGui::EndDisabled();
+            if (!m.enabled && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                ImGui::SetTooltip("%s", L("Turn the mod on in the Mods tab to change its settings.",
+                                          "Ligue o mod na aba Mods para mudar as configurações dele."));
+            if (m.enabled) {
+                ImGui::SameLine();
+                ImGui::SetCursorPosX(ImGui::GetContentRegionMax().x - ImGui::CalcTextSize(">").x);
+                ImGui::TextDisabled(">");
+            }
+        }
+        ImGui::PopStyleVar();
+        return;
+    }
+    if (ImGui::SmallButton(L("< Mods", "< Mods"))) {
+        g_mod.clear();
+        return;
+    }
+    ImGui::Spacing();
+    page_title(mod->name.c_str(), nullptr);
+    if (!begin_rows("mod_options")) return;
+    for (const ModSetting& s : mod->settings) {
+        row(s.label.get().c_str(), s.hint.get().empty() ? nullptr : s.hint.get().c_str());
+        std::string current = mod_setting_get(*g_config, mod->name, s);
+        const ModSetting::Choice* shown = &s.choices.front();
+        for (const ModSetting::Choice& c : s.choices) {
+            if (c.id == current) shown = &c;
+        }
+        ImGui::PushID(s.id.c_str());
+        if (ImGui::BeginCombo("##choice", shown->label.get().c_str())) {
+            for (const ModSetting::Choice& c : s.choices) {
+                if (ImGui::Selectable(c.label.get().c_str(), &c == shown) && &c != shown) {
+                    mod_setting_set(*g_config, mod->name, s.id, c.id);
+                    save();
+                }
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::PopID();
+    }
+    end_rows();
+}
+
+void open_mod_settings(const std::string& mod) {
+    g_page = Page::Mods;
+    g_mod = mod;
+}
+
 void settings_panel(Config& config, const std::string& path, const SettingsOptions& options) {
     g_config = &config;
     g_path = path;
     g_options = options;
     bool in_game = options.in_game;
+    static bool tested = false;  // tests: NTR_UI_PAGE=mods opens the Mods page, NTR_UI_MOD that mod's options
+    if (!tested) {
+        tested = true;
+        if (const char* page = std::getenv("NTR_UI_PAGE"); page && std::string(page) == "mods") g_page = Page::Mods;
+        if (const char* mod = std::getenv("NTR_UI_MOD")) g_mod = mod;
+    }
     if ((in_game && g_page == Page::Launcher) || (g_page == Page::Extra && g_extra >= options.extra_pages.size())) g_page = Page::Video;
     const ImGuiStyle& style = ImGui::GetStyle();
 
@@ -591,7 +668,7 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
     };
     const Entry kPages[] = {{Page::Video, L("Video", "Vídeo")}, {Page::Audio, L("Audio", "Áudio")},
                             {Page::Buttons, L("Controls", "Controles")}, {Page::Shortcuts, L("Shortcuts", "Atalhos")},
-                            {Page::Launcher, "Launcher"}};
+                            {Page::Mods, "Mods"}, {Page::Launcher, "Launcher"}};
     for (const Entry& e : kPages) {
         if (in_game && e.page == Page::Launcher) continue;
         if (ImGui::Selectable(e.label, g_page == e.page, 0, ImVec2(0, ImGui::GetFrameHeight()))) g_page = e.page;
@@ -852,6 +929,9 @@ void settings_panel(Config& config, const std::string& path, const SettingsOptio
             }
             ImGui::Spacing();
             bindings_page("shortcuts", kShortcuts, std::size(kShortcuts));
+            break;
+        case Page::Mods:
+            mods_page(options);
             break;
         case Page::Launcher:
             page_title("Launcher", nullptr);

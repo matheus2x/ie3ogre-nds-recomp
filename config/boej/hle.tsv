@@ -29,3 +29,22 @@ Task_Yield	task_yield	back to the scheduler fiber
 Task_Exit	task_exit	ends the task's fiber
 blob_ov127_02130754	mobiclip_decode	Mobiclip decoder blob (hand-written ARM, computed jumps, lr set ahead): runs in the interpreter
 Font_DrawString	font_draw_string	the name entry field draws one letter per box; the objective's lines line up
+Font_BlitTiled4	font_blit_tiled4	HD text: tags the letter's pixels (text_hd.cpp)
+Font_BlitLinear4	font_blit_linear4	HD text: tags the letter's pixels
+Font_BlitTiled8	font_blit_tiled8	HD text: tags the letter's pixels
+Font_BlitLinear8	font_blit_linear8	HD text: tags the letter's pixels
+NNS_G2dCharCanvasDrawChar	nns_draw_char	HD text: tags the letter's pixels (menus)
+Font2_BlitTiled4	font2_blit_tiled4	HD text: tags the letter's pixels (FONT12T)
+Font2_BlitLinear4	font2_blit_linear4	HD text: tags the letter's pixels (FONT12T)
+Font2_BlitTiled8	font2_blit_tiled8	HD text: tags the letter's pixels (FONT12T)
+Font2_BlitLinear8	font2_blit_linear8	HD text: tags the letter's pixels (FONT12T)
+MIi_CpuCopy16	tags_copy_sdk	HD text: the tags go with the copy
+MIi_CpuCopy32	tags_copy_sdk	HD text: the tags go with the copy
+MIi_CpuCopyFast	tags_copy_sdk	HD text: the tags go with the copy
+MI_CpuCopy8	tags_copy_sdk	HD text: the tags go with the copy
+memcpy	tags_copy_c	HD text: the tags go with the copy
+MIi_CpuClear16	tags_clear_sdk	HD text: a clear takes the tags away
+MIi_CpuClear32	tags_clear_sdk	HD text: a clear takes the tags away
+MIi_CpuClearFast	tags_clear_sdk	HD text: a clear takes the tags away
+MI_CpuFill8	tags_clear_c	HD text: a fill takes the tags away
+memset	tags_clear_c	HD text: a fill takes the tags away

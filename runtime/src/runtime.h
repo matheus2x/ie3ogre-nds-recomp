@@ -15,6 +15,7 @@
 #include <ntr/achievements.h>
 #include <ntr/common.h>
 #include <ntr/guest.h>
+#include <ntr/mod_settings.h>
 
 namespace ntr {
 
@@ -169,6 +170,10 @@ void rom_override_lazy(uint32_t offset, uint32_t size, std::function<const uint8
 // out whole.
 // The mods in use and their files, for the savestate identity (0 without mods).
 uint64_t mods_fingerprint();
+// The player's choices of the mods' options ([mod_settings] of boej.ini): after the mods
+// load, and after each change in the pause menu (the HD text font changes right away).
+void mods_apply_settings(const Config& config);
+std::vector<ModSettings> mods_settings();  // the mods in use that have options, in load order
 // A text of the top screen kept in the save (the place, the label, the objective), about to be
 // drawn from `text`: if it comes from the scripts of another version (the game's, or a mod's
 // in mods/, on or off), it becomes the one the scripts in use have, there and at `copy` (the
@@ -177,6 +182,40 @@ void saved_text_fix(uint32_t text, uint32_t copy, uint32_t size);
 
 void trace_install();
 void trace_frame(uint64_t frame);  // NTR_PROFILE window bookkeeping
+
+// --- HD text (text_hd.cpp) -------------------------------------------------------------
+// Tags on the bytes the game's letters were drawn into, carried by copies; a tag is
+// id << 16 | row << 8 | column of the pixel in the letter (0: none; columns < 64, the two
+// bits above are free for the 2D engine).
+
+enum class TextFont : uint8_t { Other, Font8, Rubi8, Font12, Font12T };
+struct TextGlyph {  // one letter as drawn
+    TextFont font;
+    uint8_t cell_w, cell_h;  // of the font's cells (the bitmap's rows are cell_w bits)
+    uint8_t columns;         // drawn per row (CWDH advance - left)
+    uint8_t bpp;             // of the bitmap: 1, or 2 (FONT12T: fill, then two outline colors)
+    uint8_t colors[4];       // the color index of each bitmap value (1-3) in the buffer
+    bool depth8;             // into an 8 bpp buffer
+    uint16_t index;          // glyph index in the font
+    uint32_t bitmap;         // guest address of its bitmap
+    uint32_t cglp;           // of its font (the glyphs' section)
+};
+int64_t text_space_of(const uint8_t* host);  // byte in main RAM, then VRAM; -1 elsewhere
+uint32_t text_tag(const uint8_t* host, int nibble);  // nibble: 1 = the high one of 4 bpp
+const TextGlyph* text_glyph(uint32_t tag);
+int text_glyph_value(const TextGlyph& g, uint32_t tag);  // of the bitmap at the pixel (0: no ink)
+void text_tags_copy(uint32_t dst, uint32_t src, uint32_t size);  // guest addresses
+void text_tags_clear(uint32_t dst, uint32_t size);
+bool text_hd_debug();  // NTR_HD_TEXT_DEBUG: tagged pixels shown in color at native size
+// The value of the HD letter at (fx, fy) in [0, 1) inside the pixel of `tag` (0 none, 1 fill,
+// 2/3 outline), or -1 when the mod's fonts have no HD letter for it (draw the game's).
+int text_hd_value(uint32_t tag, float fx, float fy);
+// A TrueType font for one of the game's fonts (FONT8, RUBI8, FONT12, FONT12T), with the
+// character of each glyph index of the game's font (0: none): a handle for text_hd_use, or -1
+// when it does not load. NTR_HD_TEXT=0 turns HD text off for good.
+int text_hd_load(const std::string& font, std::vector<uint8_t> ttf, std::vector<uint32_t> codepoints);
+// The font a font of the game is drawn with in HD from now on (-1: none, the game's letters).
+void text_hd_use(const std::string& font, int handle);
 
 // --- achievements (achievements_game.cpp) ----------------------------------------------
 

@@ -1214,6 +1214,7 @@ void apply_settings() {
     if (g_host.audio) SDL_SetAudioStreamGain(g_host.audio, c.get_int("audio", "volume", 0, 100) / 100.0f);
     g_host.ff_speed = c.get_int("game", "fast_forward_speed", 2, 10);
     configure_rewind();
+    mods_apply_settings(c);
     bool was_wide = g_host.wide;
     apply_presentation();
     bool fullscreen = c.get_bool("video", "fullscreen");
@@ -1325,6 +1326,7 @@ bool run_menu(bool from_pause = false) {
     options.on_change = apply_settings;
     options.extra_pages.push_back({L("Achievements", "Conquistas"), [] { ui::achievements_list(achievements(), g_host.renderer); }});
     options.active_renderer = g_host.renderer_name;
+    options.mods = mods_settings();
     // Saving or loading closes the menu, so the slots are read once.
     std::vector<std::string> states;
     std::vector<bool> loadable;

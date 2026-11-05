@@ -42,8 +42,11 @@ Melhoram qualquer textura na hora, sem pacote nenhum.
 - [ ] Filtros de pixel art aplicados uma vez por textura, na CPU, guardados no cache: xBR/xBRZ, ScaleFX ou
   MMPX (escolher pela qualidade nos personagens e pelo custo; ver licenças)
 - [ ] O mesmo filtro nas camadas 2D da imagem grande: HUD, retratos, letreiros das técnicas
-- [ ] Texto: as fontes do jogo (e as do mod de tradução) ampliadas por filtro, ou fontes vetoriais desenhadas
-  na resolução da janela (investigar onde o jogo monta o texto)
+- [x] Texto: as fontes do jogo (e as do mod de tradução) ampliadas por filtro, ou fontes vetoriais desenhadas
+  na resolução da janela (investigar onde o jogo monta o texto). Planejado na Fase 3 do
+  [`TRANSLATION-STATUS.pt-BR.md`](../modding/TRANSLATION-STATUS.pt-BR.md): a fonte em alta tem as mesmas métricas
+  (largura e avanço de cada letra) da fonte do jogo/mod, para não mudar o encaixe dos textos traduzidos. Feito
+  (2026-11-04) com fontes TrueType de um mod (`hd/`, `runtime/src/text_hd.cpp`): falta só com o 3D em 1×
 - [ ] Mipmaps para as texturas ampliadas, para o chão ao longe não tremer
 - [ ] Opcional, só GPU: filtragem anisotrópica
 

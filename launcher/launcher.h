@@ -25,6 +25,7 @@
 #include <vector>
 
 #include <ntr/common.h>
+#include <ntr/mod_settings.h>
 
 struct SDL_Renderer;
 struct SDL_Window;
@@ -108,6 +109,8 @@ void settings_set(const std::string& section, const std::string& key, const std:
 // --- mods (mods.cpp) ---------------------------------------------------------------------
 
 void mods_tab(SDL_Window* window);
+std::vector<ntr::ModSettings> mods_settings_list();  // the installed mods with options (the settings' Mods page)
+bool mods_take_settings_request();  // a mod's "Settings" button was clicked (the page is set): show the settings
 void mods_drop(const std::string& path);  // a .zip or a mod folder dropped on the window: copy it to mods/
 int mods_cli(const std::string& command, const std::string& path);  // --install-mod / --mod-from-dump
 

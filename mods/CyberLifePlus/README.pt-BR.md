@@ -11,6 +11,8 @@ ie3ogre-recomp.
   textos, fontes e imagens traduzidas. A tradução está há meses sem atualizações, e este mod continua de onde
   ela parou.
 - **Continuação:** matheus2x, completando os pontos que ficaram sem tradução.
+- **Fonte do texto em HD:** [Atkinson Hyperlegible](https://www.brailleinstitute.org/freefont/), do Braille
+  Institute of America, sob a SIL Open Font License 1.1 (`hd/OFL.txt`).
 
 Se você é do CyberLife e quer que algo nestes créditos mude (nomes, links, como a tradução é citada), abra uma
 issue no repositório.
@@ -22,7 +24,9 @@ Coloque o `mod-CyberLifePlus-<versão>.zip` da release na pasta `mods/`, ao lado
 nova ligada no lugar dela.
 
 O mod só traz **patches** (`.bps`, só a diferença em relação ao jogo original): ele não contém dados do jogo e
-precisa do dump retail, o mesmo que o launcher pede.
+precisa do dump retail, o mesmo que o launcher pede. Traz também a fonte do **texto em HD** (`hd/`): com a
+resolução do 3D acima de 1×, escolha a Atkinson Hyperlegible em Configurações → Mods → CyberLifePlus → Fonte do
+texto (o padrão é a fonte pixelada do jogo) e as letras saem nítidas na resolução alta.
 
 ## Origem
 
@@ -33,6 +37,9 @@ dá exatamente os arquivos do dump traduzido.
 
 ## Versões
 
+- **1.19:**
+  - texto em HD: com a resolução do 3D acima de 1×, a fonte Atkinson Hyperlegible desenha as letras na resolução
+    alta, no mesmo lugar (Configurações → Mods → CyberLifePlus → Fonte do texto; o padrão é a fonte pixelada do jogo).
 - **1.18:**
   - os objetivos da tela de cima que vêm de outros comandos dos scripts (123, uns 80 ainda em inglês, como "This
     is the final battle!"), em português e com as letras sem se sobrepor;

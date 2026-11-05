@@ -36,6 +36,11 @@ mods/
     overlays/
       ov022.bin                          the whole overlay 22, decompressed
       ov023.bin.bps                      patch over the decompressed overlay 23
+    hd/
+      fonts.json                         HD text: the TrueType fonts the mod offers
+      MyFont.ttf                         the font (under a free licence)
+      OFL.txt                            its licence
+    settings.json                        the mod's options (Settings → Mods)
 ```
 
 `mod.ini`:
@@ -88,6 +93,53 @@ original, never over another mod's file (the last mod in the list that replaces 
 
 The patches are applied when the game opens, in the background, like the compressed files of a `.zip`. The whole
 translation (512 files, 9 MB of patches for 76 MB of files) costs about 0.1 s more at start.
+
+**Mod options.** A `settings.json` next to `mod.ini` lists what the player can choose in the mod. The options show
+in Settings → **Mods** (in the launcher and in the pause menu, the Esc key): the list of the mods that have options
+and, when one is opened, its submenu, with a dropdown per option; in the launcher's Mods tab, the "Settings" button on
+the mod's row goes straight to the submenu. The submenu and the button only work with the mod on. The choice goes to `boej.ini`, under
+`[mod_settings]`, by the mod's name (`name` in `mod.ini`), so it also holds for the mod's new versions:
+
+```json
+{"settings": [{
+  "id": "hd_font",
+  "label": {"en": "Text font (HD)", "pt": "Fonte do texto (HD)"},
+  "hint": {"en": "...", "pt": "..."},
+  "default": "default",
+  "options": [{"id": "default", "label": {"en": "Default", "pt": "Padrão"}},
+              {"id": "my-font", "label": "My Font"}]
+}]}
+```
+
+```ini
+[mod_settings]
+My translation / hd_font = my-font
+```
+
+A label or hint is a text (any language) or `{"en": ..., "pt": ...}`. What an option does is up to the port; there is
+one today: `hd_font`, the font of the HD text (below), with `default` for the game's own letters.
+
+**HD text.** With the 3D resolution above 1×, the port can draw the game's letters again at the high resolution with
+a TrueType font of the mod. `hd/fonts.json` lists the fonts the mod offers, each with the file for each font of the
+game (`FONT12`, `FONT12T`, `FONT8`, `RUBI8`) and the Unicode character of each of its glyphs, in the order of the
+glyphs of the font the mod gives the game (0: none):
+
+```json
+{
+  "my-font": {"name": "My Font", "fonts": {
+    "FONT12": {"file": "hd/MyFont.ttf", "codepoints": [32, 33, 34, 0, 65, ...]},
+    "FONT8": {"file": "hd/MyFont.ttf", "codepoints": [...]}
+  }}
+}
+```
+
+The `hd_font` option of `settings.json` picks one of them by id (`default`: none); without the option, the first one
+is used. In the pause menu the change applies at once. A translation mod makes both files by itself (`"hd_fonts"`
+in `language.json`, [`TRANSLATING.md`](TRANSLATING.md)). Each HD letter is fitted into the letter of the game's
+font, to the height and center of its ink (narrowed when wider), so the text stays in the same place with the same
+spacing; a letter the TrueType font does not have (kana, kanji) stays as the game draws it. It covers the text on
+both screens, in BGs and sprites (2D) and in the textures of the 3D menus. The last mod of the list that draws a
+font of the game wins. The font goes with the mod: use one under a free licence (OFL) and put the licence in `hd/`.
 
 **A mod with an error** is left out entirely (the game opens without it). Files with a path the game does not have
 are ignored, with a warning. Errors and warnings show on the Mods page and in the session log in `logs/sessoes/`

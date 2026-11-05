@@ -8,6 +8,13 @@
 //                        recompiled code may change
 //   <either>.bps         the same as a BPS patch over the retail file (ntr/package.h): a mod
 //                        that carries only its changes, not the game's data
+//   hd/fonts.json        TrueType fonts the game's letters are drawn with above native
+//                        resolution (text_hd.cpp), by font set: {"atkinson": {"name": "Atkinson",
+//                        "fonts": {"FONT12": {"file": "hd/x.ttf", "codepoints": [the character of
+//                        each glyph index, 0 for none]}, ...}}, ...}
+//   settings.json        the options the player can change (ntr/mod_settings.h); "hd_font"
+//                        picks the font set ("default": the game's letters). Without it, the
+//                        first set is used.
 //
 // Nothing is copied into boej.pak: the mods' files go at ROM offsets past the end of the
 // image and patched copies of the FAT and of the overlay table point the game at them
@@ -31,6 +38,8 @@
 #include <thread>
 
 #include <SDL3/SDL_stdinc.h>
+#include <ntr/json.h>
+#include <ntr/mod_settings.h>
 #include <ntr/nitro.h>
 #include <ntr/package.h>
 #include <ntr/registry.h>
@@ -74,7 +83,23 @@ struct Mod {
     std::vector<std::string> errors, warnings;
     std::string version;  // from mod.ini, for the log
     uint64_t fingerprint = 0;
+    bool hd = false;  // has hd/ (HD text fonts)
+    std::string name;  // [mod] name of mod.ini, the folder's when it has none (the key of its options)
+    std::vector<ModSetting> settings;  // settings.json
 };
+
+// The HD text of a mod in use: its font sets, each with a handle (text_hd_load) per font of
+// the game.
+struct HdSet {
+    std::string id;
+    std::map<std::string, int> fonts;
+};
+struct ActiveMod {
+    std::string name, version;
+    std::vector<ModSetting> settings;
+    std::vector<HdSet> hd;
+};
+std::vector<ActiveMod> g_active_mods;  // in load order
 
 uint64_t g_fingerprint = 0;
 std::deque<std::vector<uint8_t>> g_owned;  // overlay images and table copies the ROM reads from
@@ -158,6 +183,12 @@ Mod scan_mod(const std::string& folder, const std::map<std::string, const NitroF
         mod.errors.push_back(L("the mod is for another game (", "o mod é para outro jogo (") + ini.get("mod", "game") + ")");
     }
     mod.version = ini.get("mod", "version");
+    mod.name = ini.get("mod", "name").empty() ? folder : ini.get("mod", "name");
+    if (const ModPackage::Entry* e = pkg.find(kModSettingsFile); e && pkg.read(*e, bytes, error)) {
+        std::string problem;
+        if (!mod_settings_parse(std::string(bytes.begin(), bytes.end()), mod.settings, problem))
+            mod.warnings.push_back(std::string(kModSettingsFile) + ": " + problem + L(" (options ignored)", " (opções ignoradas)"));
+    }
     uint64_t h = fnv(0xCBF29CE484222325ull, folder.data(), folder.size());
     std::map<std::string, std::string> targets;  // what each entry replaces -> the entry
 
@@ -283,11 +314,13 @@ Mod scan_mod(const std::string& folder, const std::map<std::string, const NitroF
             h = fnv(h, name.data(), name.size());
             h = fnv(h, image.data(), image.size());
             mod.overlays.push_back({size_t(ov - overlays.begin()), id, std::move(image), ram_size});
+        } else if (lpath.rfind("hd/", 0) == 0) {
+            mod.hd = true;  // read by load_hd_fonts
         } else if (lpath.find('/') != std::string::npos) {
             mod.warnings.push_back(e.path + L(" is outside files/ and overlays/ (ignored)", " fica fora de files/ e overlays/ (ignorado)"));
         }  // files next to mod.ini (a readme, a picture) are not for the game
     }
-    if (mod.files.empty() && mod.overlays.empty() && mod.errors.empty()) mod.warnings.push_back(L("the mod changes nothing", "o mod não muda nada"));
+    if (mod.files.empty() && mod.overlays.empty() && !mod.hd && mod.errors.empty()) mod.warnings.push_back(L("the mod changes nothing", "o mod não muda nada"));
     mod.fingerprint = h;
     return mod;
 }
@@ -512,6 +545,50 @@ void saved_texts_start(std::vector<std::string> in_use) {
 }
 
 // The mods in use (no errors), in order.
+// The HD text fonts of a mod in use (hd/fonts.json), all of its sets loaded: the player may
+// pick another one in the pause menu.
+std::vector<HdSet> load_hd_fonts(const Mod& mod) {
+    std::vector<HdSet> sets;
+    if (!mod.hd || !mod.errors.empty()) return sets;
+    const ModPackage& pkg = *mod.package;
+    std::vector<uint8_t> bytes;
+    std::string error;
+    Json doc;
+    const ModPackage::Entry* e = pkg.find("hd/fonts.json");
+    if (!e || !pkg.read(*e, bytes, error) || !json_parse(std::string(bytes.begin(), bytes.end()), doc, error) ||
+        !doc.is_object()) {
+        NTR_LOG("[mods] %s: hd/fonts.json: %s\n", mod.folder.c_str(), e ? error.c_str() : "missing");
+        return sets;
+    }
+    std::map<std::string, int> loaded;  // a file the sets share is read once per font of the game
+    for (const auto& [id, set] : doc.members()) {
+        HdSet& out = sets.emplace_back();
+        out.id = id;
+        for (const auto& [name, font] : set.get("fonts").members()) {
+            const std::string& file = font.get("file").as_string();
+            std::vector<uint32_t> codepoints;
+            for (const Json& c : font.get("codepoints").items()) codepoints.push_back(uint32_t(c.as_number()));
+            const ModPackage::Entry* f = pkg.find(file);
+            std::vector<uint8_t> ttf;
+            if (!f || !pkg.read(*f, ttf, error)) {
+                NTR_LOG("[mods] %s: hd/fonts.json: %s/%s: no file \"%s\"\n", mod.folder.c_str(), id.c_str(), name.c_str(),
+                        file.c_str());
+                continue;
+            }
+            int handle = text_hd_load(name, std::move(ttf), std::move(codepoints));
+            if (handle < 0) {
+                NTR_LOG("[mods] %s: hd/fonts.json: %s/%s: not a font of the game, or not a TrueType font\n",
+                        mod.folder.c_str(), id.c_str(), name.c_str());
+                continue;
+            }
+            out.fonts[name] = handle;
+        }
+        NTR_LOG("[mods] %s: HD text \"%s\" (%s), %zu fonts\n", mod.folder.c_str(), id.c_str(),
+                set.get("name").as_string().c_str(), out.fonts.size());
+    }
+    return sets;
+}
+
 std::vector<std::string> apply_mods() {
     std::vector<std::string> enabled = enabled_list(host_config());
     if (enabled.empty()) return {};
@@ -545,6 +622,10 @@ std::vector<std::string> apply_mods() {
         used += (used.empty() ? "" : ", ") + mod.folder + (mod.version.empty() ? "" : " v" + mod.version);
     }
     session_info("mods", used.empty() ? "nenhum" : used);
+    for (const Mod& mod : mods) {
+        if (mod.errors.empty()) g_active_mods.push_back({mod.name, mod.version, mod.settings, load_hd_fonts(mod)});
+    }
+    mods_apply_settings(host_config());
     if (files.empty() && overlays.empty()) return in_use;
 
     const RomImage& rom = rom_image();
@@ -632,6 +713,35 @@ std::vector<std::string> apply_mods() {
 }  // namespace
 
 void mods_apply() { saved_texts_start(apply_mods()); }
+
+void mods_apply_settings(const Config& config) {
+    // HD text: font by font of the game, the last mod in use that draws it in the set the player
+    // chose ("default" in its hd_font option leaves it to the mods before it).
+    std::map<std::string, int> use = {{"FONT8", -1}, {"RUBI8", -1}, {"FONT12", -1}, {"FONT12T", -1}};
+    for (const ActiveMod& mod : g_active_mods) {
+        if (mod.hd.empty()) continue;
+        const HdSet* chosen = &mod.hd.front();
+        for (const ModSetting& s : mod.settings) {
+            if (s.id != "hd_font") continue;
+            std::string choice = mod_setting_get(config, mod.name, s);
+            chosen = nullptr;
+            for (const HdSet& set : mod.hd) {
+                if (set.id == choice) chosen = &set;
+            }
+        }
+        if (!chosen) continue;
+        for (const auto& [font, handle] : chosen->fonts) use[font] = handle;
+    }
+    for (const auto& [font, handle] : use) text_hd_use(font, handle);
+}
+
+std::vector<ModSettings> mods_settings() {
+    std::vector<ModSettings> out;
+    for (const ActiveMod& mod : g_active_mods) {
+        if (!mod.settings.empty()) out.push_back({mod.name, mod.version, true, mod.settings});
+    }
+    return out;
+}
 
 void saved_text_fix(uint32_t text, uint32_t copy, uint32_t size) {
     if (!g_saved_texts.valid()) return;

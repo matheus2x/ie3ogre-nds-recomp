@@ -11,6 +11,7 @@
 #include <sstream>
 
 #include <ntr/common.h>
+#include <ntr/mod_settings.h>
 
 namespace ntr {
 
@@ -165,6 +166,9 @@ state_slot_prev =
 state_slot_next =
 rewind =
 pause =
+
+; Opções dos mods (Configurações → Mods), uma por linha: "<nome do mod> / <opção> = <escolha>".
+[mod_settings]
 )";
 
 std::string trim(const std::string& s) {
@@ -317,6 +321,11 @@ bool config_save(const std::string& path, const Config& config) {
             line = key + " =" + (value.empty() ? "" : " " + value);
         }
         out += line + "\n";
+    }
+    // The mods' options are not in the defaults: they go under [mod_settings], the last section.
+    const std::string mods = std::string(kModSettingsSection) + ".";
+    for (const auto& [key, e] : config.entries) {
+        if (key.rfind(mods, 0) == 0 && !e.value.empty()) out += key.substr(mods.size()) + " = " + e.value + "\n";
     }
     FILE* f = open_file(fs_path(path), "wb");
     if (!f) return false;

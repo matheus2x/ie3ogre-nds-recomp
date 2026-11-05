@@ -2,8 +2,13 @@
 
 import json
 import struct
+import tempfile
 import unittest
 import zlib
+from pathlib import Path
+
+import font as fonttool
+import language
 
 from ntr.font import FontError, Nftr
 from ntr.png import PngError, read_png, write_png
@@ -99,6 +104,77 @@ class FontTest(unittest.TestCase):
                     {"code": "C3", "left": 3, "width": 3, "advance": 1}):  # wider than the cell
             with self.assertRaises(FontError, msg=bad):
                 Nftr.from_json(json.dumps(j | {"glyphs": j["glyphs"] + [bad]}))
+
+
+class MetricsTest(unittest.TestCase):
+    """The frozen metrics (tools/font.py freeze/check): the fitting of the lines depends on them."""
+
+    def test_the_translations_match_their_lock(self):
+        root = Path(__file__).resolve().parents[2] / "translations"
+        for folder in sorted(p.parent for p in root.glob("*/language.json")):
+            lang = language.load(folder)
+            path = fonttool.lock_path(lang)
+            if path is None or not path.exists():
+                continue
+            bad, _ = fonttool.metric_changes(json.loads(path.read_text(encoding="utf-8")), fonttool.metrics(lang))
+            self.assertEqual(bad, [], f"{folder.name}: tools/font.py check {folder}")
+
+    def test_changes_and_additions(self):
+        lock = json.loads(fonttool.write_lock({"F": tiny().metrics()}))
+        self.assertEqual(lock["F"]["glyphs"]["B1"], [1, 2, 3])
+        self.assertEqual(fonttool.metric_changes(lock, {"F": tiny().metrics()}), ([], []))
+        redrawn = tiny()
+        redrawn.glyphs[0] = redrawn.pack([[1] * 4] * 5)  # the drawing is free
+        redrawn.depth = 2
+        self.assertEqual(fonttool.metric_changes(lock, {"F": redrawn.metrics()}), ([], []))
+        added = tiny()
+        added.codes[0x43] = 0
+        bad, new = fonttool.metric_changes(lock, {"F": added.metrics(), "G": tiny().metrics()})
+        self.assertEqual((bad, len(new)), ([], 2))
+        for change in (lambda f: f.widths.__setitem__(1, (0, 3, 5)),  # B advances one more
+                       lambda f: setattr(f, "baseline", 3),
+                       lambda f: f.finf.__setitem__(1, 6),  # line height
+                       lambda f: f.codes.pop(0x42)):
+            f = tiny()
+            change(f)
+            bad, _ = fonttool.metric_changes(lock, {"F": f.metrics()})
+            self.assertEqual(len(bad), 1, bad)
+        self.assertEqual(fonttool.metric_changes(lock, {})[0], ["F: the font is gone"])
+
+
+class HdTest(unittest.TestCase):
+    """What a mod gets for HD text (tools/font.py hd_files)."""
+
+    def test_codepoints(self):
+        lang = language.Language(Path("."))  # PT-BR's letters
+        f = tiny()
+        f.glyphs += [f.pack([[0] * 4] * 5)] * 3
+        f.widths += [(0, 1, 1)] * 3
+        f.codes |= {0x8260: 3, lang.spacer: 4, 0x82A0: 5}  # Ａ, the spacer, あ
+        cps = fonttool.codepoints(f, lang)
+        by_byte = {b: ch for ch, b in lang.charset.items()}
+        self.assertEqual(cps[:4], [ord("A"), ord("B"), ord(by_byte[0xB1]), ord("A")])
+        self.assertEqual(cps[4], 0)  # blanks have no HD letter
+        self.assertEqual(cps[5], ord("あ"))  # the TrueType font may not have it: the port keeps the game's
+
+    def test_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ttf = Path(tmp) / "Free.ttf"
+            ttf.write_bytes(b"\0\1\0\0font")
+            (Path(tmp) / "OFL.txt").write_text("licence", encoding="utf-8")
+            lang = language.Language(Path(tmp), hd_fonts={"Free Sãns": {"FONT12": ttf}},
+                                     hd_licences=[Path(tmp) / "OFL.txt"])
+            out = fonttool.hd_files(lang, lambda name: tiny().write())
+            self.assertEqual(out["hd/Free.ttf"], ttf.read_bytes())
+            self.assertEqual(out["hd/OFL.txt"], b"licence")
+            doc = json.loads(out["hd/fonts.json"])
+            self.assertEqual(doc["free-sans"]["name"], "Free Sãns")
+            self.assertEqual(doc["free-sans"]["fonts"]["FONT12"]["file"], "hd/Free.ttf")
+            self.assertEqual(doc["free-sans"]["fonts"]["FONT12"]["codepoints"][:2], [ord("A"), ord("B")])
+            setting = json.loads(out["settings.json"])["settings"][0]
+            self.assertEqual((setting["id"], setting["default"]), ("hd_font", "default"))
+            self.assertEqual([o["id"] for o in setting["options"]], ["default", "free-sans"])
+            self.assertEqual(fonttool.hd_files(language.Language(Path(tmp)), None), {})
 
 
 class PngTest(unittest.TestCase):

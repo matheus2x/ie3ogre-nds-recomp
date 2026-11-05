@@ -108,6 +108,14 @@ def stage(lang: language.Language, image: Path, out: Path) -> None:
         sys.exit(f"error: font {e}")
     for rel, data in fonts.items():
         texttool.write_file(out, game, rel, data)
+    try:
+        hd = fonttool.hd_files(lang, lambda name: fonts.get(f"{fonttool.FONT_DIR}/{name}.NFTR")
+                               or game.modded(f"{fonttool.FONT_DIR}/{name}.NFTR"))
+    except FontError as e:
+        sys.exit(f"error: HD font {e}")
+    for rel, data in hd.items():
+        (out / rel).parent.mkdir(parents=True, exist_ok=True)
+        (out / rel).write_bytes(data)
 
 
 def report(step: str, bad: int, printed: str) -> None:
@@ -125,6 +133,9 @@ def steps(lang: language.Language, image: Path, out: Path, write: bool) -> int:
     print(f"{lang.code}: {len(lang.texts)} files of lines, {len(lang.fonts)} fonts, "
           f"{len(lang.pictures)} pictures, text on images {'yes' if lang.images else 'no'}, base {lang.base.name if lang.base else 'none (the game)'}")
     bad = 0
+    n, printed = quietly(fonttool.check_lock, lang)  # the metrics the lines were fitted with
+    report("fonts", n, printed)
+    bad += n
     try:
         n, printed = quietly(texttool.apply if write else texttool.check, image, out, lang.folder)
         report("lines", n, printed)
@@ -149,14 +160,17 @@ def cmd_check(args) -> int:
 
 
 def install(out: Path, dst: Path) -> None:
-    """The built mod in mods/<mod>: files/, overlays/ and mod.ini replaced, the rest kept."""
+    """The built mod in mods/<mod>: files/, overlays/, hd/, mod.ini and settings.json replaced, the rest kept."""
     dst.mkdir(parents=True, exist_ok=True)
-    for kind in ("files", "overlays"):
+    for kind in ("files", "overlays", "hd"):
         if (dst / kind).exists():
             shutil.rmtree(dst / kind)
         if (out / kind).exists():
             shutil.copytree(out / kind, dst / kind)
     shutil.copy2(out / "mod.ini", dst / "mod.ini")
+    (dst / fonttool.SETTINGS).unlink(missing_ok=True)
+    if (out / fonttool.SETTINGS).exists():
+        shutil.copy2(out / fonttool.SETTINGS, dst / fonttool.SETTINGS)
 
 
 def cmd_build(args) -> int:

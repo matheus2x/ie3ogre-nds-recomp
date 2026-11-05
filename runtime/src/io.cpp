@@ -77,6 +77,10 @@ void run_dma(int n) {
         src += src_step;
         dst += dst_step;
     }
+    // The HD text's tags go with the bytes (text_hd.cpp): a copy carries them, a fill clears them.
+    uint32_t start_src = reg(base), start_dst = reg(base + 4), bytes = count * unit;
+    if (dst_step > 0 && src_step > 0) text_tags_copy(start_dst, start_src, bytes);
+    else if (dst_step > 0) text_tags_clear(start_dst, bytes);
     uint32_t timing = (cnt >> 27) & 7;
     if (!(cnt & (1u << 25)) || timing == 0) cnt &= ~0x80000000u;
     set_reg(base + 8, cnt);

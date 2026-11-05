@@ -7,6 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import font as fonttool
 import language
 import text as texttool
 from ntr import lz10
@@ -358,7 +359,9 @@ class TranslationsTest(unittest.TestCase):
             lang = language.load(d)
             self.assertTrue(lang.manifest, f"{d.name}: no {language.MANIFEST}")
             self.assertTrue(lang.texts, d)
-            fonts = {f for pair in lang.fonts.values() for f in pair}
+            fonts = ({f for pair in lang.fonts.values() for f in pair} | {fonttool.lock_path(lang)}  # codes and numbers
+                     | {p for fonts in lang.hd_fonts.values() for p in fonts.values()}
+                     | set(lang.hd_licences))  # free fonts (hd_fonts)
             for f in sorted(d.rglob("*")):
                 if f.is_file():
                     self.assertIn(f, {*lang.texts, lang.images, d / language.MANIFEST, *fonts, *lang.pictures.values()},

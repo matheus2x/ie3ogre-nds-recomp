@@ -4,7 +4,7 @@
   "mod": "CyberLifePlus",
   "base": "CyberLife",
   "name": "CyberLifePlus (tradução PT-BR)",
-  "version": "1.18",
+  "version": "1.19",
   "author": "CyberLife (tradução original), matheus2x (continuação)",
   "description": "Tradução para o português do Brasil. Feita originalmente pelo grupo CyberLife e continuada aqui, completando o que faltou.",
   "charset": {
@@ -18,5 +18,12 @@
   "plain": {"…": "...", "“": "\"", "”": "\"", "‘": "'", "’": "'", "—": "-", "–": "-"},
   "texts": "texts/*.json",
   "images": "images.json",
-  "fonts": "font"
+  "fonts": "font",
+  "hd_fonts": {
+    "Atkinson Hyperlegible": {
+      "FONT12": "hd/AtkinsonHyperlegible-Regular.ttf",
+      "FONT12T": "hd/AtkinsonHyperlegible-Regular.ttf",
+      "FONT8": "hd/AtkinsonHyperlegible-Regular.ttf"
+    }
+  }
 }

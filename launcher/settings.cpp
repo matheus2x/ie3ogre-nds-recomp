@@ -27,6 +27,10 @@ bool settings_capturing() { return ntr::ui::capturing(); }
 
 void settings_event(const SDL_Event& ev) { ntr::ui::capture_event(ev); }
 
-void settings_ui() { ntr::ui::settings_panel(g_config, paths().config(), {}); }
+void settings_ui() {
+    ntr::ui::SettingsOptions options;
+    options.mods = mods_settings_list();
+    ntr::ui::settings_panel(g_config, paths().config(), options);
+}
 
 }  // namespace launcher

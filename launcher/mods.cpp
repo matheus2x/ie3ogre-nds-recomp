@@ -16,8 +16,10 @@
 #include <sstream>
 #include <thread>
 
+#include <ntr/mod_settings.h>
 #include <ntr/nitro.h>
 #include <ntr/package.h>
+#include <ntr/ui.h>
 
 #include "launcher.h"
 
@@ -32,6 +34,7 @@ struct ModEntry {
     bool zip = false;
     std::string name, version, author, description;
     std::string type, language;  // type = translation (tools/translate.py) and its language
+    std::vector<ntr::ModSetting> settings;  // settings.json: the options of the settings' Mods page
     bool enabled = false;
     bool checked = false;  // the game's check ran
     size_t files = 0, overlays = 0;
@@ -53,6 +56,8 @@ struct Worker {
 
 Worker g_worker;
 std::vector<ModEntry> g_mods;  // in load order: the enabled ones first
+bool g_open_settings = false;  // a mod's "Settings" button: the launcher goes to its settings
+bool g_settings_stale = false;  // mods_settings_list reads the mods again now (not in a second)
 int g_selected = -1;
 int g_remove = -1;  // the mod whose "Remover" was clicked: the confirmation is open
 std::string g_pending_zip, g_pending_dump;  // from a file dialog or a drop (a .zip or a folder)
@@ -190,6 +195,8 @@ ModEntry read_mod(const std::string& folder) {
     if (package.open(paths().mods() + folder, error)) {
         if (const ntr::ModPackage::Entry* e = package.find("mod.ini"); e && package.read(*e, text, error))
             ntr::ini_parse(std::string(text.begin(), text.end()), folder + "/mod.ini", ini);
+        if (const ntr::ModPackage::Entry* e = package.find(ntr::kModSettingsFile); e && package.read(*e, text, error))
+            ntr::mod_settings_parse(std::string(text.begin(), text.end()), m.settings, error);  // the game warns
     }
     m.name = ini.get("mod", "name");
     m.version = ini.get("mod", "version");
@@ -200,6 +207,45 @@ ModEntry read_mod(const std::string& folder) {
     if (m.name.empty()) m.name = folder;
     return m;
 }
+
+}  // namespace
+
+bool mods_take_settings_request() {
+    bool asked = g_open_settings;
+    g_open_settings = false;
+    if (asked) g_settings_stale = true;  // the mod was maybe turned on a moment ago
+    return asked;
+}
+
+// The installed mods with options, the ones on first (in load order): read again when the
+// mods folder or the list of mods on changes, looked at once a second at most.
+std::vector<ntr::ModSettings> mods_settings_list() {
+    static std::vector<ntr::ModSettings> list;
+    static std::string seen;
+    static double checked = -10;
+    double now = double(SDL_GetTicks()) / 1000.0;
+    if (now - checked < 1 && !g_settings_stale) return list;
+    checked = now;
+    g_settings_stale = false;
+    std::vector<std::string> folders = mod_names(), enabled = enabled_list();
+    std::string key = listing(folders) + "|" + settings().get("mods", "enabled");
+    if (key == seen) return list;
+    seen = key;
+    list.clear();
+    auto add = [&](const std::string& folder, bool on) {
+        ModEntry m = read_mod(folder);
+        if (!m.settings.empty()) list.push_back({m.name, m.version, on, std::move(m.settings)});
+    };
+    for (const std::string& folder : enabled) {
+        if (std::find(folders.begin(), folders.end(), folder) != folders.end()) add(folder, true);
+    }
+    for (const std::string& folder : folders) {
+        if (std::find(enabled.begin(), enabled.end(), folder) == enabled.end()) add(folder, false);
+    }
+    return list;
+}
+
+namespace {
 
 // "1.10" is newer than "1.9": the numbers between dots compare as numbers.
 bool newer_version(const std::string& a, const std::string& b) {
@@ -700,6 +746,19 @@ void mods_tab(SDL_Window* window) {
             ImGui::BeginDisabled(i + 1 == int(g_mods.size()));
             if (ImGui::ArrowButton("##down", ImGuiDir_Down)) move_from = i, move_to = i + 1;
             ImGui::EndDisabled();
+            if (!m.settings.empty()) {  // a shortcut to the mod's settings, while it is on
+                ImGui::SameLine();
+                ImGui::BeginDisabled(!m.enabled);
+                if (ImGui::Button(L("Settings", "Configurar"))) {
+                    ntr::ui::open_mod_settings(m.name);
+                    g_open_settings = true;
+                }
+                ImGui::EndDisabled();
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                    ImGui::SetTooltip("%s", m.enabled ? L("The mod's settings.", "As configurações do mod.")
+                                                      : L("Turn the mod on to change its settings.",
+                                                          "Ligue o mod para mudar as configurações dele."));
+            }
             ImGui::SameLine();
             if (ImGui::Button(L("Remove", "Remover"))) g_remove = i;
             if (ImGui::IsItemHovered()) {

@@ -89,6 +89,7 @@ struct Polygon {
     bool wbuffer = false;
     float ymin = 0, ymax = 0;
     const struct Texel* texels = nullptr;  // the decoded texture, while it renders (texture cache)
+    const struct TexText* text = nullptr;  // its HD letters (text_hd.cpp), when it has any
 };
 
 struct Light {
@@ -860,22 +861,100 @@ Texel fetch(uint32_t tex, uint32_t pal, int32_t s, int32_t t) {
     }
 }
 
+// HD text in a texture (16 and 256 colors): the tag of each texel the game drew a letter
+// into (with the letter's value there, as in gpu2d.cpp), and the texel each value of the HD
+// letter becomes there (0: what is under the letter, 1: fill, 2/3: outline): the nearest texel
+// of the same letter that has that value, or kKeepTexel (the game's texel stays) when none
+// near has it.
+constexpr uint32_t kTexTagValue = 0xC0, kTexTagShift = 6;
+constexpr uint8_t kKeepTexel = 0xFF;  // in Texel::a
+struct TexText {
+    std::vector<uint32_t> tag;
+    std::vector<Texel> color;  // 4 per texel
+};
+
 Texel sample(const Polygon& p, float fs, float ft) {
     uint32_t tex = p.tex;
     int32_t w = 8 << ((tex >> 20) & 7), h = 8 << ((tex >> 23) & 7);
-    int32_t s = int32_t(std::floor(fs)), t = int32_t(std::floor(ft));
-    auto wrap = [](int32_t v, int32_t size, bool repeat, bool flip) {
+    float ffs = std::floor(fs), fft = std::floor(ft);
+    int32_t s = int32_t(ffs), t = int32_t(fft);
+    bool mirror_s = false, mirror_t = false;
+    auto wrap = [](int32_t v, int32_t size, bool repeat, bool flip, bool* mirrored) {
         if (!repeat) return std::clamp(v, 0, size - 1);
         if (flip) {
             int32_t period = v & (size * 2 - 1);
+            *mirrored = period >= size;
             return period >= size ? size * 2 - 1 - period : period;
         }
         return v & (size - 1);
     };
-    s = wrap(s, w, tex & (1u << 16), tex & (1u << 18));
-    t = wrap(t, h, tex & (1u << 17), tex & (1u << 19));
+    s = wrap(s, w, tex & (1u << 16), tex & (1u << 18), &mirror_s);
+    t = wrap(t, h, tex & (1u << 17), tex & (1u << 19), &mirror_t);
+    if (p.text) {
+        size_t at = size_t(t) * w + s;
+        if (uint32_t tag = p.text->tag[at]) {
+            float fx = fs - ffs, fy = ft - fft;
+            int v = text_hd_value(tag, mirror_s ? 1.0f - fx : fx, mirror_t ? 1.0f - fy : fy);
+            if (v >= 0 && p.text->color[at * 4 + v].a != kKeepTexel) return p.text->color[at * 4 + v];
+        }
+    }
     if (p.texels) return p.texels[t * w + s];
     return fetch(tex, p.pal, s, t);
+}
+
+// The HD letters of a decoded texture, or false when it has none.
+bool texture_text(uint32_t tex, const Texel* texels, TexText& out) {
+    uint32_t format = (tex >> 26) & 7;
+    if (format != 3 && format != 4) return false;
+    int32_t w = 8 << ((tex >> 20) & 7), h = 8 << ((tex >> 23) & 7);
+    uint32_t base = (tex & 0xFFFF) << 3;
+    size_t n = size_t(w) * h;
+    out.tag.assign(n, 0);
+    bool any = false;
+    for (size_t i = 0; i < n; i++) {
+        const uint8_t* b = g_tex_view->ptr(base + uint32_t(format == 3 ? i / 2 : i));
+        int nibble = format == 3 ? int(i & 1) : 0;
+        uint32_t tag = text_tag(b, nibble);
+        if (!tag) continue;
+        uint32_t idx = b ? (format == 3 ? (*b >> (nibble * 4)) & 15 : *b) : 0;
+        const TextGlyph* g = text_glyph(tag);
+        int v = text_glyph_value(*g, tag);
+        if (v ? idx != g->colors[v] : idx == g->colors[1]) continue;  // not the letter any more
+        if (text_hd_value(tag, 0.5f, 0.5f) < 0) continue;            // no HD letter for it
+        out.tag[i] = tag | uint32_t(v) << kTexTagShift;
+        any = true;
+    }
+    if (!any) return false;
+    out.color.assign(n * 4, Texel{0, 0, 0, 0});
+    for (size_t i = 0; i < n; i++) {
+        uint32_t tag = out.tag[i];
+        if (!tag) continue;
+        uint32_t native = (tag & kTexTagValue) >> kTexTagShift;
+        int32_t s = int32_t(i % w), t = int32_t(i / w);
+        for (uint32_t v = 0; v < 4; v++) {
+            Texel& c = out.color[i * 4 + v];
+            if (v == native) {
+                c = texels[i];
+                continue;
+            }
+            bool found = false;  // the nearest texel of the same letter with that value
+            for (int d = 1; d <= 3 && !found; d++) {
+                for (int dy = -d; dy <= d && !found; dy++) {
+                    for (int dx = -d; dx <= d && !found; dx++) {
+                        int32_t ns = s + dx, nt = t + dy;
+                        if (ns < 0 || nt < 0 || ns >= w || nt >= h) continue;
+                        uint32_t nt_tag = out.tag[size_t(nt) * w + ns];
+                        if (nt_tag && (nt_tag >> 16) == (tag >> 16) && ((nt_tag & kTexTagValue) >> kTexTagShift) == v) {
+                            c = texels[size_t(nt) * w + ns];
+                            found = true;
+                        }
+                    }
+                }
+            }
+            if (!found) c.a = kKeepTexel;
+        }
+    }
+    return true;
 }
 
 // Texture cache: above native resolution each texel is sampled many times, so every
@@ -883,16 +962,20 @@ Texel sample(const Polygon& p, float fs, float ft) {
 // Keyed by the parameters that decide the texels (not the wrap/flip bits).
 constexpr int kTextureCacheScale = 2;
 std::unordered_map<uint64_t, std::vector<Texel>> g_textures;
+std::unordered_map<uint64_t, TexText> g_texture_text;  // the textures of this frame with HD letters
 
 void decode_textures(BandPool& pool) {
     struct Job {
         uint32_t tex, pal;
         Texel* out;
+        TexText* text;
     };
     std::vector<Job> jobs;
     std::unordered_map<uint64_t, std::vector<Texel>> used;
+    std::unordered_map<uint64_t, TexText> text;
     for (Polygon& p : g.drawn) {
         p.texels = nullptr;
+        p.text = nullptr;
         uint32_t format = (p.tex >> 26) & 7;
         if (format == 0) continue;
         uint64_t key = uint64_t(p.tex & 0x3FF0FFFF) << 32 | (format == 7 ? 0 : p.pal);
@@ -902,7 +985,7 @@ void decode_textures(BandPool& pool) {
             std::vector<Texel> texels = old != g_textures.end() ? std::move(old->second) : std::vector<Texel>();
             texels.resize(size_t(8 << ((p.tex >> 20) & 7)) * (8 << ((p.tex >> 23) & 7)));
             it = used.emplace(key, std::move(texels)).first;
-            jobs.push_back({p.tex, p.pal, it->second.data()});
+            jobs.push_back({p.tex, p.pal, it->second.data(), &text[key]});
         }
         p.texels = it->second.data();
     }
@@ -914,8 +997,16 @@ void decode_textures(BandPool& pool) {
             for (int32_t t = 0; t < h; t++) {
                 for (int32_t s = 0; s < w; s++) j.out[t * w + s] = fetch(j.tex, j.pal, s, t);
             }
+            if (!texture_text(j.tex, j.out, *j.text)) *j.text = TexText{};
         }
     });
+    for (Polygon& p : g.drawn) {
+        uint32_t format = (p.tex >> 26) & 7;
+        if (format == 0) continue;
+        auto it = text.find(uint64_t(p.tex & 0x3FF0FFFF) << 32 | (format == 7 ? 0 : p.pal));
+        if (it != text.end() && !it->second.tag.empty()) p.text = &it->second;
+    }
+    g_texture_text = std::move(text);
 }
 
 inline uint32_t to6(uint32_t c5) { return c5 ? c5 * 2 + 1 : 0; }
