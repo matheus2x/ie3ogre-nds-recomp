@@ -60,8 +60,8 @@ and the prefix says the kind.
 | Event script strings | `eve.pkb` | 19 (unused furigana) | 96 % → 100 % |
 | Extra events | `evet` 3250/3251 | 3,355 | 36 % |
 | Sub-events (phone calls, recruitment) | `evet` 3300 | 107,906 | 26 % |
-| Scout and battle routes | `evet` 3611/3613/3618 | 22,291 | 16 % |
-| Town NPCs | `evet` 36xx (the rest) | 54,072 | 2 % |
+| Scout and battle routes | `evet` 3611/3613/3618 | 22,291 | 16 % → 100 % (v1.18) |
+| Town NPCs | `evet` 36xx (the rest) | 54,072 | 2 % → 98 % (v1.18) |
 | **Player lines in matches** | `evet` 3700 | 250,338 | 0 % |
 | **Player profiles** | `logic/unitbase.STR` | 60,378 | 0 % |
 | Item descriptions | `logic/item.STR` | 22 (2 texts no item uses) | 0 % → 100 % (v1.2) |
@@ -69,7 +69,7 @@ and the prefix says the kind.
 | Tactics | `logic/tacticscmd.STR` | 0 | 0 % → 100 % (v1.2) |
 | Video gallery titles | `logic/movie_view_f.dat` | 0 | 0 % → 100 % (v1.4) |
 | Place names (maybe internal only, see phase 5) | `logic/fieldinf.dat` | 984 | 0 % |
-| Blog | `script/blogpost.dat`, `blogres.dat` | 3,010 | 13 % |
+| Blog | `script/blogpost.dat`, `blogres.dat` | 3,010 | 13 % → 88 % (v1.18) |
 | Other tables (moves, tournaments, conditions…) | `logic/*` | 4 (a password) | 96 % → 100 % (v1.5) |
 | Menus in the code | overlays | 456 (passwords, internal names and leftovers) | 28 % → 95 % (v1.4) |
 | Labels of who speaks in matches | `mch.pkb` | 0 | 0 % → 100 % (v1.4) |
@@ -82,8 +82,9 @@ that do not fit in the paired form. The ARM9 cannot be changed by a mod today (`
 to equal the retail one).
 
 Outside the count: the video subtitles (`movie/txt`), which the survey does not read. The opening song's lyrics
-are translated since v1.15; 9 subtitles of other scenes that CyberLife left in Japanese remain (`extract --only
-movie`). The fiction notice of a new game ("この作品はフィクションです…") is also in Japanese.
+are translated since v1.15, and the 9 subtitles of other scenes that CyberLife left in Japanese since v1.18. The
+fiction notice of a new game is a picture (`pic3d/script/atdn_02.pac_` and `mpd_m00.pac_`) that CyberLife already
+translated.
 
 ## Checklist
 
@@ -254,7 +255,14 @@ in `docs/development/DIARY.pt-BR.md`.
   o time do modo história?" of `ov042`, the equipment shop (`ov062`: Equip now?, Equip another?, Not enough
   points, "%s equipou %s", "Não dá para levar mais."), the missing grit (`ov065`), technique teaching (`ov068`)
   and the end of the match (`ov083`: Save and quit?, Quit without saving?). 60 strings and 48 names.
-- [ ] Record images, in CyberLife's English: "Records of play", "Ranking", "Finish".
+- [x] Record images (v1.18, `pic3d/menu_ranking`), which CyberLife left in English: the "Registros de jogo" strip
+  (プレイのきろく, "Records of play"), the "Artilheiros" and "Mais jogos" rankings (得点/出場回数ランキング, "Best
+  Kickers", "Most Participation", as in `ov031`) and the B buttons "Fim" (おわる) and "Sair" (もどる; "Voltar" does
+  not fit in 26 px). "Ranking" stays. Seen in the game (menu → Sistema → Recordes → A).
+- [x] The ranking's top-screen panel (v1.18, `pic2d/menu/SMStat.SPF_:MSUP_W01`), in CyberLife's English ("Ranking /
+  From football battles and matches"): "Ranking" and "Das minibatalhas e dos jogos" (※ミニバトル・しあいから集計).
+  Seen in the game. The same file keeps the English badges "MAX Ability", "Ability+Boost" and "Ability+Boost MAX"
+  (`MSUP_F13`, のうりょくMAX/＋α).
 - [x] Stats in the training messages and the match periods (v1.14). The messages with a stat name go through the
   furigana parser (in pairs), and the names come in by `%s` (or stuck together) from 7-byte slots in a literal
   pool, which cannot move: in pairs 3 letters fit. Abbreviations it is: CHU, FIS (without the capital "Í", which
@@ -268,24 +276,58 @@ in `docs/development/DIARY.pt-BR.md`.
   screen, which is an image), the stats of `ov110`, the technique list (`ov070`: "(By Kind)" in half width and
   "（ｎａｍｅ）" in full width in the same place), "Master" on the card (`ov000:0x19374`) and "Error", "Passing",
   "Downloaded Team" and "Cancel" of `ov131`.
-- [ ] CyberLife put "Corpo" instead of "Físico" (ボディ) in the Friends status images (top screen).
+- [x] Friends status on the top screen (v1.18, `pic2d/menu/msup_bg02.pac_`): CyberLife had "Corpo" instead of
+  "Físico" (ボディ). The eight labels redone over the original: Chute, Físico, Controle, Defesa, Veloc., Resist.,
+  Coragem, Experiência (the whole "Velocidade" and "Resistência" touched the values, which can have three digits).
+  Seen in the game (menu → Amigos).
+- [ ] The uniforms screen's sentence, in CyberLife's English: "Choose a strip." (`pic2d/menu/msup_bg05.pac_`).
 - [ ] Binder images (`pic2d/menu/SMBinder1`/`2`?), in CyberLife's English: Player Binder, Players, Role, Recruit
   mode, Where ?, Box, Coin color, Rivals, the groups (FF teams, Various teams, National teams, FFI teams 1/2, Alius
   School), By areas and the area names ("North Tokyo"). The name search button says "By names ROM HANG !": a
   CyberLife warning that the name search hangs. See whether it hangs in the port.
 - [x] Opening (`movie/txt/op00f.dat`): the song's lyrics, 22 subtitles (v1.15). Before it showed in Japanese, with
   the kanji as "?" (CyberLife's font does not have them).
-- [ ] The other video subtitles (`movie/txt`) in Japanese: 9, in 7 scenes (`a3m02a`, `a3m03a`, `a3m09a`, `a3m24a`,
-  `a3m35a`, `a3m38a`, `a3m84a`, `a3m85a`; `extract --only movie`)
-- [ ] New game fiction notice ("この作品はフィクションです…")
+- [x] The other video subtitles (`movie/txt`) in Japanese (v1.18): 9, in 8 scenes (`a3m02a`, `a3m03a`, `a3m09a`,
+  `a3m24a`, `a3m35a`, `a3m38a`, `a3m84a`, `a3m85a`). CyberLife merged and rewrote sentences in these scenes, so
+  each one was translated to fit its neighbours ("Vai começar a" / "cerimônia de abertura" / "do Futebol
+  Fronteira Internacional!"). The "Equipe Ogro!" of `a3m84a` became "Time Ogre!", as in the glossary. Not seen in
+  the game (the scenes are from the story; the test save's gallery does not unlock them)
+- [x] New game fiction notice ("この作品はフィクションです…"): it is the pictures `pic3d/script/atdn_02.pac_` ("Este jogo
+  é uma obra fictícia…") and `mpd_m00.pac_` ("Os treinamentos e as técnicas especiais…"), which CyberLife had
+  already translated. Seen in the game (2026-11-04, windowless session with a new save); the item was wrong
 
 ### Phase 3: optional content (about 4,200 unique, 101 thousand characters)
 
 - [ ] Sub-events 3300: 2,353, including the ~960 lines in English
-- [ ] Scout and battle routes, 3611/3613/3618 (299)
-- [ ] Town NPCs, 36xx (1,343)
-- [ ] Extra events 3250/3251 (157)
-- [ ] Blog, `blogpost.dat`/`blogres.dat` (96)
+- [x] Scout and battle routes, 3611/3613/3618 (v1.18): 1,326 places in Japanese (269 unique texts: the NPCs of the
+  schools and towns, the Premium Scout tips, the tournaments, the extra and premium routes, the extra routes'
+  machine, G-Hunter Hiro, the deer of Nara), 204 that CyberLife left in English (the hiring machine, the invitations
+  to the routes and tournaments, Chaos/Prominence/Diamond Dust) and 1 that only the base had. 超次元トーナメント =
+  Torneio Especial, エクストラ対戦ルート = rota extra de jogos, プレミアム対戦ルート = rota premium, 対戦トーナメント =
+  modo torneio, エキシビション対戦ルート = rota de exibição, イナズマ２ = IE2; in the scout tips, the tables' names
+  (Rinka, IQ, IC, Geibo, Daikko, Zagomel, Nyuui). Not seen in the game
+- [x] Town NPCs, 36xx (1,343): 3610 and 3615 done (v1.18: Raimon, the town of Inazuma and Japan's schools; 202
+  unique texts in 480 places, plus 46 that CyberLife left in English: the hiring machine and the schools'
+  invitations to the extra match) and 3617 (v1.18: the towns' children, elderly, shopkeepers, doctors and police;
+  433 unique in 654 places, plus 7 of CyberLife's in English in the shops), 3616 (v1.18: the NPCs of Liocott and
+  of Japan's towns, the cats, dogs and rabbits, Pyonta and his owner; 624 unique in 1,030 places, plus 1 in English)
+  and 3620 (17 messages). `extract` finds no more Japanese lines in 36xx; the survey still counts 996 characters
+  that are not lines `text.py` reads In the Premium
+  Scout tips, the names of the player list (Lika, Shimizu, Tsugunaga, Sugaya, Natsuyaki, Susumu, Saiji); 2→3
+  written "2-3" (Scout Premium 2-3, Itens Premium 2-3)
+- [x] Extra events 3250/3251 (v1.18): Fideo's past in Italy (with Rushe) and Rococó's (with Levin Murdoch and his
+  master), 170 lines in Japanese and 3 of CyberLife's that `check` did not accept (one with a broken "Í"). Names as
+  in the story's lines (Rushe, Blasi, Levin Murdoch, Rococó, Satoru); the narration, the announcer and the
+  notebook and 11-player messages reuse the translation of the same sentences in the story. Not seen in the game
+- [x] Blog (v1.18, `blogpost.dat`/`blogres.dat`): 30 titles, 30 posts and 30 comments, besides CyberLife's 15
+  (exported to `blogpost.json`/`blogres.json`). `text.py` got the converter (record tables in `script/`, the `BLOG`
+  form); see the technical rules.
+- [ ] The blog's 10 automatic posts (recruited by the scout or by hiring, who joined or left the team, player and
+  item downloads: title and text, 20 places) are still in Japanese. The texts have `%s` with the player's name, and
+  in the blog's form `%s` would become full-width; how the name goes into that parser is still unknown (look in the
+  game after recruiting someone with the scout).
+- [ ] Blog pictures: CyberLife's English header ("Get all the latest Inazuma Japan news here!", "Check back often
+  for new entries!", "Football Blog") and the Japanese labels (トピックス, まえへ, とじる, つぎへ).
 
 ### Phase 4: volume (about 6,500 unique, 117 thousand characters)
 
@@ -303,7 +345,7 @@ in `docs/development/DIARY.pt-BR.md`.
   is empty) and the item names (in plain text, as CyberLife left them)
 - [ ] Technique binder (`ov112`, `sp_binder`) and battle route conditions (`ov104`): the code uses the furigana
   parser (hence pairs), but the screens were not seen
-- [ ] The other 101 objectives (only simulated; six drawn in the game)
+- [ ] The other 217 objectives (only simulated; eight drawn in the game)
 - [ ] The other 57 gallery titles (locked in the test save)
 - [ ] Slot menu messages (v1.7): only in the preview. Breaking both copies of a slot in a copy of the save (bytes
   0x200 and 0x8200) only makes the slot show as empty, without a notice; what the game checks to show
@@ -376,9 +418,12 @@ in `docs/development/DIARY.pt-BR.md`.
 - [x] Place, label and objective kept in the save in another version (a save from before the mod, or made with the
   mod and loaded without it, with "????"): the port replaces them with the texts of the scripts in use when drawing
   the top strip (see `MODS.md`, "Text kept in the save"). The load screen's card only changes after saving again
-- [ ] Objectives of opcode 0x201C (e.g. "Converse com o pessoal!", event 32011600): `text.py` only recognizes those
-  of 0x201D, so these do not go through `objective_fit`. Seen in the game (2026-10-31, `foxperks-1.sav` on the
-  field): "com" shows as "cam", with letters overlapping at the sprite switch
+- [x] Objectives of opcodes 0x2019, 0x201A, 0x201C and 0x2024 (v1.18): `text.py` only recognized those of 0x201D, so
+  these did not go through `objective_fit` ("Converse com o pessoal!" showed as "Converse cam", with letters
+  overlapping). There are now 225 objectives, not 102. Of the 123 new ones, about 80 were in CyberLife's English
+  and the rest had spaces put by hand in the middle of words ("garo to"): translated from the Japanese, in the
+  style of the others, with the same text where the Japanese is the same. Seen in the game "Velhos amigos!
+  Converse com eles!" (32011600, 0x201C) and "Agora é a batalha final!" (32112400, 0x201A)
 
 ### Other languages and tools
 
@@ -393,9 +438,17 @@ in `docs/development/DIARY.pt-BR.md`.
   longest Japanese one of the same instruction (`ssd_rewrite`). The whole PT-BR text fits on the game
 - [ ] 112 `unitbase` places of CyberLife only in the base: 44 full-width profiles (they do not pass `check` as they
   are) and 68 names 1–7 px wider than the field's widest Japanese one
-- [ ] 224 CyberLife lines left only in the base: `check` does not accept them as they are (4 lines in a box, 1 byte
-  too many, leftover bytes; 52 subtitles and 36 overlay labels written another way). Review them and bring them into
-  the JSON (`translate.py todo pt-BR` lists them as "only in the base")
+- [x] The 130 story (3201–3211) and match (`mcht`) lines that only the base had (v1.18): 80 had 4 or 5 rows in a
+  box after the game's word wrap, others were 1–2 bytes over because of the spaces CyberLife left at the end, and
+  some used bytes only CyberLife's font draws (ligatures like "al" and "ar", Italian letters like "ì") or had junk at
+  the end. 100 were fixed without changing the text (no trailing spaces, rows redone by the game's wrap and a new box
+  with `\f` past 3 rows); 30 by hand, and where CyberLife wrote something else (Tsunami's line in `mcht`, "Nós
+  voltamos logo!" for 行ってくるな　フユッペ) the translation follows the Japanese.
+- [x] The 52 movie subtitles that only the base had (v1.18): they passed `check`, but `subtitled` would write them
+  with other bytes (0xCF after an accent, where CyberLife put the plain space). With the plain-space rule, 48 come
+  out identical to the base; the other 4 differ only in a lone "…", a full-width space and an accent at the end.
+- [ ] The other 148 only in the base: 36 overlay labels (`ov045`, `ov070`, `ov109`, `ov110`) and 112 places of
+  `unitbase` (see the item below). `translate.py todo pt-BR` lists them as "only in the base"
 - [ ] CyberLife's permission for their text and fonts to be in the repository as plain text and PNG (up to v1.15,
   only in patches)
 - [ ] Release: check that `mods/CyberLifePlus` is the result of `translate.py build pt-BR` (today a test only checks
@@ -484,8 +537,8 @@ and should follow this list when translated.
   description's at 0x1A). CyberLife reorganized `command.STR` (the file grew) and wrote the names in full width;
   `text.py` does the same (write plain ASCII: it converts) and, if the name does not fit in its place, writes it at
   the end of the file and changes the index. Maximum width: 124 px, that of CyberLife's widest name.
-- **Objectives** (the top screen's "Objetivo" strip and the save card): the strings of command 0x201D of the scripts
-  (`eve.pkb`). The game draws the text into 4 sprites of 64 px placed every 60 px, meant for 5 Japanese letters of
+- **Objectives** (the top screen's "Objetivo" strip and the save card): record 3 of commands 0x2019, 0x201A, 0x201C,
+  0x201D and 0x2024 of the scripts (`eve.pkb`). The game draws the text into 4 sprites of 64 px placed every 60 px, meant for 5 Japanese letters of
   12 px each. A letter only goes to the next sprite when it does not fit in the 64, so with narrow letters the last
   4 px of a sprite fall over the start of the next (it was the "t" over the "e" in "aconteceu"). The 1 px gap between
   letters comes before each letter, except the first of a sprite. `text.py` recognizes these objectives, simulates
@@ -508,7 +561,16 @@ and should follow this list when translated.
   0xDF spacer; the centring does not count that pixel, and with the spacer the lines came out shifted to the right
   and cut (seen in the game). That is why the subtitles are written as CyberLife did (`subtitled`): full-width
   letters (in the mod's `FONT12` they are proportional), the space as 0xCF paired with the next half-width letter,
-  and an accent paired with the next letter. Up to 248 px; quotes (`"`) have no full-width form in the font.
+  and an accent paired with the next letter (a space after an accent stays the plain space, `B2 20`, as CyberLife
+  did; seen in the opening in "dá certo", v1.18). Up to 248 px; quotes (`"`) have no full-width form in the font.
+- **Blog (`script/blogpost.dat`, `blogres.dat`):** fixed-size records with an 8-byte header. `blogpost.dat` has 45
+  posts of 0x24E bytes: title at +0x08 (66 bytes) and text at +0x4A (516 bytes); `blogres.dat`, 64 comments of
+  0x10A bytes, with the text at +0x08 (258 bytes; the empty ones are left out). The game goes through the furigana
+  parser, and CyberLife wrote it as in the subtitles; `text.py` writes it so (`BLOG`), with `\n` as the real
+  newline. A space after an accent stays a plain space (`B2 20`, as CyberLife): with 0xCF there, the post showed
+  but the comment under it vanished (seen in the game). Size measured on screen (Dados →
+  Blog → touch the post): title in one row of 200 px (the list of posts), text in 5 rows of 186 px (x = 63 to 251),
+  comment in 2 rows of 190 px (x = 2 to 193).
 - **Overlays (menus and messages in the code):** the recompiled code keeps the address of each string, so the
   translation stays in the same place and fits up to the original's NUL and 4-byte alignment (the following zeroed
   words may be data). `text.py` only takes strings the overlay has a pointer to and that are outside the code
@@ -566,10 +628,10 @@ and should follow this list when translated.
 - **Strings that grow in the scripts:** `apply` rewrites the script (`ssd_rewrite`): the record grows (4-aligned, up
   to 252 bytes), the following ones move and the header gets the new sizes (word 2 = file, word 5 = data); the code
   does not change, because the instruction finds its strings by the record's id. A string's limit is the longest
-  Japanese one of the same instruction (`script_rooms`): place (0x4037) 23 bytes, objective (0x201C/0x201D) 43. As
+  Japanese one of the same instruction (`script_rooms`): place (0x4037) 23 bytes, objective (0x2019–0x201D, 0x2024) 38 to 43. As
   CyberLife did in the 393 scripts it grew.
 - **Script strings (`eve.pkb`, `mch.pkb`):** each belongs to an instruction, and the command says what it is.
-  0x3019 shows who speaks ("Senhor K", "Hibiki"); 0x201D is the objective; 0x3070 only writes to the debug log
+  0x3019 shows who speaks ("Senhor K", "Hibiki"); 0x2019, 0x201A, 0x201C, 0x201D and 0x2024 give the objective; 0x3070 only writes to the debug log
   ("■試合終了", "PK GK左ボール左×") and `text.py` leaves those out, also in the survey.
 - `evet.pkb` and `mcht.pkb` are not compressed; `eve.pkb` and `mch.pkb` are LZ10 per entry, and changing an entry
   means recompressing it and redoing the `.pkh` offsets (16-aligned; field 0x1C of the `.pkh` is the largest stored
@@ -602,7 +664,7 @@ lists with the game's text inside `build/` (ignored by git), and a test (`tools/
 # 1. what is left in a group, with each line's room and the translated lines around it (in build/text/)
 python3 tools/text.py extract boej.pak mods/CyberLifePlus build/text --only 3300 \
     --translations translations/pt-BR
-#    (or: translate.py todo pt-BR --japanese --only 3300, which also lists the 224 lines only the base has)
+#    (or: translate.py todo pt-BR --japanese --only 3300, which also lists the 148 lines only the base has)
 
 # 2. how a name or term already shows in the finished lines (names and techniques: follow the dialogue, not the tables)
 python3 tools/text.py lookup build/text 綱海 ゴッドハンド
@@ -622,7 +684,7 @@ fonts, lines and images as patches, makes `mod.ini` from `language.json` and che
 covers the dialogue (`evet`, `mcht`) and the script strings (`eve`, `mch`), the items (`item.dat`, `item.STR`), the
 tactics (`tacticscmd.STR`), the player titles (`rpgtitle.STR`), the techniques (`command.dat`) and the video
 gallery (`movie_view_f.dat`), the video subtitles (`movie/txt`), the record tables (`RECORDS`), the overlay strings
-and the players (`unitbase*`). A table it does not cover (`BattleRouteTitle.dat`, blog…) needs a new converter in
+and the players (`unitbase*`). A table it does not cover (`BattleRouteTitle.dat`…) needs a new converter in
 `text.py` before being translated: a hand edit in the mod is lost on the next `build`.
 
 The text on images is in `translations/pt-BR/images.json` (format at the top of `tools/image.py`); to find the text

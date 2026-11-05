@@ -10,11 +10,11 @@ SSD (event scripts, eve.pkb): 0x20-byte header, the code (size in word 4) and th
 "@offset,length" points at a line of the evet entry with the same key. The code is
 instructions [u16 id][u16 size][u16 opcode][u8][u8 args]...; the strings of an instruction
 are the data records with its id (ssd_opcodes). Opcode 0x3070 only prints its string to the
-debug log; 0x3019 shows who speaks (record 2, "Senhor K"). Opcode 0x201D sets the objective shown on the top screen
-(its string is record 3); the game draws it into 4 sprites 64 pixels wide, placed every 60
-pixels (objective_layout): a letter goes to the next sprite only when it does not fit in the
-64, so the last 4 pixels of a sprite show over the start of the next one (Japanese, 5
-letters of 12 pixels per sprite, never reaches them).
+debug log; 0x3019 shows who speaks (record 2, "Senhor K"). Opcodes 0x2019, 0x201A, 0x201C,
+0x201D and 0x2024 set the objective shown on the top screen (its string is record 3); the game
+draws it into 4 sprites 64 pixels wide, placed every 60 pixels (objective_layout): a letter goes
+to the next sprite only when it does not fit in the 64, so the last 4 pixels of a sprite show
+over the start of the next one (Japanese, 5 letters of 12 pixels per sprite, never reaches them).
 
 Text lists (evet.pkb, mcht.pkb): records [u32 BE size][text, NUL, padding]. Each %nF in
 a line takes the next record as its furigana. A line may use the whole "@offset,length"
@@ -202,7 +202,7 @@ def wide(text: str) -> str:
     return "".join(chr(ord(c) + 0xFEE0) if "!" <= c <= "~" else "\u3000" if c == " " else c for c in text)
 
 
-WIDE, PAIRED, SUBTITLED = "wide", "paired", "subtitled"  # how a table writes Latin text (table_bytes)
+WIDE, PAIRED, SUBTITLED, BLOG = "wide", "paired", "subtitled", "blog"  # how a table writes Latin text (table_bytes)
 
 
 def paired(data: bytes) -> bytes:
@@ -233,23 +233,29 @@ def paired(data: bytes) -> bytes:
     return bytes(out)
 
 
-def subtitled(text: str) -> bytes:
+def subtitled(text: str, blog: bool = False) -> bytes:
     """A subtitle (movie/txt) for the furigana parser, without SPACER: the subtitles put a pixel
     after every letter, SPACER too, but centre the row without those pixels (seen in the game), so
     SPACER pushes a row to the right. As the fan translation did: a space is FAN_SPACE and takes
     the next letter, half-width, as its pair; an accent takes the next one-byte character; any other
-    letter goes full-width (two bytes)."""
+    letter goes full-width (two bytes). A space after an accent stays a plain space, as the fan
+    translation wrote it ("está no": B2 20): with FAN_SPACE there a blog post lost its comment (seen
+    in the game), and the subtitles come out as the fan translation's. The blog (blog=True) also
+    splits rows with real newlines; a subtitle has one row."""
     out = bytearray()
     cs = [FAN_SPACE if c == 0x20 else c for c in codes(encode(text))]
     i = 0
     while i < len(cs):
         c = cs[i]
         i += 1
-        if c > 0xFF:
+        if c == 0x0A and blog:  # a row of the blog's table strings (a subtitle has one row)
+            out.append(c)
+        elif c > 0xFF:
             out += bytes((c >> 8, c & 0xFF))
         elif c >= 0x80:  # a space or an accent: the next one-byte character is its pair
-            if i < len(cs) and cs[i] <= 0xFF:
-                out += bytes((c, cs[i]))
+            if i < len(cs) and cs[i] <= 0xFF and not (blog and cs[i] == 0x0A):
+                plain = cs[i] == FAN_SPACE and c != FAN_SPACE
+                out += bytes((c, 0x20 if plain else cs[i]))
                 i += 1
             else:
                 out += bytes((c, ACCENTS[SPACER]))
@@ -266,8 +272,8 @@ def table_bytes(text: str, form: str | None = None) -> bytes:
     text = text.replace("\\n", "\n")
     if form == WIDE:
         return encode(wide(text))
-    if form == SUBTITLED:
-        return subtitled(text)
+    if form in (SUBTITLED, BLOG):
+        return subtitled(text, form == BLOG)
     return paired(encode(text)) if form == PAIRED else encode(text)
 
 
@@ -362,13 +368,12 @@ def ssd_opcodes(d: bytes) -> dict[bytes, int]:
     return out
 
 
+OBJECTIVE_OPS = {0x2019, 0x201A, 0x201C, 0x201D, 0x2024}  # instructions whose record 3 is the objective
+
+
 def ssd_objectives(d: bytes) -> set[int]:
-    """Offsets of the records that hold an objective (record 3 of an instruction 0x201D)."""
-    if d[:4] != b"SSD\0":
-        return set()
-    code = d[0x20:0x20 + struct.unpack_from("<I", d, 16)[0]]
-    ids = {code[i:i + 2] for i in range(0, len(code) - 7, 4) if code[i + 4:i + 6] == b"\x1d\x20"
-           and struct.unpack_from("<H", code, i + 2)[0] >= 8}
+    """Offsets of the records that hold an objective (record 3 of an instruction of OBJECTIVE_OPS)."""
+    ids = {i for i, op in ssd_opcodes(d).items() if op in OBJECTIVE_OPS}
     return {at for at, _ in ssd_records(d) if d[at:at + 2] in ids and d[at + 2] == 3}
 
 
@@ -602,8 +607,8 @@ def problems(source: bytes, text: str, capacity: int, font: Font, table: tuple |
         for r in rows:
             form = table[2] if len(table) > 2 else None
             gap = table[3] if len(table) > 3 else 0 if form == PAIRED else 1
-            if form == SUBTITLED:  # what is drawn: full-width letters, FAN_SPACE
-                drawn = list(codes(subtitled(r)))
+            if form in (SUBTITLED, BLOG):  # what is drawn: full-width letters, FAN_SPACE
+                drawn = list(codes(subtitled(r, form == BLOG)))
                 px = sum(font.advance(c) - 1 + gap for c in drawn)
                 if missing := {decode(c.to_bytes(2 if c > 0xFF else 1, "big")) for c in drawn if c not in font.glyph}:
                     out.append(f"not in the font: {' '.join(sorted(missing))}")

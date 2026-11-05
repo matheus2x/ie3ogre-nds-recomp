@@ -195,7 +195,7 @@ Próximos passos da infraestrutura, em ordem:
 
 1. ~~Patches por arquivo~~ (feito: `.bps`, ver **Patches** em Estrutura).
 2. **Formatos documentados** e conversores em `tools/`: texto, fonte e imagem feitos (`text.py`, `font.py`,
-   `image.py`, juntos no `translate.py`); faltam algumas tabelas (`BattleRouteTitle.dat`, blog, técnicas) e vídeo.
+   `image.py`, juntos no `translate.py`); faltam algumas tabelas (`BattleRouteTitle.dat`, técnicas) e vídeo.
 3. **Pacotes de texturas** para o upscaling.
 4. **Editor de técnicas** gerando um mod.
 5. Mods que mudam comportamento (ganchos em C++ chamados pelo código recompilado), a longo prazo.
@@ -215,7 +215,7 @@ descomprimidos por uma thread em segundo plano, ou na hora, se o jogo pedir um a
 **Textos gravados no save.** O save guarda o lugar, o rótulo ("もくてき") e o objetivo da faixa de cima como texto
 pronto, não como índice. Por isso um save feito com uma tradução mostra "????" sem ela (a fonte original não tem
 aquelas letras), e um save de antes dela mostra japonês. Esses textos vêm das instruções dos scripts
-(`data_iz/script/eve.pkb`: lugar no opcode 0x4037, rótulo no 0x402F, objetivo no 0x201C e no 0x201D). Ao abrir,
+(`data_iz/script/eve.pkb`: lugar no opcode 0x4037, rótulo no 0x402F, objetivo no registro 3 dos 0x2019, 0x201A, 0x201C, 0x201D e 0x2024). Ao abrir,
 uma thread em segundo plano lê os scripts do jogo e os de todos os mods da pasta `mods/`, ligados ou não, e
 monta uma tabela que leva o texto de cada versão ao texto da mesma instrução nos scripts em uso. Quando a faixa
 de cima vai ser desenhada (gancho no `Font_DrawString`, `hle.cpp`), um texto que não é dos scripts em uso é

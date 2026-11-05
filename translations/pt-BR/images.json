@@ -1803,5 +1803,59 @@
     {"erase": [124, 62, 40, 12], "from": 125},
     {"text": "Não", "box": [121, 61, 46, 13], "colour": 14, "outline": 9}
   ]
+},
+"pic3d/menu_ranking": {
+  "RCDN_B02.PAC_": [
+    {"frames": [0], "erase": [18, 4, 26, 14], "ink": [15, 3]},
+    {"frames": [0], "text": "Fim", "box": [18, 4, 26, 14], "colour": 15, "shadow": 3},
+    {"frames": [1], "erase": [18, 4, 26, 13], "ink": [15, 13]},
+    {"frames": [1], "erase": [18, 17, 26, 1], "ink": [15]},
+    {"frames": [1], "text": "Fim", "box": [18, 4, 26, 14], "colour": 15, "shadow": 13}
+  ],
+  "RCDN_B03.PAC_": [
+    {"frames": [0], "erase": [17, 2, 26, 11], "ink": [15, 3]},
+    {"frames": [0], "text": "Sair", "box": [17, 1, 26, 12], "colour": 15, "shadow": 3},
+    {"frames": [1], "erase": [17, 2, 26, 11], "ink": [15, 13]},
+    {"frames": [1], "erase": [17, 13, 26, 1], "ink": [15]},
+    {"frames": [1], "text": "Sair", "box": [17, 1, 26, 12], "colour": 15, "shadow": 13}
+  ],
+  "RCDN_T01.PAC_": [
+    {"erase": [22, 2, 212, 12], "ink": [15, 3]},
+    {"text": "Registros de jogo", "box": [22, 1, 212, 14], "colour": 15, "shadow": 3}
+  ],
+  "RCDN_T02.PAC_": [
+    {"erase": [8, 2, 112, 12], "ink": [15, 3]},
+    {"text": "Artilheiros", "box": [8, 1, 112, 14], "colour": 15, "shadow": 3},
+    {"erase": [134, 2, 112, 12], "ink": [15, 3]},
+    {"text": "Mais jogos", "box": [134, 1, 112, 14], "colour": 15, "shadow": 3}
+  ]
+},
+"pic2d/menu/SMStat.SPF_": {
+  "MSUP_W01.PAC": [
+    {"erase": [98, 16, 62, 13], "ink": [13]},
+    {"text": "Ranking", "box": [99, 15, 62, 14], "colour": 13, "align": "left"},
+    {"erase": [56, 39, 144, 11], "ink": [13]},
+    {"text": "Das minibatalhas e dos jogos", "box": [12, 37, 232, 14], "colour": 13}
+  ]
+},
+"pic2d/menu/msup_bg02.pac_": {
+  "msup_bg02.pac_": [
+    {"erase": [29, 77, 50, 11], "ink": [15]},
+    {"text": "Chute", "box": [31, 76, 56, 12], "colour": 15, "align": "left"},
+    {"erase": [149, 76, 36, 12], "ink": [15]},
+    {"text": "Veloc.", "box": [151, 76, 56, 12], "colour": 15, "align": "left"},
+    {"erase": [29, 92, 50, 12], "ink": [15]},
+    {"text": "Físico", "box": [31, 92, 56, 12], "colour": 15, "align": "left"},
+    {"erase": [149, 93, 38, 11], "ink": [15]},
+    {"text": "Resist.", "box": [151, 92, 56, 12], "colour": 15, "align": "left"},
+    {"erase": [29, 109, 52, 11], "ink": [15]},
+    {"text": "Controle", "box": [31, 108, 56, 12], "colour": 15, "align": "left"},
+    {"erase": [149, 108, 28, 12], "ink": [15]},
+    {"text": "Coragem", "box": [151, 108, 56, 12], "colour": 15, "align": "left"},
+    {"erase": [29, 124, 50, 12], "ink": [15]},
+    {"text": "Defesa", "box": [31, 124, 56, 12], "colour": 15, "align": "left"},
+    {"erase": [129, 125, 42, 11], "ink": [15]},
+    {"text": "Experiência", "box": [129, 124, 76, 12], "colour": 15, "align": "left"}
+  ]
 }
 }

@@ -33,6 +33,19 @@ dá exatamente os arquivos do dump traduzido.
 
 ## Versões
 
+- **1.18:**
+  - os objetivos da tela de cima que vêm de outros comandos dos scripts (123, uns 80 ainda em inglês, como "This
+    is the final battle!"), em português e com as letras sem se sobrepor;
+  - as 9 legendas dos vídeos que ainda estavam em japonês;
+  - os eventos extras do passado do Fideo e do Rococó (173 falas);
+  - o blog (30 posts e 30 comentários);
+  - o scout e as rotas de batalha e todos os NPCs das cidades (Raimon, cidade de Inazuma, escolas do Japão e
+    Liocott), com as falas que ainda estavam em inglês;
+  - "Físico" no lugar de "Corpo" no status dos Amigos (tela de cima);
+  - as imagens da tela dos recordes e do ranking (Registros de jogo, Artilheiros, Mais jogos, os botões e o
+    quadro da tela de cima), que estavam em inglês;
+  - 130 falas da história e das partidas e 52 legendas que o CyberLife deixou fora do padrão (mais de 3 linhas na
+    caixa, letras que a fonte não desenha) e que agora estão nos textos do repositório.
 - **1.17:** só os links da documentação, que mudou de pasta. No jogo, nada muda.
 - **1.16:** o mod passa a ser gerado dos textos em `translations/pt-BR/` (no repositório), com o
   `tools/translate.py`. No jogo, o texto é o mesmo da 1.15.

@@ -3887,3 +3887,281 @@ outros quatro opcodes não passam pelo `objective_fit`.
 `sdk/` (o antigo apagado inteiro), `licenses/`, `achievements/` e os três `.txt`. `boej.ini`, saves, savestates, mods
 e cache mantidos (o mod continua o `mod-CyberLifePlus-1.15.zip`). `--prepare` depois de apagar `cache/build.stamp`:
 190 arquivos em 46,8 s, 53,8 s no total.
+
+## 2026-11-04 — Objetivos dos outros opcodes no `text.py` (mod 1.18)
+
+- Pedido: seguir com a próxima tarefa da tradução. Escolhida a pendência do passo anterior: o `ssd_objectives` do
+  `tools/ntr/text.py` só reconhecia os objetivos do 0x201D, então os de 0x2019, 0x201A, 0x201C e 0x2024 não
+  passavam pelo `objective_fit` (o "Converse cam" do `foxperks-1.sav`) e "This is the final battle!" seguia em
+  inglês.
+- **`text.py`:** `OBJECTIVE_OPS` com os cinco opcodes (os mesmos do `kObjectiveOps` do `mods.cpp`), e o
+  `ssd_objectives` passou a usar o `ssd_opcodes` em vez de procurar `1D 20` de 4 em 4 bytes. Os 102 objetivos de
+  antes continuam; são 225 agora.
+- **Os 123 novos:** com a mudança, o `check` recusava 29 (os espaços que o `objective_fit` põe também ocupam
+  bytes). Uns 80 estavam no inglês do CyberLife ("Training! Go to japan field!", "Remains evidences was robbed!") e
+  os outros em português com espaços postos à mão no meio das palavras para fugir da sobreposição ("Ajude o garo
+  to!", "Hibiki está es perando!"). Todos traduzidos do japonês no padrão dos objetivos do 0x201D (frases curtas,
+  "Vá ao albergue", "Estádio Hidra/Pavão/Tartaruga", "Fale com a Aki"), com a mesma tradução quando o japonês já
+  tinha uma (ex.: "Cadê o treinador? Pergunte à Aki!", "Treino! Vá ao rio!"). Cada um conferido com o
+  `objective_fit` e o limite de bytes do lugar (38 a 43); os que passavam do limite foram encurtados ("Um guia do Catar! Ao
+  alojamento!" nos lugares de 38 bytes).
+- Mod CyberLifePlus **1.18** (`language.json`, README nos dois idiomas), gerado com `translate.py build pt-BR
+  --install`: só mudam o `eve.pkb.bps` e o `eve.pkh.bps`.
+
+**Verificação:** `translate.py check pt-BR`: 21.426 linhas ok, 0 com problema; testes do `tools/tests` (68) ok.
+Sessões sem janela com o mod de dev (`clp-dev`) e cópias dos saves da pasta de teste do Windows: no
+`foxperks-1.sav` (campo da Raimon, quadro 3400) o objetivo é "Velhos amigos! Converse com eles!", sem letras
+sobrepostas; no `runmelonds-1.sav` (Alojamento 1P, quadro 2000) "Agora é a batalha final!" (o save guarda o texto
+em inglês e o port troca pelo do mod em uso). **Não vistos no jogo:** os outros 121.
+
+## 2026-11-04 — As 9 legendas de vídeo em japonês (ainda mod 1.18)
+
+- Pedido: mais uma tarefa da tradução, sem commit. Escolhidas as 9 legendas dos vídeos (`movie/txt`) que o
+  CyberLife deixou em japonês, em 8 cenas.
+- O CyberLife juntou e reescreveu frases nessas cenas (várias legendas dele ficaram vazias, e o texto de uma vai
+  para a seguinte), então cada tradução foi feita para fechar com as vizinhas, e não só com o japonês:
+  - `a3m02a:28`, depois de "Fim de jogo!": "Vitória com um hat-trick!";
+  - `a3m03a:2` (a Natsumi para o pai, entre "Sim, papai!" e "Tome cuidado!"): "Cuide de tudo por aqui.";
+  - `a3m09a:3`: "Não fique parado!";
+  - `a3m24a:0`, antes de "cerimônia de abertura" / "do Futebol Fronteira Internacional!": "Vai começar a";
+  - `a3m35a:2`/`3`, antes de "e o que ele significava pra você!": "Lembre-se" / "do futebol";
+  - `a3m38a:5`, depois de "Senhor Garshield, por favor,": "acompanhe-me até o seu lugar...";
+  - `a3m84a:1`: "Começar o combate!", e o `a3m84a:0` do CyberLife ("Equipe Ogro!") virou "Time Ogre!" (glossário);
+  - `a3m85a:5` (o Endo, assustado): "B-bisavô!?".
+- Entram na 1.18 (ainda sem commit): README do mod nos dois idiomas e o checklist do TRANSLATION-STATUS.
+
+**Verificação:** `translate.py check pt-BR`: 21.435 linhas ok, 0 com problema (cabem nos 248 px da legenda);
+`build --install` muda só os 8 `.bps` de `movie/txt`. **Não visto no jogo:** as cenas são da história e a
+galeria do save do teste não as libera.
+
+## 2026-11-04 — Aviso de ficção (já traduzido) e eventos extras 3250/3251 (ainda mod 1.18)
+
+- Pedido: mais uma tarefa da tradução, sem commit.
+- **Aviso de ficção:** o texto não está em nenhum arquivo, overlay nem no ARM9 (busca dos bytes em Shift-JIS, com
+  e sem LZ10). Numa sessão sem janela com um save novo (capturas a cada 100 quadros e o log `[fs] open file`), o
+  aviso aparece no quadro ~3400 já em português: são as imagens `pic3d/script/atdn_02.pac_` ("Este jogo é uma obra
+  fictícia…") e `mpd_m00.pac_` ("Os treinamentos e as técnicas especiais…"), que a base do CyberLife já muda. O item
+  do checklist estava errado; marcado como feito.
+- **Eventos extras 3250/3251** (fase 3), escolhidos no lugar: o passado do Fideo (cidade italiana, a Rushe cega na
+  ponte, a promessa da cirurgia, a despedida da Orfeu no aeroporto) e o do Rococó (o cachorro, o mestre, os
+  valentões, o Levin Murdoch, o aeroporto para Liocott). 170 falas em japonês (`translate.py todo pt-BR --japanese
+  --only 3250,3251`) e 3 do CyberLife que só existiam na base (o `check` as recusava; uma tinha "IMPOSS<a6>VEL").
+  - Nomes como na história: Rushe (o CyberLife a chama assim), Blasi, Levin Murdoch, Rococó, Satoru, "mestre".
+    お兄ちゃん virou o nome (Fideo) ou "moço" quando ela ainda não o conhece.
+  - 19 falas com o mesmo japonês de falas da história reaproveitam a tradução (a narração "E neste mesmo
+    momento…", o locutor das eliminatórias, a fala das Grandes Ondas, o caderno de técnicas, os 11 jogadores, "Sim,
+    mestre!" e o "Satoru Endo").
+- As 221 falas só na base (eram 224) no checklist; README do mod nos dois idiomas.
+
+**Verificação:** `translate.py check pt-BR`: 21.608 linhas ok, 0 com problema; o `todo` dos dois grupos ficou vazio;
+`build --install` ok (versão 1.18). **Não visto no jogo:** os eventos extras (não se sabe ainda como abri-los a
+partir do save do teste).
+
+## 2026-11-04 — Blog: conversor no `text.py` e 90 textos (ainda mod 1.18)
+
+- Pedido: mais uma tarefa da tradução, sem commit. Escolhido o blog (fase 3), que ainda não tinha conversor.
+- **Formato:** `script/blogpost.dat`, 45 registros de 0x24E bytes (8 de cabeçalho, título em +0x08 com 66 bytes,
+  texto em +0x4A com 516); `script/blogres.dat`, 64 comentários de 0x10A bytes (texto em +0x08, 258 bytes; 35 com
+  texto). O CyberLife traduziu 5 posts e 5 comentários escrevendo como nas legendas dos vídeos (letras em largura
+  cheia, o 0xCF em par com a letra seguinte), então o blog passa pelo leitor de furigana.
+- **`text.py`:** `blogpost.dat` e `blogres.dat` em `RECORDS`, com `RECORD_DIRS` (a pasta `script/`, via
+  `record_path`, também no `apply`) e `RECORD_BOXES` (linhas e largura por campo). Formato novo `BLOG` no
+  `ntr/text.py`: o `subtitled` com `blog=True` aceita `\n` (quebra de linha de verdade; a legenda continua com uma
+  linha só) e deixa um espaço comum depois de um acento. Teste novo em `test_subtitles`.
+- **Larguras:** as do japonês (título 154 px, texto 6 × 172, comentário 2 × 161) recusavam as frases do CyberLife.
+  Medidas na tela, numa sessão sem janela com o `foxperks-1.sav` (X, Dados, Blog, A, tocar no post em
+  `TOUCH@150,53`): texto de x = 63 a 251, em 5 linhas pautadas; comentário de x = 2 a 193; título na lista de
+  posts a partir de x = 30. Ficaram 1 × 200, 5 × 186 e 2 × 190; as 15 do CyberLife passam.
+- **O comentário que sumia:** no primeiro build, o post do CyberLife aparecia igual, mas o comentário embaixo
+  dele não. Os registros dos comentários não tinham mudado; nos posts, só mudava o espaço depois de um acento
+  ("está no": o CyberLife grava `B2 20`, o `subtitled` gravava `B2 CF`). Com o `B2 20` (só no `BLOG`, para não
+  mexer nas legendas já vistas no jogo), os 15 registros do CyberLife saem idênticos e a tela fica igual, byte a
+  byte, à de antes.
+- **Tradução:** os títulos e textos dos posts 15–44 (da Aki, da Haruna, da Fuyuka, da Natsumi e do Quatro Olhos,
+  pelo jeito de falar) e os 30 comentários que faltavam. Nomes do diálogo: Satoru (マモルくん), Aphrodi, Dragões de
+  Fogo, Hitomiko, Kurimatsu, Roniejo, Rococó, Cotarl, Time K, Time Garshield; 修練場 = centro de treinamento.
+  Ficaram de fora os 10 posts automáticos (scout, contratação, entradas e saídas, downloads), cujo texto tem `%s`
+  com o nome do jogador: no formato do blog o `%s` viraria largura cheia, e não se sabe como o nome entra ali.
+- Docs: checklist do TRANSLATION-STATUS (blog feito, os posts automáticos e as imagens do blog pendentes, a regra
+  técnica do blog, o levantamento em 88 %), as menções de "tabela sem conversor" no TRANSLATING e no MODS, nos
+  dois idiomas, e o README do mod.
+
+**Verificação:** `translate.py check pt-BR`: 21.713 linhas ok, 0 com problema; testes do `tools/tests` (68) ok;
+`text.py survey`: blog em 88,1 % (3.443 → 409 caracteres em japonês). No jogo, o post e o comentário do CyberLife
+iguais aos de antes (captura idêntica). **Não vistos no jogo:** os 90 textos novos (o save do teste só tem o
+primeiro post).
+
+## 2026-11-04 — Scout e rotas de batalha, 3611/3613/3618 (ainda mod 1.18)
+
+- Pedido: mais uma tarefa da tradução, sem commit. Escolhido o grupo seguinte da fase 3.
+- `translate.py todo pt-BR --japanese --only 3611,3613,3618`: 1.326 lugares em japonês, 269 textos únicos (o
+  mesmo japonês ganha a mesma tradução; "こんにちは。" sozinho está em 58 lugares). 30 já tinham tradução em outro
+  grupo (a máquina de busca do scout, o caderno de técnicas, os 11 jogadores) e foram reaproveitados, menos 4 que
+  estavam em inglês do CyberLife.
+- Os outros 239 traduzidos do japonês: os NPCs das escolas (Hakuren, Kasamino, Manyuuji e as lições dele, Yokato,
+  Oumihara), das cidades de Liocott e do Japão (o G-Hunter Hiro, os cervos de Nara, os torcedores rivais, o caçador
+  e o Velho da Montanha), as dicas do Scout Premium e de itens premium, os recepcionistas dos torneios, a máquina
+  das rotas extras (que fala em pedaços, "VAMOS. AO. JOGO. EXTRA!"), os robôs do Dr. Killard, os soldados do
+  Ogre, Chaos, Prominence e Diamond Dust. Termos: 超次元トーナメント = Torneio Especial (como na história),
+  エクストラ対戦ルート = rota extra de jogos, プレミアム対戦ルート = rota premium, 対戦トーナメント = modo torneio,
+  エキシビション対戦ルート = rota de exibição, イナズマ２ = IE2. Nas dicas de scout, os nomes como na lista de
+  jogadores: Rinka (キャン), IQ, IC, Geibo, Daikko, Zagomel, Nyuui (ミルク).
+- O `check` recusou 4: dois longos demais (encurtados) e dois com "º" ("1º andar"), que a fonte não tem
+  ("primeiro andar").
+- Depois, as falas que o CyberLife deixou em inglês nesses grupos: 37 textos únicos em 204 lugares (as 5 frases
+  da máquina de contratação, em 32 lugares cada; "Ask me if you want rebattle this battleroad!"; "We had most
+  training, Prominence."), traduzidas do japonês. "Mugen the Hand!" ficou (é a técnica). Mais a única fala que só
+  existia na base (o guia do torneio, número 2).
+
+**Verificação:** `translate.py check pt-BR`: 23.040 linhas ok, 0 com problema; o `todo` dos três grupos ficou
+vazio; `text.py survey`: scout e rotas de batalha em 100 % (antes 16 %). **Não visto no jogo:** nenhum desses NPCs.
+
+## 2026-11-04 — NPCs da Raimon e de Inazuma, 3610/3615 (ainda mod 1.18)
+
+- Pedido: mais uma tarefa da tradução, sem commit. Os NPCs das cidades (36xx) são 2.164 lugares (3616: 1.030,
+  3617: 654, 3615: 478, 3610: 2); feito o 3615 (Raimon, cidade de Inazuma, escolas do Japão) e o 3610.
+- 202 textos únicos em 478 lugares, mais as 2 mensagens do 3610 ("%s vai junto com você!", "%s entrou no
+  time!"). As 21 frases da máquina de busca do scout reaproveitam a tradução do passo anterior. O resto traduzido
+  do japonês: o fã-clube do Goenji (em cada jogo, "mas o Fideo também é um charme"), os clubes da Raimon (rádio,
+  jornal, tênis, dança limbo), as dicas de treino e de controle, as do Scout Premium e dos itens premium (nomes da
+  lista de jogadores: Lika, Shimizu, Tsugunaga, Sugaya, Natsuyaki do Berryz, Susumu, Saiji; Desalmado), a menina
+  dos trens, a docearia da vovó Oyone. 2→3 virou "2-3" (Scout Premium 2-3, Itens Premium 2-3). O trocadilho
+  デザート (deserto/sobremesa) dos Leões do Deserto ficou "Soa como uma sobremesa gostosa!" / "Deserto não é
+  sobremesa?".
+- O `check` recusou 4 com "º" ("100º chute", "1º ano"): por extenso.
+- Depois, 46 lugares que o CyberLife deixou em inglês nesses grupos: a máquina de contratação (35, com a tradução
+  dos 361x) e os convites das escolas para o jogo extra ("Play versius Kidokawa!"), traduzidos do japonês.
+
+**Verificação:** `translate.py check pt-BR`: 23.520 linhas ok, 0 com problema; o `todo` do 3610 e do 3615 ficou
+vazio; `text.py survey`: NPCs das cidades em 20,8 % (antes 2,3 %). **Não visto no jogo:** uma sessão sem janela
+andando para a direita no campo da Raimon (`foxperks-1.sav`) só chegou à Aki, que tem uma fala da história.
+
+## 2026-11-04 — NPCs das cidades, 3617 (ainda mod 1.18)
+
+- Pedido: mais uma tarefa da tradução, sem commit. Feito o 3617, o menor dos dois grupos de NPCs que faltavam.
+- 654 lugares, 433 textos únicos ("こんにちは。" em 103 lugares): os idosos (o casal "dupla" de Vento, a senhora que
+  fala dormindo), as crianças (do Super Onze, da Unicorn, do Roniejo, do Teres, o menino cujo pai esquece os jogos,
+  a história de medo do ícone MAX), os lojistas, a Emi do maid café, os médicos e enfermeiras (o Dr. Goenji), os
+  policiais ("Sou um policial sabichão!"), os da Imperial e as dicas de scout e itens (nomes da lista: Atarou,
+  Usuke, Genda, Sakuma, Zohan, Koma, Kido; técnicas em romaji: God Cannon, Death Zone 2, Bunshin Death Zone,
+  Bunshin Penguin). キーマン = craque (como no menu da partida), アラヤ監督 = treinador Araya, 影山総帥 =
+  comandante Kageyama. Entrou também a única fala do grupo que só existia na base (os 4 tipos de minibatalha).
+- O `check` recusou 12: 6 "じーっ…" e outras falas curtas sem espaço (11 bytes), três 1–2 bytes acima, e dois
+  "2º andar" (por extenso).
+- Depois, 7 falas de loja que o CyberLife deixou em inglês ("Welcome to the Big Shop!", "Thank you all!"),
+  traduzidas do japonês.
+
+**Verificação:** `translate.py check pt-BR`: 24.174 linhas ok, 0 com problema; o `todo` do 3617 ficou vazio;
+`text.py survey`: NPCs das cidades em 47,7 % (antes 20,8 %). **Não visto no jogo.**
+
+## 2026-11-04 — NPCs das cidades, 3616 e 3620 (ainda mod 1.18)
+
+- Pedido: mais uma tarefa da tradução, sem commit. Feito o 3616, o último e maior grupo de NPCs: 1.030 lugares,
+  624 textos únicos ("こんにちは。" em 64), traduzidos em três blocos e conferidos pela contagem de `%s`.
+- Conteúdo: os moradores das áreas de Liocott (EUA, Itália, Argentina, Brasil, Inglaterra, Cotarl) e das cidades
+  do Japão, os torcedores de cada seleção, o mordomo que leva à floresta e ao instituto, o pai que esquece os
+  ingressos, os gatos ("Miau. (...)") e cachorros que dão dicas, o coelho Pyonta e o velho que o procura, e as
+  dicas de scout e itens (Young Inazuma: Hibiki, Ukishima, Sombra; Torahama e Lika das Garotas de Osaka, o Quatro
+  Olhos mais velho, Reize, Zel, Nero, IQ, Kimu; técnicas em romaji como nas listas; がくしゅう/なまける pelos nomes
+  dos itens, Study e Slack off; 最後のノート = Caderno Definitivo, como na história).
+- O `check` recusou 2 falas com 6 e 5 linhas numa caixa (também longas no japonês): divididas com `\f`.
+- Mais 1 fala de loja em inglês do CyberLife ("Welcome! Go buy something.") e o 3620 (17 lugares: as mensagens de
+  caderno, de quem entra no time e "Ponha o Endo à frente do grupo."), que o `extract` mostrou depois.
+
+**Verificação:** `translate.py check pt-BR`: 25.221 linhas ok, 0 com problema; testes do `tools/tests` (68) ok;
+`text.py extract --only 3610…3622`: nenhuma fala em japonês; `survey`: NPCs das cidades em 98,2 % (antes 47,7 %;
+os 996 caracteres que sobram não são falas que o `text.py` leia). **Não visto no jogo.**
+
+## 2026-11-04 — As falas do CyberLife que só existiam na base, história e partidas (ainda mod 1.18)
+
+- Pedido: mais uma tarefa da tradução, sem commit. Escolhido o item das falas do CyberLife que o `check` não aceita
+  e que por isso só existiam na base (330 lugares em `translate.py todo pt-BR`): feitas as 130 de diálogo, da
+  história (3201–3211) e das partidas (`mcht`).
+- Um script com o `line_problems` mostrou o motivo de cada uma: 80 com 4 linhas e 3 com 5 numa caixa (a quebra
+  automática de 226 px empurrava uma linha para fora), as outras 1–2 bytes acima do lugar.
+- **Automático (100):** tirar os espaços e quebras que o CyberLife deixou no fim (é deles a maioria dos bytes a
+  mais) e, se ainda falhasse, refazer as linhas com a mesma quebra do jogo (`Font.wrap`), abrindo outra caixa com
+  `\f` quando passava de 3. O texto é o do CyberLife.
+- **À mão (30):** bytes que só a fonte do CyberLife desenha (`<d6>` = "al", `<de>` = "ar", `<bd>` = "ì", `<d8>` =
+  "È", `<a6>` = "Í", `<b5>`), lixo no fim (`<e0>`, `<b0>`…) e as que não cabiam. O italiano do Fideo e do Nakata
+  ficou ("Non é vero!", "Chi é questa ragazza?", com "é" no lugar do "è" que a fonte não tem). Onde o CyberLife
+  pôs outra fala, a tradução segue o japonês: 行ってくるな　フユッペ = "Já vou, Fuyuka. Descanse bastante." (era
+  "Nós voltamos logo!"), a torcida "ICHINOSE! ICHINOSE!", a fala do Tsunami no `mcht:34010006:3480` ("Hã! Ah...
+  perceberam?", onde o CyberLife tinha uma fala de outra cena, com 92 bytes para 23).
+- Os JSON ganharam as 130 chaves perto das vizinhas, sem reordenar o resto. Conferido também que as tarefas
+  anteriores desta sessão mantiveram a ordem das chaves (só mudaram os valores corrigidos).
+- Ficam 200 só na base: 52 legendas, 36 rótulos de overlays e 112 do `unitbase`.
+
+**Verificação:** `translate.py check pt-BR`: 25.351 linhas ok, 0 com problema; `todo pt-BR`: 200 lugares, nenhum da
+história nem do `mcht`. **Não visto no jogo.**
+
+## 2026-11-04 — As 52 legendas do CyberLife que só existiam na base (ainda mod 1.18)
+
+- Pedido: mais uma tarefa da tradução, sem commit. As 52 legendas de vídeo da lista "only in the base".
+- Todas passavam no `check`; o que as deixava fora do JSON é que o `subtitled` gravaria outros bytes. Comparando:
+  em 47, o espaço depois de uma letra acentuada ("Já está", "Você tá"): o CyberLife grava `B2 20` (o acento em
+  par com o espaço comum) e o `subtitled` gravava `B2 CF`. É a mesma diferença que fazia o comentário do blog
+  sumir.
+- **`ntr/text.py`:** o espaço comum depois de acento passou a valer também nas legendas, não só no `BLOG` (a
+  quebra de linha continua só no blog). Teste novo em `test_subtitles`. Com isso, 48 das 52 saem idênticas à
+  base; as 4 outras diferem só no "…" sozinho (o CyberLife usa o caractere de reticências, o `language.json`
+  troca por "..."), num espaço de largura cheia e num acento no fim de linha. Entraram no `movie.json` perto
+  das vizinhas.
+- Isso muda a abertura (`op00f`), que tinha duas legendas com acento e espaço ("nada dá certo", "tá bom") e foi
+  vista na v1.15 com o 0xCF. Sessão sem janela (`foxperks-1.sav`, START no 400, capturas a cada 100 quadros):
+  nos quadros 3700 e 4900 as duas aparecem certas, com o espaço no lugar.
+
+**Verificação:** `translate.py check pt-BR`: 25.403 linhas ok, 0 com problema; testes (68) ok; `todo pt-BR`: 148
+lugares (36 dos overlays e 112 do `unitbase`). No jogo, a abertura com as legendas novas. **Não vistas no jogo:**
+as legendas das outras cenas.
+
+## 2026-11-04 — Imagens dos recordes (ainda mod 1.18)
+
+- Pedido: mais uma tarefa da fase 2, sem commit. Escolhidas as imagens dos recordes, que o CyberLife deixou em
+  inglês (`pic3d/menu_ranking`: "Records of play", "Best Kickers", "Most Participation", "Finish", "Back").
+- Os índices da paleta, lidos dos PNG do `export --retail` com um leitor de PNG indexado no diretório da sessão:
+  texto branco (15) com sombra 3 nos botões escuros e nas faixas; nos botões claros (o 2º quadro), sombra 13.
+- `images.json`, `pic3d/menu_ranking`: `RCDN_T01` "Registros de jogo"; `RCDN_T02` "Artilheiros" e "Mais jogos"
+  (como os rótulos do `ov031`); `RCDN_B02` "Fim"; `RCDN_B03` "Sair" ("Voltar" passava dos 26 px do botão, e os
+  outros botões もどる do mod já dizem "Sair"). "Ranking" (`RCDN_B01`) ficou como o CyberLife deixou.
+- Na primeira prévia (`image.py check --png`), os botões claros ficaram com um traço escuro embaixo do texto: nas
+  últimas linhas o fundo é a mesma cor 13 da sombra, e o apagador com `ink: [15, 13]` trocou o fundo pela cor da
+  borda. Essas linhas ganharam um `erase` à parte, só com `ink: [15]`. O bloco novo foi acrescentado no fim do
+  `images.json`, sem mexer no resto.
+
+**Verificação:** `image.py check`: 188 imagens, 0 problema; `build --install` muda só o `menu_ranking.SPD/SPL`. No
+jogo (`foxperks-1.sav`, X, 4× baixo, A, A e A): a tela dos recordes com "Registros de jogo", "Ranking" e "Fim", e o
+ranking com "Artilheiros", "Mais jogos" e "Sair". **Pendente:** o quadro da tela de cima do ranking, em inglês
+("From football battles and matches").
+
+## 2026-11-04 — Quadro da tela de cima do ranking (ainda mod 1.18)
+
+- Pedido: mais uma tarefa, sem commit. A pendência do passo anterior: o quadro em inglês do CyberLife na tela de
+  cima do ranking ("Ranking / From football battles and matches").
+- O log `[fs] open file` ao entrar no ranking mostrou o `pic2d/menu/SMStat.SPF_`; o quadro é o `MSUP_W01`
+  (ランキング / ※ミニバトル・しあいから集計). No original, as duas linhas são da cor 13, sem sombra, sobre o emblema
+  da bola (cores 1 e 2); as áreas medidas nos pixels: x 99–157, y 17–27 e x 58–196, y 40–48.
+- `images.json`, bloco novo no fim: apagar a cor 13 nas duas áreas e escrever "Ranking" (alinhado à esquerda em x
+  = 99, logo depois da coroa, como o original) e "Das minibatalhas e dos jogos".
+- No mesmo arquivo ficaram em inglês os selos `MSUP_F13` ("MAX Ability", "Ability+Boost"): anotados no checklist.
+
+**Verificação:** `image.py check`: 189 imagens, 0 problema; `build --install` muda só o `SMStat.SPF_`. No jogo
+(recordes → A), a tela de cima com "Ranking" e "Das minibatalhas e dos jogos".
+
+## 2026-11-04 — "Físico" no status dos Amigos (ainda mod 1.18)
+
+- Pedido: mais uma tarefa da fase 2, sem commit. O item do "Corpo" no lugar de "Físico" (ボディ) no status dos
+  Amigos, na tela de cima.
+- Pela tela dos Amigos no jogo e o log `[fs] open file`, os rótulos estão desenhados no fundo
+  `pic2d/menu/msup_bg02.pac_`, uma imagem que o CyberLife trocou inteira (sem entrada no `images.json`). Como as
+  edições partem do original, os oito rótulos foram refeitos sobre o japonês: texto da cor 15, sem contorno,
+  alinhado à esquerda (x = 31 e 151, 2 px depois de onde o japonês começa, para não encostar nos ícones; a
+  "Experiência" em x = 129), um a cada 16 px.
+- Primeiro com os nomes inteiros do glossário; no jogo, "Resistência" encostou no valor (e "Velocidade" encostaria
+  com três algarismos). Ficaram "Veloc." e "Resist.", como o CyberLife.
+- Os outros fundos `msup_bg*` não têm esses rótulos; o `msup_bg05` (uniformes) tem "Choose a strip." em inglês,
+  anotado no checklist.
+
+**Verificação:** `image.py check` sem problemas; `build --install` muda só o `msup_bg02.pac_`. No jogo (menu →
+Amigos), a tela de cima com Chute, Físico, Controle, Defesa, Veloc., Resist., Coragem e Experiência, sem encostar
+nos ícones nem nos valores.

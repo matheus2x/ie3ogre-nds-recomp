@@ -164,7 +164,7 @@ in Japanese. `todo` uses PT-BR as the reference and finds each of its places in 
 strings; `todo` converts the positions). Measured with the whole PT-BR text, player names included: all 21,426
 lines fit. What PT-BR only has because of the base stays in Japanese until translated here: the images CyberLife
 redrew (translate them through `images.json` or PNG) and the tables `text.py` does not read yet (battle route
-titles, blog).
+titles).
 
 **Duplicating PT-BR** (`--duplicate pt-BR`), the mod is built on the **CyberLife base**
 (`translations/bases/CyberLife/`, the CyberLife group's translation as it came out of their dump), like PT-BR. It
@@ -191,5 +191,5 @@ example) can go along: with `--install`, whatever is already in `mods/<mod>/` be
 - **Text in the game's code (ARM9)**: 15 texts; a mod cannot change the ARM9.
 - **Script strings longer than the longest Japanese of the same instruction**: the game may copy them into a
   fixed-size field, so `check` does not allow it.
-- **Tables without a converter**: battle route titles (`BattleRouteTitle.dat`), blog.
+- **Tables without a converter**: battle route titles (`BattleRouteTitle.dat`).
 - **Two-byte letters in `charset`** (large alphabets), above.

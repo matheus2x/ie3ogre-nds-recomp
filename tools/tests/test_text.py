@@ -15,7 +15,7 @@ from ntr.text import (BOX_ROWS, Font, JAPANESE, PAIRED, TextError, WIDE, decode,
                       problems, read_pack, SPACER,
                       DEBUG_PRINT, objective_cost, objective_fit, objective_layout, scramble, ssd_opcodes,
                       ssd_records, ssd_refs, ssd_rewrite, ssd_string,
-                      str_strings, SUBTITLED, subtitle_file, subtitle_records, subtitled, table_bytes,
+                      str_strings, SUBTITLED, BLOG, subtitle_file, subtitle_records, subtitled, table_bytes,
                       unscramble, wide, write_pack)
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -138,8 +138,14 @@ class TableTest(unittest.TestCase):
         self.assertEqual(subtitled("ão!"), encode("ão") + wide("!").encode("cp932"))
         self.assertEqual(subtitled("é"), encode("é" + SPACER))
         self.assertEqual(table_bytes("a", SUBTITLED), wide("a").encode("cp932"))
+        self.assertEqual(subtitled("á b"), encode("á ") + wide("b").encode("cp932"))  # as the fan translation
         with self.assertRaises(TextError):
             subtitled("a\nb")  # one row
+        # the blog: rows, and a plain space after an accent, as the fan translation wrote them
+        self.assertEqual(table_bytes("á b\\nc", BLOG),
+                         encode("á ") + wide("b").encode("cp932") + b"\n" + wide("c").encode("cp932"))
+        self.assertEqual(subtitled("a b", True), subtitled("a b"))
+        self.assertEqual(subtitled("é\na", True), encode("é" + SPACER) + b"\n" + wide("a").encode("cp932"))
         # records [first frame][last frame][size][text, NUL, padding to 4], then 0xFFFFFFFF
         rec = lambda a, b, t: struct.pack("<III", a, b, len(t)) + t  # noqa: E731
         d = rec(1, 2, b"ab\0\0") + rec(3, 4, b"cdefg\0\0\0") + b"\xff" * 4

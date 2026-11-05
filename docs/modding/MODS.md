@@ -199,7 +199,7 @@ Next infrastructure steps, in order:
 
 1. ~~Per-file patches~~ (done: `.bps`, see **Patches** in Layout).
 2. **Documented formats** and converters in `tools/`: text, font and image done (`text.py`, `font.py`, `image.py`,
-   together in `translate.py`); some tables (`BattleRouteTitle.dat`, blog, techniques) and video are missing.
+   together in `translate.py`); some tables (`BattleRouteTitle.dat`, techniques) and video are missing.
 3. **Texture packs** for upscaling.
 4. **Technique editor** producing a mod.
 5. Mods that change behaviour (C++ hooks called by the recompiled code), in the long run.
@@ -219,7 +219,7 @@ the game asks for one before it.
 **Text kept in the save.** The save keeps the place, the label ("もくてき") and the objective of the top strip as
 ready text, not as an index. That is why a save made with a translation shows "????" without it (the original font
 does not have those letters), and a save from before it shows Japanese. This text comes from the scripts'
-instructions (`data_iz/script/eve.pkb`: place in opcode 0x4037, label in 0x402F, objective in 0x201C and 0x201D). On
+instructions (`data_iz/script/eve.pkb`: place in opcode 0x4037, label in 0x402F, objective in record 3 of 0x2019, 0x201A, 0x201C, 0x201D and 0x2024). On
 opening, a background thread reads the game's scripts and those of every mod in the `mods/` folder, on or not, and
 builds a table that takes the text of each version to the text of the same instruction in the scripts in use. When
 the top strip is about to be drawn (a hook on `Font_DrawString`, `hle.cpp`), a text that is not from the scripts in

@@ -162,7 +162,7 @@ japonês. O `todo` usa o PT-BR como referência e acha cada lugar dele no jogo (
 de lugar; o `todo` converte as posições). Medido com o texto inteiro do PT-BR, nomes dos jogadores incluídos:
 as 21.426 falas cabem. O que o PT-BR só tem por causa da base fica em japonês até ser traduzido aqui: as imagens
 que o CyberLife redesenhou (traduza-as pelo `images.json` ou por PNG) e as tabelas que o `text.py` ainda não lê
-(títulos das rotas de batalha, blog).
+(títulos das rotas de batalha).
 
 **Duplicando o PT-BR** (`--duplicate pt-BR`), o mod é gerado sobre a **base CyberLife**
 (`translations/bases/CyberLife/`, a tradução do grupo CyberLife como saiu do dump deles), como o PT-BR. Ela traz o
@@ -189,5 +189,5 @@ dado do jogo vai junto. O launcher mostra o mod como "Tradução (es)". Um arqui
 - **Texto no código do jogo (ARM9)**: 15 textos; um mod não pode mudar o ARM9.
 - **Strings dos scripts maiores que a maior japonesa da mesma instrução**: o jogo pode copiá-las para um campo
   de tamanho fixo, então o `check` não deixa.
-- **Tabelas sem conversor**: títulos das rotas de batalha (`BattleRouteTitle.dat`), blog.
+- **Tabelas sem conversor**: títulos das rotas de batalha (`BattleRouteTitle.dat`).
 - **Letras de 2 bytes no `charset`** (alfabetos grandes), acima.

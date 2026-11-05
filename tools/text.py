@@ -34,7 +34,7 @@ import language  # noqa: E402
 import mod as modtool  # noqa: E402
 from ntr import bps, lz10  # noqa: E402
 from ntr.text import (COMMAND_DESC, COMMAND_NAME, COMMAND_SIZE, FURIGANA, ITEM_NAME, ITEM_SIZE, JAPANESE,  # noqa: E402
-                      MOVIE_SIZE, MOVIE_TITLE, MOVIE_WIDTH, PAIRED, SPACER, SUBTITLED, WIDE,
+                      MOVIE_SIZE, MOVIE_TITLE, MOVIE_WIDTH, PAIRED, SPACER, SUBTITLED, BLOG, WIDE,
                       OBJECTIVE_PARTS, STR_READ, STR_STEP, fit_font, objective_fit, ssd_objectives, Font, TextError, codes, decode, encode, japanese_count, lines, problems, read_pack, scramble, ssd_records,
                       ssd_refs, ssd_rewrite, ssd_string, str_strings, subtitle_file, subtitle_records, table_bytes,
                       unscramble, write_pack,
@@ -63,9 +63,18 @@ RECORDS = {**{f"PracticeGame{n}F.dat": (0x4A, ((0x0C, 22), (0x26, 22)), None) fo
            **{f"TournamentName{n:02d}.dat": (0x14, ((0x00, 19),), None) for n in range(1, 17)},
            # the players: full name, the name the lists show and its reading (in kana in the game)
            "unitbase.dat": (0x68, ((0x00, 28), (0x1C, 16), (0x2C, 32)), None),
-           "unitbase_npc.dat": (0x50, ((0x00, 16), (0x10, 16), (0x20, 32)), None)}
+           "unitbase_npc.dat": (0x50, ((0x00, 16), (0x10, 16), (0x20, 32)), None),
+           # the blog (script/): an 8-byte header, the post's title and body; the comments under a
+           # post. The fan translation wrote them for the furigana parser, as the subtitles (BLOG)
+           "blogpost.dat": (0x24E, ((0x08, 0x42), (0x4A, 0x204)), BLOG),
+           "blogres.dat": (0x10A, ((0x08, 0x102),), BLOG)}
+# the folder of a record table, when it is not logic/
+RECORD_DIRS = {"blogpost.dat": SCRIPT, "blogres.dat": SCRIPT}
+# rows and pixels of a field, measured in the game when the originals' are narrower than the box:
+# the blog's title (the list of posts, from x = 30), body (x = 63 to 251) and comment (x = 2 to 193)
+RECORD_BOXES = {("blogpost.dat", 0x08): (1, 200), ("blogpost.dat", 0x4A): (5, 186), ("blogres.dat", 0x08): (2, 190)}
 # record tables whose fields are measured each against its own originals (not against all of them)
-FIELD_RULES = {"unitbase.dat", "unitbase_npc.dat"}
+FIELD_RULES = {"unitbase.dat", "unitbase_npc.dat", "blogpost.dat"}
 # pixels the game draws after the field of a record table (the translation puts "Copa" first)
 RECORD_AFTER = {f"TournamentName{n:02d}.dat": 36 for n in range(1, 17)}
 # item.dat brings item.STR (names, then descriptions), command.dat the descriptions of command.STR;
@@ -242,6 +251,11 @@ def script_rooms(game: Game, name: str) -> dict[int, int]:
     return out
 
 
+def record_path(name: str) -> str:
+    """The path of a table of data_iz/logic, or of a record table elsewhere (RECORD_DIRS)."""
+    return f"{RECORD_DIRS.get(name, LOGIC)}/{name}"
+
+
 def script_slots(game: Game, name: str):
     """Strings of the scripts' data, but the "@offset,length" pointers and the debug prints."""
     retail, modded = game.pack(name, False), game.pack(name, True)
@@ -322,10 +336,10 @@ def table_slots(game: Game, name: str):
         return
     if name in RECORDS:
         size, fields, form = RECORDS[name]
-        dr, dc = game.retail(f"{LOGIC}/{name}"), game.modded(f"{LOGIC}/{name}")
+        dr, dc = game.retail(record_path(name)), game.modded(record_path(name))
         recs = range(len(dr) // size)
         # the rows and width of the fields in all the tables of the same kind (PracticeGame0F–9F)
-        kind = [game.retail(f"{LOGIC}/{n}") for n, spec in RECORDS.items() if spec == RECORDS[name]]
+        kind = [game.retail(record_path(n)) for n, spec in RECORDS.items() if spec == RECORDS[name]]
         rules = table_rules(font, [text_at(d, at) for d in kind for f, _ in fields
                                    for at in range(f, len(d), size) if japanese_count(text_at(d, at))])
         rules = (rules[0], rules[1] + RECORD_AFTER.get(name, 0))
@@ -334,6 +348,8 @@ def table_slots(game: Game, name: str):
             if name in FIELD_RULES:
                 rules = table_rules(font, [text_at(d, at) for d in kind for at in range(field, len(d), size)
                                            if japanese_count(text_at(d, at))]) + ((form, 1) if form else ())
+            if (name, field) in RECORD_BOXES:
+                rules = RECORD_BOXES[name, field] + rules[2:]
             # the original's Shift-JIS strings (a name of full-width letters too), not the "0" of an empty field
             places = [k * size + field for k in recs if max(text_at(dr, k * size + field), default=0) >= 0x81]
             if not places:
@@ -853,7 +869,7 @@ def as_written(s: Slot, raw: bytes) -> str:
     if s.group == "movie" or s.table or s.file.startswith("ov"):
         t = visible(raw)
         form = s.table[2] if s.table and len(s.table) > 2 else SUBTITLED if s.group == "movie" else None
-        return t.translate(UNWIDE) if form in (WIDE, SUBTITLED) else t
+        return t.translate(UNWIDE) if form in (WIDE, SUBTITLED, BLOG) else t
     return decode(raw).replace(SPACER, "")
 
 
@@ -1004,7 +1020,7 @@ def apply(image: Path, mod: Path, folder: Path) -> int:
             subtitles[f"{MOVIE_TXT}/{s.file}"][s.offset] = table_bytes(text, SUBTITLED)
             continue
         if s.table:
-            rel = f"{LOGIC}/{s.file}"
+            rel = record_path(s.file)
             d = tables.setdefault(rel, bytearray(game.modded(rel)))
             data = table_bytes(text, s.table[2] if len(s.table) > 2 else None) + b"\0"
             if s.file == "command.dat":

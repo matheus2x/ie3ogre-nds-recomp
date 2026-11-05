@@ -33,6 +33,19 @@ gives exactly the files of the translated dump.
 
 ## Versions
 
+- **1.18:**
+  - the top screen's objectives that come from other script commands (123, about 80 still in English, like "This
+    is the final battle!"), in Portuguese and with the letters not overlapping;
+  - the 9 movie subtitles that were still in Japanese;
+  - the extra events of Fideo's and Rococó's past (173 lines);
+  - the blog (30 posts and 30 comments);
+  - the scout and battle routes and all the town NPCs (Raimon, the town of Inazuma, Japan's schools and Liocott),
+    with the lines that were still in English;
+  - "Físico" instead of "Corpo" in the Friends status (top screen);
+  - the pictures of the records and ranking screens (Registros de jogo, Artilheiros, Mais jogos, the buttons and
+    the top-screen panel), which were in English;
+  - 130 story and match lines and 52 subtitles that CyberLife left out of the standard (more than 3 rows in the
+    box, letters the font does not draw), now in the repository's texts.
 - **1.17:** only the documentation links, which moved to other folders. Nothing changes in the game.
 - **1.16:** the mod is now made from the text in `translations/pt-BR/` (in the repository), with
   `tools/translate.py`. In the game, the text is the same as in 1.15.
