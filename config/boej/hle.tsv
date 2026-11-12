@@ -48,3 +48,5 @@ MIi_CpuClear32	tags_clear_sdk	HD text: a clear takes the tags away
 MIi_CpuClearFast	tags_clear_sdk	HD text: a clear takes the tags away
 MI_CpuFill8	tags_clear_c	HD text: a fill takes the tags away
 memset	tags_clear_c	HD text: a fill takes the tags away
+func_ov016_020f2184	ruby_window_a	text windows with furigana: a text with no reading starts 8 rows higher
+func_ov016_020f2304	ruby_window_b	text windows with furigana: a text with no reading starts 8 rows higher

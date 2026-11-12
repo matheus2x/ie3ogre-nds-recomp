@@ -179,7 +179,13 @@ class TableTest(unittest.TestCase):
         struct.pack_into("<HH", dat, 0x24 + 0x18, 3, 4)  # record 1: name at index 3, description at 4
         files = {"data_iz/logic/command.dat": bytes(dat)}
         self.assertEqual(texttool.shown(files.get, "data_iz/logic/command.STR"), {0, 96, 128})
-        self.assertIsNone(texttool.shown(files.get, "data_iz/logic/item.STR"))
+        self.assertIsNone(texttool.shown(files.get, "data_iz/logic/item.STR"))  # no item.dat
+        # a profile that moved to the end of unitbase.STR leaves its Japanese unread
+        units = bytearray(0x68 * 2)
+        struct.pack_into("<H", units, 0x66, 1)
+        struct.pack_into("<H", units, 0x68 + 0x66, 7)
+        files["data_iz/logic/unitbase.dat"] = bytes(units)
+        self.assertEqual(texttool.shown(files.get, "data_iz/logic/unitbase.STR"), {32, 224})
 
     def test_record_tables(self):
         self.assertRegex("PracticeGame3F.dat:1518", texttool.ID.pattern)

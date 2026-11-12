@@ -14,16 +14,16 @@ caracteres japoneses (kana + kanji) e deixa de fora:
 
 ## Números
 
-| | v1.0 | v1.1 | v1.2 | v1.4 | v1.5–v1.10 |
-|---|---:|---:|---:|---:|---:|
-| Tudo, com repetições (o que o jogador lê; 782 mil caracteres no original) | 29 % | 32 % | 34 % | 35,2 % | **35,4 %** |
-| Textos únicos (o trabalho que falta; 429 mil) | 39 % | 44 % | 47 % | 48,3 % | **48,4 %** |
-| História, capítulos 1–11, aberturas e capítulo 12 | 91 % | 100 % | 100 % | 100 % | 100 % |
-| Mensagens de campo/lojas/máquina de busca (35xx) e `mcht.pkb` | 41 % | 100 % | 100 % | 100 % | 100 % |
-| Descrições dos itens e táticas | 0 % | 0 % | 100 % | 100 % | 100 % |
-| Títulos da galeria de vídeos | 0 % | 0 % | 0 % | 100 % | 100 % |
-| Menus no código (overlays) | 28 % | 28 % | 28 % | 95 % | 95 % |
-| Outras tabelas (objetivos das minipartidas, prêmios, condições…) | 96 % | 96 % | 96 % | 96 % | **100 %** |
+| | v1.0 | v1.1 | v1.2 | v1.4 | v1.5–v1.10 | v1.19 | v1.20 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Tudo, com repetições (o que o jogador lê; 782 mil caracteres no original) | 29 % | 32 % | 34 % | 35,2 % | 35,4 % | 46,0 % | **99,4 %** |
+| Textos únicos (o trabalho que falta; 429 mil) | 39 % | 44 % | 47 % | 48,3 % | 48,4 % | 59,5 % | **99,4 %** |
+| História, capítulos 1–11, aberturas e capítulo 12 | 91 % | 100 % | 100 % | 100 % | 100 % | 100 % | 100 % |
+| Mensagens de campo/lojas/máquina de busca (35xx) e `mcht.pkb` | 41 % | 100 % | 100 % | 100 % | 100 % | 100 % | 100 % |
+| Descrições dos itens e táticas | 0 % | 0 % | 100 % | 100 % | 100 % | 100 % | 100 % |
+| Títulos da galeria de vídeos | 0 % | 0 % | 0 % | 100 % | 100 % | 100 % | 100 % |
+| Menus no código (overlays) | 28 % | 28 % | 28 % | 95 % | 95 % | 95 % | 95 % |
+| Outras tabelas (objetivos das minipartidas, prêmios, condições…) | 96 % | 96 % | 96 % | 96 % | 100 % | 100 % | 100 % |
 
 Desde a v1.2 a conta inclui os nomes dos itens (o `item.dat` é embaralhado e o levantamento antigo não o lia), o
 que subiu o total de 776 para 783 mil caracteres; as colunas v1.0 e v1.1 são da conta antiga. Na v1.4 os prints
@@ -32,10 +32,16 @@ tradução mais curta nas tabelas (o fim da string original, que o jogo nunca mo
 CyberLife tirou do lugar no `command.STR`: só isso tira ~1.200 caracteres, e a v1.4 medida assim dá 35,4 % e
 48,4 %. Quase tudo o que o levantamento contava em "outras tabelas" era sobra. Da v1.6 à v1.9 o trabalho foi
 no texto das imagens, que fica fora da conta: o `survey` da v1.9 dá os mesmos números da v1.5. A v1.10 passou
-para o português menus que o CyberLife deixou em inglês, que a conta já tratava como traduzidos.
+para o português menus que o CyberLife deixou em inglês, que a conta já tratava como traduzidos. Até a v1.19 vieram
+os NPCs, o scout e as rotas de batalha, os eventos extras e o blog; a coluna v1.20 é a v1.19 com os
+subeventos 3300, os perfis e as falas das partidas (3700) inteiros. Essas duas colunas são do `survey` corrigido
+(2026-11-11): antes ele contava o japonês que fica sem uso no `.STR` quando uma descrição ou perfil vai para o
+fim do arquivo, e dava a v1.19 como 45,1 % e 57,9 % (as descrições de itens em 46,5 %, as táticas em 51,6 %).
 
-A história está toda em português desde a v1.1, mas **ainda falta mais da metade do texto do jogo**. Quase tudo
-está em quatro blocos: falas dos jogadores nas partidas, perfis dos jogadores, subeventos e NPCs.
+A história está toda em português desde a v1.1, os NPCs desde a v1.18, e na v1.20 vieram os
+subeventos 3300, os perfis e as falas dos jogadores nas partidas (3700): **o levantamento dá 99,4 % do texto**. O
+que sobra é quase todo de nomes (as leituras em kana e os "未定" do `unitbase*.dat`, os nomes de locais do
+`fieldinf.dat`, que talvez nem apareçam), senhas e nomes internos nos overlays e as sobras listadas abaixo.
 
 O primeiro levantamento (v1.0: 33 % e 41 %) achava as falas andando pelos registros do `evet`. O `text.py` usa
 as referências do script, que é o que o jogo lê; os números acima são todos do método novo.
@@ -43,7 +49,8 @@ as referências do script, que é o que o jogo lê; os números acima são todos
 Além do japonês, ficaram **falas em inglês** (a base da tradução parece ter sido um patch em inglês): umas 1.200
 no diálogo (quase todas nos subeventos 3300, como "%s is somewhere in the mall. I say!") e umas 250 nas tabelas
 (`sp_binder.STR` 207 de 376, `command.STR`, `ClearCondition.dat`, `OpenCondition.dat`, `games.STR`). A
-porcentagem acima conta essas falas como traduzidas.
+porcentagem acima conta essas falas como traduzidas. As dos subeventos 3300 (1.685 lugares, 108 textos: as dicas
+de onde o jogador está e o fim dos telefonemas) foram traduzidas do japonês junto com o resto do grupo.
 
 ## Por área
 
@@ -58,12 +65,12 @@ O diálogo fica em `script/evet.pkb`. A chave de cada entrada é o número do ev
 | Mensagens de campo, lojas, máquina de busca | `evet` 35xx | 0 | 22 % → 100 % |
 | Recrutar/convidar e eventos das partidas | `mcht.pkb` | 0 | 84 % → 100 % |
 | Strings dos scripts de evento | `eve.pkb` | 19 (furigana sem uso) | 96 % → 100 % |
-| Eventos extras | `evet` 3250/3251 | 3.355 | 36 % |
-| Subeventos (telefonemas, recrutamento) | `evet` 3300 | 107.906 | 26 % |
+| Eventos extras | `evet` 3250/3251 | 0 | 36 % → 100 % (v1.18) |
+| Subeventos (telefonemas, recrutamento) | `evet` 3300 | 0 | 26 % → 100 % (v1.20) |
 | Scout e rotas de batalha | `evet` 3611/3613/3618 | 22.291 | 16 % → 100 % (v1.18) |
 | NPCs das cidades | `evet` 36xx (resto) | 54.072 | 2 % → 98 % (v1.18) |
-| **Falas dos jogadores nas partidas** | `evet` 3700 | 250.338 | 0 % |
-| **Perfis dos jogadores** | `logic/unitbase.STR` | 60.378 | 0 % |
+| Falas dos jogadores nas partidas | `evet` 3700 | 0 | 0 % → 100 % (v1.20) |
+| Perfis dos jogadores | `logic/unitbase.STR` | 0 | 0 % → 100 % (v1.20) |
 | Descrições de itens | `logic/item.STR` | 22 (2 textos que nenhum item usa) | 0 % → 100 % (v1.2) |
 | Nomes de jogadores (sem as leituras em kana) | `logic/unitbase*.dat` | 1.947 (quase tudo "未定") | 84 % |
 | Táticas | `logic/tacticscmd.STR` | 0 | 0 % → 100 % (v1.2) |
@@ -351,7 +358,14 @@ traduzida precisa ser refeita.
 
 ### Fase 4: conteúdo opcional (cerca de 4.200 únicos, 101 mil caracteres)
 
-- [ ] Subeventos 3300: 2.353, incluindo as ~960 falas em inglês
+- [x] Subeventos 3300 (v1.20): os 7.631 lugares, 2.462 textos únicos (422 eventos de recrutamento). A
+  estrutura comum dos telefonemas ("Alô, alô! Ah, é o Super Onze!", "%s se uniu à equipe!", as dicas de lugar,
+  que o CyberLife tinha deixado em inglês: "%s disse que está\nem algum lugar\nda Ilha Tartaruga!") cobre 4.425
+  lugares com 115 textos; o resto são as falas de cada jogador ao ser recrutado (disputa, batalha de futebol,
+  número mínimo de jogadores, garota no grupo). Lugares como nas falas já feitas (Ilha Tartaruga/Condor/Pavão/
+  Hidra/Lince, Área italiana, bairro de lojas, Associação de Futebol, Tóquio Norte/Sul, G-Mart, loja de técnicas);
+  ビッグな波 = grande onda (Grandes Ondas), 天空の使徒 = Mensageiros do Céu, 魔界 = inferno, オーガ = Ogro, as
+  falas em inglês dos americanos e do time de Surfe em inglês mesmo ("Ready, go!", "You lose!"). Não vistos no jogo
 - [x] Scout e rotas de batalha, 3611/3613/3618 (v1.18): 1.326 lugares em japonês (269 textos únicos: os NPCs das
   escolas e cidades, as dicas do Scout Premium, os torneios, as rotas extra e premium, a máquina das rotas extras, o
   G-Hunter Hiro, os cervos de Nara), 204 que o CyberLife deixou em inglês (a máquina de contratação, os convites para
@@ -384,9 +398,21 @@ traduzida precisa ser refeita.
 
 ### Fase 5: volume (cerca de 6.500 únicos, 117 mil caracteres)
 
-- [ ] Falas dos jogadores nas partidas, 3700 (4.154; 250 mil caracteres com as repetições). Dá para dividir
-  por time: cada entrada é de um jogador.
-- [ ] Perfis dos jogadores, `unitbase.STR` (2.309), também por time
+- [x] Falas dos jogadores nas partidas, 3700 (v1.20): os 19.797 lugares, 4.167 textos únicos, em 826
+  eventos (um por jogador, com as mesmas 24 situações: gol a favor, gol contra, gol contra de cada lado, chute
+  defendido, intervalo na frente/empatado/atrás, fim, pênaltis). Cada time com o seu jeito de falar: os tiques
+  viraram equivalentes ("sô", "uai", "tchê", "oxe", "aru", "po~", "croac", "uga", "Kukuku"), o inglês dos
+  americanos e dos surfistas ficou em inglês ("Oh my God!", "Ready, go!"), os robôs em maiúsculas e os provérbios
+  do Reize como provérbios. Nomes como no diálogo (Endo, Satoru para quem o chama pelo nome, Kido, Goenji,
+  Tsunami, Fubuki, Lendários Super Onze, Academia Alius, pedra Alius, Anjos Caídos). Não vistos no jogo
+- [x] Perfis dos jogadores, `unitbase.STR` (v1.20): os 2.374 lugares (2.315 textos), em duas etapas
+  (registros 1–860 e 861–2.374): a Raimon, a Imperial e os times do Futebol Frontier, a Zeus, o bairro, as
+  escolas do Japão, a Academia Alius, a Floresta, a Novo Imperial, a Hakuren, Kyoto, Osaka, Okinawa, os times do
+  FFI (Austrália, Catar, Coreia, Inglaterra, Itália, Argentina, EUA, Brasil, Time Garshield, Cotarl, França,
+  Espanha, Alemanha, África do Sul), o Ogro, os Mensageiros do Céu, o Exército Infernal Z e os genéricos. Em
+  pares: até ~60 letras em 2 linhas (cada letra conta 2 bytes, o acento leva a seguinte, 127 com o NUL); sem
+  "º" e "Í", que a fonte não tem. Nomes como no diálogo (Endo, Kido, Ichinose, Burn, Diamond Dust, Prominence,
+  pedra Alius, Garshield, Rococó). O mesmo japonês, o mesmo texto. Visto no jogo o do Endo e o do Someoka
 
 ### Fase 6: conferir no jogo
 
@@ -476,6 +502,11 @@ traduzida precisa ser refeita.
   com espaços postos à mão no meio das palavras ("garo to"): traduzidos do japonês, no padrão dos outros, com o
   mesmo texto onde o japonês é o mesmo. Vistos no jogo "Velhos amigos! Converse com eles!" (32011600, 0x201C) e
   "Agora é a batalha final!" (32112400, 0x201A)
+- [x] Janelas de texto com furigana (v1.20): perfis, descrições e mensagens dos overlays são desenhados
+  8 linhas abaixo do lugar pedido, a faixa das leituras; a tradução não tem leituras e a primeira linha ficava
+  baixa demais. O port (`hle.cpp`, `ruby_window`) sobe o texto sem leitura 5 dessas 8 linhas e o põe 4 px mais à
+  esquerda (ajustado no jogo). Visto no
+  jogo na tela dos Amigos (perfil do Endo)
 
 ### Outros idiomas e ferramentas
 

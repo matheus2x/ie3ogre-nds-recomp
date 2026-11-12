@@ -4345,3 +4345,142 @@ testes das ferramentas ok.
 código (com o "Configurar" na aba Mods e o "Padrão"): launcher, `SDL3.dll`, `sdk/` trocado inteiro, `licenses/`,
 `achievements/`, os três `.txt` e o `mod-CyberLifePlus-1.18.zip`. `--prepare`: 192 arquivos em 43,9 s, 50,6 s no
 total; `--check-mods`: sem erros nem avisos.
+
+## 2026-11-11 — Subeventos 3300 inteiros (ainda mod 1.19)
+
+- Pedido: continuar a tradução, sem commit. Feito o maior grupo que faltava fora das partidas: os subeventos 3300
+  (telefonemas e recrutamento), 7.631 lugares e 2.462 textos únicos em 422 eventos; 5.946 lugares estavam em
+  japonês e 1.685 no inglês do CyberLife ("%s is\nsomewhere in the mall.\nI say!", "I leave you!").
+- **Estrutura comum** (115 textos em 4.425 lugares): o telefonema de cada recrutamento ("Alô, alô!\nAh, é o Super
+  Onze!", "Boa sorte!\nDeixem o time bem forte!"), os avisos "%s\nse uniu à equipe!", "%s\nvai te acompanhar!" e
+  "Você obteve\n%s!" (como nos 36xx) e as 99 dicas de lugar, traduzidas do japonês no formato "%s disse que
+  está\n<lugar>!". Lugares como nas falas já feitas: Ilha Tartaruga/Condor/Pavão/Hidra/Lince, Área italiana/inglesa/
+  argentina/dos EUA/do Brasil/de Cotarl/do Japão, área de entrada de Liocott, bairro de lojas, zona residencial,
+  Associação de Futebol, Tóquio Norte/Sul, Restaurante Tora, Aeroporto Internacional de Oedo, G-Mart, loja de
+  técnicas (秘宝堂), Hospital Geral de Inazuma. As 7 dicas que são recado ("今度こそ鬼道に勝つ！") viraram citação.
+- **Falas de cada jogador** (2.347 textos): pedido, disputa, revanche, vitória e derrota de cada recrutável; os
+  padrões de condição (juntar N jogadores, nível do time, garota no grupo, trazer o Endo/Kido/Tsunami). Nomes e
+  termos como no resto: Edgar Valtinas, Yuuto Kido, Garshield, Leões do Deserto, O Reino, Mensageiros do Céu
+  (Winel), inferno (魔界), Ogro, gata Dalila, Mister Tsunami, Kemushi (KMC); サッカーバトル = batalha de futebol;
+  as palavras em inglês dos americanos e dos surfistas ficam em inglês ("Ready, go!", "You lose!"); o javali do
+  33003363 segue em onomatopeia ("Bubobu").
+- Como foi feito: `text.py extract … --only 3300 --redo` (o japonês também dos lugares em inglês), um texto
+  PT por linha na ordem do levantamento, em 8 blocos, juntado por evento e posição (cada bloco conferido pelo
+  número de falas do evento, pela contagem de `%s`, pelo espaço em bytes e pelo limite de 3 linhas). O `check`
+  recusou 8 falas 1–2 bytes acima do espaço ("Conto com você...", "Ma- maldição...!"), encurtadas; uma de 4 linhas
+  no japonês (33003721) ficou em 3.
+
+**Verificação:** `translate.py check pt-BR`: 31.349 linhas ok, 0 com problema; `todo pt-BR --only 3300
+--japanese`: 0 lugares; nenhum texto do `3300.json` com japonês ou "I say"; 72 testes das ferramentas ok;
+`translate.py build pt-BR --install`: 578 patches (muda só o `evet.pkb.bps`). `text.py survey`: subeventos 3300 de
+26,1 % para 100 %; no total, 45,1 % → 58,9 % com repetições e 57,9 % → 70,6 % dos textos únicos. **Não visto no
+jogo.** Notado no levantamento (igual na v1.19, não desta mudança): descrições de itens em 46,5 % e táticas em
+51,6 %, embora o checklist as dê como feitas desde a v1.2/v1.5; provavelmente o `survey` lendo as descrições em
+pares como japonês. Falta conferir.
+
+## 2026-11-11 — Perfis dos jogadores, registros 1–860 (ainda mod 1.19)
+
+- Pedido: mais uma tarefa da tradução, sem commit. Começados os perfis (`unitbase.STR`, 2.374 lugares, 2.315
+  textos), o segundo maior bloco que faltava. Para ter contexto, cada perfil foi listado com o registro do
+  `unitbase.dat` que aponta para ele (campo `+0x66`) e o nome do jogador do `unitbase.json`, na ordem dos registros,
+  que segue os times. Feitos os 860 primeiros, em 4 blocos: Raimon, Imperial, Sobrenatural, Selvagem, Mikage,
+  Otaku, Ninja, os outros times do Futebol Frontier, a Zeus, o pessoal do bairro (lojistas, Hibiki, Ukishima, o
+  mordomo dos Raimon) e as escolas do Japão.
+- **Espaço:** em pares cada letra conta 2 bytes (o acento leva a letra seguinte; `\n` 1; NUL 1), então cabem ~60
+  letras em 2 linhas, e não 127. Uma conta igual à do `check` em script do scratchpad conferiu cada bloco antes;
+  ~85 perfis encurtados. Um bloco tinha uma linha a menos (o do Wataru Ibaraki), achada pela comparação JP×PT.
+- O `build` passou a mudar também o `unitbase.dat.bps`: os perfis maiores que o lugar do CyberLife vão para o fim
+  do `.STR` e os registros passam a apontar para lá (`put_description`).
+
+**Verificação:** `translate.py check pt-BR`: 0 com problema; 72 testes ok; `build --install`: 578 patches.
+`survey`: perfis de 0,2 % para 24,7 %; no total, 58,9 % → 60,7 % com repetições e 70,6 % → 74,1 % dos textos
+únicos. **Não visto no jogo** (falta ver um perfil no fichário ou nos Amigos: largura das linhas e quebra).
+
+**Pasta de teste do Windows** (`C:\Games\ie3-teste\ie3ogre-recomp`), para testar os subeventos 3300 e os perfis:
+atualizada com uma release 0.1.34 deste código (`tools/release.py --platform windows`): launcher, `SDL3.dll`,
+`sdk/`, `licenses/` e `achievements/` trocados inteiros, os três `.txt`, e o `mod-CyberLifePlus-1.18.zip` deu lugar
+ao `mod-CyberLifePlus-1.19.zip` da mesma release (com o `evet.pkb.bps` e o `unitbase.STR/.dat.bps` novos; ainda
+1.19 no `mod.ini`). No `boej.ini`, o `[mods] enabled` passou para o zip 1.19; saves, savestates, cache e o
+`[mod_settings]` (fonte HD ligada) mantidos. `--prepare` depois de apagar `cache/build.stamp`: 192 arquivos em
+56,1 s, 64,4 s no total; `--check-mods`: o mod 1.19 sem erros nem avisos (517 arquivos, 61 overlays).
+
+## 2026-11-11 — Texto das janelas com furigana mais em cima (port)
+
+- Pedido (com uma captura do perfil do Someoka na pasta de teste): o texto poderia começar mais em cima. A janela
+  do perfil tinha um vão grande acima da primeira linha.
+- **Causa:** as janelas do `ov016` que leem o texto com o leitor de furigana (`func_ov016_020f2184` e `020f2304`,
+  chamadas pelos perfis, descrições de itens/técnicas/táticas, títulos da galeria e mensagens dos overlays) desenham
+  o texto em `y + 8` e somam 8 ao espaço entre linhas (`+0x18` do objeto da fonte): a faixa do furigana, que fica
+  em `y` acima de cada linha (`… + -8` do texto). No japonês a faixa leva as leituras; a tradução não tem leituras
+  e a faixa de cima ficava vazia.
+- **Correção no port:** `hle.cpp`, hooks `ruby_window_a`/`ruby_window_b` (`config/boej/hle.tsv`). Se o texto não
+  tem leitura (`has_reading` lê como o leitor: byte ≥ 0x80 é o primeiro de dois, uma leitura termina num `]`
+  sozinho), o `y` do argumento (10º na primeira, 8º na segunda) vai 8 abaixo, então o texto fica no `y` que a
+  tela pediu, nunca acima; o espaço entre linhas fica igual. Texto japonês com furigana não muda.
+
+**Verificação:** `tools/build.py`; sessão sem janela (save do teste, `NTR_RTC` fixo, savestate novo no campo, X e
+A nos Amigos): o perfil do Endo começa logo abaixo da borda, com margens parecidas em cima e embaixo. O savestate
+de antes devolvido. **Pasta de teste do Windows:** release 0.1.34 deste código de novo (launcher, `SDL3.dll`,
+`sdk/` com o hook, `licenses/`, `achievements/`, `.txt`; o zip do mod é o mesmo); `--prepare`: 192 arquivos em
+45,9 s, 53,2 s no total; `--check-mods`: sem erros nem avisos.
+- **Ajuste** (pedido com outra captura: "um pouco mais pra baixo e um pouco mais pra esquerda"): o texto sem
+  leitura sobe 5 das 8 linhas (não mais as 8) e vai 4 px para a esquerda (`kRaise`, `kToLeft`; o `x` é o 9º
+  argumento da primeira função e o 7º da segunda, e nunca passa de 0). Na sessão sem janela (agora numa só, até
+  os Amigos, sem gravar savestate), o perfil do Endo fica 3 px mais baixo e 4 px mais à esquerda, com as margens
+  equilibradas. Pasta de teste do Windows refeita com esse código (`sdk/` novo; `--prepare` 51,5 s de compilação,
+  59,2 s no total; `--check-mods` sem erros).
+
+## 2026-11-11 — Perfis dos jogadores, registros 861–2.374, e o `survey` corrigido (ainda mod 1.19)
+
+- Pedido: mais uma tarefa da tradução, sem commit. Terminados os perfis (`unitbase.STR`): os 1.514 que faltavam,
+  em 7 blocos de ~220, com a mesma conferência de espaço (em pares, ~60 letras) e de alinhamento JP×PT. Entraram
+  a Academia Alius (os times e os reforçados pela pedra Alius), a equipe da Floresta, os robôs do Instituto
+  Estelar, a Novo Imperial, a Hakuren, Kyoto, Osaka (a Lika), Okinawa, o Tsunami, os times do FFI e a vida de cada
+  jogador estrangeiro (Austrália, Catar, Coreia, Inglaterra, Itália e Time K, Argentina, EUA, Brasil, Time
+  Garshield "modificados", Cotarl, França, Espanha, Alemanha, África do Sul), o grupo de ídolos, o Ogro, os
+  Mensageiros do Céu e o Exército Infernal Z, o esquadrão local e o rival, os Quatro Reis do futebol júnior e
+  centenas de genéricos.
+- O `check` recusou "º" e "Í" (a fonte não tem): reescritos. Os 16 últimos registros repetem o japonês de
+  perfis já feitos (Endo, Kido, Goenji…): o `ubmerge` do scratchpad aceita "=" para reusar o mesmo texto.
+- **`survey` corrigido (`text.py`, `shown`):** os perfis davam 66,7 % com os 2.374 lugares traduzidos. O
+  levantamento só ignorava as strings sem uso do `command.STR`; quando uma descrição ou perfil não cabe e vai
+  para o fim do `.STR` (`put_description`), o japonês antigo fica lá sem nenhum registro apontando, e era
+  contado. Agora `shown` vale para todas as tabelas de `DESCRIPTIONS` (`item.STR`, `command.STR`,
+  `tacticscmd.STR`, `unitbase.STR`), pelo campo do `.dat` de cada uma. Era também a causa das descrições de itens
+  em 46,5 % e das táticas em 51,6 % anotadas antes. Teste novo em `test_text.py`.
+
+**Verificação:** `translate.py check pt-BR`: 0 com problema; nenhum perfil com japonês; 72 testes ok; `build
+--install`: 578 patches. `survey` (corrigido): perfis 100 %, descrições de itens 99,8 % (os 22 caracteres que
+nenhum item usa), táticas 100 %; no total 67,5 % com repetições e 86,0 % dos textos únicos (a v1.19, medida do
+mesmo jeito: 46,0 % e 59,5 %). **Pasta de teste do Windows:** o `mod-CyberLifePlus-1.19.zip` trocado pelo desta
+etapa; `--check-mods` sem erros.
+
+## 2026-11-11/12 — Falas dos jogadores nas partidas, 3700 inteiro (ainda mod 1.19)
+
+- Pedido: mais uma tarefa da tradução, sem commit. Feito o último grande bloco: o grupo 3700, 19.797 lugares e
+  4.167 textos únicos em 826 eventos. Cada evento é um jogador com as mesmas 24 situações (0 gol a favor, 1 gol
+  contra, 2/3 gol contra nosso/deles, 4–7 chutes defendidos ou errados, 8–11 fim, 12–21 intervalo e segundo tempo,
+  22/23 pênaltis), então a lista foi feita na ordem dos eventos, cada fala com o número da situação; traduzidas em
+  19 blocos de ~220, juntadas pela posição no evento (`zip37.py`/`merge37.py` do scratchpad).
+- Os nomes do `unitbase.json` ao lado dos eventos só batem no começo (o 37000022 "Kido" é um brutamontes):
+  traduzi pelo jeito de falar. Os tiques de cada time viraram equivalentes (でやんす "sô", べ "tchê", ばい "oxe",
+  がや/っぺ "uai", アル "aru", っポ "po~", ゲロ "croac", うが "uga", くくく "Kukuku", ムシャムシャ "nhac nhac"); o
+  inglês dos americanos e dos surfistas ficou em inglês; os robôs em maiúsculas; os provérbios do Reize como
+  provérbios em português; ミスターＫ = Senhor K, ダークエンジェル = Anjos Caídos.
+- **A conta de bytes:** no `encode` o `\n` fica como os 2 caracteres, então conta 2 bytes; o validador do
+  scratchpad passou a contar assim e bate com o `check`. A fonte não tem Í nem º (o validador recusa).
+
+**Verificação:** `translate.py check pt-BR`: 0 com problema; `todo pt-BR --only 3700 --japanese`: 0 lugares;
+72 testes ok; `build --install`: 578 patches. `survey`: falas das partidas 100 %; no total **99,4 % com
+repetições e 99,4 % dos textos únicos** (antes 67,5 % e 86,0 %). O `todo` geral só lista os nomes do `unitbase`
+(leituras e "未定"), 36 rótulos de overlays que só a base tem e 1 do `eve`. **Não visto no jogo.**
+
+## 2026-11-12 — Versão 0.1.35 (CyberLifePlus 1.20) e commits no formato gitmoji
+
+- Pedido: versionar o mod e o jogo com o que estava sem commit (subeventos 3300, perfis, falas das partidas 3700,
+  janelas com furigana), commitar e publicar na `main`; daqui em diante, commits no formato
+  `<emoji> <tipo>(<escopo>): <descrição>`, em português.
+- `language.json` e `mod.ini` na 1.20; no `TRANSLATION-STATUS` (.md e .pt-BR.md) "depois da v1.19" virou v1.20.
+- `tools/changelog.py`: as notas da release tiram o prefixo (`✨ feat(tradução): ` → só o título, com maiúscula) e
+  deixam de fora o commit de versão (`🔖 chore(release): ...`); commits antigos, sem prefixo, ficam como estavam.
+- Verificação: 72 testes ok; `changelog.py HEAD --since v0.1.34` conferido antes da tag.

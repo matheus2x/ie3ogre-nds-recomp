@@ -1,5 +1,6 @@
 // Host implementations of the functions listed in config/boej/hle.tsv. Each hook gets
 // the recompiled original so it can wrap it; most replace it.
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 #include <vector>
@@ -230,6 +231,44 @@ void hle_font_draw_string(Cpu& c, GuestFn orig) {
     c.r[0] = 1;
     c.r[14] = lr;
 }
+
+// The text windows of overlay 16 (func_ov016_020f2184, 020f2304: profiles, item and technique
+// descriptions, gallery titles, overlay messages) read the text with the furigana parser
+// (func_ov016_020f24e8) and leave an 8 px band for the readings above every line: the text
+// is drawn 8 rows below the y the caller gives, and 8 rows are added to the line spacing.
+// A text with no reading (all the translated ones, written in pairs) gets an empty band
+// above its first line. Such a text goes 5 of those 8 rows up (it sits in the middle of the
+// window, seen in the profile) and 4 px to the left, nearer the window's border, never left
+// of the canvas; the spacing between lines stays.
+namespace {
+
+constexpr uint32_t kRaise = 5, kToLeft = 4;
+
+// Whether the parser would find a reading: like it, a byte from 0x80 up is the first of
+// two, and a reading ends with "]" read as a byte of its own.
+bool has_reading(uint32_t text) {
+    for (uint32_t at = text;; at++) {
+        uint8_t b = rd8(at);
+        if (!b) return false;
+        if (b == ']') return true;
+        if (b >= 0x80 && !rd8(++at)) return false;
+    }
+}
+
+void ruby_window(Cpu& c, GuestFn orig, uint32_t x_arg, uint32_t y_arg) {
+    if (!c.r[0] || has_reading(c.r[0])) return orig(c);
+    const uint32_t xs = c.r[13] + x_arg, ys = c.r[13] + y_arg, x = rd32(xs), y = rd32(ys);
+    wr32(xs, x - std::min<uint32_t>(kToLeft, std::max(int32_t(x), 0)));
+    wr32(ys, y - kRaise);
+    orig(c);
+    wr32(xs, x);
+    wr32(ys, y);
+}
+
+}  // namespace
+
+void hle_ruby_window_a(Cpu& c, GuestFn orig) { ruby_window(c, orig, 16, 20); }  // x, y: 9th, 10th arguments
+void hle_ruby_window_b(Cpu& c, GuestFn orig) { ruby_window(c, orig, 8, 12); }    // x, y: 7th, 8th arguments
 
 }  // namespace ntr
 

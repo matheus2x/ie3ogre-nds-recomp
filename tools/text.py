@@ -656,12 +656,20 @@ def leftover(retail: bytes, cur: bytes, at: int) -> bool:
 
 def shown(get, path: str) -> set[int] | None:
     """The strings of a table that the game reads, when another table says which (None: all).
-    command.STR keeps the Japanese names the fan translation moved away from, unused."""
-    if path != f"{LOGIC}/command.STR":
+    The tables of descriptions keep, unused, the Japanese of every text that went to the end of
+    the .STR because it did not fit in its place (put_description), and command.STR the Japanese
+    names the fan translation moved away from."""
+    name = path.rsplit("/", 1)[-1]
+    if path != f"{LOGIC}/{name}" or name not in DESCRIPTIONS:
         return None
-    dat = get(f"{LOGIC}/command.dat")
-    return {struct.unpack_from("<H", dat, k + f)[0] * STR_STEP
-            for k in range(0, len(dat), COMMAND_SIZE) for f in (COMMAND_NAME, COMMAND_DESC)}
+    dat_name, size, field, scrambled = DESCRIPTIONS[name]
+    dat = get(f"{LOGIC}/{dat_name}")
+    if dat is None:
+        return None
+    fields = (field, COMMAND_NAME) if name == "command.STR" else (field,)
+    recs = (dat[k:k + size] for k in range(0, len(dat) - size + 1, size))
+    return {struct.unpack_from("<H", unscramble(rec) if scrambled else rec, f)[0] * STR_STEP
+            for rec in recs for f in fields}
 
 
 def area_of_group(group: str) -> str:

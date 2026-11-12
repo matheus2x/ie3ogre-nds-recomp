@@ -14,16 +14,16 @@ is in Japanese characters (kana + kanji) and leaves out:
 
 ## Numbers
 
-| | v1.0 | v1.1 | v1.2 | v1.4 | v1.5–v1.10 |
-|---|---:|---:|---:|---:|---:|
-| Everything, with repetitions (what the player reads; 782 thousand characters in the original) | 29 % | 32 % | 34 % | 35.2 % | **35.4 %** |
-| Unique texts (the work left; 429 thousand) | 39 % | 44 % | 47 % | 48.3 % | **48.4 %** |
-| Story, chapters 1–11, chapter openings and chapter 12 | 91 % | 100 % | 100 % | 100 % | 100 % |
-| Field/shop/search machine messages (35xx) and `mcht.pkb` | 41 % | 100 % | 100 % | 100 % | 100 % |
-| Item and tactic descriptions | 0 % | 0 % | 100 % | 100 % | 100 % |
-| Video gallery titles | 0 % | 0 % | 0 % | 100 % | 100 % |
-| Menus in the code (overlays) | 28 % | 28 % | 28 % | 95 % | 95 % |
-| Other tables (mini-match objectives, prizes, conditions…) | 96 % | 96 % | 96 % | 96 % | **100 %** |
+| | v1.0 | v1.1 | v1.2 | v1.4 | v1.5–v1.10 | v1.19 | v1.20 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Everything, with repetitions (what the player reads; 782 thousand characters in the original) | 29 % | 32 % | 34 % | 35.2 % | 35.4 % | 46.0 % | **99.4 %** |
+| Unique texts (the work left; 429 thousand) | 39 % | 44 % | 47 % | 48.3 % | 48.4 % | 59.5 % | **99.4 %** |
+| Story, chapters 1–11, chapter openings and chapter 12 | 91 % | 100 % | 100 % | 100 % | 100 % | 100 % | 100 % |
+| Field/shop/search machine messages (35xx) and `mcht.pkb` | 41 % | 100 % | 100 % | 100 % | 100 % | 100 % | 100 % |
+| Item and tactic descriptions | 0 % | 0 % | 100 % | 100 % | 100 % | 100 % | 100 % |
+| Video gallery titles | 0 % | 0 % | 0 % | 100 % | 100 % | 100 % | 100 % |
+| Menus in the code (overlays) | 28 % | 28 % | 28 % | 95 % | 95 % | 95 % | 95 % |
+| Other tables (mini-match objectives, prizes, conditions…) | 96 % | 96 % | 96 % | 96 % | 100 % | 100 % | 100 % |
 
 Since v1.2 the count includes the item names (`item.dat` is scrambled and the old survey did not read it), which
 raised the total from 776 to 783 thousand characters; the v1.0 and v1.1 columns are from the old count. In v1.4 the
@@ -33,9 +33,15 @@ technique names CyberLife moved in `command.STR`: that alone removes ~1,200 char
 gives 35.4 % and 48.4 %. Almost everything the survey counted in "other tables" was leftovers. From v1.6 to v1.9
 the work was on the text in images, which is outside the count: the v1.9 `survey` gives the same numbers as v1.5.
 v1.10 turned into Portuguese menus CyberLife had left in English, which the count already treated as translated.
+Up to v1.19 came the NPCs, the scout and battle routes, the extra events and the blog; the v1.20 column is
+v1.19 with the whole of sub-events 3300, the profiles and the match lines (3700). These two columns come from the
+fixed `survey` (2026-11-11): it used to count the Japanese left unused in a `.STR` when a description or profile
+goes to the end of the file, and gave v1.19 as 45.1 % and 57.9 % (item descriptions at 46.5 %, tactics at 51.6 %).
 
-The story is all in Portuguese since v1.1, but **more than half of the game's text is still missing**. Almost all
-of it is in four blocks: player lines in matches, player profiles, sub-events and NPCs.
+The story is all in Portuguese since v1.1, the NPCs since v1.18, and v1.20 brought sub-events 3300, the
+profiles and the player lines in matches (3700): **the survey gives 99.4 % of the text**. What is left is almost
+all names (the kana readings and the "未定" of `unitbase*.dat`, the place names of `fieldinf.dat`, which may not
+even show), passwords and internal names in the overlays and the leftovers listed below.
 
 The first survey (v1.0: 33 % and 41 %) found the lines by walking the `evet` records. `text.py` uses the script's
 references, which is what the game reads; the numbers above are all from the new method.
@@ -43,7 +49,9 @@ references, which is what the game reads; the numbers above are all from the new
 Besides Japanese, **lines in English** remained (the translation's base seems to have been an English patch):
 about 1,200 in the dialogue (almost all in sub-events 3300, like "%s is somewhere in the mall. I say!") and about
 250 in the tables (`sp_binder.STR` 207 of 376, `command.STR`, `ClearCondition.dat`, `OpenCondition.dat`,
-`games.STR`). The percentage above counts these lines as translated.
+`games.STR`). The percentage above counts these lines as translated. Those of sub-events 3300 (1,685 places, 108
+texts: the hints of where the player is and the end of the phone calls) were translated from the Japanese along
+with the rest of the group.
 
 ## By area
 
@@ -58,12 +66,12 @@ and the prefix says the kind.
 | Field messages, shops, search machine | `evet` 35xx | 0 | 22 % → 100 % |
 | Recruit/invite and match events | `mcht.pkb` | 0 | 84 % → 100 % |
 | Event script strings | `eve.pkb` | 19 (unused furigana) | 96 % → 100 % |
-| Extra events | `evet` 3250/3251 | 3,355 | 36 % |
-| Sub-events (phone calls, recruitment) | `evet` 3300 | 107,906 | 26 % |
+| Extra events | `evet` 3250/3251 | 0 | 36 % → 100 % (v1.18) |
+| Sub-events (phone calls, recruitment) | `evet` 3300 | 0 | 26 % → 100 % (v1.20) |
 | Scout and battle routes | `evet` 3611/3613/3618 | 22,291 | 16 % → 100 % (v1.18) |
 | Town NPCs | `evet` 36xx (the rest) | 54,072 | 2 % → 98 % (v1.18) |
-| **Player lines in matches** | `evet` 3700 | 250,338 | 0 % |
-| **Player profiles** | `logic/unitbase.STR` | 60,378 | 0 % |
+| Player lines in matches | `evet` 3700 | 0 | 0 % → 100 % (v1.20) |
+| Player profiles | `logic/unitbase.STR` | 0 | 0 % → 100 % (v1.20) |
 | Item descriptions | `logic/item.STR` | 22 (2 texts no item uses) | 0 % → 100 % (v1.2) |
 | Player names (without the kana readings) | `logic/unitbase*.dat` | 1,947 (almost all "未定") | 84 % |
 | Tactics | `logic/tacticscmd.STR` | 0 | 0 % → 100 % (v1.2) |
@@ -347,7 +355,14 @@ already translated line has to be redone.
 
 ### Phase 4: optional content (about 4,200 unique, 101 thousand characters)
 
-- [ ] Sub-events 3300: 2,353, including the ~960 lines in English
+- [x] Sub-events 3300 (v1.20): all 7,631 places, 2,462 unique texts (422 recruitment events). The shared
+  structure of the phone calls ("Alô, alô! Ah, é o Super Onze!", "%s se uniu à equipe!", the location hints,
+  which CyberLife had left in English: "%s disse que está\nem algum lugar\nda Ilha Tartaruga!") covers 4,425
+  places with 115 texts; the rest are each player's lines when recruited (a contest, a soccer battle, a minimum
+  number of players, a girl in the party). Places as in the lines already done (Ilha Tartaruga/Condor/Pavão/
+  Hidra/Lince, Área italiana, bairro de lojas, Associação de Futebol, Tóquio Norte/Sul, G-Mart, loja de técnicas);
+  ビッグな波 = grande onda (Grandes Ondas), 天空の使徒 = Mensageiros do Céu, 魔界 = inferno, オーガ = Ogro, the
+  English words of the Americans and the surfers kept in English ("Ready, go!", "You lose!"). Not seen in the game
 - [x] Scout and battle routes, 3611/3613/3618 (v1.18): 1,326 places in Japanese (269 unique texts: the NPCs of the
   schools and towns, the Premium Scout tips, the tournaments, the extra and premium routes, the extra routes'
   machine, G-Hunter Hiro, the deer of Nara), 204 that CyberLife left in English (the hiring machine, the invitations
@@ -380,9 +395,21 @@ already translated line has to be redone.
 
 ### Phase 5: volume (about 6,500 unique, 117 thousand characters)
 
-- [ ] Player lines in matches, 3700 (4,154; 250 thousand characters with repetitions). It can be split by team:
-  each entry is one player's.
-- [ ] Player profiles, `unitbase.STR` (2,309), also by team
+- [x] Player lines in matches, 3700 (v1.20): all 19,797 places, 4,167 unique texts, in 826 events (one per
+  player, with the same 24 situations: goal for, goal against, an own goal on each side, a saved shot, half time
+  ahead/level/behind, the end, penalties). Each team with its own way of speaking: the verbal tics became
+  equivalents ("sô", "uai", "tchê", "oxe", "aru", "po~", "croac", "uga", "Kukuku"), the Americans' and surfers'
+  English stayed in English ("Oh my God!", "Ready, go!"), the robots in capitals and Reize's proverbs as proverbs.
+  Names as in the dialogue (Endo, Satoru for those who call him by name, Kido, Goenji, Tsunami, Fubuki, Lendários
+  Super Onze, Academia Alius, pedra Alius, Anjos Caídos). Not seen in the game
+- [x] Player profiles, `unitbase.STR` (v1.20): all 2,374 places (2,315 texts), in two steps (records
+  1–860 and 861–2,374): Raimon, Imperial and the Football Frontier teams, Zeus, the neighbourhood, Japan's
+  schools, the Alius Academy, the Forest, the New Imperial, Hakuren, Kyoto, Osaka, Okinawa, the FFI teams
+  (Australia, Qatar, Korea, England, Italy, Argentina, USA, Brazil, Team Garshield, Cotarl, France, Spain,
+  Germany, South Africa), Ogre, the Sky Messengers, the Hell Army Z and the generic ones. In pairs: up to ~60
+  letters in 2 lines (each letter counts 2 bytes, an accent takes the next one, 127 with the NUL); no "º" or "Í",
+  which the font lacks. Names as in the dialogue (Endo, Kido, Ichinose, Burn, Diamond Dust, Prominence, Alius
+  stone, Garshield, Rococó). The same Japanese, the same text. Seen in the game: Endo's and Someoka's
 
 ### Phase 6: check in the game
 
@@ -473,6 +500,11 @@ already translated line has to be redone.
   and the rest had spaces put by hand in the middle of words ("garo to"): translated from the Japanese, in the
   style of the others, with the same text where the Japanese is the same. Seen in the game "Velhos amigos!
   Converse com eles!" (32011600, 0x201C) and "Agora é a batalha final!" (32112400, 0x201A)
+- [x] Text windows with furigana (v1.20): profiles, descriptions and overlay messages are drawn 8 rows below
+  the given place, the band of the readings; a translation has no readings and the first line started too low.
+  The port (`hle.cpp`, `ruby_window`) moves a text with no reading 5 of those 8 rows up and 4 px
+  to the left (tuned in the game). Seen in the game in
+  the Friends screen (Endo's profile)
 
 ### Other languages and tools
 
