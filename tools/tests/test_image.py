@@ -164,6 +164,26 @@ class EditTest(unittest.TestCase):
         painter.paint(p, {"erase": [2, 3, 4, 1], "from": 10})
         self.assertEqual(p.rows[3][:7], [0, 1, 10, 10, 10, 10, 6])
 
+    def test_draw(self):
+        import tempfile
+        from pathlib import Path
+        p = Picture(texture(16, 8, [(0, 0, 16, 4), (0, 4, 16, 4)]), "3d")
+        p.rows = [[5] * 16 for _ in range(8)]
+        pal = colours(p.pal)
+        see = (0, 0, 0, 0)
+        stamp = [[(*pal[9], 255), see, (pal[3][0] + 1, *pal[3][1:], 255)]]  # a colour, see-through, a nearby one
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "s.png").write_bytes(rgba_png(stamp))
+            painter = imagetool.Painter(None, Path(d))
+            edit = {"frames": [1], "draw": "s.png", "at": [2, 1]}
+            for e in imagetool.placed(p, edit):
+                self.assertEqual(painter.problems(p, e), [])
+                painter.paint(p, e)
+            self.assertEqual(p.rows[5][1:6], [5, 9, 5, 3, 5])
+            out = {"draw": "s.png", "at": [14, 0]}
+            self.assertIn("outside", painter.problems(p, out)[0])
+            self.assertIn("draw missing.png", painter.problems(p, {"draw": "missing.png", "at": [0, 0]})[0])
+
 
 if __name__ == "__main__":
     unittest.main()

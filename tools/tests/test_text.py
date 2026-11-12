@@ -368,9 +368,13 @@ class TranslationsTest(unittest.TestCase):
             fonts = ({f for pair in lang.fonts.values() for f in pair} | {fonttool.lock_path(lang)}  # codes and numbers
                      | {p for fonts in lang.hd_fonts.values() for p in fonts.values()}
                      | set(lang.hd_licences))  # free fonts (hd_fonts)
+            edits = json.loads(lang.images.read_text(encoding="utf-8")) if lang.images else {}
+            stamps = {d / e["draw"] for entries in edits.values() for spec in entries.values()  # letters drawn by hand
+                      for e in (spec["edits"] if isinstance(spec, dict) else spec) if "draw" in e}
             for f in sorted(d.rglob("*")):
                 if f.is_file():
-                    self.assertIn(f, {*lang.texts, lang.images, d / language.MANIFEST, *fonts, *lang.pictures.values()},
+                    self.assertIn(f, {*lang.texts, lang.images, d / language.MANIFEST, *fonts, *lang.pictures.values(),
+                                      *stamps},
                                   f"{f}: not in the manifest")
             manifest = (d / language.MANIFEST).read_text(encoding="utf-8")
             self.assertIsNone(JAPANESE.search(manifest), f"{d.name}/{language.MANIFEST}")

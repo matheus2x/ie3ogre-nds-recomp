@@ -4484,3 +4484,123 @@ repetições e 99,4 % dos textos únicos** (antes 67,5 % e 86,0 %). O `todo` ger
 - `tools/changelog.py`: as notas da release tiram o prefixo (`✨ feat(tradução): ` → só o título, com maiúscula) e
   deixam de fora o commit de versão (`🔖 chore(release): ...`); commits antigos, sem prefixo, ficam como estavam.
 - Verificação: 72 testes ok; `changelog.py HEAD --since v0.1.34` conferido antes da tag.
+
+## 2026-11-12 — "Escolha o uniforme" na tela de uniformes (CyberLifePlus 1.21)
+
+- Pedido: mais uma tarefa da tradução, sem commit. O item do checklist da frase em inglês do CyberLife na tela de
+  cima dos uniformes, "Choose a strip." (`pic2d/menu/msup_bg05.pac_`, uma imagem que o CyberLife trocou inteira,
+  sem entrada no `images.json`).
+- No original a faixa diz ユニフォームせんたく: cor 6 (laranja), sem sombra nem contorno, sobre o azul da faixa (cor
+  11, y 71–88) e, à esquerda, por cima do desenho da camisa (cor 2). Medido nos pixels do `export --retail`.
+- `images.json`, bloco novo no fim: apagar a cor 6 em x 60–199, y 73–86; a linha de baixo do ユ (y 83) caía ao
+  lado da camisa e o `erase` com `ink` a esticava, então essa linha (x 65–88) toma a cor da coluna 64. Depois,
+  "Escolha o uniforme" (substantivo como o japonês, sem o ponto do CyberLife), cor 6, centrado em x e na faixa
+  (letras em y 76–83).
+
+**Verificação:** `image.py check`: 191 imagens, 0 problema; o PNG do `--png` sem sobra do japonês e com a camisa
+inteira; 72 testes ok; `build --install`: 578 patches, só o `msup_bg05.pac_.bps` mudou. Visto no jogo na etapa
+seguinte (menu → Dados → Uniformes).
+
+## 2026-11-12 — Imagens do blog e a edição `draw` (CyberLifePlus 1.21)
+
+- Pedido: mais uma tarefa da tradução, sem commit. O item das imagens do blog. Pelo `export` (mod × retail), o
+  CyberLife mudou três: o título `SMBlog1.SPF_:BLUP_T01` (サッカーブログ → "Football Blog"), os balões
+  `BLUP_W00` (o `export` adivinhava 60 células de largura; são 20, 160×120) e a aba `SMBlog2.SPF_:BLUP_BG01`
+  (コメント → "Story", sobre a caixa do comentário). Em japonês ficaram o cabeçalho トピックス da lista
+  (`pic3d/blog_main:BLDN_BG00`) e os botões `BLDN_B00` (まえへ/つぎへ/とじる, quadros 0–2 normais e 3–5 apertados).
+- **Título:** a fonte do jogo não imita as letras grandes do título. Montei "Futblog" (o nome que o CyberLife deu
+  ao blog nos posts, no comentário e na história; サッカーブログ) com as letras do "Football Blog" do CyberLife,
+  tiradas da base (`translations/bases/CyberLife`): o miolo de cada letra, refeito com o contorno de 2 px, o miolo
+  e a sombra nas cores do original (13, 15 e 14). Primeiro tentei "Blog de Futebol", com "d" (o "b" espelhado),
+  "e" e "u" desenhados no mesmo estilo e as letras largas estreitadas; coube, mas o nome do blog nos textos é
+  Futblog. O único "FutBlog" da história (3201) virou "Futblog".
+- **Edição nova `draw` (`tools/image.py`):** um PNG da tradução desenhado numa posição (`"at"`), com cada pixel na
+  cor mais próxima da paleta (`Picture.nearest`, que o `draw_png` também passou a usar) e o transparente mantendo
+  a imagem. Uma imagem inteira em `images/` levaria o ícone do jogo (arte do jogo) para o repositório, porque lá o
+  transparente apaga. O PNG fica em `translations/pt-BR/stamps/blog-title.png` (90×40, 3 cores), fora de
+  `images/`; o teste de que a pasta só tem arquivos do manifesto passou a aceitar os PNG do `draw`. Teste novo em
+  `test_image.py`; documentado no `image.py`, no TRANSLATING e nas regras técnicas do TRANSLATION-STATUS.
+- **O resto:** balões "As notícias da / Inazuma Japan para / todos vocês! / Confira sempre!" (cor 12, alinhados à
+  esquerda nas linhas pautadas, como o japonês); a aba "Comentários" em `FONT8`, que precisou da aba alargada 14 px
+  para a esquerda; "Tópicos" (cor 14, sombra 10); os botões "Ant.", "Próx." e "Sair" (cor 6, sombra 1 nos normais,
+  12 nos apertados; o apagar dos apertados vai uma linha mais embaixo, onde ficava a sombra do japonês).
+
+**Verificação:** `image.py check`: 196 imagens, 0 problema; `translate.py check pt-BR`: 0 com problema; 73 testes
+ok; `build --install`: 580 patches (novos: `blog_main.SPL/.SPD`). **No jogo** (sessão sem janela, savestate novo
+no campo, X → Dados → Blog e o post do CyberLife): título, balões, "Tópicos", botões e a aba "Comentários" no
+lugar. Na mesma sessão, Dados → Uniformes mostrou o "Escolha o uniforme" e outros textos em inglês do CyberLife
+na tela (anotados no checklist). Savestate de antes devolvido.
+
+## 2026-11-12 — O resto da tela de uniformes (CyberLifePlus 1.21)
+
+- Pedido: mais uma tarefa, sem commit. O item aberto na tarefa do blog: os textos em inglês da tela de uniformes.
+  Não estão em texto nenhum (nem na base do CyberLife); comparando o `export` do mod com o do retail em
+  `pic3d/uniform`, são dez imagens que o CyberLife mudou: as frases `WUDN_W01` (このユニフォームでいいですか？ →
+  "Is this strip OK ?") e `WUDN_W03` (ユニフォームは つうしん・対戦ルートで使えます。 → "This strip is used in
+  connect mode and matches."), o cabeçalho da lista `WHDN_W00` (ユニフォーム → "Team strip"), os botões
+  `WHDN_B00`/`B01` (けってい/もどる), o ひょうじ do X em `WHDN_B05` e `WHDN_W01`, 自分/相手 em `WUDN_I00` e
+  はい/いいえ em `WMDN_W00` e `WMDN_B03`.
+- Traduções: "Este uniforme está bom?"; "O uniforme vale na conexão e nas rotas de partida." (つうしん = o menu
+  Conectar; 対戦ルート = "rotas de partida", como nos itens), em `FONT8` como o CyberLife, porque a faixa só tem 9
+  linhas; "Uniformes" em `FONT8` (o japonês tinha 6 px); "Exibir"; "Você"/"Rival"; "Sim"/"Não".
+- Botões: "Confirmar" mede 46 px e o espaço é 42; ficou "Escolher" (39), que conversa com o "Escolha o uniforme"
+  de cima. No B, 25 px: "Voltar" (29) só cabia com `"gap": 0`, e o "lt" grudava; ficou "Sair", como no blog.
+- No `WMDN_B03` apertado (quadros 1 e 3) o contorno 7 é também a cor do fundo da metade de baixo; lá o apagar só
+  tira o 15 (com `ink` [15, 7] a linha inteira viraria o 14 da borda).
+
+**Verificação:** `image.py check`: 206 imagens, 0 problema; `build --install`: 580 patches. **No jogo** (sessão sem
+janela, savestate novo, X → Dados → Uniformes): a frase de baixo, "Uniformes", "Escolher", "Sair" e "Exibir" no
+lugar. O save do teste não tem uniforme na lista (o A volta ao menu), então a confirmação, Sim/Não e Você/Rival
+só na prévia. Savestate de antes devolvido.
+
+## 2026-11-12 — Fichário de jogadores, tela de cima (CyberLifePlus 1.21)
+
+- Pedido: mais uma tarefa, sem commit. O item das imagens do fichário. Comparando o `export` do mod com o do
+  retail, o CyberLife mudou 29 imagens: 12 da tela de cima (`pic2d/menu/SMBinder1`/`2`) e 17 da de baixo
+  (`pic3d/binder`). Esta tarefa ficou com a de cima; a de baixo virou item próprio no checklist.
+- Larguras: o `export` adivinhava 64 células para o `CHUP_S02` (a faixa do título na lista); são 32 (256×32). As
+  outras batiam (`S00` 32, `S01` 14, `W00` 32, `W01`–`W07` 27), mas ficaram explícitas no `images.json`.
+- Textos: "Fichário de jogadores" (como na mensagem do fichário completo); os grupos Rivais, Times do FF, Times
+  do Japão (全国チーム: os times do país inteiro, do IE2; "nacionais" confundiria com as seleções do FFI),
+  Academia Alius (o nome dos textos), Times diversos e Times do FFI 1/2, nos botões (`S01`) e nas linhas da
+  contagem (`W01`–`W07`), onde o 人 depois do número saiu, como o CyberLife fez; os rótulos do painel (`W00`)
+  em `FONT8`, porque cada faixa tem 10 linhas: Como recrutar (仲間にする方法), Onde achar (出現地), Máquina
+  (ガチャシステム; "máquina" é como os textos chamam), Moeda e Tipo. O logo em inglês e os ícones M/F do CyberLife
+  ficaram: o logo é o nome do jogo, e M/F servem em português.
+- Nos botões com furigana (全国, 学園) o texto vai uma linha mais embaixo; o apagar cobre as linhas da furigana
+  (cor 14) e a última linha do texto.
+- Na `FONT8` do CyberLife o "q" começa 1 px à direita, então "Máquina" parece ter um espaço depois do "á"; é
+  igual nos textos.
+
+**Verificação:** `image.py check`: 217 imagens, 0 problema; `build --install`: 580 patches. **No jogo** (sessão sem
+janela, savestate novo, X → Dados → Fichário → By areas → North Tokyo): "Fichário de jogadores" nas duas
+faixas, o botão "Rivais", a linha "Rivais 20/ 214" sem o 人 e o painel com os cinco rótulos. Os outros grupos só
+na prévia. Savestate de antes devolvido.
+
+## 2026-11-12 — Fichário de jogadores, tela de baixo, e a busca por nome que trava (CyberLifePlus 1.21)
+
+- Pedido: mais uma tarefa, sem commit. A tela de baixo do fichário (`pic3d/binder`): 16 imagens que o CyberLife
+  pôs em inglês (o `BG01`, com "P" no lugar de ページ, ficou como está).
+- Nomes: os times seguem a `BinderData_O` (a tabela do fichário, já traduzida: Sobrenatural, Selvagem, Imperial,
+  Robôs de Guarda, Ex-alunos Raimon, Grandes Ondas, Cav. da Rainha, Peq. Gigantes, Mensag. do Céu, Exérc.
+  Infernal Z, Anjos Caídos…), mesmo onde o nome inteiro caberia, para o botão bater com a tabela. Os lugares
+  seguem os textos e o `ov108`: Tóquio Norte/Sul, Hokkaido, Kyoto…; Área do Japão, Área inglesa, Área de Cotarl…
+  (エントランスエリア: "Área de entrada"); Ilha Hidra, Lince, Pavão, Condor, Tartaruga, Monte Magnitude, Outros. Os
+  grupos como na tela de cima. Botões: OK/Sair (48 px: "Escolher" e "Voltar" não cabem), Sair/Câm. e Y "Mudar"
+  (きりかえ; o CyberLife tinha posto "OK"; "Trocar" não cabe).
+- As texturas `B02_*` têm quadros por número de time (vários vazios ou repetidos); as edições vão em coordenadas
+  da imagem, um botão a cada 24 px. A furigana dos países (`B02_05`) começa na linha 2 do botão e um nome
+  (ヤングイナズマイレブン) chega à coluna 100: o apagar cobre as linhas 1–18 e as colunas 2–101. Nos apagados
+  (`B00_01`) a furigana é a cor 4.
+- **Busca por nome:** o botão do CyberLife dizia "By names ROM HANG !". No port, com o mod, A em あ行 lê o
+  `team.pkb` e a tela para (400 quadros iguais). Sem mod (savestate gravado com `NTR_MODS=vazio`) a mesma entrada
+  abre a lista. O aviso continua valendo: o botão ficou "Por nome (trava!)". A causa fica para outra tarefa
+  (suspeita: as leituras em kana do `unitbase`). Anotado no checklist.
+- O "North Tokyo" da barra da lista é texto do `logic/BinderData_AREA.dat`, que o CyberLife mudou e as ferramentas
+  não extraem. Anotado no checklist.
+
+**Verificação:** `image.py check`: 232 imagens, 0 problema; `build --install`: 580 patches. **No jogo** (sessão sem
+janela, savestate novo): os grupos (normais e apagados), OK/Sair, "Por nome (trava!)"/"Por área", "Tóquio Norte",
+e na lista Sair (normal e apertado) e Câm. Os outros lugares, os times e o "Mudar" só na prévia. Savestate de
+antes devolvido.
+

@@ -292,11 +292,32 @@ etapa ficam no `docs/development/DIARY.pt-BR.md`.
   "Físico" (ボディ). Os oito rótulos refeitos sobre o original: Chute, Físico, Controle, Defesa, Veloc., Resist.,
   Coragem, Experiência ("Velocidade" e "Resistência" inteiras encostavam nos valores, que podem ter três
   algarismos). Visto no jogo (menu → Amigos).
-- [ ] A frase da tela de uniformes, em inglês do CyberLife: "Choose a strip." (`pic2d/menu/msup_bg05.pac_`).
-- [ ] Imagens do fichário (`pic2d/menu/SMBinder1`/`2`?), em inglês do CyberLife: Player Binder, Players, Role,
-  Recruit mode, Where ?, Box, Coin color, Rivals, os grupos (FF teams, Various teams, National teams, FFI teams
-  1/2, Alius School), By areas e os nomes das áreas ("North Tokyo"). O botão da busca por nome diz "By names
-  ROM HANG !": um aviso do CyberLife de que a busca por nome trava. Ver se trava no port.
+- [x] A frase da tela de uniformes, em inglês do CyberLife: "Choose a strip." (`pic2d/menu/msup_bg05.pac_`).
+  Refeita sobre o original (ユニフォームせんたく): "Escolha o uniforme", na cor 6, sem sombra, centrada na faixa
+  (v1.21). Vista no jogo (menu → Dados → Uniformes).
+- [x] O resto da tela de uniformes (`pic3d/uniform`, dez imagens que o CyberLife pôs em inglês), refeito sobre os
+  originais: "O uniforme vale na conexão e nas rotas de partida." (`FONT8`), "Este uniforme está bom?", o
+  "Uniformes" da lista, os botões "Escolher" (けってい; "Confirmar" não cabe) e "Sair" (もどる; "Voltar" só cabe
+  espremido), "Exibir" (ひょうじ), "Você"/"Rival" (自分/相手) e "Sim"/"Não" (v1.21). Visto no jogo: a
+  frase, a lista, os botões e o "Exibir". O save do teste não tem uniforme na lista, então a confirmação, o
+  Sim/Não e o Você/Rival ficam só na prévia.
+- [x] Fichário, tela de cima (`pic2d/menu/SMBinder1`/`2`, 12 imagens; v1.21): "Fichário de jogadores"
+  (選手バインダー, nas duas faixas), os grupos nos botões e nas linhas da contagem (Rivais, Times do FF, Times do
+  Japão, Academia Alius, Times diversos, Times do FFI 1/2; sem o 人, como o CyberLife) e os rótulos do painel em
+  `FONT8` (Como recrutar, Onde achar, Máquina, Moeda, Tipo). O logo e o M/F do CyberLife ficaram. Visto no jogo:
+  o título, o botão e a linha "Rivais" e o painel; os outros grupos só na prévia.
+- [x] Fichário, tela de baixo (`pic3d/binder`, 16 imagens; v1.21): os grupos (normais e apagados), os
+  lugares (Tóquio Norte… Fuji; Área de entrada, Área do Japão…; Ilha Hidra… Monte Magnitude, Outros: os nomes dos
+  textos e do `ov108`), os times com os nomes da `BinderData_O` (Sobrenatural, Robôs de Guarda, Cav. da Rainha…),
+  "Por nome (trava!)"/"Por área" e os botões OK/Sair, Sair/Câm. e Y Mudar (きりかえ; o CyberLife tinha posto "OK").
+  O "ページ" do CyberLife ("P") ficou. Visto no jogo: os grupos, a busca, "Tóquio Norte" e Sair/Câm.; os outros
+  lugares, os times e o "Mudar" só na prévia.
+- [ ] A busca por nome do fichário trava com o mod (CyberLife: "ROM HANG !"): depois do A em あ行 o jogo lê o
+  `team.pkb` e a tela para (400 quadros sem mudar). Sem mod a mesma entrada abre a lista (あ行, 1/180 páginas).
+  Suspeita: as leituras em kana do `unitbase` que o mod troca, pelas quais a busca agrupa os nomes. As imagens das
+  linhas (あ行…) e a barra de kana ficaram em japonês.
+- [ ] Os nomes das áreas na barra da lista do fichário ("North Tokyo"): texto do `logic/BinderData_AREA.dat`, que o
+  CyberLife mudou e que as ferramentas ainda não extraem.
 - [x] Abertura (`movie/txt/op00f.dat`): a letra da música, 22 legendas (v1.15). Antes ela aparecia em japonês, com
   os kanji como "?" (a fonte do CyberLife não os tem).
 - [x] As outras legendas dos vídeos (`movie/txt`) em japonês (v1.18): 9, em 8 cenas (`a3m02a`, `a3m03a`, `a3m09a`,
@@ -393,8 +414,12 @@ traduzida precisa ser refeita.
   downloads de jogador e de item: título e texto, 20 lugares) seguem em japonês. Os textos têm `%s` com o nome do
   jogador, e no formato do blog o `%s` viraria largura cheia; falta saber como o nome entra nesse leitor (ver no
   jogo depois de recrutar alguém pelo scout).
-- [ ] Imagens do blog: o cabeçalho em inglês do CyberLife ("Get all the latest Inazuma Japan news here!", "Check
-  back often for new entries!", "Football Blog") e os rótulos em japonês (トピックス, まえへ, とじる, つぎへ).
+- [x] Imagens do blog (v1.21): o cabeçalho em inglês do CyberLife e os rótulos em japonês. O título
+  サッカーブログ ("Football Blog") virou "Futblog", o nome que o CyberLife deu ao blog nos posts e na história, com as
+  letras do próprio CyberLife (`stamps/blog-title.png`, pela edição nova `draw`) nas cores do original; os balões
+  (`BLUP_W00`) "As notícias da / Inazuma Japan para / todos vocês! / Confira sempre!"; a aba コメント, que o
+  CyberLife chamou de "Story", "Comentários" (`FONT8`, a aba alargada); トピックス "Tópicos"; os botões
+  まえへ/つぎへ/とじる "Ant."/"Próx."/"Sair", normais e apertados. Vistos no jogo (menu → Dados → Blog).
 
 ### Fase 5: volume (cerca de 6.500 únicos, 117 mil caracteres)
 
@@ -708,7 +733,9 @@ etc. (vieram do patch em inglês) e devem seguir esta lista quando forem traduzi
   da imagem retail (japonesa) e trocam só as entradas editadas no arquivo do mod: `erase` apaga o texto
   (cores de tinta → o pixel não-tinta mais perto na linha, ou cada linha com a cor de uma coluna limpa, ou
   `under`: o pixel de outra imagem com o mesmo fundo), e `text` escreve com a `FONT12` do mod, centralizado, com
-  sombra (direita e abaixo) ou contorno, como os rótulos originais. `"frames"` repete a edição nos quadros de
+  sombra (direita e abaixo) ou contorno, como os rótulos originais; `draw` põe por cima um PNG pequeno da tradução
+  (letras desenhadas à mão; o transparente mantém a imagem, então a arte do jogo não vai para o repositório).
+  `"frames"` repete a edição nos quadros de
   uma textura. Botões B pequenos (48 px) usam "Sair": "Voltar" não cabe com a sombra.
 - `%s` (nome) precisa continuar na fala. Os marcadores de furigana (`%1F`…) saem na tradução.
 - **Jogadores:** `unitbase.dat` tem 2.582 registros de 0x68 bytes: nome completo em +0x00 (28 bytes), o nome das

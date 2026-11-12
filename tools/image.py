@@ -27,6 +27,10 @@ letter after the other with "gap" pixels between them (1), rows ("\\n") "line" p
 all around ("outline"). The box
 centres the font's cells of 12 rows (the capitals fill rows 3-9). Colours are palette
 indices, as export shows them (for a 4 bpp 2D picture, within the 16 colours of the cell).
+draw puts a small PNG of the translation folder (its path from there) over the picture, its
+top left corner "at" [x, y]: each pixel takes the nearest colour of the palette, and the
+see-through ones keep the picture (for letters drawn by hand, without copying the game's
+art into the folder; keep these PNGs out of the pictures folder, which replaces whole ones).
 "frames" repeats an edit on frames of a 3D picture, with x, y, "from" counted from each
 frame's corner. check lists what does not fit (--png writes the edited pictures to look
 at). apply puts the edited pictures in place of the mod's (the rest of each archive stays
@@ -47,7 +51,7 @@ import language  # noqa: E402
 import text as texttool  # noqa: E402
 from ntr import lz10  # noqa: E402
 from ntr.image import Glyphs, ImageError, Picture, read_spf, read_spl, write_spf, write_spl  # noqa: E402
-from ntr.png import PngError  # noqa: E402
+from ntr.png import PngError, read_png  # noqa: E402
 from ntr.text import codes, encode, fit_font  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -122,8 +126,9 @@ def cmd_export(args) -> int:
 
 
 class Painter:
-    def __init__(self, game: texttool.Game):
-        self.game = game
+    def __init__(self, game: texttool.Game, folder: Path | None = None):
+        self.game, self.folder = game, folder
+        self.drawn: dict[str, tuple[int, int, list]] = {}
         self.fonts: dict[str, Glyphs] = {}
         self.others: dict[str, Picture] = {}
 
@@ -139,6 +144,12 @@ class Painter:
         if name not in self.fonts:
             self.fonts[name] = Glyphs(fit_font(self.game.modded(f"{DATA}/font/{name}.NFTR")))
         return self.fonts[name]
+
+    def stamp(self, name: str) -> tuple[int, int, list]:
+        """(width, height, RGBA rows) of a draw edit's PNG."""
+        if name not in self.drawn:
+            self.drawn[name] = read_png((self.folder / name).read_bytes())
+        return self.drawn[name]
 
     def layout(self, e: dict) -> list[tuple[int, int, int]]:
         """(x, y, code) of each letter of a text edit."""
@@ -172,6 +183,14 @@ class Painter:
                         px, py = x + g.left.get(g.font.glyph[c], 0) + k, y + r
                         if ink and not (bx <= px < bx + bw and by <= py < by + bh):
                             return out + [f"{e['text']!r} does not fit in {e['box']}"]
+        if "draw" in e:
+            try:
+                w, h, _ = self.stamp(e["draw"])
+            except (OSError, PngError) as err:
+                return out + [f"draw {e['draw']}: {err}"]
+            x, y = e["at"]
+            if x < 0 or y < 0 or x + w > pic.w or y + h > pic.h:
+                out.append(f"draw {e['draw']} ({w}x{h} at {x}, {y}) outside the {pic.w}x{pic.h} picture")
         for key in ("erase", "box"):
             if key in e:
                 x, y, w, h = e[key]
@@ -202,6 +221,13 @@ class Painter:
                             if near:
                                 row[x] = old[near[0]]
                                 break
+        if "draw" in e:
+            _, _, px = self.stamp(e["draw"])
+            x0, y0 = e["at"]
+            for dy, row in enumerate(px):
+                for dx, (r, g, b, a) in enumerate(row):
+                    if a >= 128:
+                        rows[y0 + dy][x0 + dx] = pic.nearest(x0 + dx, y0 + dy, (r, g, b))
         if "text" in e:
             g = self.glyphs(e.get("font", "FONT12"))
             ink, shadow = [], []
@@ -242,6 +268,8 @@ def placed(pic: Picture, e: dict) -> list[dict]:
             raise ImageError(f"no frame {f} (the picture has {len(pic.frames)})")
         fx, fy, fw, fh = pic.frames[f]
         one = {k: v for k, v in e.items() if k != "frames"}
+        if "at" in e:
+            one["at"] = [e["at"][0] + fx, e["at"][1] + fy]
         for key in ("erase", "box"):
             if key in e:
                 x, y, w, h = e[key]
@@ -257,7 +285,7 @@ def placed(pic: Picture, e: dict) -> list[dict]:
 def pictures(game: texttool.Game, folder: Path):
     """(archive, {entry: edited Picture}, problems): the retail picture, drawn anew from a PNG
     of the language's pictures folder if it has one, then the edits of images.json."""
-    painter = Painter(game)
+    painter = Painter(game, folder)
     edits = edits_of(folder)
     pngs = language.load(folder).pictures
     for arc, _ in pngs:

@@ -215,13 +215,20 @@ class Picture:
                     continue
                 if old < len(pal) and pal[old] == (r, g, b):
                     continue
-                first = self.bank(x, y)
-                choices = range(first + 1, min(first + span, len(pal)))
-                best = min(choices, key=lambda i: (pal[i][0] - r) ** 2 + (pal[i][1] - g) ** 2 + (pal[i][2] - b) ** 2,
-                           default=first)
+                best = self.nearest(x, y, (r, g, b), pal, span)
                 near += pal[best] != (r, g, b)
                 self.rows[y][x] = best
         return near
+
+    def nearest(self, x: int, y: int, rgb: tuple[int, int, int], pal=None, span: int | None = None) -> int:
+        """The palette index, among the colours the pixel can take (not the see-through 0 of its
+        bank), whose colour is nearest to rgb."""
+        pal = pal or colours(self.pal)
+        span = span or (256 if self.bpp == 8 else 16)
+        first = self.bank(x, y)
+        r, g, b = rgb
+        return min(range(first + 1, min(first + span, len(pal))),
+                   key=lambda i: (pal[i][0] - r) ** 2 + (pal[i][1] - g) ** 2 + (pal[i][2] - b) ** 2, default=first)
 
     def png(self, scale: int = 1) -> bytes:
         """Indexed PNG (index 0 transparent), each pixel scale x scale."""
