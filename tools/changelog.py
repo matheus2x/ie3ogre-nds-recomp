@@ -21,6 +21,20 @@ import subprocess
 import sys
 
 TRAILER = re.compile(r"^(Co-Authored-By|Signed-off-by):", re.IGNORECASE)
+# Commits are "<emoji> <type>(<scope>): <subject>" (gitmoji + conventional commits); the notes
+# show only the subject, and the release commit itself ("🔖 chore(release): ...") is left out.
+PREFIX = re.compile(r"^(?:\S+\s+)?(?P<type>feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(?:\((?P<scope>[^)]*)\))?!?:\s*")
+
+
+def clean_subject(subject: str) -> str | None:
+    """The subject without the commit prefix, or None for the release commit."""
+    m = PREFIX.match(subject)
+    if not m:
+        return subject
+    if m["type"] == "chore" and m["scope"] == "release":
+        return None
+    rest = subject[m.end():]
+    return rest[:1].upper() + rest[1:]
 
 
 def git(*args: str) -> str:
@@ -44,7 +58,8 @@ def commits(rev_range: str) -> list[tuple[str, str, str]]:
             continue
         short, subject, body = record.strip("\n").split("\x1f")
         lines = [l for l in body.splitlines() if not TRAILER.match(l)]
-        result.append((short, subject.strip(), "\n".join(lines).strip()))
+        if (title := clean_subject(subject.strip())) is not None:
+            result.append((short, title, "\n".join(lines).strip()))
     return result
 
 
