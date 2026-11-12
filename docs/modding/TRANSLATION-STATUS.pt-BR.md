@@ -309,15 +309,26 @@ etapa ficam no `docs/development/DIARY.pt-BR.md`.
 - [x] Fichário, tela de baixo (`pic3d/binder`, 16 imagens; v1.21): os grupos (normais e apagados), os
   lugares (Tóquio Norte… Fuji; Área de entrada, Área do Japão…; Ilha Hidra… Monte Magnitude, Outros: os nomes dos
   textos e do `ov108`), os times com os nomes da `BinderData_O` (Sobrenatural, Robôs de Guarda, Cav. da Rainha…),
-  "Por nome (trava!)"/"Por área" e os botões OK/Sair, Sair/Câm. e Y Mudar (きりかえ; o CyberLife tinha posto "OK").
+  "Por nome"/"Por área" e os botões OK/Sair, Sair/Câm. e Y Mudar (きりかえ; o CyberLife tinha posto "OK").
   O "ページ" do CyberLife ("P") ficou. Visto no jogo: os grupos, a busca, "Tóquio Norte" e Sair/Câm.; os outros
   lugares, os times e o "Mudar" só na prévia.
-- [ ] A busca por nome do fichário trava com o mod (CyberLife: "ROM HANG !"): depois do A em あ行 o jogo lê o
-  `team.pkb` e a tela para (400 quadros sem mudar). Sem mod a mesma entrada abre a lista (あ行, 1/180 páginas).
-  Suspeita: as leituras em kana do `unitbase` que o mod troca, pelas quais a busca agrupa os nomes. As imagens das
-  linhas (あ行…) e a barra de kana ficaram em japonês.
-- [ ] Os nomes das áreas na barra da lista do fichário ("North Tokyo"): texto do `logic/BinderData_AREA.dat`, que o
-  CyberLife mudou e que as ferramentas ainda não extraem.
+- [x] A busca por nome do fichário travava com o mod (CyberLife: "ROM HANG !", também no console). A causa é o
+  `logic/usearch.dat`, a tabela da busca, onde o CyberLife pôs os nomes em romaji: o `ov131` arquiva cada nome no
+  kana com que ele começa (`func_ov131_0213c994`) e, para encher a lista, tenta um kana depois do outro até achar um
+  com nome (`func_ov131_0213d864`), sem fim. O port (`hle.cpp`, `name_initial`) dá a um nome que começa com letra
+  latina o kana da letra: as 26 letras em ordem pelas dez linhas, A–B, C–E, F–G, H–I, J–K, L–M, N–O, P–R, S–X e
+  Y–Z. As imagens da busca seguem isso (v1.22): os botões das linhas, a barra de abas (A C F H J L N P S Y), a
+  faixa de letras de cada linha e as letras destacadas (`CHDN_B01`, `W01`, `W02`, `W04`–`W07`). Visto no jogo: os
+  botões, a lista (1/173 páginas, "Heiki" em H–I), a barra e a faixa S T U V W do "Mudar".
+- [x] Dentro de cada letra a lista da busca por nome seguia a ordem do `usearch.dat`, a dos kana originais. O
+  arquivo não pode mudar de ordem: `func_0207371c` (estatísticas 0x19/0x1a do `func_0204f888`) conta as flags de
+  jogador obtido pela posição de cada registro. O port (`hle.cpp`, `name_list`) põe a lista em ordem alfabética
+  depois que o jogo a enche (`func_ov131_0213d864`), só quando todos os nomes dela começam com letra latina. Visto
+  no jogo: os 144 nomes do H em ordem (Hachisuga, Hada, Haduki…) e o "Heiki" na página 36; sem mod a busca segue
+  igual (1/180 páginas).
+- [x] Os nomes das áreas na barra da lista do fichário ("North Tokyo"): `logic/BinderData_AREA.dat` entrou nas
+  tabelas do `text.py` (36 lugares; v1.22), com os nomes dos botões (Tóquio Norte, Área de entrada, Ilha Hidra,
+  Monte Magnitude…; 対象外, sem uso, "Nenhuma"). Visto no jogo: "Tóquio Norte".
 - [x] Abertura (`movie/txt/op00f.dat`): a letra da música, 22 legendas (v1.15). Antes ela aparecia em japonês, com
   os kanji como "?" (a fonte do CyberLife não os tem).
 - [x] As outras legendas dos vídeos (`movie/txt`) em japonês (v1.18): 9, em 8 cenas (`a3m02a`, `a3m03a`, `a3m09a`,
@@ -720,7 +731,7 @@ etc. (vieram do patch em inglês) e devem seguir esta lista quando forem traduzi
   +0x26, cada um depois do id (+0x0A, +0x24); a largura é a dos dois campos nas dez tabelas.
   `premiumcondition.dat`: 200 registros de 0x3C bytes, time em +0x04 (24); `premiumcondition_hurri.dat`: 0x40
   bytes, time em +0x04 (24). `BinderData_O.dat`: 0x1C bytes, nome em +0x04
-  (18). `gamerule.dat`: 64 registros de 0x120 bytes, objetivo em +0x20 (64 bytes, em pares; é o "Objective" das
+  (18). `BinderData_AREA.dat`: 36 registros de 0x20 bytes, lugar em +0x04 (20). `gamerule.dat`: 64 registros de 0x120 bytes, objetivo em +0x20 (64 bytes, em pares; é o "Objective" das
   batalhas de rua). `ClearCondition.dat`/`OpenCondition.dat`: 256 registros de 0x51 bytes, texto em +0x01
   (80 bytes, em pares: cerca de 39 letras). `TournamentName01`–`16.dat`: 3 registros de 0x14 bytes, nome em +0x00
   (19 bytes); o `ov022` e o `ov072` desenham o nome e depois "カップ", e a largura soma os 36 px desse sufixo

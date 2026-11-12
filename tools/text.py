@@ -54,6 +54,8 @@ RECORDS = {**{f"PracticeGame{n}F.dat": (0x4A, ((0x0C, 22), (0x26, 22)), None) fo
            "premiumcondition.dat": (0x3C, ((0x04, 24),), None),
            "premiumcondition_hurri.dat": (0x40, ((0x04, 24),), None),
            "BinderData_O.dat": (0x1C, ((0x04, 18),), None),
+           # the places of the binder's search by area (the bar over the list)
+           "BinderData_AREA.dat": (0x20, ((0x04, 20),), None),
            # the goal of a match: the fan translation wrote it for the furigana parser
            "gamerule.dat": (0x120, ((0x20, 64),), PAIRED),
            # what wins and what opens a route of matches (ov104, the furigana parser)

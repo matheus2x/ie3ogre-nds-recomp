@@ -190,6 +190,7 @@ class TableTest(unittest.TestCase):
     def test_record_tables(self):
         self.assertRegex("PracticeGame3F.dat:1518", texttool.ID.pattern)
         self.assertRegex("command.STR:7232", texttool.ID.pattern)
+        self.assertRegex("BinderData_AREA.dat:388", texttool.ID.pattern)
         self.assertNotRegex("PracticeGameF.dat:1", texttool.ID.pattern)
         for name, (size, fields, _) in texttool.RECORDS.items():
             self.assertTrue(all(f + n <= size for f, n in fields), name)

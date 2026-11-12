@@ -4604,3 +4604,56 @@ janela, savestate novo): os grupos (normais e apagados), OK/Sair, "Por nome (tra
 e na lista Sair (normal e apertado) e Câm. Os outros lugares, os times e o "Mudar" só na prévia. Savestate de
 antes devolvido.
 
+
+## 2026-11-12 — Fichário: a busca por nome que travava, as letras da busca e "North Tokyo" (CyberLifePlus 1.22)
+
+- Pedido: corrigir os três itens do fichário que estavam abertos no checklist, sem commit.
+- **"North Tokyo":** o `logic/BinderData_AREA.dat` tem 36 registros de 0x20 bytes, com o lugar em +0x04 (20 bytes)
+  e números depois. Entrou nos `RECORDS` do `text.py` e ganhou `texts/BinderData_AREA.json`, com os nomes dos botões
+  da tela de baixo (Tóquio Norte… Fuji; Área de entrada… Área de Cotarl; Ilha Hidra… Monte Magnitude, Outros). Os
+  対象外 (sem id de lugar, sem uso) viraram "Nenhuma".
+- **A trava:** a suspeita (as leituras do `unitbase`) estava errada: com as leituras do original o jogo ainda
+  parava. Bissecção com cópias do mod (o savestate não carrega com outro mod, então cada teste partiu do boot): só os
+  overlays → abre; só o `logic/` → trava; só o `unitbase.dat` → abre; só o `usearch.dat` → trava. O `usearch.dat` é a
+  tabela da busca (2582 registros de 0x2C bytes: nome da lista, outro nome, id do jogador em +0x24, flags), em ordem
+  de kana; o CyberLife pôs romaji nos dois nomes.
+- A build com rastreio (`NTR_PROFILE`) mostrou, depois do A, 2 milhões de chamadas por quadro de
+  `func_ov131_0213c994` e do `strlen`. Essa função dá o kana com que um nome começa (1 = あ … 44 = わ, 0 = nenhum;
+  tabela tirada no jogo sem mod com um log no gancho), e `func_ov131_0213d864`, para encher a lista, tenta um kana
+  depois do outro (de 1 a 46, dando a volta) até achar um com nome, sem limite. Com todos os nomes em latim nenhum
+  kana tem nome: laço infinito, no console também.
+- Correção no port, porque um patch de código num overlay não muda o código recompilado: gancho HLE `name_initial`
+  (`hle.tsv`, `hle.cpp`) que, para um nome que começa com letra latina, devolve o kana da letra; os outros vão para
+  a função original (sem mod nada muda). As 26 letras vão em ordem pelas dez linhas, respeitando os kana que as
+  imagens têm: 5 por linha, 3 em や行 e só わ em わ行 (as peças destacadas `W05`–`W07` são 44, sem を/ん; os índices
+  45/46 ficariam sem imagem). Ficou A–B, C–E, F–G, H–I, J–K, L–M, N–O, P–R, S–X (o X, sem jogador, junto do W) e
+  Y–Z (os dois no わ). As iniciais dos 1615 jogadores são todas A–Z.
+- Imagens (`pic3d/binder`): os botões das linhas (`CHDN_B01`, "A - B"…), a barra de abas (`W01`, A C F H J L N P S
+  Y), a faixa de cada linha (`W02`, as células sem letra ficam vazias), as abas destacadas (`W04`) e as letras
+  destacadas (`W05`–`W07`). As posições das células saem dos pixels do original (gerador no scratchpad). O botão
+  "Por nome (trava!)" voltou a ser "Por nome".
+- Fica aberto: dentro de cada letra a lista segue a ordem do `usearch.dat` (a dos kana), não a alfabética.
+
+**Verificação:** `translate.py check pt-BR`: 53547 linhas ok, 239 imagens, 0 problema; 73 testes ok; `build
+--install`: 580 patches. **No jogo** (sessões sem janela do boot, com o mod): Rivais → Por nome mostra os botões
+A–B…Y–Z; S–X abre a lista (121/173 páginas) com a barra de abas e o S destacado; o Y ("Mudar") mostra S T U V W;
+na H–I aparece o "Heiki". Por área → "Tóquio Norte" na barra. Savestate de antes devolvido.
+
+## 2026-11-12 — Busca por nome do fichário em ordem alfabética (CyberLifePlus 1.22)
+
+- Pedido: mais uma tarefa do checklist, sem commit. Peguei o item aberto na tarefa anterior: dentro de cada letra a
+  lista seguia a ordem do `usearch.dat`, a dos nomes japoneses.
+- Reordenar o arquivo não dá. Varri o código atrás de acessos a +0x7ec (o ponteiro da tabela): quase todos procuram
+  pelo id do jogador (+0x24) ou só contam, mas `func_0207371c` passa a **posição** do registro para
+  `func_020508fc` sobre o bitset 0x020A0DB0, o mesmo de jogador obtido que o `ov052` lê pelo índice da tabela de
+  ids ordenada (`func_0204bc4c`, busca binária em +0x814). É o que os casos 0x19/0x1a do `func_0204f888`
+  (estatísticas) devolvem; mudar a ordem mudaria esses números.
+- Então a ordem muda só na tela: a lista de um kana é um deque de entradas de 0x18 bytes (id, grupo, flags e a
+  cópia do nome em +8), 0x2A por bloco, {primeiro, tamanho, mapa, primeiro bloco, blocos, tamanho do mapa}
+  (`func_ov131_0213fd14`, `0213e0e0`). Gancho `name_list` em `func_ov131_0213d864`: depois da original, lê as
+  entradas, e se todos os nomes começam com letra latina faz um `stable_sort` pelo nome (sem diferenciar
+  maiúsculas) e as grava de volta. Com nomes em kana (sem mod) nada muda.
+
+**Verificação:** build ok. **No jogo** (sessões sem janela do boot): com um log temporário, os 144 nomes do H saíram
+em ordem (Hachisuga, Hada, Haduki, Hafu…; o "Heiki" é o 63º); depois, sem o log, o "Heiki" apareceu na 4ª linha da
+página 36, onde a ordem o põe. Sem mod a busca abre igual ao original (あ行, 1/180 páginas).

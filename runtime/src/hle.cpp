@@ -270,6 +270,93 @@ void ruby_window(Cpu& c, GuestFn orig, uint32_t x_arg, uint32_t y_arg) {
 void hle_ruby_window_a(Cpu& c, GuestFn orig) { ruby_window(c, orig, 16, 20); }  // x, y: 9th, 10th arguments
 void hle_ruby_window_b(Cpu& c, GuestFn orig) { ruby_window(c, orig, 8, 12); }    // x, y: 7th, 8th arguments
 
+// The binder's search by name (overlay 131) files every player under the kana its name in
+// usearch.dat starts with (func_ov131_0213c994: 1 = あ ... 46 = ん, 0 = none), and to fill the
+// list it tries one kana after another until one has a name (func_ov131_0213d864), with no end.
+// A translation that writes the names in Latin letters leaves every kana empty, and the game
+// hangs there (on the console too). A name that starts with a Latin letter gets the kana of its
+// letter: the 26 letters in order over the ten rows of the search (あ行 ... わ行), each row with
+// the kana its pictures have (5, but 3 in や行 and only わ in わ行): A-B, C-E, F-G, H-I, J-K, L-M,
+// N-O, P-R, S-X (X, with no player, under W) and Y-Z (both under わ).
+namespace {
+
+constexpr uint8_t kLetterKana[26] = {
+    1,  2,                   // A B         あ行
+    6,  7,  8,               // C D E       か行
+    11, 12,                  // F G         さ行
+    16, 17,                  // H I         た行
+    21, 22,                  // J K         な行
+    26, 27,                  // L M         は行
+    31, 32,                  // N O         ま行
+    36, 37, 38,              // P Q R       や行
+    39, 40, 41, 42, 43, 43,  // S T U V W X ら行
+    44, 44,                  // Y Z         わ行
+};
+
+}  // namespace
+
+void hle_name_initial(Cpu& c, GuestFn orig) {
+    const uint32_t name = c.r[1];
+    const uint8_t first = name ? rd8(name) : 0;
+    const uint8_t letter = uint8_t(first | 0x20);  // lower case
+    if (letter >= 'a' && letter <= 'z' && rd8(name + 1)) {  // the game wants two bytes at least
+        c.r[0] = kLetterKana[letter - 'a'];
+        return;
+    }
+    orig(c);
+}
+
+// The list of one kana (func_ov131_0213d864, r2 = the list) comes in the order of usearch.dat,
+// which is the order of the Japanese names. The file keeps its order: the game also counts the
+// players by the place of each record (func_0207371c). When every name of the list starts with a
+// Latin letter, the list is put in alphabetical order after the game fills it. The list is a
+// deque of 0x18-byte entries (the player's id, then a copy of the name at +8), 0x2A to a block:
+// {first, size, map of blocks, first block, blocks, room of the map}.
+namespace {
+
+constexpr uint32_t kEntrySize = 0x18, kEntryName = 8, kNameSize = 16, kEntriesPerBlock = 0x2A;
+
+uint32_t list_entry(uint32_t list, uint32_t i) {
+    const uint32_t k = rd32(list) + i, map = rd32(list + 8), first = rd32(list + 12), room = rd32(list + 20);
+    return rd32(map + (first + k / kEntriesPerBlock) % room * 4) + k % kEntriesPerBlock * kEntrySize;
+}
+
+bool latin_initial(const uint8_t* name) {
+    const uint8_t letter = uint8_t(name[0] | 0x20);
+    return letter >= 'a' && letter <= 'z';
+}
+
+bool before(const std::vector<uint8_t>& a, const std::vector<uint8_t>& b) {
+    for (uint32_t i = 0; i < kNameSize; i++) {
+        uint8_t x = a[kEntryName + i], y = b[kEntryName + i];
+        if (x >= 'A' && x <= 'Z') x |= 0x20;
+        if (y >= 'A' && y <= 'Z') y |= 0x20;
+        if (x != y) return x < y;
+        if (!x) break;
+    }
+    return false;
+}
+
+}  // namespace
+
+void hle_name_list(Cpu& c, GuestFn orig) {
+    const uint32_t list = c.r[2];
+    orig(c);
+    const uint32_t size = rd32(list + 4);
+    if (!rd32(list + 16) || size < 2) return;
+    std::vector<std::vector<uint8_t>> entries(size, std::vector<uint8_t>(kEntrySize));
+    for (uint32_t i = 0; i < size; i++) {
+        const uint32_t at = list_entry(list, i);
+        for (uint32_t b = 0; b < kEntrySize; b++) entries[i][b] = rd8(at + b);
+        if (!latin_initial(&entries[i][kEntryName])) return;  // the game's own (kana) order
+    }
+    std::stable_sort(entries.begin(), entries.end(), before);
+    for (uint32_t i = 0; i < size; i++) {
+        const uint32_t at = list_entry(list, i);
+        for (uint32_t b = 0; b < kEntrySize; b++) wr8(at + b, entries[i][b]);
+    }
+}
+
 }  // namespace ntr
 
 namespace ntr {
