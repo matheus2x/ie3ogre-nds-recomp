@@ -158,7 +158,9 @@ are problems.
 Drawn menus (buttons, banners, notices) are images. There are two ways to translate them:
 
 - **Text over the image** (`images.json`): erases the Japanese text in a rectangle and writes yours with the mod's
-  font. Format at the top of `tools/image.py`; PT-BR's `images.json` has 184 examples. For letters drawn by hand
+  font. Format at the top of `tools/image.py`; PT-BR's `images.json` has 386 examples. For big titles and banners
+  the font's letters can be scaled up (`scale`), shaded top to bottom (`colour` as a list), bold, italic and with
+  a double outline, as in the match screens. For letters drawn by hand
   (a title in the image's own style), `draw` puts a small PNG of yours over the image (see-through keeps the
   image); keep it out of `images/`, e.g. in `stamps/`, as PT-BR does with the blog's title.
 - **Whole image** (`images/`): `python3 tools/translate.py images es --only 'pic3d/option'` exports the images as

@@ -44,6 +44,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = "data_iz/script"
 LOGIC = "data_iz/logic"
 FONT = "data_iz/font/FONT12.NFTR"
+FONT8 = "data_iz/font/FONT8.NFTR"
 MOVIE_TXT = "data_iz/movie/txt"  # subtitles of the movies (place: "op00f.dat:record")
 SCRIPTS = ("eve", "mch")  # event and match scripts (SSD, LZ10)
 PACKS = ("evet", "mcht") + SCRIPTS  # text lists, then the scripts
@@ -79,14 +80,39 @@ RECORD_BOXES = {("blogpost.dat", 0x08): (1, 200), ("blogpost.dat", 0x4A): (5, 18
 FIELD_RULES = {"unitbase.dat", "unitbase_npc.dat", "blogpost.dat"}
 # pixels the game draws after the field of a record table (the translation puts "Copa" first)
 RECORD_AFTER = {f"TournamentName{n:02d}.dat": 36 for n in range(1, 17)}
+# Files of lines (one per CR LF; place: "ShopName.dat:line"), which the game reads whole, so a line
+# takes the bytes it needs. ShopName.dat: the shop's name, which ov062 draws after "Buy" or "Sell"
+# (ov062:0x7120, 0x7128, plain) through the furigana parser, on a canvas of 128 px and no pixel
+# between the letters: the name gets what the longer verb leaves ("Comprar", 34 px). -> (rows,
+# width, form, pixel between letters), bytes (the parser's text out is 120 bytes, the verb too).
+LINE_FILES = {"ShopName.dat": ((1, 128 - 34, PAIRED, 0), 100)}
+# Overlay labels with rules of their own, (rows, width, form, pixel between letters): plain
+# text, where the original's letters do not say the room.
+LABEL_RULES = {
+    # the verbs of the shop's title (above), through the parser with no pixel between the letters
+    **dict.fromkeys(("ov062:0x7120", "ov062:0x7128"), (1, 40, None, 0)),
+    # the title of the technique list (ov070, func_ov070_0211c228): sprintf("%s%s") of the kind
+    # (Shoot, Dribble, Block, Catch, Skill) and the order, on a canvas of 128 px; half each
+    **dict.fromkeys(("ov070:0x5240", "ov070:0x5248", "ov070:0x5254", "ov070:0x5260", "ov070:0x526c",
+                     "ov070:0x5278", "ov070:0x5284", "ov070:0x52b0"), (1, 64, None, 1)),
+    # what a training does (ov045, func_ov045_0211b2b0): two rows of FONT8 (FONT8_LABELS), each
+    # string one row on a canvas of 128 px
+    **dict.fromkeys(("ov045:0x668c", "ov045:0x6694", "ov045:0x66a0", "ov045:0x66b0", "ov045:0x66c0",
+                     "ov045:0x6840", "ov045:0x6860", "ov045:0x6874", "ov045:0x6888", "ov045:0x689c",
+                     "ov045:0x68b0", "ov045:0x68c4", "ov045:0x68dc", "ov045:0x68f4", "ov045:0x690c",
+                     "ov045:0x6924"), (1, 128, None, 1))}
+# overlay strings too short for jp_text (one kanji), but shown: "(by TP)" of the technique list
+SHORT_STRINGS = {"ov070:0x5284"}
+# labels drawn with FONT8, and measured with it
+FONT8_LABELS = {sid for sid in LABEL_RULES if sid.startswith("ov045:")}
 # item.dat brings item.STR (names, then descriptions), command.dat the descriptions of command.STR;
 # "ov" is the strings of the overlays, "movie" the subtitles
 TABLES = ("item.dat", "tacticscmd.STR", "unitbase.STR", "games.STR", "rpgtitle.STR", "command.dat", "sp_binder.dat", "movie_view_f.dat", "ov",
-          "movie") + tuple(RECORDS)
+          "movie") + tuple(RECORDS) + tuple(LINE_FILES)
 SUBTITLE = re.compile(r"(?:op|a3[my])\d\d[a-z]\.dat")
 ID = re.compile(r"(evet|mcht|eve|mch):(\d+):(\d+)"
                 r"|(item\.dat|item\.STR|tacticscmd\.STR|unitbase\.STR|games\.STR|rpgtitle\.STR|command\.dat|command\.STR|sp_binder\.dat|movie_view_f\.dat|"
-                + "|".join(map(re.escape, RECORDS)) + "|" + SUBTITLE.pattern + r"):(\d+)"
+                + "|".join(map(re.escape, (*RECORDS, *LINE_FILES))) + "|" + SUBTITLE.pattern + r"):(\d+)"
                 r"|(ov\d{3}):(0x[0-9a-f]+)")
 ITEM_DESC = 0x2A  # item.dat (unscrambled): the index of the description in item.STR
 TACTIC_SIZE, TACTIC_DESC = 0x14, 0x0E  # tacticscmd.dat: the index of the description in tacticscmd.STR
@@ -106,7 +132,10 @@ PLAIN_LABELS = {"ov050:0x46c4", "ov050:0x46cc", "ov050:0x46d4", "ov050:0x46dc", 
                 "ov059:0x51fc", "ov059:0x5204", "ov059:0x5210", "ov059:0x5218",
                 "ov063:0xa5b0", "ov063:0xa5b8", "ov063:0xa5c4", "ov063:0xa8c0", "ov063:0xaa90",
                 "ov022:0x8748", "ov022:0x8754", "ov022:0x88ac", "ov022:0x8e48", "ov022:0x8f08", "ov022:0x8f78",
-                "ov022:0x8fac", "ov072:0x9734", "ov001:0x2c4b4", "ov001:0x2c4bc", "ov001:0x2c4c4", "ov001:0x2c4cc"}
+                "ov022:0x8fac", "ov072:0x9734", "ov001:0x2c4b4", "ov001:0x2c4bc", "ov001:0x2c4c4", "ov001:0x2c4cc",
+                # the menu of a team member (ov053: part ways, equip, techniques, items), drawn
+                # without the parser (func_ov053_0211b61c); the others fit in pairs
+                "ov053:0x49b8"}
 # Overlays whose strings are all menus, written as plain text, where a pointer can give a whole list
 # (the field menu of ov000)
 MENU_OVERLAYS = {0}
@@ -123,6 +152,11 @@ DIALOG_OVERLAYS = {131}
 MENUS = [{"ov044:0x83d8", "ov044:0x83e0", "ov044:0x83e8", "ov044:0x83f0", "ov044:0x83f8", "ov044:0x8400",
           "ov044:0x8408", "ov044:0x8410", "ov044:0x841c", "ov044:0x8428", "ov044:0x8434", "ov044:0x8440",
           "ov044:0x844c", "ov044:0x8458", "ov044:0x84c4", "ov044:0x85a4", "ov044:0x8624"},
+         # the label of a stat (ov109 func_ov109_02125c4c, ov110 func_ov110_02125190: FONT12, plain)
+         {"ov109:0x55f4", "ov109:0x5604", "ov109:0x560c", "ov109:0x561c", "ov109:0x5650", "ov109:0x565c",
+          "ov109:0x57a8"},
+         {"ov110:0x21dc", "ov110:0x21e4", "ov110:0x21ec", "ov110:0x21f4", "ov110:0x21fc", "ov110:0x2208",
+          "ov110:0x2284"},
          # the boxes of the records (ov031)
          {"ov031:0x20a0", "ov031:0x20bc", "ov031:0x20dc", "ov031:0x2104", "ov031:0x2124", "ov031:0x2144",
           "ov031:0x2164", "ov031:0x2184", "ov031:0x21a0", "ov031:0x21c4"},
@@ -187,6 +221,9 @@ class Game:
 
     def font(self) -> Font:
         return Font(fit_font(self.modded(FONT)))
+
+    def font8(self) -> Font:
+        return Font(self.modded(FONT8))
 
 
 class Slot:
@@ -398,6 +435,13 @@ def table_slots(game: Game, name: str):
                 yield s
                 context = context + [visible(text_at(dc, mat))]
         return
+    if name in LINE_FILES:
+        rules, room = LINE_FILES[name]
+        dr, dc = game.retail(f"{LOGIC}/{name}").split(b"\r\n"), game.modded(f"{LOGIC}/{name}").split(b"\r\n")
+        for k, line in enumerate(dr):
+            if jp_text(line):
+                yield Slot(f"{name}:{k}", room - 1, line, dc[k] if k < len(dc) else b"", [], rules)
+        return
     if name == "movie_view_f.dat":
         dr, dc = game.retail(f"{LOGIC}/{name}"), game.modded(f"{LOGIC}/{name}")
         recs = range(len(dr) // MOVIE_SIZE)
@@ -442,7 +486,7 @@ def overlay_strings(game: Game, oid: int):
     out = []
     for k, at in enumerate(targets):
         source = text_at(data, at)
-        if in_code(at) or not jp_text(source):
+        if in_code(at) or not (jp_text(source) or f"ov{oid:03d}:{at:#x}" in SHORT_STRINGS):
             continue
         limit = targets[k + 1] if k + 1 < len(targets) else len(data)
         out.append((at, min((at + len(source) + 4) & ~3, limit) - at))
@@ -500,7 +544,8 @@ def overlay_slots(game: Game, font: Font):
             labels = [visible(text_at(retail, int(sid.split(":")[1], 0))).split("\\n") for sid in menu]
             width = 12 * max(len(row) for rows in labels for row in rows)
             # one row: the plain drawer stops at a newline (the records of ov031 have two in Japanese)
-            table = None if oid in DIALOG_OVERLAYS else (1, width) if sids[at] in plain else rules
+            table = None if oid in DIALOG_OVERLAYS else LABEL_RULES.get(sids[at]) or \
+                ((1, width) if sids[at] in plain else rules)
             now = list_bytes(cur, member[at][0], member[at][1] + 1)[-1] if at in member else text_at(cur, at)
             slot = Slot(sids[at], room - 1, source, now, [], table)
             if at in member:
@@ -816,14 +861,14 @@ def checked(game: Game, folder: Path) -> tuple[dict[str, Slot], dict[str, str], 
               else "ov" if sid.startswith("ov") else "movie" if SUBTITLE.fullmatch(sid.split(":")[0])
               else sid.split(":")[0] for sid in tr}
     by_id = {s.id: s for s in slots(game, [n for n in PACKS + TABLES if n in wanted])}
-    font = game.font()
+    font, font8 = game.font(), game.font8()
     bad = 0
     for sid, text in tr.items():
         s = by_id.get(sid)
         if s is None:
             print(f"!! {sid}: there is no line there")
             bad += 1
-        elif text and (p := line_problems(s, text, font)):
+        elif text and (p := line_problems(s, text, font8 if sid in FONT8_LABELS else font)):
             print(f"!! {sid}: {'; '.join(p)}\n   {text[:100]}")
             bad += 1
     for (file, head), (data, room) in overlay_list_bytes(game, by_id, tr).items():
@@ -1011,6 +1056,7 @@ def apply(image: Path, mod: Path, folder: Path) -> int:
     binder: dict[int, bytes] = {}  # record of sp_binder.dat -> its new string
     subtitles: dict[str, dict[int, bytes]] = collections.defaultdict(dict)  # movie/txt file -> record -> text
     strings: dict[tuple[str, int], dict[int, bytes]] = collections.defaultdict(dict)  # script -> record -> string
+    line_files: dict[str, dict[int, bytes]] = collections.defaultdict(dict)  # file of lines -> line -> text
     for sid, text in tr.items():
         if not text:
             continue
@@ -1028,6 +1074,9 @@ def apply(image: Path, mod: Path, folder: Path) -> int:
             continue
         if s.group == "movie":
             subtitles[f"{MOVIE_TXT}/{s.file}"][s.offset] = table_bytes(text, SUBTITLED)
+            continue
+        if s.file in LINE_FILES:
+            line_files[s.file][s.offset] = table_bytes(text, s.table[2])
             continue
         if s.table:
             rel = record_path(s.file)
@@ -1070,6 +1119,8 @@ def apply(image: Path, mod: Path, folder: Path) -> int:
         put_binder(tables, game, binder)
     for rel, texts in subtitles.items():
         tables[rel] = bytearray(subtitle_file(game.modded(rel), texts))
+    for name, texts in line_files.items():
+        tables[f"{LOGIC}/{name}"] = bytearray(lines_file(game, name, texts))
     for rel, data in tables.items():
         if write_file(mod, game, rel, bytes(data)):
             print(f"{rel}: changed")
@@ -1094,6 +1145,16 @@ def apply(image: Path, mod: Path, folder: Path) -> int:
         print(f"{name}: {updated} entries changed")
     print(f"{mod}: done; raise the version in mod.ini and check with tools/mod.py check")
     return 0
+
+
+def lines_file(game: Game, name: str, texts: dict[int, bytes]) -> bytes:
+    """A file of lines (LINE_FILES) again, with the game's lines (the fan translation's ShopName.dat
+    joined two with a bare LF, and its last names went one line down): a translated line, or the
+    mod's own where it has as many lines as the game, or the game's."""
+    retail = game.retail(f"{LOGIC}/{name}").split(b"\r\n")
+    mod = game.modded(f"{LOGIC}/{name}").split(b"\r\n")
+    same = len(mod) == len(retail)
+    return b"\r\n".join(texts.get(k, mod[k] if same else line) for k, line in enumerate(retail))
 
 
 def place_map(a: Game, b: Game) -> dict[str, str]:

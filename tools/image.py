@@ -20,11 +20,20 @@ erase takes out the old text: each pixel of an "ink" colour in the rectangle tak
 of the nearest pixel of the row that is not ink; without "ink", the whole row takes the colour
 of its pixel in column "from" (by default the one left of the rectangle). With "under"
 ("archive:entry", a retail picture with the same background and the text elsewhere), an ink
-pixel takes that picture's pixel when it is not ink. text is drawn with
+pixel takes that picture's pixel when it is not ink. With "rows": [top, bottom] (a band of
+clean rows of the picture, for a background that changes along the row, like upright stripes),
+every pixel of the rectangle (only the ink ones, with "ink") takes the pixel of its column in
+that band, the band's rows taken in turn from the top of the rectangle. text is drawn with
 a font of the mod (FONT12 by default; "font": "FONT8"), centred in box ("align": "left"), one
 letter after the other with "gap" pixels between them (1), rows ("\\n") "line" pixels apart
 (the font's height), with a shadow to the right and below ("shadow", a colour) or a line
-all around ("outline"). The box
+all around ("outline"); "scale": 2 draws each pixel of the font as 2x2 ([1, 2] as 1x2, for
+tall narrow letters; gap, line and the
+shadow or outline stay in picture pixels), and "colour" may be a list, one colour per row of
+the font's cell from the top (the last one goes on below), for letters shaded top to bottom;
+"bold": 1 inks each letter once more one pixel to the right (with "gap": 0 the row keeps its
+width); "italic": n leans the letters, one pixel to the right for every n rows up from the
+bottom of the cell; "outline" may be a list of colours, one ring each from the inside out. The box
 centres the font's cells of 12 rows (the capitals fill rows 3-9). Colours are palette
 indices, as export shows them (for a 4 bpp 2D picture, within the 16 colours of the cell).
 draw puts a small PNG of the translation folder (its path from there) over the picture, its
@@ -154,19 +163,35 @@ class Painter:
     def layout(self, e: dict) -> list[tuple[int, int, int]]:
         """(x, y, code) of each letter of a text edit."""
         g = self.glyphs(e.get("font", "FONT12"))
-        gap, line = e.get("gap", 1), e.get("line", g.cell_h)
+        k, ky = scales(e)
+        gap, line = e.get("gap", 1), e.get("line", g.cell_h * ky)
         bx, by, bw, bh = e["box"]
         rows = e["text"].split("\n")
         y = by + (bh - line * len(rows)) // 2
         out = []
         for row in rows:
             cs = list(codes(encode(row)))
-            width = sum(g.font.advance(c) - 1 + gap for c in cs) - gap
+            width = sum((g.font.advance(c) - 1) * k + gap + e.get("bold", 0) for c in cs) - gap
             x = bx if e.get("align") == "left" else bx + (bw - width) // 2
             for c in cs:
                 out.append((x, y, c))
-                x += g.font.advance(c) - 1 + gap
+                x += (g.font.advance(c) - 1) * k + gap + e.get("bold", 0)
             y += line
+        return out
+
+    def ink(self, e: dict) -> list[tuple[int, int, int]]:
+        """(x, y, row of the font's cell) of each pixel of a text edit's letters."""
+        g = self.glyphs(e.get("font", "FONT12"))
+        (k, ky), italic = scales(e), e.get("italic")
+        out = []
+        for x, y, c in self.layout(e):
+            left = g.left.get(g.font.glyph[c], 0)
+            for r, row in enumerate(g.bitmap(c)):
+                for col, v in enumerate(row):
+                    if v:
+                        out += [(x + (left + col) * k + i + ((g.cell_h * ky - 1 - r * ky - j) // italic if italic else 0),
+                                 y + r * ky + j, r)
+                                for j in range(ky) for i in range(k + e.get("bold", 0))]
         return out
 
     def problems(self, pic: Picture, e: dict) -> list[str]:
@@ -174,15 +199,12 @@ class Painter:
         if "text" in e:
             g = self.glyphs(e.get("font", "FONT12"))
             bx, by, bw, bh = e["box"]
-            for x, y, c in self.layout(e):
-                if c not in g.font.glyph:
-                    out.append(f"no letter {c:#x} in {e.get('font', 'FONT12')}")
-                    continue
-                for r, row in enumerate(g.bitmap(c)):
-                    for k, ink in enumerate(row):
-                        px, py = x + g.left.get(g.font.glyph[c], 0) + k, y + r
-                        if ink and not (bx <= px < bx + bw and by <= py < by + bh):
-                            return out + [f"{e['text']!r} does not fit in {e['box']}"]
+            missing = [c for _, _, c in self.layout(e) if c not in g.font.glyph]
+            if missing:
+                return out + [f"no letter {c:#x} in {e.get('font', 'FONT12')}" for c in missing]
+            for px, py, _ in self.ink(e):
+                if not (bx <= px < bx + bw and by <= py < by + bh):
+                    return out + [f"{e['text']!r} does not fit in {e['box']}"]
         if "draw" in e:
             try:
                 w, h, _ = self.stamp(e["draw"])
@@ -196,6 +218,8 @@ class Painter:
                 x, y, w, h = e[key]
                 if x < 0 or y < 0 or x + w > pic.w or y + h > pic.h:
                     out.append(f"{key} {e[key]} outside the {pic.w}x{pic.h} picture")
+        if "rows" in e and not 0 <= e["rows"][0] <= e["rows"][1] < pic.h:
+            out.append(f"rows {e['rows']} outside the {pic.w}x{pic.h} picture")
         return out
 
     def paint(self, pic: Picture, e: dict):
@@ -205,6 +229,13 @@ class Painter:
             ink = set(e.get("ink", ()))
             for y in range(y0, y0 + h):
                 row = rows[y]
+                if "rows" in e:
+                    top, bottom = e["rows"]
+                    band = rows[top + (y - y0) % (bottom - top + 1)]
+                    for x in range(x0, x0 + w):
+                        if not ink or (row[x] % 16 in ink if pic.bpp == 4 else row[x] in ink):
+                            row[x] = band[x]
+                    continue
                 if not ink:
                     row[x0:x0 + w] = [row[e.get("from", x0 - 1)]] * w
                     continue
@@ -229,21 +260,27 @@ class Painter:
                     if a >= 128:
                         rows[y0 + dy][x0 + dx] = pic.nearest(x0 + dx, y0 + dy, (r, g, b))
         if "text" in e:
-            g = self.glyphs(e.get("font", "FONT12"))
-            ink, shadow = [], []
-            for x, y, c in self.layout(e):
-                left = g.left.get(g.font.glyph[c], 0)
-                for r, row in enumerate(g.bitmap(c)):
-                    for k, v in enumerate(row):
-                        if v:
-                            ink.append((x + left + k, y + r))
+            colour = e["colour"] if isinstance(e["colour"], list) else [e["colour"]]
+            ink = [(x, y, colour[min(r, len(colour) - 1)]) for x, y, r in self.ink(e)]
+            shadow = []
             if "shadow" in e:
-                shadow = [(x + dx, y + dy, e["shadow"]) for x, y in ink for dx, dy in SHADOW]
+                shadow = [(x + dx, y + dy, e["shadow"]) for x, y, _ in ink for dx, dy in SHADOW]
             if "outline" in e:
-                shadow = [(x + dx, y + dy, e["outline"]) for x, y in ink for dx, dy in OUTLINE]
-            for x, y, colour in shadow + [(x, y, e["colour"]) for x, y in ink]:
+                rings = e["outline"] if isinstance(e["outline"], list) else [e["outline"]]
+                inside = {(x, y) for x, y, _ in ink}
+                for ring in rings:  # each ring one pixel around the letters and the rings inside it
+                    around = {(x + dx, y + dy) for x, y in inside for dx, dy in OUTLINE} - inside
+                    shadow = [(x, y, ring) for x, y in around] + shadow
+                    inside |= around
+            for x, y, colour in shadow + ink:
                 if 0 <= x < pic.w and 0 <= y < pic.h:
                     rows[y][x] = pic.bank(x, y) + colour
+
+
+def scales(e: dict) -> tuple[int, int]:
+    """(across, down) of a text edit's "scale": one number for both, or [across, down]."""
+    k = e.get("scale", 1)
+    return (k[0], k[1]) if isinstance(k, list) else (k, k)
 
 
 def edits_of(folder: Path) -> dict:
@@ -278,6 +315,8 @@ def placed(pic: Picture, e: dict) -> list[dict]:
                 one[key] = [x + fx, y + fy, w, h]
         if "from" in e:
             one["from"] = e["from"] + fx
+        if "rows" in e:
+            one["rows"] = [r + fy for r in e["rows"]]
         out.append(one)
     return out
 

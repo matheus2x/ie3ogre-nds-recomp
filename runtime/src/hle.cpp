@@ -270,6 +270,55 @@ void ruby_window(Cpu& c, GuestFn orig, uint32_t x_arg, uint32_t y_arg) {
 void hle_ruby_window_a(Cpu& c, GuestFn orig) { ruby_window(c, orig, 16, 20); }  // x, y: 9th, 10th arguments
 void hle_ruby_window_b(Cpu& c, GuestFn orig) { ruby_window(c, orig, 8, 12); }    // x, y: 7th, 8th arguments
 
+// The furigana parser itself (func_ov016_020f24e8: r0 = text, r1 = the text out, r2 = the
+// readings out, 0x20 bytes each {first letter, letters, reading}; returns the readings). It
+// reads the text with a signed char: a byte from 0x80 up (and a control byte) is the first of
+// two, "[", "/" and "]" mark a reading, "\n" stays, and the other ASCII is dropped. The
+// translations write their Latin letters in pairs for it, but a player's name put in by
+// sprintf (%s) is plain ASCII, and a name in Latin letters ("Kanon") vanished from the
+// message. The same parser, but a lone printable byte outside a reading goes out as a letter
+// of its own; a Japanese text has none, so it reads as before.
+void hle_ruby_parse(Cpu& c, GuestFn) {
+    uint32_t in = c.r[0];
+    const uint32_t out = c.r[1], ruby = c.r[2];
+    uint32_t n = 0, readings = 0, at_reading = 0;
+    uint8_t letters = 0;
+    int mode = 0;  // 0 text, 1 the letters under a reading, 2 the reading
+    for (uint8_t b; (b = rd8(in)) != 0; in++) {
+        const uint32_t entry = ruby + readings * 0x20;
+        if (b == '\n') {
+            wr8(out + n++, b);
+        } else if (b == '/') {
+            wr8(entry + 1, uint8_t(letters - rd8(entry)));
+            at_reading = 0;
+            mode++;
+        } else if (b == '[') {
+            wr8(entry, letters);
+            mode++;
+        } else if (b == ']') {
+            mode = 0;
+            wr8(entry + at_reading + 2, 0);
+            readings++;
+        } else if (b < 0x20 || b >= 0x7F) {
+            if (mode == 2) {
+                wr8(entry + at_reading + 2, b);
+                wr8(entry + at_reading + 3, rd8(++in));
+                at_reading += 2;
+            } else {
+                wr8(out + n, b);
+                wr8(out + n + 1, rd8(++in));
+                n += 2;
+                letters++;
+            }
+        } else if (mode != 2) {
+            wr8(out + n++, b);  // was dropped
+            letters++;
+        }
+    }
+    wr8(out + n, 0);
+    c.r[0] = readings;
+}
+
 // The binder's search by name (overlay 131) files every player under the kana its name in
 // usearch.dat starts with (func_ov131_0213c994: 1 = あ ... 46 = ん, 0 = none), and to fill the
 // list it tries one kana after another until one has a name (func_ov131_0213d864), with no end.

@@ -124,13 +124,24 @@ in `docs/development/DIARY.pt-BR.md`.
 - [x] Menus and messages in the overlays: 312 of 321 strings, in 34 overlays (v1.4). Almost all about communication
   (DS wireless, Wi-Fi Connection, trade, Passing, link with Inazuma Eleven 2 and Spark/Bomber), plus the formation
   notices (`ov057`), the `ov023` quiz and the scout and premium item windows.
-- [ ] Short overlay labels left untranslated, because they do not fit in pairs and the drawer is unknown: "そうび"
-  (`ov053`), "かう"/"うる" (`ov062`), "ファイター" (`ov082`, unknown context). See in the game whether they use the
-  furigana parser; if not, they go into `PLAIN_LABELS`. The "カップ" of `ov072` left the list in v1.13: it is the
-  "Cup" that comes after the tournament name (see the tournaments below).
-- [ ] Half-width player names ("Kanon") disappear in `%s` messages that go through the furigana parser (it drops
-  ASCII after the `sprintf`). This also applies to CyberLife's messages. Needs a fix in the port (the parser) or
-  full-width names.
+- [x] Short overlay labels (v1.23), seen in the code. "そうび" (`ov053`, a player's menu: leave the team, equip,
+  techniques, items) goes straight to the plain drawer (`func_ov053_0211b61c` → `func_020425fc`): it went into
+  `PLAIN_LABELS` as "Equipar". "かう"/"うる" (`ov062`) start the shop's title (`func_ov062_0211a520`: the verb plus
+  a line of `logic/ShopName.dat`, through the window with the furigana parser, on a 128 px canvas with no pixel
+  between letters): "Comprar"/"Vender" in plain text (the port shows lone ASCII in that parser, item below), and
+  the shop names joined the translation (`texts/ShopName.json`: ": G-Mart Inazuma", ": Técnicas JP", ": Penguigo
+  Hokkaido"…; 秘宝堂 = Técnicas, as "loja de técnicas" in the dialogue). CyberLife's `ShopName.dat` ("Inazuma
+  Store", "Japan Hissatsu"…) had two lines joined by a lone `\n`, and the last shops showed one line down
+  ("Strongest Store 2" on the travelling G-Mart, "0" on the true Strongest Shop). "ファイター" (`ov082`) stays in
+  Japanese: the code does not draw it, it compares it (`strcmp`) with what the ARM9 writes into players
+  0x10–0x1F (`func_02070530` → `func_0204ee18`), and a mod cannot change the ARM9. The "カップ" of `ov072` left
+  the list in v1.13: it is the "Cup" that comes after the tournament name (see the tournaments below).
+- [x] Half-width player names ("Kanon") in `%s` messages that go through the furigana parser (v1.23, port): the
+  `ruby_parse` hook (`hle.cpp`) does what `func_ov016_020f24e8` does, but a lone ASCII byte outside a reading comes
+  out as a letter, where the original dropped it. Japanese has no such byte and comes out the same (the Friends
+  screen profile seen in the game, with and without the hook). Not seen in the game: a name coming in by `%s`
+  through this parser. "Precisamos de Endo!" of `ov044` does not even go through it (which is why "Endo" always
+  showed), and in the test save I found no message with a name that does.
 - [x] What was left in the other tables (v1.5). Almost everything the survey counted was leftovers after the NUL
   (now out of the count). The rest: the 10 mini-match objectives (`gamerule.dat`, half was in English), the
   descriptions of the 4 element-changing techniques (Kaze/Hayashi/Hi/Yama no Gotoshi, `command.STR`), 60 prizes on
@@ -210,7 +221,45 @@ in `docs/development/DIARY.pt-BR.md`.
   - and the other images changed by CyberLife: comparing the mod's `export` with `--retail`, 597 differed without
     our edits before v1.9 and 567 after (almost all in `pic3d`: shop, trade, tournament, techniques, training,
     scout, uniform, binder, Inabikari, contact map; in `pic2d`: the match screens `MPS*`/`SPS*`, menus `menu/*` and
-    the title `MTSIni`), plus the ones it left in Japanese.
+    the title `MTSIni`), plus the ones it left in Japanese;
+  - surveyed again in v1.23: 760 images differ from the original, 521 without our edits, in ~130 files (contact
+    sheets of all of them). Almost all have English: the match (`MPSAct`: Half Time, Fired up!, Chain shot!!, the
+    instructions "Choose your shot!", "Not enough TP!"…; `MPSPk`, `MPSFrm`, `MPSDrw`, `MPSPIn`, `MPSPrd`, `SPS*`,
+    `pic2d/mbd_c*`, `pic3d/script/gmdn_*` "Offside"/"Foul"), the buttons repeated in many menus (Yes/No, Confirm,
+    Back, Quit, OK, Menu, Select, Finish, Cancel, See more), training (`SVInabikari*`, `inabikari*`, `practice*`,
+    `tokkun_*`), tournament (`SMTournament`, `menu_tournament`), scout, trade and Passing (`ps_*`, `wc_*`,
+    `trade`), formation (`formation2`), techniques (`menu_special_comand`, `waza_*`, `SMSpCmd`), items, capsules,
+    contact map (`jinmyaku`, `SMJinmyaku`), shop, settings and tutorial (`MASConfig`, `MASTutorial`), name
+    (`MMName`, `nedn_bg*`), quit (`MMQuit`), Inazuma Mobile (`explain`) and the title (`MTSIni` in part). Logos
+    with gradients ("Fired up!", "Replacement!!", "Champion!!") need hand-drawn letters (`draw`).
+  - [x] match screens in `pic2d` (v1.23, 59 images in `MPSAct`, `MPSActSPow`, `MPSPk`, `MPSClrM`, `MPSDrw`, `MPSFld`,
+    `MPSFrm`, `MPSPIn`, `MPSPrd`, `SPSAct`, `SPSActM`, `SPSClrM`, `SPSEnc`, `SPSPrd`), with the `FONT12`/`FONT8`
+    letters scaled up, shaded, bold, italic and with double outlines (new `image.py` options, so no hand-drawn
+    letters): the end-of-period banners (Intervalo, Fim do tempo normal, Prorrogação: intervalo, Fim da
+    prorrogação, Fim de jogo, Pênaltis), the 15 instructions ("Escolha onde chutar!", "TP insuficiente"…), EM
+    CHAMAS!/FOGO APAGADO!!/TÁTICA ESPECIAL!/CHUTE EM CADEIA!!/BLOQUEIO!!/SUBSTITUIÇÃO!!/Batalha!/Vitória!, buttons
+    (Iniciar, Continuar, Menu, Fugir, Ficha, Próximo, Sim/Não, Ver de novo, Voltar ao jogo, Encerrar), the drawing
+    panel (PAUSA TÁTICA) and the points panels (Experiência, Garra, Amizade, Itens obtidos, Pontos de vitória,
+    Bônus de destaque), Objetivo, Tempo limite, Resultado (Chutes, Técnicas, Posse, Gols), 1T/2T/Pr. 1T/Pr. 2T,
+    Dupla/Tripla, Você/Rival, "Escolha um campo.". Seen in the game (a field battle): Batalha!, Objetivo, Tempo
+    limite, the positions panel, Fugir/Iniciar/Menu, "Toque onde chutar a bola!" and "Desvie do rival!"; the rest
+    only in `check`. Left as CyberLife made them: the icons it put in place of the kanji (elements, technique,
+    back), the game logos (`SPSPi`/`SPSPu`), "Menu", "NEW", "LEVEL UP!!", the period labels `SPSEnc:MBU_N05` (it
+    changed the picture's size) and the "(A) Continue" button (`MPSPrd:RST_DN_B01`, in sprite pieces that the
+    fixed width of `image.py` cannot lay out);
+  - [x] buttons repeated across the menus (v1.23, 88 images, almost all in `pic3d`): found by the label's drawing
+    (19 templates taken from retail buttons, compared pixel by pixel in every picture), with the convention already
+    in use: はい/いいえ = Sim/Não, けってい = OK, もどる = Sair, おわる = Fim, やめる = Parar, コマンド = Menu, かんりょう
+    = Concluir, いれかえ = Trocar, きりかえ = Alternar, えらぶ = Escolher, つかう = Usar, へんこう = Mudar, そうび =
+    Equipar, チェック = Ver, せってい = Opções, おぼえる = Treinar, つかえるひと = Quem usa. Only the pictures where
+    CyberLife changed nothing but the buttons went in (otherwise the rest would go back to Japanese). Seen in the
+    game: Friends (OK, Menu, Sair; Trocar, Menu, Fim) and the bag (Usar, Menu, Fim);
+  - [ ] buttons in pictures with other CyberLife texts (13, to do by hand later): `menu_tournament:TMD_B08`,
+    `ps_item:PIDN_B00`, `practice_rule:PRRD_W00`/`W03` (the questions "Start the match?", "Save the data?"),
+    `waza_binder:WAZA_B01`, `trade:WTDN_B00`, `ps_replace_unit:PSDN_B00`, `ps_list:PSDN_B05`,
+    `MASTutorial:SYDN_B00` and four of `MMSlot`;
+  - [ ] the rest of the match is in `pic3d/common.pkb` (an index that is not the scripts' PackNum): seen in the
+    game, "Time Limit" at the top and "Technic", "Dodge", "Charge" in the commands;
 - [x] Link tutorial (v1.8, `MTSPi`, 8 pages of 8 bpp and 3 buttons): the Superlink 2→3 pages (`WPD_W00`–`W03`) and
   the Ogre Premium Link ones (`W04`–`W07`), where CyberLife had only changed the button. The "Other/This DS console"
   labels, the explanation boxes, the other game's title screen (Connect, Match, Search, Join, Build team,
@@ -278,12 +327,16 @@ in `docs/development/DIARY.pt-BR.md`.
   `ov096` (the name and " subiu!", or "Exp. subiu" and "!"/" muito!", in the order the code glues them) and the
   "Time: %s +" table of `ov109`. The periods (`ov001`, plain 24 px labels): 1T, 2T, 1P, 2P (º is not in the font).
   30 strings.
-- [ ] The other texts CyberLife left in English in the overlays (`extract --only ov --redo`, 46), all of unknown
-  drawer or context: the training descriptions of `ov045` (two lines per training, without furigana, half-width in
-  CyberLife), the other stats table of `ov109` (goes through `fn_ov109_0212586c`; does not show on the status
-  screen, which is an image), the stats of `ov110`, the technique list (`ov070`: "(By Kind)" in half width and
-  "（ｎａｍｅ）" in full width in the same place), "Master" on the card (`ov000:0x19374`) and "Error", "Passing",
-  "Downloaded Team" and "Cancel" of `ov131`.
+- [x] The other texts CyberLife left in English in the overlays (v1.23), from each one's code: the training
+  descriptions (`ov045`, `func_ov045_0211b2b0`: two rows per training, plain text in `FONT8` on a 128 px canvas;
+  `check` measures with `FONT8`, `FONT8_LABELS`); the technique list's title (`ov070`, `func_ov070_0211c228`:
+  `sprintf("%s%s")` of the kind and the order, plain text on a 128 px canvas: Chute, Ataque, Defesa, Goleiro,
+  Habil. + " (TP)", " (nome)", " (elemento)"; "（ＴＰ順）" has a single kanji and came in through `SHORT_STRINGS`);
+  the stat labels of `ov109` and `ov110` (`FONT12`, plain text, `MENUS`); "Mestre" on the card (`ov000:0x19374`,
+  which replaces "Nível do time NN" from level 60). In `ov131`, "Passing" and "Download de time" are the name of the
+  wireless session (`func_02046508` copies 16 bytes, nothing draws them), and "Error" (the value compared when
+  there is no password, like "トンコツ") and "Cancel" (はいし, a field of a script command that `ov000` compares) stay
+  as CyberLife left them: they do not show.
 - [x] Friends status on the top screen (v1.18, `pic2d/menu/msup_bg02.pac_`): CyberLife had "Corpo" instead of
   "Físico" (ボディ). The eight labels redone over the original: Chute, Físico, Controle, Defesa, Veloc., Resist.,
   Coragem, Experiência (the whole "Velocidade" and "Resistência" touched the values, which can have three digits).
@@ -505,6 +558,10 @@ already translated line has to be redone.
 - [ ] Overlay messages: the first seen in the game was the "Precisamos de Endo!" of `ov044` (v1.10), in pairs like
   the gallery's. The test save's formation did not allow triggering the `ov057` notices.
 - [ ] Labels of who speaks in matches 34010007 and 34010022 (`mch.pkb`)
+- [ ] Shop title (v1.23): "Comprar: G-Mart Inazuma" only in `check`. See a shop in the game (buy and sell) and
+  whether the plain-text verb shows through the furigana parser
+- [ ] Training descriptions (`ov045`), technique list title (`ov070`), stat labels of `ov109`/`ov110`, "Equipar"
+  of `ov053` and "Mestre" on the card (v1.23): only in `check`
 - [x] Street battle objectives (`gamerule.dat`, v1.5): seen in the game, in pairs and with an accent ("Objective"
   on the battle's top screen; session `bug3`, frame 35300)
 - [ ] Do the other readers of `command.STR` (`ov045`, `ov063`, `ov080`) show the descriptions like `ov109`?
@@ -688,6 +745,10 @@ and should follow this list when translated.
   but the comment under it vanished (seen in the game). Size measured on screen (Dados →
   Blog → touch the post): title in one row of 200 px (the list of posts), text in 5 rows of 186 px (x = 63 to 251),
   comment in 2 rows of 190 px (x = 2 to 193).
+- **Shop names (`logic/ShopName.dat:line`):** one line per shop, separated by CR LF (`LINE_FILES` in `text.py`);
+  the game reads the whole file, and `apply` writes it again. `ov062` draws "Comprar"/"Vender" (`ov062:0x7120`,
+  `0x7128`, plain text) and the line, through the furigana parser, on a 128 px canvas with no pixel between
+  letters: the line goes in pairs, up to 94 px (what is left after "Comprar"), and starts with ": ".
 - **Overlays (menus and messages in the code):** the recompiled code keeps the address of each string, so the
   translation stays in the same place and fits up to the original's NUL and 4-byte alignment (the following zeroed
   words may be data). `text.py` only takes strings the overlay has a pointer to and that are outside the code
@@ -705,7 +766,9 @@ and should follow this list when translated.
   string of the list has its place (the offset in the original), and `apply` rewrites the list in sequence, without
   extra NULs, in its whole room (up to the next pointer); one without a translation goes as the mod has it. Place:
   `ovNNN:0xoffset` (`overlays.json`). Passwords compared with what the player types stay in Japanese (`""`):
-  "ゆうきがあれば" (`ov055`), "なつみぶか"/"ぜうすくろ" (`ov016`), "てんま" (`ov028`), "トンコツ" (`ov131`).
+  "ゆうきがあれば" (`ov055`), "なつみぶか"/"ぜうすくろ" (`ov016`), "てんま" (`ov028`), "トンコツ" (`ov131`). In the port the furigana parser also shows lone ASCII (the `ruby_parse` hook, v1.23), so plain text goes
+  through it (the shop's verbs, `LABEL_RULES`); outside the port it would vanish. Not every overlay message goes
+  through the parser: the one of `ov044` ("Precisamos de Endo!") does not.
 - **Technique descriptions (`command.STR:offset` in the original):** the index is at 0x1A of the `command.dat`
   record. `ov109` reads item (`item.dat` +0x2A), technique and tactic (`tacticscmd.dat`, records of 0x14, +0x0E)
   into the same buffer: in pairs, 2 lines in the width of the item and technique descriptions (200 px).
@@ -802,8 +865,8 @@ fonts, lines and images as patches, makes `mod.ini` from `language.json` and che
 `--install` replaces `files/`, `overlays/` and `mod.ini` of `mods/CyberLifePlus/` and leaves the READMEs. `text.py`
 covers the dialogue (`evet`, `mcht`) and the script strings (`eve`, `mch`), the items (`item.dat`, `item.STR`), the
 tactics (`tacticscmd.STR`), the player titles (`rpgtitle.STR`), the techniques (`command.dat`) and the video
-gallery (`movie_view_f.dat`), the video subtitles (`movie/txt`), the record tables (`RECORDS`), the overlay strings
-and the players (`unitbase*`). A table it does not cover (`BattleRouteTitle.dat`…) needs a new converter in
+gallery (`movie_view_f.dat`), the video subtitles (`movie/txt`), the record tables (`RECORDS`), the overlay strings,
+the players (`unitbase*`) and the shop names (`ShopName.dat`). A table it does not cover (`BattleRouteTitle.dat`…) needs a new converter in
 `text.py` before being translated: a hand edit in the mod is lost on the next `build`.
 
 The text on images is in `translations/pt-BR/images.json` (format at the top of `tools/image.py`); to find the text

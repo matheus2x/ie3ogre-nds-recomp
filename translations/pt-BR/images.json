@@ -126,6 +126,12 @@
     {"erase": [26, 7, 176, 12], "ink": [15, 13]},
     {"erase": [8, 19, 192, 37], "ink": [15, 13]},
     {"text": "Os dados salvos do slot\nestão corrompidos. Os dados\nrecuperados podem ser antigos.", "box": [8, 6, 192, 50], "line": 16, "colour": 15}
+  ],
+  "SFDN_B04.PAC": [
+    {"erase": [8, 6, 32, 12], "ink": [4, 15]},
+    {"text": "Sim", "box": [3, 6, 42, 12], "colour": 15, "outline": 4},
+    {"erase": [8, 30, 32, 12], "ink": [4, 15]},
+    {"text": "Não", "box": [3, 30, 42, 12], "colour": 15, "outline": 4}
   ]
 },
 "pic2d/title/atdn_03.pac_": {
@@ -1210,6 +1216,24 @@
     {"text": "Aguardando o rival", "box": [48, 54, 80, 14], "colour": 15, "font": "FONT8"},
     {"erase": [2, 74, 172, 19], "ink": [15, 10]},
     {"text": "O rival está traçando jogadas", "box": [2, 77, 172, 14], "colour": 15, "outline": 10}
+  ],
+  "WMDN_W08.PAC": [
+    {"erase": [43, 53, 42, 14], "ink": [2, 13]},
+    {"text": "Sim", "box": [43, 54, 42, 12], "colour": 13, "outline": 2, "bold": 1},
+    {"erase": [139, 53, 42, 14], "ink": [2, 13]},
+    {"text": "Não", "box": [139, 54, 42, 12], "colour": 13, "outline": 2, "bold": 1}
+  ],
+  "RST_DN_BG01.PAC": [
+    {"erase": [102, 10, 53, 21], "ink": [15, 1, 11]},
+    {"text": "Resultado", "box": [102, 13, 53, 14], "colour": 15, "outline": [1, 11]},
+    {"erase": [103, 40, 50, 16], "ink": [15, 1, 11, 14], "rows": [56, 59]},
+    {"text": "Chutes", "box": [104, 41, 48, 13], "colour": 15, "outline": [1, 11], "bold": 1},
+    {"erase": [103, 63, 50, 16], "ink": [15, 1, 11, 14], "rows": [56, 59]},
+    {"text": "Técnicas", "box": [104, 64, 48, 13], "colour": 15, "outline": [1, 11], "bold": 1, "gap": 0},
+    {"erase": [103, 87, 50, 16], "ink": [15, 1, 11, 14], "rows": [56, 59]},
+    {"text": "Posse", "box": [104, 88, 48, 13], "colour": 15, "outline": [1, 11], "bold": 1},
+    {"erase": [103, 127, 50, 16], "ink": [15, 1, 11, 14], "rows": [56, 59]},
+    {"text": "Gols", "box": [104, 128, 48, 13], "colour": 15, "outline": [1, 11], "bold": 1}
   ]
 },
 "pic2d/menu/MMProfd.SPF_": {
@@ -1348,6 +1372,104 @@
     {"text": "Aguardando o rival", "box": [48, 54, 80, 14], "colour": 15, "font": "FONT8"},
     {"erase": [2, 74, 172, 19], "ink": [15, 10]},
     {"text": "O rival está traçando jogadas", "box": [2, 77, 172, 14], "colour": 15, "outline": 10}
+  ],
+  "GMDN_U00.PAC": [
+    {"erase": [0, 4, 256, 24], "ink": [1, 14, 9]},
+    {"text": "Intervalo", "box": [2, 2, 252, 26], "colour": [1, 1, 1, 1, 1, 1, 1, 14], "outline": 9, "scale": 2, "bold": 1},
+    {"erase": [0, 36, 256, 24], "ink": [1, 14, 9]},
+    {"text": "Fim do tempo normal", "box": [2, 34, 252, 26], "colour": [1, 1, 1, 1, 1, 1, 1, 14], "outline": 9, "scale": 2, "bold": 1},
+    {"erase": [0, 68, 256, 24], "ink": [1, 14, 9]},
+    {"text": "Prorrogação: intervalo", "box": [2, 66, 252, 26], "colour": [1, 1, 1, 1, 1, 1, 1, 14], "outline": 9, "scale": 2, "bold": 1},
+    {"erase": [0, 100, 256, 24], "ink": [1, 14, 9]},
+    {"text": "Fim da prorrogação", "box": [2, 98, 252, 26], "colour": [1, 1, 1, 1, 1, 1, 1, 14], "outline": 9, "scale": 2, "bold": 1},
+    {"erase": [0, 132, 256, 24], "ink": [2, 7, 8]},
+    {"text": "Fim de jogo", "box": [2, 130, 252, 26], "colour": [8, 8, 8, 8, 8, 8, 8, 7], "outline": 2, "scale": 2, "bold": 1},
+    {"erase": [0, 164, 256, 24], "ink": [7, 8, 9]},
+    {"text": "Pênaltis", "box": [2, 162, 252, 26], "colour": [8, 8, 8, 8, 8, 8, 8, 7], "outline": 9, "scale": 2, "bold": 1}
+  ],
+  "MBD_C02.PAC": {"width": 22, "edits": [
+    {"erase": [0, 0, 176, 16], "from": 0},
+    {"text": "Desvie do rival!", "box": [0, 1, 176, 14], "colour": [15, 15, 15, 15, 15, 8, 8, 8, 7], "outline": 1, "bold": 1}
+  ]},
+  "MBD_C03.PAC": {"width": 22, "edits": [
+    {"erase": [0, 0, 176, 16], "from": 0},
+    {"text": "Roube a bola!", "box": [0, 1, 176, 14], "colour": [15, 15, 15, 15, 15, 8, 8, 8, 7], "outline": 1, "bold": 1}
+  ]},
+  "MBD_C08.PAC": {"width": 22, "edits": [
+    {"erase": [0, 0, 176, 16], "from": 0},
+    {"text": "Escolha o chute!", "box": [0, 1, 176, 14], "colour": [15, 15, 15, 15, 15, 8, 8, 8, 7], "outline": 1, "bold": 1}
+  ]},
+  "MBD_C09.PAC": {"width": 22, "edits": [
+    {"erase": [0, 0, 176, 16], "from": 0},
+    {"text": "Chute do rival! O que fazer?", "box": [0, 1, 176, 14], "colour": [15, 15, 15, 15, 15, 8, 8, 8, 7], "outline": 1, "bold": 1}
+  ]},
+  "MBD_C12.PAC": {"width": 22, "edits": [
+    {"erase": [0, 0, 176, 16], "from": 0},
+    {"text": "TP insuficiente", "box": [0, 1, 176, 14], "colour": [15, 15, 15, 15, 15, 8, 8, 8, 7], "outline": 1, "bold": 1}
+  ]},
+  "MBD_C13.PAC": {"width": 22, "edits": [
+    {"erase": [0, 0, 176, 16], "from": 0},
+    {"text": "Toque onde chutar a bola!", "box": [0, 1, 176, 14], "colour": [15, 15, 15, 15, 15, 8, 8, 8, 7], "outline": 1, "bold": 1}
+  ]},
+  "MBD_C14.PAC": {"width": 22, "edits": [
+    {"erase": [0, 0, 176, 16], "from": 0},
+    {"text": "Toque onde lançar a bola!", "box": [0, 1, 176, 14], "colour": [15, 15, 15, 15, 15, 8, 8, 8, 7], "outline": 1, "bold": 1}
+  ]},
+  "MBD_C15.PAC": {"width": 22, "edits": [
+    {"erase": [0, 0, 176, 16], "from": 0},
+    {"text": "Não dá para usar no goleiro!", "box": [0, 1, 176, 14], "colour": [15, 15, 15, 15, 15, 8, 8, 8, 7], "outline": 1, "bold": 1}
+  ]},
+  "MBD_C17.PAC": {"width": 22, "edits": [
+    {"erase": [0, 0, 176, 16], "from": 0},
+    {"text": "Escolha onde chutar!", "box": [0, 1, 176, 14], "colour": [15, 15, 15, 15, 15, 8, 8, 8, 7], "outline": 1, "bold": 1}
+  ]},
+  "MBD_C18.PAC": {"width": 22, "edits": [
+    {"erase": [0, 0, 176, 16], "from": 0},
+    {"text": "Escolha onde defender!", "box": [0, 1, 176, 14], "colour": [15, 15, 15, 15, 15, 8, 8, 8, 7], "outline": 1, "bold": 1}
+  ]},
+  "MBD_C19.PAC": {"width": 22, "edits": [
+    {"erase": [0, 0, 176, 16], "from": 0},
+    {"text": "Mova os jogadores!", "box": [0, 1, 176, 14], "colour": [15, 15, 15, 15, 15, 8, 8, 8, 7], "outline": 1, "bold": 1}
+  ]},
+  "MBD_C20.PAC": {"width": 22, "edits": [
+    {"erase": [0, 0, 176, 16], "from": 0},
+    {"text": "Bloqueie o chute do rival!", "box": [0, 1, 176, 14], "colour": [15, 15, 15, 15, 15, 8, 8, 8, 7], "outline": 1, "bold": 1}
+  ]},
+  "MBD_C22.PAC": {"width": 22, "edits": [
+    {"erase": [0, 0, 176, 16], "from": 0},
+    {"text": "Encadeie o chute aliado!", "box": [0, 1, 176, 14], "colour": [15, 15, 15, 15, 15, 8, 8, 8, 7], "outline": 1, "bold": 1}
+  ]},
+  "MBD_C24.PAC": {"width": 22, "edits": [
+    {"erase": [0, 0, 176, 16], "from": 0},
+    {"text": "TTP insuficiente", "box": [0, 1, 176, 14], "colour": [15, 15, 15, 15, 15, 8, 8, 8, 7], "outline": 1, "bold": 1}
+  ]},
+  "GMDN_U01.PAC": [
+    {"erase": [0, 0, 224, 24], "ink": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]},
+    {"text": "EM CHAMAS!", "box": [0, 0, 220, 24], "colour": [13, 13, 13, 13, 13, 12, 12, 11], "outline": [1, 1], "scale": 2, "bold": 1, "italic": 4}
+  ],
+  "GMDN_U02.PAC": [
+    {"erase": [0, 0, 224, 24], "ink": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]},
+    {"text": "TÁTICA ESPECIAL!", "box": [0, 0, 220, 24], "colour": [15, 15, 15, 15, 15, 13, 13, 12], "outline": [1, 1], "scale": 2, "bold": 1, "italic": 4}
+  ],
+  "GMDN_U06.PAC": [
+    {"erase": [0, 0, 224, 24], "ink": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]},
+    {"text": "FOGO APAGADO!!", "box": [0, 0, 220, 24], "colour": [7], "outline": [1, 1], "scale": 2, "bold": 1, "italic": 4}
+  ],
+  "GMDN_U08.PAC": [
+    {"erase": [0, 0, 224, 24], "ink": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]},
+    {"text": "CHUTE EM CADEIA!!", "box": [0, 0, 220, 24], "colour": [4, 4, 4, 4, 4, 3, 3, 2], "outline": [1, 14], "scale": 2, "bold": 1, "italic": 4}
+  ],
+  "GMDN_U10.PAC": [
+    {"erase": [0, 0, 224, 24], "ink": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]},
+    {"text": "BLOQUEIO!!", "box": [0, 0, 220, 24], "colour": [7, 7, 7, 7, 7, 6, 6, 5], "outline": [1, 14], "scale": 2, "bold": 1, "italic": 4}
+  ],
+  "GMDN_R01.PAC": [
+    {"erase": [8, 9, 96, 14], "ink": [15, 6, 4, 3]},
+    {"text": "Ver de novo", "box": [6, 8, 100, 16], "colour": [15, 15, 15, 15, 15, 15, 15, 15, 4], "outline": [6, 6], "bold": 1},
+    {"erase": [8, 41, 96, 14], "ink": [15, 6, 4, 3]},
+    {"text": "Voltar ao jogo", "box": [6, 40, 100, 16], "colour": [15, 15, 15, 15, 15, 15, 15, 15, 4], "outline": [6, 6], "bold": 1},
+    {"erase": [8, 73, 96, 14], "ink": [15, 6, 4, 3]},
+    {"text": "Encerrar", "box": [6, 72, 100, 16], "colour": [15, 15, 15, 15, 15, 15, 15, 15, 4], "outline": [6, 6], "bold": 1}
   ]
 },
 "pic2d/MPSBgn.SPF_": {
@@ -1368,6 +1490,21 @@
     {"text": "Aguardando o rival", "box": [48, 54, 80, 14], "colour": 15, "font": "FONT8"},
     {"erase": [2, 74, 172, 19], "ink": [15, 10]},
     {"text": "O rival está traçando jogadas", "box": [2, 77, 172, 14], "colour": 15, "outline": 10}
+  ],
+  "GMDN_HELP02.PAC": [
+    {"erase": [0, 0, 176, 32], "ink": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]},
+    {"text": "PAUSA TÁTICA", "box": [0, 0, 176, 24], "colour": [14, 14, 14, 14, 14, 9], "outline": [6, 1], "scale": 2, "bold": 1},
+    {"text": "Dê ordens aos jogadores!", "box": [0, 20, 176, 12], "colour": [15, 15, 15, 15, 15, 15, 4, 4, 3], "outline": 1, "bold": 1}
+  ],
+  "GMDN_START.PAC": [
+    {"erase": [5, 8, 54, 16], "ink": [15, 6, 4]},
+    {"text": "Iniciar", "box": [5, 9, 54, 15], "colour": [15, 15, 15, 15, 15, 15, 15, 15, 4], "outline": [6, 6], "bold": 1},
+    {"erase": [5, 40, 54, 16], "ink": [15, 6, 4]},
+    {"text": "Continuar", "box": [5, 41, 54, 15], "colour": [15, 15, 15, 15, 15, 15, 15, 15, 4], "outline": [6, 6], "bold": 1, "gap": 0},
+    {"erase": [5, 72, 54, 16], "ink": [15, 11, 4]},
+    {"text": "Menu", "box": [5, 73, 54, 15], "colour": [15, 15, 15, 15, 15, 15, 15, 15, 4], "outline": [11, 11], "bold": 1},
+    {"erase": [5, 104, 54, 16], "ink": [15, 6, 4]},
+    {"text": "Fugir", "box": [5, 105, 54, 15], "colour": [15, 15, 15, 15, 15, 15, 15, 15, 4], "outline": [6, 6], "bold": 1}
   ]
 },
 "pic2d/MPSFrm.SPF_": {
@@ -1378,7 +1515,41 @@
     {"text": "Aguardando o rival", "box": [48, 54, 80, 14], "colour": 15, "font": "FONT8"},
     {"erase": [2, 74, 172, 19], "ink": [15, 10]},
     {"text": "O rival está traçando jogadas", "box": [2, 77, 172, 14], "colour": 15, "outline": 10}
-  ]
+  ],
+  "GMDN_ERR01.PAC": [
+    {"erase": [0, 0, 176, 32], "ink": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]},
+    {"text": "Coloque um jogador\nperto da bola.", "box": [0, 2, 176, 30], "line": 16, "colour": [15, 15, 15, 15, 15, 15, 4, 4, 3], "outline": 1, "bold": 1}
+  ],
+  "GMDN_ERR02.PAC": [
+    {"erase": [0, 0, 176, 32], "ink": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]},
+    {"text": "O jogador está\nperto demais da bola.", "box": [0, 2, 176, 30], "line": 16, "colour": [15, 15, 15, 15, 15, 15, 4, 4, 3], "outline": 1, "bold": 1}
+  ],
+  "GMDN_ERR03.PAC": [
+    {"erase": [0, 0, 176, 32], "ink": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]},
+    {"text": "Tire os jogadores\nda grande área.", "box": [0, 2, 176, 30], "line": 16, "colour": [15, 15, 15, 15, 15, 15, 4, 4, 3], "outline": 1, "bold": 1}
+  ],
+  "GMDN_HELP.PAC": [
+    {"erase": [0, 0, 176, 32], "ink": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]},
+    {"text": "Você pode mudar a\nposição dos jogadores.", "box": [0, 2, 176, 30], "line": 16, "colour": [15, 15, 15, 15, 15, 15, 4, 4, 3], "outline": 1, "bold": 1}
+  ],
+  "GMDN_U12.PAC": [
+    {"erase": [0, 0, 224, 24], "ink": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]},
+    {"text": "SUBSTITUIÇÃO!!", "box": [0, 0, 220, 24], "colour": [4, 4, 4, 4, 4, 3, 3, 3, 2], "outline": [1, 1], "scale": 2, "bold": 1, "italic": 4}
+  ],
+  "GMDN_START.PAC": [
+    {"erase": [5, 8, 54, 16], "ink": [15, 6, 4]},
+    {"text": "Iniciar", "box": [5, 9, 54, 15], "colour": [15, 15, 15, 15, 15, 15, 15, 15, 4], "outline": [6, 6], "bold": 1},
+    {"erase": [5, 40, 54, 16], "ink": [15, 6, 4]},
+    {"text": "Continuar", "box": [5, 41, 54, 15], "colour": [15, 15, 15, 15, 15, 15, 15, 15, 4], "outline": [6, 6], "bold": 1, "gap": 0},
+    {"erase": [5, 72, 54, 16], "ink": [15, 11, 4]},
+    {"text": "Menu", "box": [5, 73, 54, 15], "colour": [15, 15, 15, 15, 15, 15, 15, 15, 4], "outline": [11, 11], "bold": 1},
+    {"erase": [5, 104, 54, 16], "ink": [15, 6, 4]},
+    {"text": "Fugir", "box": [5, 105, 54, 15], "colour": [15, 15, 15, 15, 15, 15, 15, 15, 4], "outline": [6, 6], "bold": 1}
+  ],
+  "MBDN_U01.PAC": {"width": 12, "edits": [
+    {"erase": [0, 0, 96, 32], "ink": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]},
+    {"text": "Batalha!", "box": [0, 2, 94, 28], "colour": [7, 7, 7, 7, 7, 6, 6, 5, 4], "outline": [1], "scale": 2, "bold": 1, "italic": 4}
+  ]}
 },
 "pic2d/MPSPIn.SPF_": {
   "WC_MSG.PAC": [
@@ -1388,7 +1559,29 @@
     {"text": "Aguardando o rival", "box": [48, 54, 80, 14], "colour": 15, "font": "FONT8"},
     {"erase": [2, 74, 172, 19], "ink": [15, 10]},
     {"text": "O rival está traçando jogadas", "box": [2, 77, 172, 14], "colour": 15, "outline": 10}
-  ]
+  ],
+  "PO_W02.PAC": [
+    {"erase": [2, 2, 44, 12], "ink": [15, 1]},
+    {"text": "Você", "box": [2, 2, 44, 12], "colour": 15, "shadow": 1, "bold": 1}
+  ],
+  "PO_B01.PAC": [
+    {"erase": [6, 171, 44, 11], "ink": [15, 1]},
+    {"text": "Ficha", "box": [6, 170, 44, 12], "colour": 15, "outline": 1},
+    {"erase": [206, 171, 44, 11], "ink": [15, 1]},
+    {"text": "Próximo", "box": [206, 170, 44, 12], "colour": 15, "outline": 1}
+  ],
+  "PO_B03.PAC": {"width": 7, "edits": [
+    {"erase": [6, 12, 44, 11], "from": 4},
+    {"text": "Ficha", "box": [6, 11, 44, 12], "colour": 15, "outline": 14}
+  ]},
+  "PO_B04.PAC": {"width": 7, "edits": [
+    {"erase": [6, 12, 44, 11], "from": 4},
+    {"text": "Próximo", "box": [6, 11, 44, 12], "colour": 15, "outline": 14}
+  ]},
+  "PO_W03.PAC": {"width": 6, "edits": [
+    {"erase": [2, 2, 44, 12], "ink": [15, 1]},
+    {"text": "Rival", "box": [2, 2, 44, 12], "colour": 15, "shadow": 1, "bold": 1}
+  ]}
 },
 "pic2d/MPSPk.SPF_": {
   "WC_MSG.PAC": [
@@ -1398,7 +1591,29 @@
     {"text": "Aguardando o rival", "box": [48, 54, 80, 14], "colour": 15, "font": "FONT8"},
     {"erase": [2, 74, 172, 19], "ink": [15, 10]},
     {"text": "O rival está traçando jogadas", "box": [2, 77, 172, 14], "colour": 15, "outline": 10}
-  ]
+  ],
+  "GMDN_U00.PAC": [
+    {"erase": [0, 4, 256, 24], "ink": [1, 14, 9]},
+    {"text": "Intervalo", "box": [2, 2, 252, 26], "colour": [1, 1, 1, 1, 1, 1, 1, 14], "outline": 9, "scale": 2, "bold": 1},
+    {"erase": [0, 36, 256, 24], "ink": [1, 14, 9]},
+    {"text": "Fim do tempo normal", "box": [2, 34, 252, 26], "colour": [1, 1, 1, 1, 1, 1, 1, 14], "outline": 9, "scale": 2, "bold": 1},
+    {"erase": [0, 68, 256, 24], "ink": [1, 14, 9]},
+    {"text": "Prorrogação: intervalo", "box": [2, 66, 252, 26], "colour": [1, 1, 1, 1, 1, 1, 1, 14], "outline": 9, "scale": 2, "bold": 1},
+    {"erase": [0, 100, 256, 24], "ink": [1, 14, 9]},
+    {"text": "Fim da prorrogação", "box": [2, 98, 252, 26], "colour": [1, 1, 1, 1, 1, 1, 1, 14], "outline": 9, "scale": 2, "bold": 1},
+    {"erase": [0, 132, 256, 24], "ink": [2, 7, 8]},
+    {"text": "Fim de jogo", "box": [2, 130, 252, 26], "colour": [8, 8, 8, 8, 8, 8, 8, 7], "outline": 2, "scale": 2, "bold": 1},
+    {"erase": [0, 164, 256, 24], "ink": [7, 8, 9]},
+    {"text": "Pênaltis", "box": [2, 162, 252, 26], "colour": [8, 8, 8, 8, 8, 8, 8, 7], "outline": 9, "scale": 2, "bold": 1}
+  ],
+  "MBD_C17.PAC": {"width": 22, "edits": [
+    {"erase": [0, 0, 176, 16], "from": 0},
+    {"text": "Escolha onde chutar!", "box": [0, 1, 176, 14], "colour": [15, 15, 15, 15, 15, 8, 8, 8, 7], "outline": 1, "bold": 1}
+  ]},
+  "MBD_C18.PAC": {"width": 22, "edits": [
+    {"erase": [0, 0, 176, 16], "from": 0},
+    {"text": "Escolha onde defender!", "box": [0, 1, 176, 14], "colour": [15, 15, 15, 15, 15, 8, 8, 8, 7], "outline": 1, "bold": 1}
+  ]}
 },
 "pic2d/MTSPi.SPF_": {
   "WPD_W00.PAC": [
@@ -1868,7 +2083,8 @@
 "pic2d/menu/SMBinder1.SPF_": {
   "CHUP_S00.PAC": {"width": 32, "edits": [
     {"erase": [60, 7, 120, 11], "ink": [15, 12]},
-    {"text": "Fichário de jogadores", "box": [0, 6, 256, 12], "colour": 15, "shadow": 12}]},
+    {"text": "Fichário de jogadores", "box": [0, 6, 256, 12], "colour": 15, "shadow": 12}
+  ]},
   "CHUP_S01.PAC": {"width": 14, "edits": [
     {"erase": [9, 2, 94, 10], "ink": [15, 14]},
     {"erase": [9, 12, 94, 6], "ink": [15]},
@@ -1890,12 +2106,14 @@
     {"text": "Times do FFI 1", "box": [9, 165, 94, 12], "colour": 15},
     {"erase": [9, 194, 94, 10], "ink": [15, 14]},
     {"erase": [9, 204, 94, 6], "ink": [15]},
-    {"text": "Times do FFI 2", "box": [9, 197, 94, 12], "colour": 15}]}
+    {"text": "Times do FFI 2", "box": [9, 197, 94, 12], "colour": 15}
+  ]}
 },
 "pic2d/menu/SMBinder2.SPF_": {
   "CHUP_S02.PAC": {"width": 32, "edits": [
     {"erase": [60, 8, 120, 11], "ink": [15, 12]},
-    {"text": "Fichário de jogadores", "box": [0, 7, 256, 12], "colour": 15, "shadow": 12}]},
+    {"text": "Fichário de jogadores", "box": [0, 7, 256, 12], "colour": 15, "shadow": 12}
+  ]},
   "CHUP_W00.PAC": {"width": 32, "edits": [
     {"erase": [196, 36, 18, 12], "ink": [15]},
     {"erase": [84, 90, 68, 9], "ink": [15]},
@@ -1907,42 +2125,50 @@
     {"erase": [84, 123, 68, 9], "ink": [15]},
     {"text": "Moeda", "box": [85, 124, 67, 8], "colour": 15, "font": "FONT8", "align": "left"},
     {"erase": [19, 123, 29, 9], "ink": [15]},
-    {"text": "Tipo", "box": [20, 124, 28, 8], "colour": 15, "font": "FONT8", "align": "left"}]},
+    {"text": "Tipo", "box": [20, 124, 28, 8], "colour": 15, "font": "FONT8", "align": "left"}
+  ]},
   "CHUP_W01.PAC": {"width": 27, "edits": [
     {"erase": [2, 3, 117, 9], "ink": [15, 3]},
     {"erase": [2, 12, 117, 2], "ink": [15]},
     {"erase": [195, 3, 18, 13], "ink": [15]},
-    {"text": "Rivais", "box": [5, 2, 112, 12], "colour": 15, "shadow": 3, "align": "left"}]},
+    {"text": "Rivais", "box": [5, 2, 112, 12], "colour": 15, "shadow": 3, "align": "left"}
+  ]},
   "CHUP_W02.PAC": {"width": 27, "edits": [
     {"erase": [2, 3, 117, 9], "ink": [15, 3]},
     {"erase": [2, 12, 117, 2], "ink": [15]},
     {"erase": [195, 3, 18, 13], "ink": [15]},
-    {"text": "Times do FF", "box": [5, 2, 112, 12], "colour": 15, "shadow": 3, "align": "left"}]},
+    {"text": "Times do FF", "box": [5, 2, 112, 12], "colour": 15, "shadow": 3, "align": "left"}
+  ]},
   "CHUP_W03.PAC": {"width": 27, "edits": [
     {"erase": [2, 3, 117, 9], "ink": [15, 3]},
     {"erase": [2, 12, 117, 2], "ink": [15]},
     {"erase": [195, 3, 18, 13], "ink": [15]},
-    {"text": "Times do Japão", "box": [5, 2, 112, 12], "colour": 15, "shadow": 3, "align": "left"}]},
+    {"text": "Times do Japão", "box": [5, 2, 112, 12], "colour": 15, "shadow": 3, "align": "left"}
+  ]},
   "CHUP_W04.PAC": {"width": 27, "edits": [
     {"erase": [2, 3, 117, 9], "ink": [15, 3]},
     {"erase": [2, 12, 117, 2], "ink": [15]},
     {"erase": [195, 3, 18, 13], "ink": [15]},
-    {"text": "Academia Alius", "box": [5, 2, 112, 12], "colour": 15, "shadow": 3, "align": "left"}]},
+    {"text": "Academia Alius", "box": [5, 2, 112, 12], "colour": 15, "shadow": 3, "align": "left"}
+  ]},
   "CHUP_W05.PAC": {"width": 27, "edits": [
     {"erase": [2, 3, 117, 9], "ink": [15, 3]},
     {"erase": [2, 12, 117, 2], "ink": [15]},
     {"erase": [195, 3, 18, 13], "ink": [15]},
-    {"text": "Times diversos", "box": [5, 2, 112, 12], "colour": 15, "shadow": 3, "align": "left"}]},
+    {"text": "Times diversos", "box": [5, 2, 112, 12], "colour": 15, "shadow": 3, "align": "left"}
+  ]},
   "CHUP_W06.PAC": {"width": 27, "edits": [
     {"erase": [2, 3, 117, 9], "ink": [15, 3]},
     {"erase": [2, 12, 117, 2], "ink": [15]},
     {"erase": [195, 3, 18, 13], "ink": [15]},
-    {"text": "Times do FFI 1", "box": [5, 2, 112, 12], "colour": 15, "shadow": 3, "align": "left"}]},
+    {"text": "Times do FFI 1", "box": [5, 2, 112, 12], "colour": 15, "shadow": 3, "align": "left"}
+  ]},
   "CHUP_W07.PAC": {"width": 27, "edits": [
     {"erase": [2, 3, 117, 9], "ink": [15, 3]},
     {"erase": [2, 12, 117, 2], "ink": [15]},
     {"erase": [195, 3, 18, 13], "ink": [15]},
-    {"text": "Times do FFI 2", "box": [5, 2, 112, 12], "colour": 15, "shadow": 3, "align": "left"}]}
+    {"text": "Times do FFI 2", "box": [5, 2, 112, 12], "colour": 15, "shadow": 3, "align": "left"}
+  ]}
 },
 "pic2d/menu/SMBlog1.SPF_": {
   "BLUP_T01.PAC": [
@@ -1955,7 +2181,8 @@
     {"text": "Inazuma Japan para", "box": [16, 34, 136, 12], "colour": 12, "align": "left"},
     {"text": "todos vocês!", "box": [16, 54, 136, 12], "colour": 12, "align": "left"},
     {"text": "Confira sempre!", "box": [16, 93, 136, 12], "colour": 12, "align": "left"}
-  ]}},
+  ]}
+},
 "pic2d/menu/SMBlog2.SPF_": {
   "BLUP_BG01.PAC": [
     {"erase": [159, 136, 35, 7], "ink": [12]},
@@ -2571,6 +2798,1029 @@
     {"frames": [1], "text": "Sim", "box": [3, 6, 42, 12], "colour": 15, "outline": 7},
     {"frames": [2], "text": "Não", "box": [3, 6, 42, 12], "colour": 15, "outline": 6},
     {"frames": [3], "text": "Não", "box": [3, 6, 42, 12], "colour": 15, "outline": 7}
+  ]
+},
+"pic2d/MPSActSPow.SPF_": {
+  "MBD_C16.PAC": {"width": 22, "edits": [
+    {"erase": [0, 0, 176, 16], "from": 0},
+    {"text": "Escolha a força do chute!", "box": [0, 1, 176, 14], "colour": [15, 15, 15, 15, 15, 8, 8, 8, 7], "outline": 1, "bold": 1}
+  ]}
+},
+"pic2d/MPSClrM.SPF_": {
+  "MBDN_W04.PAC": [
+    {"erase": [4, 6, 120, 9], "ink": [15]},
+    {"text": "Itens obtidos", "box": [5, 6, 115, 8], "colour": 15, "font": "FONT8", "align": "left"}
+  ],
+  "MBDN_W03.PAC": {"width": 12, "edits": [
+    {"erase": [4, 6, 88, 9], "ink": [9]},
+    {"text": "Pontos obtidos", "box": [5, 6, 86, 8], "colour": 9, "font": "FONT8", "align": "left"},
+    {"erase": [4, 20, 88, 12], "ink": [12, 11, 10, 5]},
+    {"text": "Experiência", "box": [6, 18, 86, 12], "colour": [12, 12, 12, 12, 12, 12, 12, 12, 11], "shadow": 5, "bold": 1, "align": "left"},
+    {"erase": [4, 36, 88, 12], "ink": [15, 14, 5]},
+    {"text": "Garra", "box": [6, 34, 86, 12], "colour": [15, 15, 15, 15, 15, 15, 15, 15, 14], "shadow": 5, "bold": 1, "align": "left"},
+    {"erase": [4, 52, 88, 12], "ink": [15, 14, 5]},
+    {"text": "Amizade", "box": [6, 50, 86, 12], "colour": [15, 15, 15, 15, 15, 15, 15, 15, 14], "shadow": 5, "bold": 1, "align": "left"}
+  ]}
+},
+"pic2d/MPSFld.SPF_": {
+  "WLDN_T03.PAC": {"width": 32, "edits": [
+    {"erase": [17, 2, 239, 13], "ink": [15]},
+    {"text": "Escolha um campo.", "box": [18, 2, 236, 12], "colour": 15, "align": "left"}
+  ]}
+},
+"pic2d/SPSActM.SPF_": {
+  "MBUP_T00.PAC": [
+    {"erase": [43, 14, 57, 12], "ink": [8]},
+    {"text": "Tempo limite", "box": [43, 15, 57, 10], "colour": 8, "font": "FONT8"}
+  ],
+  "MBUP_U00.PAC": [
+    {"erase": [150, 4, 86, 19], "ink": [8, 9]},
+    {"erase": [150, 13, 5, 4], "from": 149},
+    {"text": "Objetivo", "box": [152, 0, 90, 24], "colour": 8, "outline": 9, "scale": 2, "bold": 1}
+  ]
+},
+"pic2d/SPSClrM.SPF_": {
+  "MBUP_U02.PAC": [
+    {"erase": [0, 0, 144, 32], "ink": [13, 14, 15]},
+    {"text": "Vitória!", "box": [0, 0, 144, 30], "colour": [15, 15, 15, 15, 15, 15, 15, 14], "outline": 13, "scale": 3, "bold": 1}
+  ],
+  "MBUP_U03.PAC": [
+    {"erase": [0, 0, 144, 32], "ink": [13, 14, 15]},
+    {"text": "Vitória!", "box": [0, 0, 144, 30], "colour": [15, 15, 15, 15, 15, 15, 15, 14], "outline": 13, "scale": 3, "bold": 1}
+  ],
+  "MBUP_W00.PAC": [
+    {"erase": [16, 3, 60, 12], "ink": [15, 10]},
+    {"text": "Pontos de vitória", "box": [16, 1, 100, 12], "colour": 15, "shadow": 10, "align": "left"},
+    {"erase": [16, 19, 100, 12], "ink": [15, 10]},
+    {"text": "Bônus de destaque", "box": [16, 17, 100, 12], "colour": 15, "shadow": 10, "align": "left"}
+  ],
+  "MBUP_W03.PAC": [
+    {"erase": [16, 3, 60, 12], "ink": [15, 10]},
+    {"text": "Pontos de vitória", "box": [16, 1, 100, 12], "colour": 15, "shadow": 10, "align": "left"},
+    {"erase": [16, 19, 100, 12], "ink": [15, 10]},
+    {"text": "Bônus de destaque", "box": [16, 17, 100, 12], "colour": 15, "shadow": 10, "align": "left"}
+  ],
+  "MBUP_W01.PAC": [
+    {"erase": [15, 3, 40, 12], "ink": [10, 5]},
+    {"text": "Garra", "box": [16, 1, 60, 12], "colour": 10, "shadow": 5, "bold": 1, "align": "left"},
+    {"erase": [15, 19, 45, 12], "ink": [13, 5]},
+    {"text": "Amizade", "box": [16, 17, 60, 12], "colour": 13, "shadow": 5, "bold": 1, "align": "left"},
+    {"erase": [15, 59, 40, 12], "ink": [15, 5]},
+    {"text": "Itens", "box": [16, 57, 38, 12], "colour": 15, "shadow": 5, "bold": 1, "align": "left"}
+  ],
+  "MBUP_W02.PAC": [
+    {"erase": [9, 9, 60, 13], "ink": [8]},
+    {"text": "Garra", "box": [10, 9, 60, 12], "colour": 8, "align": "left"},
+    {"erase": [9, 33, 60, 13], "ink": [8]},
+    {"text": "Amizade", "box": [10, 33, 60, 12], "colour": 8, "align": "left"}
+  ],
+  "MBUP_T02.PAC": {"width": 9, "edits": [
+    {"erase": [0, 0, 72, 16], "ink": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]},
+    {"text": "Exp. total", "box": [0, 2, 72, 12], "colour": [15, 15, 15, 15, 15, 15, 15, 15, 13], "outline": 11}
+  ]},
+  "MBUP_T03.PAC": {"width": 16, "edits": [
+    {"erase": [0, 0, 128, 16], "ink": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]},
+    {"text": "Rank S: exp. total ×2", "box": [0, 2, 128, 12], "colour": [15, 15, 15, 15, 15, 15, 15, 15, 13], "outline": 11}
+  ]}
+},
+"pic2d/SPSPrd.SPF_": {
+  "RST_UP_T01.PAC": [
+    {"erase": [20, 2, 104, 24], "ink": [11, 12, 13, 14, 15]},
+    {"erase": [20, 11, 104, 5], "from": 0},
+    {"text": "Intervalo", "box": [2, 1, 140, 24], "colour": [15, 15, 15, 15, 15, 15, 15, 14], "outline": [1, 11], "scale": 2, "bold": 1},
+    {"erase": [0, 34, 144, 24], "ink": [11, 12, 13, 14, 15]},
+    {"text": "Fim do tempo normal", "box": [2, 33, 140, 24], "colour": [15, 15, 15, 15, 15, 15, 15, 14], "outline": [1, 11], "scale": [1, 2], "bold": 1},
+    {"erase": [0, 66, 144, 24], "ink": [11, 12, 13, 14, 15]},
+    {"text": "Prorrogação: intervalo", "box": [2, 65, 140, 24], "colour": [15, 15, 15, 15, 15, 15, 15, 14], "outline": [1, 11], "scale": [1, 2], "bold": 1},
+    {"erase": [0, 98, 144, 24], "ink": [11, 12, 13, 14, 15]},
+    {"text": "Fim da prorrogação", "box": [2, 97, 140, 24], "colour": [15, 15, 15, 15, 15, 15, 15, 14], "outline": [1, 11], "scale": [1, 2], "bold": 1},
+    {"erase": [20, 130, 104, 24], "ink": [11, 12, 13, 14, 15]},
+    {"erase": [20, 139, 104, 5], "from": 0},
+    {"text": "Fim de jogo", "box": [2, 129, 140, 24], "colour": [13, 13, 13, 13, 13, 13, 13, 12], "outline": [1, 11], "scale": 2, "bold": 1}
+  ]
+},
+"pic2d/SPSAct.SPF_": {
+  "MCU_T00.PAC": {"width": 6, "edits": [
+    {"erase": [0, 0, 48, 80], "ink": [14]},
+    {"text": "1T", "box": [0, 2, 48, 12], "colour": 14},
+    {"text": "2T", "box": [0, 18, 48, 12], "colour": 14},
+    {"text": "Pr. 1T", "box": [0, 34, 48, 12], "colour": 14},
+    {"text": "Pr. 2T", "box": [0, 50, 48, 12], "colour": 14},
+    {"text": "Limite", "box": [0, 66, 48, 12], "colour": 14}
+  ]},
+  "MGU_G00.PAC": {"width": 15, "edits": [
+    {"erase": [8, 0, 50, 12], "ink": [15, 12, 8]},
+    {"text": "Em chamas!", "box": [8, 1, 50, 9], "colour": [15, 15, 15, 15, 15, 15, 12], "outline": 8, "font": "FONT8"},
+    {"erase": [64, 16, 52, 12], "ink": [15, 12, 8]},
+    {"text": "Em chamas!", "box": [65, 17, 50, 9], "colour": [15, 15, 15, 15, 15, 15, 12], "outline": 8, "font": "FONT8"}
+  ]},
+  "MGU_B02.PAC": {"width": 6, "edits": [
+    {"erase": [2, 2, 44, 12], "ink": [4, 1]},
+    {"text": "Você", "box": [2, 2, 44, 12], "colour": 4, "shadow": 1, "bold": 1}
+  ]}
+},
+"pic2d/SPSEnc.SPF_": {
+  "MBU_Z05.PAC": {"width": 6, "edits": [
+    {"erase": [2, 2, 44, 11], "ink": [9]},
+    {"text": "Dupla", "box": [2, 3, 44, 9], "colour": 9, "font": "FONT8", "bold": 1},
+    {"erase": [2, 18, 44, 11], "ink": [14]},
+    {"text": "Tripla", "box": [2, 19, 44, 9], "colour": 14, "font": "FONT8", "bold": 1}
+  ]}
+},
+"pic3d/capsule": {
+  "SHDN_B09.PAC_": [
+    {"erase": [8, 6, 32, 12], "ink": [4, 15]},
+    {"text": "Sim", "box": [3, 6, 42, 12], "colour": 15, "outline": 4},
+    {"erase": [8, 30, 32, 12], "ink": [4, 15]},
+    {"text": "Não", "box": [3, 30, 42, 12], "colour": 15, "outline": 4}
+  ],
+  "SHDN_B08.PAC_": [
+    {"erase": [8, 6, 32, 12], "ink": [2, 14]},
+    {"text": "Sim", "box": [3, 6, 42, 12], "colour": 14, "outline": 2},
+    {"erase": [8, 30, 32, 12], "ink": [2, 14]},
+    {"text": "Não", "box": [3, 30, 42, 12], "colour": 14, "outline": 2}
+  ],
+  "SHDN_B10.PAC_": [
+    {"erase": [8, 7, 32, 7], "ink": [13, 15]},
+    {"erase": [8, 14, 32, 5], "ink": [15]},
+    {"text": "Sim", "box": [3, 7, 42, 12], "colour": 15, "outline": 13},
+    {"erase": [8, 31, 32, 7], "ink": [13, 15]},
+    {"erase": [8, 38, 32, 5], "ink": [15]},
+    {"text": "Não", "box": [3, 31, 42, 12], "colour": 15, "outline": 13}
+  ],
+  "GSDN_W02.PAC_": [
+    {"erase": [48, 102, 32, 12], "ink": [9, 14]},
+    {"text": "Sim", "box": [43, 102, 42, 12], "colour": 14, "outline": 9},
+    {"erase": [144, 102, 32, 12], "ink": [9, 14]},
+    {"text": "Não", "box": [139, 102, 42, 12], "colour": 14, "outline": 9}
+  ],
+  "GSDN_W03.PAC_": [
+    {"erase": [48, 54, 32, 12], "ink": [9, 14]},
+    {"text": "Sim", "box": [43, 54, 42, 12], "colour": 14, "outline": 9},
+    {"erase": [144, 54, 32, 12], "ink": [9, 14]},
+    {"text": "Não", "box": [139, 54, 42, 12], "colour": 14, "outline": 9}
+  ]
+},
+"pic3d/menu_tournament": {
+  "TMD_B00.PAC_": [
+    {"erase": [19, 5, 23, 13], "ink": [10, 15]},
+    {"text": "Sair", "box": [19, 5, 26, 12], "colour": 15, "outline": 10},
+    {"erase": [19, 30, 23, 11], "ink": [7, 15]},
+    {"erase": [19, 41, 23, 2], "ink": [15]},
+    {"text": "Sair", "box": [19, 30, 26, 12], "colour": 15, "outline": 7},
+    {"erase": [19, 54, 23, 12], "ink": [10, 15]},
+    {"text": "Parar", "box": [19, 56, 26, 8], "colour": 15, "outline": 10, "font": "FONT8"},
+    {"erase": [19, 79, 23, 10], "ink": [7, 15]},
+    {"erase": [19, 89, 23, 2], "ink": [15]},
+    {"text": "Parar", "box": [19, 81, 26, 8], "colour": 15, "outline": 7, "font": "FONT8"}
+  ],
+  "TMD_B07.PAC_": [
+    {"erase": [8, 6, 32, 12], "ink": [6, 15]},
+    {"text": "Sim", "box": [3, 6, 42, 12], "colour": 15, "outline": 6},
+    {"erase": [8, 31, 32, 7], "ink": [13, 15]},
+    {"erase": [8, 38, 32, 5], "ink": [15]},
+    {"text": "Sim", "box": [3, 31, 42, 12], "colour": 15, "outline": 13},
+    {"erase": [8, 54, 32, 12], "ink": [6, 15]},
+    {"text": "Não", "box": [3, 54, 42, 12], "colour": 15, "outline": 6},
+    {"erase": [8, 79, 32, 7], "ink": [13, 15]},
+    {"erase": [8, 86, 32, 5], "ink": [15]},
+    {"text": "Não", "box": [3, 79, 42, 12], "colour": 15, "outline": 13}
+  ],
+  "TMD_B01.PAC_": [
+    {"erase": [22, 31, 24, 10], "ink": [7, 15]},
+    {"erase": [22, 41, 24, 2], "ink": [15]},
+    {"text": "OK", "box": [22, 31, 26, 12], "colour": 15, "outline": 7},
+    {"erase": [22, 6, 24, 12], "ink": [10, 15]},
+    {"text": "OK", "box": [22, 6, 31, 12], "colour": 15, "outline": 10},
+    {"erase": [22, 54, 24, 12], "ink": [9, 13]},
+    {"text": "OK", "box": [22, 54, 31, 12], "colour": 13, "outline": 9}
+  ]
+},
+"pic3d/ps_item": {
+  "PIDN_W22.PAC_": [
+    {"erase": [48, 102, 32, 12], "ink": [9, 14]},
+    {"text": "Sim", "box": [43, 102, 42, 12], "colour": 14, "outline": 9},
+    {"erase": [144, 102, 32, 12], "ink": [9, 14]},
+    {"text": "Não", "box": [139, 102, 42, 12], "colour": 14, "outline": 9}
+  ],
+  "PIDN_W20.PAC_": [
+    {"erase": [48, 54, 32, 12], "ink": [9, 14]},
+    {"text": "Sim", "box": [43, 54, 42, 12], "colour": 14, "outline": 9},
+    {"erase": [144, 54, 32, 12], "ink": [9, 14]},
+    {"text": "Não", "box": [139, 54, 42, 12], "colour": 14, "outline": 9}
+  ],
+  "PIDN_B03.PAC_": [
+    {"erase": [8, 6, 32, 12], "ink": [4, 15]},
+    {"text": "Sim", "box": [3, 6, 42, 12], "colour": 15, "outline": 4},
+    {"erase": [8, 31, 32, 7], "ink": [13, 15]},
+    {"erase": [8, 38, 32, 5], "ink": [15]},
+    {"text": "Sim", "box": [3, 31, 42, 12], "colour": 15, "outline": 13},
+    {"erase": [8, 54, 32, 12], "ink": [4, 15]},
+    {"text": "Não", "box": [3, 54, 42, 12], "colour": 15, "outline": 4},
+    {"erase": [8, 79, 32, 7], "ink": [13, 15]},
+    {"erase": [8, 86, 32, 5], "ink": [15]},
+    {"text": "Não", "box": [3, 79, 42, 12], "colour": 15, "outline": 13}
+  ]
+},
+"pic3d/tokkun_chara_select": {
+  "TKDN_B10.PAC_": [
+    {"erase": [8, 6, 32, 12], "ink": [4, 15]},
+    {"text": "Sim", "box": [3, 6, 42, 12], "colour": 15, "outline": 4},
+    {"erase": [8, 31, 32, 7], "ink": [13, 15]},
+    {"erase": [8, 38, 32, 5], "ink": [15]},
+    {"text": "Sim", "box": [3, 31, 42, 12], "colour": 15, "outline": 13},
+    {"erase": [8, 54, 32, 12], "ink": [4, 15]},
+    {"text": "Não", "box": [3, 54, 42, 12], "colour": 15, "outline": 4},
+    {"erase": [8, 79, 32, 7], "ink": [13, 15]},
+    {"erase": [8, 86, 32, 5], "ink": [15]},
+    {"text": "Não", "box": [3, 79, 42, 12], "colour": 15, "outline": 13}
+  ],
+  "TKDN_B00.PAC_": [
+    {"erase": [19, 101, 23, 13], "ink": [4, 15]},
+    {"text": "Sair", "box": [19, 101, 26, 12], "colour": 15, "outline": 4},
+    {"erase": [19, 126, 23, 11], "ink": [13, 15]},
+    {"erase": [19, 137, 23, 2], "ink": [15]},
+    {"text": "Sair", "box": [19, 126, 26, 12], "colour": 15, "outline": 13},
+    {"erase": [19, 54, 24, 12], "ink": [4, 15]},
+    {"text": "OK", "box": [19, 54, 26, 12], "colour": 15, "outline": 4},
+    {"erase": [19, 79, 24, 10], "ink": [13, 15]},
+    {"erase": [19, 89, 24, 2], "ink": [15]},
+    {"text": "OK", "box": [19, 79, 26, 12], "colour": 15, "outline": 13},
+    {"erase": [19, 5, 24, 13], "ink": [4, 15]},
+    {"text": "Fim", "box": [19, 5, 26, 12], "colour": 15, "outline": 4},
+    {"erase": [19, 30, 24, 11], "ink": [13, 15]},
+    {"erase": [19, 41, 24, 2], "ink": [15]},
+    {"text": "Fim", "box": [19, 30, 26, 12], "colour": 15, "outline": 13}
+  ],
+  "TKDN_W10.PAC_": [
+    {"erase": [32, 54, 32, 12], "ink": [9, 14]},
+    {"text": "Sim", "box": [27, 54, 42, 12], "colour": 14, "outline": 9},
+    {"erase": [128, 54, 32, 12], "ink": [9, 14]},
+    {"text": "Não", "box": [123, 54, 42, 12], "colour": 14, "outline": 9}
+  ]
+},
+"pic3d/phone": {
+  "KLDN_B01.PAC_": [
+    {"erase": [8, 6, 32, 12], "ink": [4, 15]},
+    {"text": "Sim", "box": [3, 6, 42, 12], "colour": 15, "outline": 4},
+    {"erase": [8, 31, 32, 7], "ink": [13, 15]},
+    {"erase": [8, 38, 32, 5], "ink": [15]},
+    {"text": "Sim", "box": [3, 31, 42, 12], "colour": 15, "outline": 13},
+    {"erase": [8, 54, 32, 12], "ink": [4, 15]},
+    {"text": "Não", "box": [3, 54, 42, 12], "colour": 15, "outline": 4},
+    {"erase": [8, 79, 32, 7], "ink": [13, 15]},
+    {"erase": [8, 86, 32, 5], "ink": [15]},
+    {"text": "Não", "box": [3, 79, 42, 12], "colour": 15, "outline": 13}
+  ],
+  "KLDN_W03.PAC_": [
+    {"erase": [48, 54, 32, 12], "ink": [4, 15]},
+    {"text": "Sim", "box": [43, 54, 42, 12], "colour": 15, "outline": 4},
+    {"erase": [144, 54, 32, 12], "ink": [4, 15]},
+    {"text": "Não", "box": [139, 54, 42, 12], "colour": 15, "outline": 4}
+  ],
+  "KLDN_W01.PAC_": [
+    {"erase": [48, 54, 32, 12], "ink": [4, 15]},
+    {"text": "Sim", "box": [43, 54, 42, 12], "colour": 15, "outline": 4},
+    {"erase": [144, 54, 32, 12], "ink": [4, 15]},
+    {"text": "Não", "box": [139, 54, 42, 12], "colour": 15, "outline": 4}
+  ]
+},
+"pic3d/pkprepare": {
+  "PKDN_B00.PAC_": [
+    {"erase": [19, 6, 24, 12], "ink": [3, 15]},
+    {"text": "OK", "box": [19, 6, 26, 12], "colour": 15, "outline": 3},
+    {"erase": [19, 31, 24, 10], "ink": [10, 15]},
+    {"erase": [19, 41, 24, 2], "ink": [15]},
+    {"text": "OK", "box": [19, 31, 26, 12], "colour": 15, "outline": 10}
+  ]
+},
+"pic3d/practice_rule": {
+  "PRRD_C00.PAC_": [
+    {"erase": [19, 53, 23, 13], "ink": [3, 15]},
+    {"text": "Sair", "box": [19, 53, 26, 12], "colour": 15, "outline": 3},
+    {"erase": [19, 78, 23, 11], "ink": [13, 15]},
+    {"erase": [19, 89, 23, 2], "ink": [15]},
+    {"text": "Sair", "box": [19, 78, 26, 12], "colour": 15, "outline": 13},
+    {"erase": [19, 6, 24, 12], "ink": [3, 15]},
+    {"text": "OK", "box": [19, 6, 26, 12], "colour": 15, "outline": 3},
+    {"erase": [19, 31, 24, 10], "ink": [13, 15]},
+    {"erase": [19, 41, 24, 2], "ink": [15]},
+    {"text": "OK", "box": [19, 31, 26, 12], "colour": 15, "outline": 13}
+  ],
+  "PRRD_C02.PAC_": [
+    {"erase": [8, 6, 32, 12], "ink": [4, 15]},
+    {"text": "Sim", "box": [3, 6, 42, 12], "colour": 15, "outline": 4},
+    {"erase": [8, 31, 32, 7], "ink": [13, 15]},
+    {"erase": [8, 38, 32, 5], "ink": [15]},
+    {"text": "Sim", "box": [3, 31, 42, 12], "colour": 15, "outline": 13},
+    {"erase": [8, 54, 32, 12], "ink": [4, 15]},
+    {"text": "Não", "box": [3, 54, 42, 12], "colour": 15, "outline": 4},
+    {"erase": [8, 79, 32, 7], "ink": [13, 15]},
+    {"erase": [8, 86, 32, 5], "ink": [15]},
+    {"text": "Não", "box": [3, 79, 42, 12], "colour": 15, "outline": 13}
+  ]
+},
+"pic3d/trade": {
+  "WTDN_B04.PAC_": [
+    {"erase": [8, 6, 32, 12], "ink": [6, 15]},
+    {"text": "Sim", "box": [3, 6, 42, 12], "colour": 15, "outline": 6},
+    {"erase": [8, 31, 32, 7], "ink": [11, 15]},
+    {"erase": [8, 38, 32, 5], "ink": [15]},
+    {"text": "Sim", "box": [3, 31, 42, 12], "colour": 15, "outline": 11},
+    {"erase": [8, 54, 32, 12], "ink": [6, 15]},
+    {"text": "Não", "box": [3, 54, 42, 12], "colour": 15, "outline": 6},
+    {"erase": [8, 79, 32, 7], "ink": [11, 15]},
+    {"erase": [8, 86, 32, 5], "ink": [15]},
+    {"text": "Não", "box": [3, 79, 42, 12], "colour": 15, "outline": 11}
+  ],
+  "WTDN_B01.PAC_": [
+    {"erase": [19, 5, 23, 13], "ink": [4, 15]},
+    {"text": "Sair", "box": [19, 5, 26, 12], "colour": 15, "outline": 4},
+    {"erase": [19, 30, 23, 11], "ink": [11, 15]},
+    {"erase": [19, 41, 23, 2], "ink": [15]},
+    {"text": "Sair", "box": [19, 30, 26, 12], "colour": 15, "outline": 11}
+  ]
+},
+"pic3d/emblem_c": {
+  "EMDN_B02.PAC_": [
+    {"erase": [8, 6, 32, 12], "ink": [10, 15]},
+    {"text": "Sim", "box": [3, 6, 42, 12], "colour": 15, "outline": 10},
+    {"erase": [8, 31, 32, 7], "ink": [9, 15]},
+    {"erase": [8, 38, 32, 5], "ink": [15]},
+    {"text": "Sim", "box": [3, 31, 42, 12], "colour": 15, "outline": 9},
+    {"erase": [8, 54, 32, 12], "ink": [10, 15]},
+    {"text": "Não", "box": [3, 54, 42, 12], "colour": 15, "outline": 10},
+    {"erase": [8, 79, 32, 7], "ink": [9, 15]},
+    {"erase": [8, 86, 32, 5], "ink": [15]},
+    {"text": "Não", "box": [3, 79, 42, 12], "colour": 15, "outline": 9}
+  ]
+},
+"pic3d/formation2": {
+  "WFD_B00.PAC_": [
+    {"erase": [26, 78, 23, 11], "ink": [13, 15]},
+    {"erase": [26, 89, 23, 2], "ink": [15]},
+    {"text": "Sair", "box": [26, 78, 26, 12], "colour": 15, "outline": 13},
+    {"erase": [20, 6, 37, 12], "ink": [3, 15]},
+    {"text": "Concluir", "box": [20, 6, 41, 12], "colour": 15, "outline": 3},
+    {"erase": [20, 31, 37, 10], "ink": [13, 15]},
+    {"erase": [20, 41, 37, 2], "ink": [15]},
+    {"text": "Concluir", "box": [20, 31, 41, 12], "colour": 15, "outline": 13},
+    {"erase": [26, 53, 23, 13], "ink": [3, 15]},
+    {"text": "Sair", "box": [26, 53, 35, 12], "colour": 15, "outline": 3}
+  ],
+  "MSDN_B04.PAC_": [
+    {"erase": [19, 53, 23, 13], "ink": [3, 15]},
+    {"text": "Sair", "box": [19, 53, 26, 12], "colour": 15, "outline": 3},
+    {"erase": [19, 78, 23, 11], "ink": [13, 15]},
+    {"erase": [19, 89, 23, 2], "ink": [15]},
+    {"text": "Sair", "box": [19, 78, 26, 12], "colour": 15, "outline": 13},
+    {"erase": [19, 5, 24, 13], "ink": [3, 15]},
+    {"text": "Fim", "box": [19, 5, 26, 12], "colour": 15, "outline": 3},
+    {"erase": [19, 30, 24, 11], "ink": [13, 15]},
+    {"erase": [19, 41, 24, 2], "ink": [15]},
+    {"text": "Fim", "box": [19, 30, 26, 12], "colour": 15, "outline": 13}
+  ],
+  "MSDN_B03.PAC_": [
+    {"erase": [19, 54, 24, 12], "ink": [3, 15]},
+    {"text": "OK", "box": [19, 54, 26, 12], "colour": 15, "outline": 3},
+    {"erase": [19, 79, 24, 10], "ink": [13, 15]},
+    {"erase": [19, 89, 24, 2], "ink": [15]},
+    {"text": "OK", "box": [19, 79, 26, 12], "colour": 15, "outline": 13},
+    {"erase": [19, 5, 25, 13], "ink": [3, 15]},
+    {"text": "Escolher", "box": [19, 7, 26, 8], "colour": 15, "font": "FONT8", "gap": 0},
+    {"erase": [19, 30, 25, 11], "ink": [13, 15]},
+    {"erase": [19, 41, 25, 2], "ink": [15]},
+    {"text": "Escolher", "box": [19, 32, 26, 8], "colour": 15, "font": "FONT8", "gap": 0}
+  ],
+  "MSDN_B02.PAC_": [
+    {"erase": [19, 6, 32, 12], "ink": [3, 15]},
+    {"text": "Menu", "box": [19, 6, 34, 12], "colour": 15, "outline": 3},
+    {"erase": [19, 31, 32, 10], "ink": [13, 15]},
+    {"erase": [19, 41, 32, 2], "ink": [15]},
+    {"text": "Menu", "box": [19, 31, 34, 12], "colour": 15, "outline": 13}
+  ],
+  "MSDN_B20.PAC_": [
+    {"erase": [8, 7, 32, 7], "ink": [13, 15]},
+    {"erase": [8, 14, 32, 5], "ink": [15]},
+    {"text": "Sim", "box": [3, 7, 42, 12], "colour": 15, "outline": 13},
+    {"erase": [8, 31, 32, 7], "ink": [13, 15]},
+    {"erase": [8, 38, 32, 5], "ink": [15]},
+    {"text": "Não", "box": [3, 31, 42, 12], "colour": 15, "outline": 13}
+  ],
+  "MSDN_B18.PAC_": [
+    {"erase": [8, 6, 32, 12], "ink": [2, 14]},
+    {"text": "Sim", "box": [3, 6, 42, 12], "colour": 14, "outline": 2},
+    {"erase": [8, 30, 32, 12], "ink": [2, 14]},
+    {"text": "Não", "box": [3, 30, 42, 12], "colour": 14, "outline": 2}
+  ],
+  "WMDN_B03.PAC_": [
+    {"erase": [8, 6, 32, 12], "ink": [6, 15]},
+    {"text": "Sim", "box": [3, 6, 42, 12], "colour": 15, "outline": 6},
+    {"erase": [8, 31, 32, 7], "ink": [7, 15]},
+    {"erase": [8, 38, 32, 5], "ink": [15]},
+    {"text": "Sim", "box": [3, 31, 42, 12], "colour": 15, "outline": 7},
+    {"erase": [8, 54, 32, 12], "ink": [6, 15]},
+    {"text": "Não", "box": [3, 54, 42, 12], "colour": 15, "outline": 6},
+    {"erase": [8, 79, 32, 7], "ink": [7, 15]},
+    {"erase": [8, 86, 32, 5], "ink": [15]},
+    {"text": "Não", "box": [3, 79, 42, 12], "colour": 15, "outline": 7}
+  ]
+},
+"pic3d/scout": {
+  "SCDN_B05.PAC_": [
+    {"erase": [8, 9, 32, 12], "ink": [3, 15]},
+    {"text": "Sim", "box": [3, 9, 42, 12], "colour": 15, "outline": 3},
+    {"erase": [8, 42, 32, 7], "ink": [11, 15]},
+    {"erase": [8, 49, 32, 5], "ink": [15]},
+    {"text": "Sim", "box": [3, 42, 42, 12], "colour": 15, "outline": 11},
+    {"erase": [8, 73, 32, 12], "ink": [3, 15]},
+    {"text": "Não", "box": [3, 73, 42, 12], "colour": 15, "outline": 3},
+    {"erase": [8, 106, 32, 7], "ink": [11, 15]},
+    {"erase": [8, 113, 32, 5], "ink": [15]},
+    {"text": "Não", "box": [3, 106, 42, 12], "colour": 15, "outline": 11}
+  ],
+  "SCDN_W09.PAC_": [
+    {"erase": [32, 9, 32, 12], "ink": [2, 14]},
+    {"text": "Sim", "box": [27, 9, 42, 12], "colour": 14, "outline": 2},
+    {"erase": [128, 9, 32, 12], "ink": [2, 14]},
+    {"text": "Não", "box": [123, 9, 42, 12], "colour": 14, "outline": 2}
+  ]
+},
+"pic3d/shop": {
+  "SHDN_B04.PAC_": [
+    {"erase": [22, 31, 24, 10], "ink": [13, 15]},
+    {"erase": [22, 41, 24, 2], "ink": [15]},
+    {"text": "OK", "box": [22, 31, 26, 12], "colour": 15, "outline": 13},
+    {"erase": [22, 6, 24, 12], "ink": [3, 15]},
+    {"text": "OK", "box": [22, 6, 31, 12], "colour": 15, "outline": 3}
+  ],
+  "SHDN_W07.PAC_": [
+    {"erase": [56, 54, 32, 12], "ink": [9, 14]},
+    {"text": "Sim", "box": [51, 54, 42, 12], "colour": 14, "outline": 9},
+    {"erase": [152, 54, 32, 12], "ink": [9, 14]},
+    {"text": "Não", "box": [147, 54, 42, 12], "colour": 14, "outline": 9}
+  ],
+  "SHDN_B05.PAC_": [
+    {"erase": [19, 6, 23, 12], "ink": [3, 15]},
+    {"text": "Parar", "box": [19, 8, 26, 8], "colour": 15, "outline": 3, "font": "FONT8"},
+    {"erase": [19, 31, 23, 10], "ink": [13, 15]},
+    {"erase": [19, 41, 23, 2], "ink": [15]},
+    {"text": "Parar", "box": [19, 33, 26, 8], "colour": 15, "outline": 13, "font": "FONT8"}
+  ],
+  "SHDN_W03.PAC_": [
+    {"erase": [40, 54, 32, 12], "ink": [9, 14]},
+    {"text": "Sim", "box": [35, 54, 42, 12], "colour": 14, "outline": 9},
+    {"erase": [136, 54, 32, 12], "ink": [9, 14]},
+    {"text": "Não", "box": [131, 54, 42, 12], "colour": 14, "outline": 9}
+  ],
+  "SHDN_B09.PAC_": [
+    {"erase": [8, 6, 32, 12], "ink": [4, 15]},
+    {"text": "Sim", "box": [3, 6, 42, 12], "colour": 15, "outline": 4},
+    {"erase": [8, 30, 32, 12], "ink": [4, 15]},
+    {"text": "Não", "box": [3, 30, 42, 12], "colour": 15, "outline": 4}
+  ],
+  "SHDN_B08.PAC_": [
+    {"erase": [8, 6, 32, 12], "ink": [2, 14]},
+    {"text": "Sim", "box": [3, 6, 42, 12], "colour": 14, "outline": 2},
+    {"erase": [8, 30, 32, 12], "ink": [2, 14]},
+    {"text": "Não", "box": [3, 30, 42, 12], "colour": 14, "outline": 2}
+  ],
+  "SHDN_B10.PAC_": [
+    {"erase": [8, 7, 32, 7], "ink": [13, 15]},
+    {"erase": [8, 14, 32, 5], "ink": [15]},
+    {"text": "Sim", "box": [3, 7, 42, 12], "colour": 15, "outline": 13},
+    {"erase": [8, 31, 32, 7], "ink": [13, 15]},
+    {"erase": [8, 38, 32, 5], "ink": [15]},
+    {"text": "Não", "box": [3, 31, 42, 12], "colour": 15, "outline": 13}
+  ]
+},
+"pic3d/item": {
+  "ITD_B00.PAC_": [
+    {"erase": [19, 197, 23, 13], "ink": [3, 15]},
+    {"text": "Sair", "box": [19, 197, 26, 12], "colour": 15, "outline": 3},
+    {"erase": [19, 222, 23, 11], "ink": [13, 15]},
+    {"erase": [19, 233, 23, 2], "ink": [15]},
+    {"text": "Sair", "box": [19, 222, 26, 12], "colour": 15, "outline": 13},
+    {"erase": [22, 103, 24, 10], "ink": [13, 15]},
+    {"erase": [22, 113, 24, 2], "ink": [15]},
+    {"text": "OK", "box": [22, 103, 26, 12], "colour": 15, "outline": 13},
+    {"erase": [22, 78, 24, 12], "ink": [3, 15]},
+    {"text": "OK", "box": [22, 78, 31, 12], "colour": 15, "outline": 3},
+    {"erase": [22, 126, 24, 12], "ink": [2, 12]},
+    {"text": "OK", "box": [22, 126, 31, 12], "colour": 12, "outline": 2},
+    {"erase": [19, 149, 24, 13], "ink": [3, 15]},
+    {"text": "Fim", "box": [19, 149, 26, 12], "colour": 15, "outline": 3},
+    {"erase": [19, 174, 24, 11], "ink": [13, 15]},
+    {"erase": [19, 185, 24, 2], "ink": [15]},
+    {"text": "Fim", "box": [19, 174, 26, 12], "colour": 15, "outline": 13},
+    {"erase": [22, 5, 23, 13], "ink": [3, 15]},
+    {"text": "Usar", "box": [22, 5, 31, 12], "colour": 15, "outline": 3},
+    {"erase": [22, 30, 23, 11], "ink": [13, 15]},
+    {"erase": [22, 41, 23, 2], "ink": [15]},
+    {"text": "Usar", "box": [22, 30, 31, 12], "colour": 15, "outline": 13},
+    {"erase": [22, 53, 23, 13], "ink": [2, 12]},
+    {"text": "Usar", "box": [22, 53, 31, 12], "colour": 12, "outline": 2}
+  ],
+  "ITD_B02.PAC_": [
+    {"erase": [19, 6, 32, 12], "ink": [3, 15]},
+    {"text": "Menu", "box": [19, 6, 34, 12], "colour": 15, "outline": 3},
+    {"erase": [19, 31, 32, 10], "ink": [13, 15]},
+    {"erase": [19, 41, 32, 2], "ink": [15]},
+    {"text": "Menu", "box": [19, 31, 34, 12], "colour": 15, "outline": 13},
+    {"erase": [19, 54, 32, 12], "ink": [2, 12]},
+    {"text": "Menu", "box": [19, 54, 34, 12], "colour": 12, "outline": 2}
+  ],
+  "ITD_W41.PAC_": [
+    {"erase": [56, 38, 32, 12], "ink": [9, 14]},
+    {"text": "Sim", "box": [51, 38, 42, 12], "colour": 14, "outline": 9},
+    {"erase": [152, 38, 32, 12], "ink": [9, 14]},
+    {"text": "Não", "box": [147, 38, 42, 12], "colour": 14, "outline": 9}
+  ],
+  "ITD_B07.PAC_": [
+    {"erase": [8, 6, 32, 12], "ink": [4, 15]},
+    {"text": "Sim", "box": [3, 6, 42, 12], "colour": 15, "outline": 4},
+    {"erase": [8, 31, 32, 7], "ink": [13, 15]},
+    {"erase": [8, 38, 32, 5], "ink": [15]},
+    {"text": "Sim", "box": [3, 31, 42, 12], "colour": 15, "outline": 13},
+    {"erase": [8, 54, 32, 12], "ink": [4, 15]},
+    {"text": "Não", "box": [3, 54, 42, 12], "colour": 15, "outline": 4},
+    {"erase": [8, 79, 32, 7], "ink": [13, 15]},
+    {"erase": [8, 86, 32, 5], "ink": [15]},
+    {"text": "Não", "box": [3, 79, 42, 12], "colour": 15, "outline": 13}
+  ]
+},
+"pic3d/wc_uniform": {
+  "WUD_B00.PAC_": [
+    {"erase": [26, 78, 23, 11], "ink": [13, 15]},
+    {"erase": [26, 89, 23, 2], "ink": [15]},
+    {"text": "Sair", "box": [26, 78, 26, 12], "colour": 15, "outline": 13},
+    {"erase": [20, 6, 37, 12], "ink": [3, 15]},
+    {"text": "Concluir", "box": [20, 6, 41, 12], "colour": 15, "outline": 3},
+    {"erase": [20, 31, 37, 10], "ink": [13, 15]},
+    {"erase": [20, 41, 37, 2], "ink": [15]},
+    {"text": "Concluir", "box": [20, 31, 41, 12], "colour": 15, "outline": 13},
+    {"erase": [26, 53, 23, 13], "ink": [3, 15]},
+    {"text": "Sair", "box": [26, 53, 35, 12], "colour": 15, "outline": 3}
+  ],
+  "WUD_B01.PAC_": [
+    {"erase": [22, 79, 24, 10], "ink": [13, 15]},
+    {"erase": [22, 89, 24, 2], "ink": [15]},
+    {"text": "OK", "box": [22, 79, 26, 12], "colour": 15, "outline": 13},
+    {"erase": [22, 54, 24, 12], "ink": [3, 15]},
+    {"text": "OK", "box": [22, 54, 31, 12], "colour": 15, "outline": 3},
+    {"erase": [22, 6, 25, 12], "ink": [3, 15]},
+    {"text": "Mudar", "box": [22, 6, 31, 12], "colour": 15, "outline": 3},
+    {"erase": [22, 31, 25, 10], "ink": [13, 15]},
+    {"erase": [22, 41, 25, 2], "ink": [15]},
+    {"text": "Mudar", "box": [22, 31, 31, 12], "colour": 15, "outline": 13}
+  ]
+},
+"pic3d/menu_field": {
+  "WGD_B04.PAC_": [
+    {"erase": [19, 5, 23, 13], "ink": [4, 15]},
+    {"text": "Sair", "box": [19, 5, 26, 12], "colour": 15, "outline": 4},
+    {"erase": [19, 30, 23, 11], "ink": [11, 15]},
+    {"erase": [19, 41, 23, 2], "ink": [15]},
+    {"text": "Sair", "box": [19, 30, 26, 12], "colour": 15, "outline": 11}
+  ],
+  "WGD_B03.PAC_": [
+    {"erase": [19, 6, 24, 12], "ink": [4, 15]},
+    {"text": "OK", "box": [19, 6, 26, 12], "colour": 15, "outline": 4},
+    {"erase": [19, 31, 24, 10], "ink": [11, 15]},
+    {"erase": [19, 41, 24, 2], "ink": [15]},
+    {"text": "OK", "box": [19, 31, 26, 12], "colour": 15, "outline": 11},
+    {"erase": [19, 54, 24, 12], "ink": [3, 13]},
+    {"text": "OK", "box": [19, 54, 26, 12], "colour": 13, "outline": 3}
+  ],
+  "WMDN_B03.PAC_": [
+    {"erase": [8, 6, 32, 12], "ink": [6, 15]},
+    {"text": "Sim", "box": [3, 6, 42, 12], "colour": 15, "outline": 6},
+    {"erase": [8, 31, 32, 7], "ink": [7, 15]},
+    {"erase": [8, 38, 32, 5], "ink": [15]},
+    {"text": "Sim", "box": [3, 31, 42, 12], "colour": 15, "outline": 7},
+    {"erase": [8, 54, 32, 12], "ink": [6, 15]},
+    {"text": "Não", "box": [3, 54, 42, 12], "colour": 15, "outline": 6},
+    {"erase": [8, 79, 32, 7], "ink": [7, 15]},
+    {"erase": [8, 86, 32, 5], "ink": [15]},
+    {"text": "Não", "box": [3, 79, 42, 12], "colour": 15, "outline": 7}
+  ]
+},
+"pic3d/field": {
+  "WGD_B02.PAC_": [
+    {"erase": [22, 31, 24, 10], "ink": [11, 15]},
+    {"erase": [22, 41, 24, 2], "ink": [15]},
+    {"text": "OK", "box": [22, 31, 26, 12], "colour": 15, "outline": 11},
+    {"erase": [22, 6, 24, 12], "ink": [4, 15]},
+    {"text": "OK", "box": [22, 6, 31, 12], "colour": 15, "outline": 4},
+    {"erase": [22, 54, 24, 12], "ink": [3, 13]},
+    {"text": "OK", "box": [22, 54, 31, 12], "colour": 13, "outline": 3}
+  ],
+  "WGD_B01.PAC_": [
+    {"erase": [22, 31, 24, 10], "ink": [11, 15]},
+    {"erase": [22, 41, 24, 2], "ink": [15]},
+    {"text": "OK", "box": [22, 31, 26, 12], "colour": 15, "outline": 11},
+    {"erase": [22, 6, 24, 12], "ink": [4, 15]},
+    {"text": "OK", "box": [22, 6, 31, 12], "colour": 15, "outline": 4},
+    {"erase": [22, 54, 24, 12], "ink": [3, 13]},
+    {"text": "OK", "box": [22, 54, 31, 12], "colour": 13, "outline": 3}
+  ]
+},
+"pic3d/waza_den_chara_select": {
+  "WDDN_B00.PAC_": [
+    {"erase": [19, 101, 23, 13], "ink": [3, 15]},
+    {"text": "Sair", "box": [19, 101, 26, 12], "colour": 15, "outline": 3},
+    {"erase": [19, 126, 23, 11], "ink": [13, 15]},
+    {"erase": [19, 137, 23, 2], "ink": [15]},
+    {"text": "Sair", "box": [19, 126, 26, 12], "colour": 15, "outline": 13},
+    {"erase": [19, 6, 24, 12], "ink": [3, 15]},
+    {"text": "OK", "box": [19, 6, 26, 12], "colour": 15, "outline": 3},
+    {"erase": [19, 31, 24, 10], "ink": [13, 15]},
+    {"erase": [19, 41, 24, 2], "ink": [15]},
+    {"text": "OK", "box": [19, 31, 26, 12], "colour": 15, "outline": 13},
+    {"erase": [19, 53, 24, 13], "ink": [3, 15]},
+    {"text": "Fim", "box": [19, 53, 26, 12], "colour": 15, "outline": 3},
+    {"erase": [19, 78, 24, 11], "ink": [13, 15]},
+    {"erase": [19, 89, 24, 2], "ink": [15]},
+    {"text": "Fim", "box": [19, 78, 26, 12], "colour": 15, "outline": 13},
+    {"erase": [19, 149, 25, 13], "ink": [3, 15]},
+    {"text": "Escolher", "box": [19, 151, 26, 8], "colour": 15, "font": "FONT8", "gap": 0},
+    {"erase": [19, 174, 25, 11], "ink": [13, 15]},
+    {"erase": [19, 185, 25, 2], "ink": [15]},
+    {"text": "Escolher", "box": [19, 176, 26, 8], "colour": 15, "font": "FONT8", "gap": 0}
+  ]
+},
+"pic3d/ps_replace_unit": {
+  "PSDN_B03.PAC_": [
+    {"erase": [8, 6, 32, 12], "ink": [4, 15]},
+    {"text": "Sim", "box": [3, 6, 42, 12], "colour": 15, "outline": 4},
+    {"erase": [8, 31, 32, 7], "ink": [13, 15]},
+    {"erase": [8, 38, 32, 5], "ink": [15]},
+    {"text": "Sim", "box": [3, 31, 42, 12], "colour": 15, "outline": 13},
+    {"erase": [8, 54, 32, 12], "ink": [4, 15]},
+    {"text": "Não", "box": [3, 54, 42, 12], "colour": 15, "outline": 4},
+    {"erase": [8, 79, 32, 7], "ink": [13, 15]},
+    {"erase": [8, 86, 32, 5], "ink": [15]},
+    {"text": "Não", "box": [3, 79, 42, 12], "colour": 15, "outline": 13}
+  ],
+  "PSDN_W20.PAC_": [
+    {"erase": [48, 54, 32, 12], "ink": [9, 14]},
+    {"text": "Sim", "box": [43, 54, 42, 12], "colour": 14, "outline": 9},
+    {"erase": [144, 54, 32, 12], "ink": [9, 14]},
+    {"text": "Não", "box": [139, 54, 42, 12], "colour": 14, "outline": 9}
+  ]
+},
+"pic3d/wc_member": {
+  "WHD_B00.PAC_": [
+    {"erase": [22, 79, 24, 10], "ink": [13, 15]},
+    {"erase": [22, 89, 24, 2], "ink": [15]},
+    {"text": "OK", "box": [22, 79, 26, 12], "colour": 15, "outline": 13},
+    {"erase": [22, 54, 24, 12], "ink": [3, 15]},
+    {"text": "OK", "box": [22, 54, 31, 12], "colour": 15, "outline": 3},
+    {"erase": [19, 31, 32, 10], "ink": [13, 15]},
+    {"erase": [19, 41, 32, 2], "ink": [15]},
+    {"text": "Trocar", "box": [19, 31, 34, 12], "colour": 15, "outline": 13},
+    {"erase": [19, 6, 32, 12], "ink": [3, 15]},
+    {"text": "Trocar", "box": [19, 6, 34, 12], "colour": 15, "outline": 3}
+  ],
+  "SHDN_W03.PAC_": [
+    {"erase": [40, 54, 32, 12], "ink": [9, 14]},
+    {"text": "Sim", "box": [35, 54, 42, 12], "colour": 14, "outline": 9},
+    {"erase": [136, 54, 32, 12], "ink": [9, 14]},
+    {"text": "Não", "box": [131, 54, 42, 12], "colour": 14, "outline": 9}
+  ],
+  "SHDN_B09.PAC_": [
+    {"erase": [8, 6, 32, 12], "ink": [4, 15]},
+    {"text": "Sim", "box": [3, 6, 42, 12], "colour": 15, "outline": 4},
+    {"erase": [8, 30, 32, 12], "ink": [4, 15]},
+    {"text": "Não", "box": [3, 30, 42, 12], "colour": 15, "outline": 4}
+  ],
+  "SHDN_B08.PAC_": [
+    {"erase": [8, 6, 32, 12], "ink": [2, 14]},
+    {"text": "Sim", "box": [3, 6, 42, 12], "colour": 14, "outline": 2},
+    {"erase": [8, 30, 32, 12], "ink": [2, 14]},
+    {"text": "Não", "box": [3, 30, 42, 12], "colour": 14, "outline": 2}
+  ],
+  "SHDN_B10.PAC_": [
+    {"erase": [8, 7, 32, 7], "ink": [13, 15]},
+    {"erase": [8, 14, 32, 5], "ink": [15]},
+    {"text": "Sim", "box": [3, 7, 42, 12], "colour": 15, "outline": 13},
+    {"erase": [8, 31, 32, 7], "ink": [13, 15]},
+    {"erase": [8, 38, 32, 5], "ink": [15]},
+    {"text": "Não", "box": [3, 31, 42, 12], "colour": 15, "outline": 13}
+  ],
+  "WHD_B01.PAC_": [
+    {"erase": [20, 6, 37, 12], "ink": [3, 15]},
+    {"text": "Concluir", "box": [20, 6, 41, 12], "colour": 15, "outline": 3},
+    {"erase": [20, 31, 37, 10], "ink": [13, 15]},
+    {"erase": [20, 41, 37, 2], "ink": [15]},
+    {"text": "Concluir", "box": [20, 31, 41, 12], "colour": 15, "outline": 13},
+    {"erase": [26, 79, 23, 10], "ink": [13, 15]},
+    {"erase": [26, 89, 23, 2], "ink": [15]},
+    {"text": "Parar", "box": [26, 81, 26, 8], "colour": 15, "outline": 13, "font": "FONT8"},
+    {"erase": [26, 54, 23, 12], "ink": [3, 15]},
+    {"text": "Parar", "box": [26, 54, 35, 12], "colour": 15, "outline": 3}
+  ]
+},
+"pic3d/jinmyaku": {
+  "JMDN_B12.PAC_": [
+    {"erase": [8, 8, 32, 7], "ink": [13, 15]},
+    {"erase": [8, 15, 32, 5], "ink": [15]},
+    {"text": "Sim", "box": [3, 8, 42, 12], "colour": 15, "outline": 13},
+    {"erase": [8, 29, 32, 7], "ink": [13, 15]},
+    {"erase": [8, 36, 32, 5], "ink": [15]},
+    {"text": "Não", "box": [3, 29, 42, 12], "colour": 15, "outline": 13},
+    {"erase": [2, 3, 47, 12], "ink": [13, 15]},
+    {"erase": [2, 15, 47, 4], "ink": [15]},
+    {"erase": [2, 19, 47, 1], "ink": [13, 15]},
+    {"text": "Sim", "box": [3, 3, 50, 12], "colour": 15, "outline": 13},
+    {"erase": [2, 27, 47, 9], "ink": [13, 15]},
+    {"erase": [2, 36, 47, 4], "ink": [15]},
+    {"erase": [2, 40, 47, 4], "ink": [13, 15]},
+    {"text": "Não", "box": [3, 27, 50, 12], "colour": 15, "outline": 13}
+  ],
+  "JMDN_B10.PAC_": [
+    {"erase": [8, 7, 32, 12], "ink": [11, 15]},
+    {"text": "Sim", "box": [3, 7, 42, 12], "colour": 15, "outline": 11},
+    {"erase": [8, 28, 32, 12], "ink": [11, 15]},
+    {"text": "Não", "box": [3, 28, 42, 12], "colour": 15, "outline": 11},
+    {"erase": [2, 3, 47, 17], "ink": [11, 15]},
+    {"text": "Sim", "box": [3, 3, 50, 12], "colour": 15, "outline": 11},
+    {"erase": [2, 27, 47, 16], "ink": [11, 15]},
+    {"text": "Não", "box": [3, 27, 50, 12], "colour": 15, "outline": 11}
+  ],
+  "JMDN_B04.PAC_": [
+    {"erase": [20, 6, 23, 11], "ink": [13, 15]},
+    {"erase": [20, 17, 23, 2], "ink": [15]},
+    {"text": "Sair", "box": [20, 6, 25, 12], "colour": 15, "outline": 13}
+  ],
+  "JMDN_B11.PAC_": [
+    {"erase": [8, 7, 32, 12], "ink": [6, 14]},
+    {"text": "Sim", "box": [3, 7, 42, 12], "colour": 14, "outline": 6},
+    {"erase": [8, 28, 32, 12], "ink": [6, 14]},
+    {"text": "Não", "box": [3, 28, 42, 12], "colour": 14, "outline": 6}
+  ],
+  "JMDN_B05.PAC_": [
+    {"erase": [19, 5, 23, 13], "ink": [3, 15]},
+    {"text": "Sair", "box": [19, 5, 26, 12], "colour": 15, "outline": 3}
+  ]
+},
+"pic3d/ps_list": {
+  "PSDN_B03.PAC_": [
+    {"erase": [8, 6, 32, 12], "ink": [4, 15]},
+    {"text": "Sim", "box": [3, 6, 42, 12], "colour": 15, "outline": 4},
+    {"erase": [8, 31, 32, 7], "ink": [13, 15]},
+    {"erase": [8, 38, 32, 5], "ink": [15]},
+    {"text": "Sim", "box": [3, 31, 42, 12], "colour": 15, "outline": 13},
+    {"erase": [8, 54, 32, 12], "ink": [4, 15]},
+    {"text": "Não", "box": [3, 54, 42, 12], "colour": 15, "outline": 4},
+    {"erase": [8, 79, 32, 7], "ink": [13, 15]},
+    {"erase": [8, 86, 32, 5], "ink": [15]},
+    {"text": "Não", "box": [3, 79, 42, 12], "colour": 15, "outline": 13}
+  ],
+  "PSDN_B06.PAC_": [
+    {"erase": [19, 5, 24, 13], "ink": [3, 15]},
+    {"text": "Fim", "box": [19, 5, 26, 12], "colour": 15, "outline": 3},
+    {"erase": [19, 30, 24, 11], "ink": [13, 15]},
+    {"erase": [19, 41, 24, 2], "ink": [15]},
+    {"text": "Fim", "box": [19, 30, 26, 12], "colour": 15, "outline": 13},
+    {"erase": [19, 53, 24, 13], "ink": [2, 12]},
+    {"text": "Fim", "box": [19, 53, 26, 12], "colour": 12, "outline": 2}
+  ],
+  "PSDN_W22.PAC_": [
+    {"erase": [48, 102, 32, 12], "ink": [9, 14]},
+    {"text": "Sim", "box": [43, 102, 42, 12], "colour": 14, "outline": 9},
+    {"erase": [144, 102, 32, 12], "ink": [9, 14]},
+    {"text": "Não", "box": [139, 102, 42, 12], "colour": 14, "outline": 9}
+  ],
+  "PSDN_W20.PAC_": [
+    {"erase": [48, 54, 32, 12], "ink": [9, 14]},
+    {"text": "Sim", "box": [43, 54, 42, 12], "colour": 14, "outline": 9},
+    {"erase": [144, 54, 32, 12], "ink": [9, 14]},
+    {"text": "Não", "box": [139, 54, 42, 12], "colour": 14, "outline": 9}
+  ]
+},
+"pic3d/practice": {
+  "JSD_B05.PAC_": [
+    {"erase": [19, 5, 23, 13], "ink": [3, 15]},
+    {"text": "Sair", "box": [19, 5, 26, 12], "colour": 15, "outline": 3}
+  ],
+  "JSD_B04.PAC_": [
+    {"erase": [19, 6, 23, 11], "ink": [13, 15]},
+    {"erase": [19, 17, 23, 2], "ink": [15]},
+    {"text": "Sair", "box": [19, 6, 26, 12], "colour": 15, "outline": 13}
+  ]
+},
+"pic3d/waza_den": {
+  "MMDN_B00.PAC_": [
+    {"erase": [19, 197, 23, 13], "ink": [3, 15]},
+    {"text": "Sair", "box": [19, 197, 26, 12], "colour": 15, "outline": 3},
+    {"erase": [19, 222, 23, 11], "ink": [13, 15]},
+    {"erase": [19, 233, 23, 2], "ink": [15]},
+    {"text": "Sair", "box": [19, 222, 26, 12], "colour": 15, "outline": 13},
+    {"erase": [19, 54, 24, 12], "ink": [3, 15]},
+    {"text": "OK", "box": [19, 54, 26, 12], "colour": 15, "outline": 3},
+    {"erase": [19, 79, 24, 10], "ink": [13, 15]},
+    {"erase": [19, 89, 24, 2], "ink": [15]},
+    {"text": "OK", "box": [19, 79, 26, 12], "colour": 15, "outline": 13},
+    {"erase": [19, 246, 23, 12], "ink": [3, 15]},
+    {"text": "Parar", "box": [19, 248, 26, 8], "colour": 15, "outline": 3, "font": "FONT8"},
+    {"erase": [19, 271, 23, 10], "ink": [13, 15]},
+    {"erase": [19, 281, 23, 2], "ink": [15]},
+    {"text": "Parar", "box": [19, 273, 26, 8], "colour": 15, "outline": 13, "font": "FONT8"},
+    {"erase": [19, 149, 24, 13], "ink": [3, 15]},
+    {"text": "Fim", "box": [19, 149, 26, 12], "colour": 15, "outline": 3},
+    {"erase": [19, 174, 24, 11], "ink": [13, 15]},
+    {"erase": [19, 185, 24, 2], "ink": [15]},
+    {"text": "Fim", "box": [19, 174, 26, 12], "colour": 15, "outline": 13},
+    {"erase": [19, 293, 25, 13], "ink": [3, 15]},
+    {"text": "Escolher", "box": [19, 295, 26, 8], "colour": 15, "font": "FONT8", "gap": 0},
+    {"erase": [19, 318, 25, 11], "ink": [13, 15]},
+    {"erase": [19, 329, 25, 2], "ink": [15]},
+    {"text": "Escolher", "box": [19, 320, 26, 8], "colour": 15, "font": "FONT8", "gap": 0},
+    {"erase": [19, 31, 25, 10], "ink": [13, 15]},
+    {"erase": [19, 41, 25, 2], "ink": [15]},
+    {"text": "Mudar", "box": [19, 33, 26, 8], "colour": 15, "outline": 13, "font": "FONT8"},
+    {"erase": [19, 6, 25, 12], "ink": [3, 15]},
+    {"text": "Mudar", "box": [19, 8, 26, 8], "colour": 15, "outline": 3, "font": "FONT8"},
+    {"erase": [19, 101, 24, 13], "ink": [3, 15]},
+    {"text": "Equipar", "box": [19, 103, 26, 8], "colour": 15, "font": "FONT8", "gap": 0},
+    {"erase": [19, 126, 24, 11], "ink": [13, 15]},
+    {"erase": [19, 137, 24, 2], "ink": [15]},
+    {"text": "Equipar", "box": [19, 128, 26, 8], "colour": 15, "font": "FONT8", "gap": 0},
+    {"erase": [19, 341, 24, 13], "ink": [2, 12]},
+    {"text": "Equipar", "box": [19, 343, 26, 8], "colour": 12, "font": "FONT8", "gap": 0}
+  ],
+  "WDDN_W06.PAC_": [
+    {"erase": [48, 54, 32, 12], "ink": [9, 14]},
+    {"text": "Sim", "box": [43, 54, 42, 12], "colour": 14, "outline": 9},
+    {"erase": [144, 54, 32, 12], "ink": [9, 14]},
+    {"text": "Não", "box": [139, 54, 42, 12], "colour": 14, "outline": 9}
+  ],
+  "MMDN_B02.PAC_": [
+    {"erase": [8, 6, 32, 12], "ink": [4, 15]},
+    {"text": "Sim", "box": [3, 6, 42, 12], "colour": 15, "outline": 4},
+    {"erase": [8, 31, 32, 7], "ink": [13, 15]},
+    {"erase": [8, 38, 32, 5], "ink": [15]},
+    {"text": "Sim", "box": [3, 31, 42, 12], "colour": 15, "outline": 13},
+    {"erase": [8, 54, 32, 12], "ink": [4, 15]},
+    {"text": "Não", "box": [3, 54, 42, 12], "colour": 15, "outline": 4},
+    {"erase": [8, 79, 32, 7], "ink": [13, 15]},
+    {"erase": [8, 86, 32, 5], "ink": [15]},
+    {"text": "Não", "box": [3, 79, 42, 12], "colour": 15, "outline": 13}
+  ],
+  "WDDN_W02.PAC_": [
+    {"erase": [48, 86, 32, 12], "ink": [9, 14]},
+    {"text": "Sim", "box": [43, 86, 42, 12], "colour": 14, "outline": 9},
+    {"erase": [144, 86, 32, 12], "ink": [9, 14]},
+    {"text": "Não", "box": [139, 86, 42, 12], "colour": 14, "outline": 9}
+  ]
+},
+"pic3d/VsCom": {
+  "WGD_B04.PAC_": [
+    {"erase": [19, 5, 23, 13], "ink": [4, 15]},
+    {"text": "Sair", "box": [19, 5, 26, 12], "colour": 15, "outline": 4},
+    {"erase": [19, 30, 23, 11], "ink": [11, 15]},
+    {"erase": [19, 41, 23, 2], "ink": [15]},
+    {"text": "Sair", "box": [19, 30, 26, 12], "colour": 15, "outline": 11}
+  ],
+  "WGD_B03.PAC_": [
+    {"erase": [19, 6, 24, 12], "ink": [4, 15]},
+    {"text": "OK", "box": [19, 6, 26, 12], "colour": 15, "outline": 4},
+    {"erase": [19, 31, 24, 10], "ink": [11, 15]},
+    {"erase": [19, 41, 24, 2], "ink": [15]},
+    {"text": "OK", "box": [19, 31, 26, 12], "colour": 15, "outline": 11},
+    {"erase": [19, 54, 24, 12], "ink": [3, 13]},
+    {"text": "OK", "box": [19, 54, 26, 12], "colour": 13, "outline": 3}
+  ]
+},
+"pic3d/wc_rule": {
+  "WTD_B02.PAC_": [
+    {"erase": [8, 6, 32, 12], "ink": [10, 15]},
+    {"text": "Sim", "box": [3, 6, 42, 12], "colour": 15, "outline": 10},
+    {"erase": [8, 31, 32, 7], "ink": [11, 15]},
+    {"erase": [8, 38, 32, 5], "ink": [15]},
+    {"text": "Sim", "box": [3, 31, 42, 12], "colour": 15, "outline": 11},
+    {"erase": [8, 54, 32, 12], "ink": [10, 15]},
+    {"text": "Não", "box": [3, 54, 42, 12], "colour": 15, "outline": 10},
+    {"erase": [8, 79, 32, 7], "ink": [11, 15]},
+    {"erase": [8, 86, 32, 5], "ink": [15]},
+    {"text": "Não", "box": [3, 79, 42, 12], "colour": 15, "outline": 11}
+  ],
+  "WTD_B01.PAC_": [
+    {"erase": [22, 31, 24, 10], "ink": [11, 15]},
+    {"erase": [22, 41, 24, 2], "ink": [15]},
+    {"text": "OK", "box": [22, 31, 26, 12], "colour": 15, "outline": 11},
+    {"erase": [22, 6, 24, 12], "ink": [4, 15]},
+    {"text": "OK", "box": [22, 6, 31, 12], "colour": 15, "outline": 4},
+    {"erase": [22, 54, 24, 12], "ink": [3, 13]},
+    {"text": "OK", "box": [22, 54, 31, 12], "colour": 13, "outline": 3},
+    {"erase": [20, 78, 30, 12], "ink": [4, 15]},
+    {"text": "Ver", "box": [20, 78, 33, 12], "colour": 15, "outline": 4},
+    {"erase": [20, 103, 30, 10], "ink": [11, 15]},
+    {"erase": [20, 113, 30, 2], "ink": [15]},
+    {"text": "Ver", "box": [20, 103, 33, 12], "colour": 15, "outline": 11}
+  ]
+},
+"pic3d/menu_special_comand": {
+  "HWD_B02.PAC_": [
+    {"erase": [19, 6, 32, 12], "ink": [3, 15]},
+    {"text": "Menu", "box": [19, 6, 34, 12], "colour": 15, "outline": 3},
+    {"erase": [19, 31, 32, 10], "ink": [13, 15]},
+    {"erase": [19, 41, 32, 2], "ink": [15]},
+    {"text": "Menu", "box": [19, 31, 34, 12], "colour": 15, "outline": 13},
+    {"erase": [19, 54, 32, 12], "ink": [2, 12]},
+    {"text": "Menu", "box": [19, 54, 34, 12], "colour": 12, "outline": 2}
+  ],
+  "HWD_B20_2.PAC_": [
+    {"erase": [8, 7, 32, 7], "ink": [13, 15]},
+    {"erase": [8, 14, 32, 5], "ink": [15]},
+    {"text": "Sim", "box": [3, 7, 42, 12], "colour": 15, "outline": 13},
+    {"erase": [8, 31, 32, 7], "ink": [13, 15]},
+    {"erase": [8, 38, 32, 5], "ink": [15]},
+    {"text": "Não", "box": [3, 31, 42, 12], "colour": 15, "outline": 13}
+  ],
+  "HWD_B20_0.PAC_": [
+    {"erase": [8, 6, 32, 12], "ink": [6, 14]},
+    {"text": "Sim", "box": [3, 6, 42, 12], "colour": 14, "outline": 6},
+    {"erase": [8, 30, 32, 12], "ink": [6, 14]},
+    {"text": "Não", "box": [3, 30, 42, 12], "colour": 14, "outline": 6}
+  ],
+  "HWD_B20_1.PAC_": [
+    {"erase": [8, 6, 32, 12], "ink": [7, 15]},
+    {"text": "Sim", "box": [3, 6, 42, 12], "colour": 15, "outline": 7},
+    {"erase": [8, 30, 32, 12], "ink": [7, 15]},
+    {"text": "Não", "box": [3, 30, 42, 12], "colour": 15, "outline": 7}
+  ],
+  "HWD_B50.PAC_": [
+    {"erase": [8, 6, 32, 12], "ink": [7, 15]},
+    {"text": "Sim", "box": [3, 6, 42, 12], "colour": 15, "outline": 7},
+    {"erase": [8, 31, 32, 7], "ink": [13, 15]},
+    {"erase": [8, 38, 32, 5], "ink": [15]},
+    {"text": "Sim", "box": [3, 31, 42, 12], "colour": 15, "outline": 13},
+    {"erase": [8, 54, 32, 12], "ink": [7, 15]},
+    {"text": "Não", "box": [3, 54, 42, 12], "colour": 15, "outline": 7},
+    {"erase": [8, 79, 32, 7], "ink": [13, 15]},
+    {"erase": [8, 86, 32, 5], "ink": [15]},
+    {"text": "Não", "box": [3, 79, 42, 12], "colour": 15, "outline": 13}
+  ],
+  "HWD_B00_0.PAC_": [
+    {"erase": [19, 5, 23, 13], "ink": [3, 15]},
+    {"text": "Sair", "box": [19, 5, 26, 12], "colour": 15, "outline": 3},
+    {"erase": [19, 30, 24, 12], "ink": [3, 15]},
+    {"text": "OK", "box": [19, 30, 26, 12], "colour": 15, "outline": 3},
+    {"erase": [19, 101, 24, 13], "ink": [3, 15]},
+    {"text": "Fim", "box": [19, 101, 26, 12], "colour": 15, "outline": 3},
+    {"erase": [19, 53, 25, 13], "ink": [3, 15]},
+    {"text": "Escolher", "box": [19, 55, 26, 8], "colour": 15, "font": "FONT8", "gap": 0},
+    {"erase": [18, 78, 25, 12], "ink": [3, 15]},
+    {"text": "Opções", "box": [18, 80, 27, 8], "colour": 15, "font": "FONT8", "gap": 0},
+    {"erase": [18, 125, 28, 13], "ink": [3, 15]},
+    {"text": "Treinar", "box": [18, 127, 27, 8], "colour": 15, "font": "FONT8", "gap": 0}
+  ],
+  "HWD_B00_1.PAC_": [
+    {"erase": [19, 6, 23, 11], "ink": [13, 15]},
+    {"erase": [19, 17, 23, 2], "ink": [15]},
+    {"text": "Sair", "box": [19, 6, 26, 12], "colour": 15, "outline": 13},
+    {"erase": [19, 31, 24, 10], "ink": [13, 15]},
+    {"erase": [19, 41, 24, 2], "ink": [15]},
+    {"text": "OK", "box": [19, 31, 26, 12], "colour": 15, "outline": 13},
+    {"erase": [19, 102, 24, 11], "ink": [13, 15]},
+    {"erase": [19, 113, 24, 2], "ink": [15]},
+    {"text": "Fim", "box": [19, 102, 26, 12], "colour": 15, "outline": 13},
+    {"erase": [19, 54, 25, 11], "ink": [13, 15]},
+    {"erase": [19, 65, 25, 2], "ink": [15]},
+    {"text": "Escolher", "box": [19, 56, 26, 8], "colour": 15, "font": "FONT8", "gap": 0},
+    {"erase": [18, 79, 25, 10], "ink": [13, 15]},
+    {"erase": [18, 89, 25, 2], "ink": [15]},
+    {"text": "Opções", "box": [18, 81, 27, 8], "colour": 15, "font": "FONT8", "gap": 0},
+    {"erase": [18, 126, 28, 12], "ink": [13, 15]},
+    {"erase": [18, 138, 28, 1], "ink": [15]},
+    {"text": "Treinar", "box": [18, 128, 27, 8], "colour": 15, "font": "FONT8", "gap": 0}
+  ],
+  "HWD_B00_2.PAC_": [
+    {"erase": [19, 30, 24, 12], "ink": [2, 12]},
+    {"text": "OK", "box": [19, 30, 26, 12], "colour": 12, "outline": 2},
+    {"erase": [19, 5, 23, 13], "ink": [2, 12]},
+    {"text": "Sair", "box": [19, 5, 26, 12], "colour": 12, "outline": 2},
+    {"erase": [19, 53, 25, 13], "ink": [2, 12]},
+    {"text": "Escolher", "box": [19, 55, 26, 8], "colour": 12, "font": "FONT8", "gap": 0},
+    {"erase": [18, 78, 25, 12], "ink": [2, 12]},
+    {"text": "Opções", "box": [18, 80, 27, 8], "colour": 12, "font": "FONT8", "gap": 0},
+    {"erase": [19, 101, 24, 13], "ink": [2, 12]},
+    {"text": "Fim", "box": [19, 101, 26, 12], "colour": 12, "outline": 2},
+    {"erase": [18, 125, 28, 3], "ink": [2, 12]},
+    {"erase": [18, 128, 28, 1], "ink": [12]},
+    {"erase": [18, 129, 28, 9], "ink": [2, 12]},
+    {"text": "Treinar", "box": [18, 127, 27, 8], "colour": 12, "font": "FONT8", "gap": 0}
+  ]
+},
+"pic2d/menu/MASConfig.SPF_": {
+  "SYDN_B09.PAC": [
+    {"erase": [19, 6, 24, 12], "ink": [3, 15]},
+    {"text": "OK", "box": [19, 6, 26, 12], "colour": 15, "outline": 3},
+    {"erase": [19, 31, 24, 10], "ink": [13, 15]},
+    {"erase": [19, 41, 24, 2], "ink": [15]},
+    {"text": "OK", "box": [19, 31, 26, 12], "colour": 15, "outline": 13}
   ]
 }
 }

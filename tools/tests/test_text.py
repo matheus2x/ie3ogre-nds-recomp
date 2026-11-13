@@ -187,10 +187,30 @@ class TableTest(unittest.TestCase):
         files["data_iz/logic/unitbase.dat"] = bytes(units)
         self.assertEqual(texttool.shown(files.get, "data_iz/logic/unitbase.STR"), {32, 224})
 
+    def test_lines_file(self):
+        """A file of lines comes out with the game's lines: a translated one, else the mod's when it has as
+        many lines (the fan translation's ShopName.dat joined two with a bare LF), else the game's."""
+        class Game:
+            def __init__(self, retail, mod):
+                self.files = {False: retail, True: mod}
+
+            def retail(self, rel):
+                return self.files[False]
+
+            def modded(self, rel):
+                return self.files[True]
+
+        retail = b"a\r\nb\r\nc\r\n"
+        self.assertEqual(texttool.lines_file(Game(retail, b"A\r\nB\nC\r\n"), "ShopName.dat", {1: b"x"}),
+                         b"a\r\nx\r\nc\r\n")
+        self.assertEqual(texttool.lines_file(Game(retail, b"A\r\nB\r\nC\r\n"), "ShopName.dat", {1: b"x"}),
+                         b"A\r\nx\r\nC\r\n")
+
     def test_record_tables(self):
         self.assertRegex("PracticeGame3F.dat:1518", texttool.ID.pattern)
         self.assertRegex("command.STR:7232", texttool.ID.pattern)
         self.assertRegex("BinderData_AREA.dat:388", texttool.ID.pattern)
+        self.assertRegex("ShopName.dat:49", texttool.ID.pattern)
         self.assertNotRegex("PracticeGameF.dat:1", texttool.ID.pattern)
         for name, (size, fields, _) in texttool.RECORDS.items():
             self.assertTrue(all(f + n <= size for f, n in fields), name)

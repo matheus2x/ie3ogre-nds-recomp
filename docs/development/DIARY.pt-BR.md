@@ -4657,3 +4657,119 @@ na H–I aparece o "Heiki". Por área → "Tóquio Norte" na barra. Savestate de
 **Verificação:** build ok. **No jogo** (sessões sem janela do boot): com um log temporário, os 144 nomes do H saíram
 em ordem (Hachisuga, Hada, Haduki, Hafu…; o "Heiki" é o 63º); depois, sem o log, o "Heiki" apareceu na 4ª linha da
 página 36, onde a ordem o põe. Sem mod a busca abre igual ao original (あ行, 1/180 páginas).
+
+## 2026-11-12 — Fase 2: rótulos curtos, leitor de furigana com ASCII, inglês dos overlays e nomes das lojas (CyberLifePlus 1.23)
+
+- Pedido: fazer o que estava pendente na fase 2 do checklist da tradução (quatro itens), sem commit.
+- **Rótulos curtos**, vistos no código (Ghidra; o `analyze.py export` dos overlays e uma busca dos ponteiros nos
+  `.bin` do dsd):
+  - "そうび" (`ov053`) é um dos quatro rótulos do menu de um jogador (わかれる/そうび/ひっさつわざ/アイテム, tabela em
+    0x0211EA38), que o `func_ov053_0211b61c` manda direto para o `func_020425fc`, o desenho comum. Os outros três já
+    iam em pares (o espaçador sem largura também passa no desenho comum); "Equipar" só cabe em texto comum:
+    `PLAIN_LABELS`.
+  - "かう"/"うる" (`ov062`) começam o título da loja: `func_ov062_0211a520` monta o verbo + uma linha do
+    `logic/ShopName.dat` (o arquivo inteiro, separado em CR) e chama a janela `020f2304`, que passa pelo leitor de
+    furigana. A tela é de 128 px (`func_02059630(…, 4, 2)`: tamanhos em log2, 8 << 4) e os argumentos da pilha são
+    zero, sem pixel entre as letras. O original mais largo dá ~117 px.
+  - O `ShopName.dat` estava no inglês do CyberLife e fora do `text.py`. Entrou como `LINE_FILES` (lugar
+    `ShopName.dat:linha`, o `apply` refaz o arquivo a partir das linhas do original). O CyberLife juntou duas
+    linhas com um LF sozinho ("Candy Shop\nItem Store Edition"), e as duas últimas lojas ficavam uma linha abaixo.
+    Os nomes: G-Mart, Penguigo, 秘宝堂 = "Técnicas" (a "loja de técnicas" do diálogo), 万屋 = "Loja", os códigos dos
+    países como no original (JP, GB, AR…), as cidades por extenso, 最強ショップ = "Loja Suprema", 真・最強 = "Loja
+    Suprema Real", 駄菓子屋 = "Docearia", 出張版 = "G-Mart Itinerante". Os verbos "Comprar"/"Vender" (7 bytes) não
+    cabem em pares: vão em texto comum, com regra própria (`LABEL_RULES`, 40 px sem pixel entre letras), e a linha
+    começa com ": " e vai até 94 px.
+  - "ファイター" (`ov082`) não é desenhado: `func_ov082_0211aca8` o compara (`func_02014f0c` = `strcmp`) com um campo
+    do jogador, e o `func_02070530` do ARM9 grava esse mesmo texto (a sua cópia em 0x020914B0) nos jogadores
+    0x10–0x1F (`func_0204ee18`). O ARM9 o mod não muda, então fica em japonês, como as senhas.
+- **Leitor de furigana com ASCII (port):** gancho `ruby_parse` (`hle.tsv`, `hle.cpp`) no `func_ov016_020f24e8`, com o
+  mesmo comportamento (o `char` com sinal: byte de 0x80 para cima ou de controle = primeiro de dois; `[`, `/`, `]`
+  das leituras; `\n` fica), mas um byte de 0x20–0x7E fora de uma leitura sai como letra (o original o jogava fora).
+  Japonês não tem esse byte. Visto no jogo: o perfil da tela dos Amigos sai igual com o gancho e com o original
+  (chave temporária, já tirada). Achado: a "Precisamos de Endo!" do `ov044` nem passa pelo leitor (nenhuma chamada
+  no log), e por isso o "Endo" sempre apareceu; a perda dos nomes era uma previsão. Uma varredura das chamadas às
+  duas janelas (`020f2184`/`020f2304`) achou ~50 overlays; no `ov059` o `sprintf` é de mensagem fixa. Não achei,
+  no save de teste, uma mensagem com nome que passe pelo leitor.
+- **Os 46 textos em inglês dos overlays**, pelo código:
+  - `ov045` (descrições dos treinos): pares de ponteiros (linha 1, linha 2) em 0x02120544, desenhados por
+    `func_ov045_0211b2b0` com a fonte em 0x02099ED0 = `FONT8` (0x02099E8C + 0x44, como no `text_hd.cpp`), uma
+    linha a cada 9 px numa tela de 128 px. O `check` agora mede esses com a `FONT8` (`FONT8_LABELS`). Texto no
+    padrão "Sobem o Chute e / o Físico.", "Vencer dá muita / experiência!", "Os status não / mudam.".
+  - `ov070`: `func_ov070_0211c228` faz `sprintf("%s%s", tipo, ordem)` num buffer de 32 bytes e o desenha em texto
+    comum (`FONT12`) numa tela de 128 px, centrado pelo número de letras japonesas. Tipos Chute, Ataque, Defesa,
+    Goleiro (como os cadernos de técnica) e "Habil." (スキル em 7 bytes); ordens " (TP)", " (nome)",
+    " (elemento)". O "（ＴＰ順）" tem um kanji só, o `jp_text` não o pegava: `SHORT_STRINGS`.
+  - `ov109`/`ov110`: tabelas de 7 rótulos de status, `FONT12`, desenho comum (vtable +8 da fonte em 0x02099F50).
+    Viraram grupos de `MENUS` (72 px, o "コントロール"), com os nomes completos (Chute, Físico, Defesa, Coragem,
+    Resistência, Velocidade, Controle).
+  - "マスター" (`ov000:0x19374`): `func_ov000_020c9794` desenha "Nível do time" + número abaixo de 60 e, a partir
+    daí, este texto no lugar: "Mestre".
+  - `ov131`: "すれちがい"/"チームダウンロード" vão para `func_02046508`, que copia 16 bytes para o objeto da
+    comunicação sem fio (nome da sessão): traduzidos ("Passing", "Download de time"), mas nada os desenha.
+    "エラー" é o valor comparado com o que o jogador digita quando não há senha ("トンコツ" quando há), e "はいし" é
+    copiado para um campo de comando de script que o `ov000` compara: não aparecem, ficam como o CyberLife.
+- **Imagens em inglês:** levantamento de novo (`image.py export` do mod e do original, folhas de contato de todas
+  as 521 imagens mudadas pelo CyberLife sem edição nossa). Quase todas têm inglês: partida, botões repetidos,
+  treinos, torneio, scout, troca/Passing, formação, técnicas, itens, mapa de contatos, configurações, tutorial e
+  outras. Anotado no checklist; ficou para as próximas etapas.
+
+**Verificação:** `translate.py check pt-BR`: 53637 linhas ok, 239 imagens, 0 problema; `build --install`: 580
+patches, versão 1.23 (o `ShopName.dat` do mod com 64 linhas, como o original); 73 testes ok; `survey` 99,4 % (menus
+no código 94,7 %: o "（ＴＰ順）" entrou na conta). Build do port ok. **No jogo** (sessão sem janela, savestate novo): o
+perfil pelo leitor novo, igual ao original; o resto (loja, treinos, lista de técnicas, status, "Equipar",
+"Mestre") só no `check`: no save de teste essas telas não estão perto.
+
+## 2026-11-12 — Imagens da partida em PT-BR (ainda mod 1.23)
+
+- Pedido: "comece pela partida" (as imagens em inglês da fase 2, começando pelas telas da partida).
+- **`image.py`, opções novas do `text`** (para as letras grandes e em degradê da partida sem desenhar à mão):
+  `"scale"` (2 = cada pixel da fonte vira 2×2; `[1, 2]` = letra alta e estreita, para frase longa em faixa
+  curta), `"colour"` como lista (uma cor por linha da célula da fonte, de cima para baixo), `"bold"` (tinta mais
+  uma vez um pixel à direita), `"italic"` (inclina um pixel a cada n linhas) e `"outline"` como lista (anéis de
+  dentro para fora, como o contorno escuro + claro dos logotipos). No `erase`, `"rows"`: cada pixel toma o pixel
+  da sua coluna numa faixa de linhas limpas (fundo com listras em pé, como a tela de resultado). Testes novos
+  (`test_erase_rows`, `TextTest` com uma fonte de mentira).
+- **59 imagens** das telas `MPS*`/`SPS*` (lista e textos no checklist). Escolhas: 前半終了 = "Intervalo", 後半終了 =
+  "Fim do tempo normal" (o jogo só a mostra quando vai para a prorrogação), バーニングフェーズ発動/終了 = "EM
+  CHAMAS!"/"FOGO APAGADO!!" (a barra de cima só cabe "Em chamas!"), 必殺タクティクス = "TÁTICA ESPECIAL!",
+  シュートチェイン = "CHUTE EM CADEIA!!", シュートブロック = "BLOQUEIO!!", ドロータイム = "PAUSA TÁTICA", 選手情報 =
+  "Ficha", ねっけつ/ゆうじょう = "Garra"/"Amizade" (como nos textos), ナイスプレイボーナス = "Bônus de destaque",
+  前半/後半/延長 = "1T"/"2T"/"Pr. 1T"/"Pr. 2T". Várias imagens o `export` mostra com largura errada (352×8 etc.):
+  a largura certa foi achada exportando em várias e vai no `"width"`.
+- Ficaram como o CyberLife: ícones no lugar dos kanji, logotipos dos jogos, "Menu", "NEW", "LEVEL UP!!",
+  `SPSEnc:MBU_N05` (o CyberLife mudou o tamanho da imagem) e `MPSPrd:RST_DN_B01` (pedaços de sprite).
+- **No jogo** (sem janela, `NTR_RTC` fixo): andando no campo do save de teste (direções alternadas a partir do
+  quadro 3300) cai numa batalha por volta do 5800; savestate no 6400; dali `TOUCH@128,176` = Iniciar e
+  `TOUCH@150,40` = saída de bola. Vistos: "Batalha!", "Objetivo", "Tempo limite", "Você pode mudar a posição dos
+  jogadores.", Fugir/Iniciar/Menu, "Toque onde chutar a bola!", "Desvie do rival!". Na mesma tela aparecem em
+  inglês "Time Limit", "Technic", "Dodge" e "Charge": vêm do `pic3d/common.pkb`, cujo índice não é o PackNum dos
+  scripts (`read_pack` recusa); fica para a próxima etapa.
+
+**Verificação:** `image.py check`: 298 imagens, 0 problema; 77 testes ok; `translate.py build pt-BR --install`:
+580 patches, versão 1.23 (sem commit).
+
+## 2026-11-12 — Botões repetidos dos menus (ainda mod 1.23)
+
+- Pedido: seguir "pelos botões repetidos" (Sim/Não, OK, Sair...).
+- Imagens idênticas são poucas (26 grupos); o mesmo botão aparece em texturas diferentes. Então: um script de
+  trabalho (fora do repositório; o resultado fica no `images.json`) recorta o rótulo de botões do original (a cor
+  mais clara do quadro, sem o ícone (A)/(B)/(Y), mais 1 px), 19 modelos, e os procura pixel a pixel (RGB) em todos
+  os PNGs do `export --retail`. Em cada achado escreve `erase` + `text`, com as cores achadas pelo RGB na paleta
+  daquela imagem; a área do texto vai até a borda do quadro em que o botão está; fonte `FONT12`, senão `FONT8`,
+  senão `FONT8` com `gap` 0 e sem contorno.
+- O apagamento foi o que deu trabalho: copiar de uma coluna pegava o ícone ou o chanfro; pela cor de tinta,
+  o contorno do botão apertado tem a mesma cor do fundo de baixo. Ficou assim: um `erase` com `ink` por faixa
+  de linhas, e a cor de fundo de cada linha é a mais comum entre os pixels que não encostam (3×3) na letra; essa
+  cor sai da tinta daquela linha.
+- Só entram imagens em que o mod difere do original apenas nos botões (até 3 pixels soltos); senão o resto que o
+  CyberLife traduziu voltaria ao japonês. `HWD_B00_1`/`_2` (texturas de 2 bpp no mod, que o `export` pula):
+  conferidas a olho, só botões.
+- Rótulos pela convenção do diário (2733, 2773): もどる = Sair (não Voltar, que não cabe), おわる = Fim, やめる =
+  Parar, けってい = OK, コマンド = Menu, チェック = Ver, せってい = Opções; novos: かんりょう = Concluir, えらぶ =
+  Escolher, つかう = Usar, へんこう = Mudar, そうび = Equipar, いれかえ = Trocar, きりかえ = Alternar, おぼえる =
+  Treinar ("Aprender" não cabe), つかえるひと = Quem usa.
+- 88 imagens. Ficaram 13 com outros textos do CyberLife (lista no checklist).
+- **No jogo:** Amigos (OK, Menu, Sair; Trocar, Menu, Fim) e a mochila (Usar, Menu, Fim). O título "Items" da
+  mochila é outra imagem, ainda em inglês.
+
+**Verificação:** `image.py check`: 386 imagens, 0 problema; `build --install`: 580 patches, versão 1.23 (sem commit).

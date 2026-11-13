@@ -184,6 +184,53 @@ class EditTest(unittest.TestCase):
             self.assertIn("outside", painter.problems(p, out)[0])
             self.assertIn("draw missing.png", painter.problems(p, {"draw": "missing.png", "at": [0, 0]})[0])
 
+    def test_erase_rows(self):
+        painter = imagetool.Painter(None)
+        p = Picture(texture(16, 8, [(0, 0, 16, 8)]), "3d")
+        p.rows = [[x % 3 for x in range(16)] for _ in range(8)]  # upright stripes
+        p.rows[4][2:9] = [15] * 7
+        painter.paint(p, {"erase": [0, 3, 16, 3], "ink": [15], "rows": [0, 1]})
+        self.assertEqual(p.rows[4], [x % 3 for x in range(16)])
+        self.assertIn("rows", painter.problems(p, {"erase": [0, 0, 1, 1], "rows": [6, 9]})[0])
+
+
+class StubFont:
+    """One glyph, "I": a 1 x 2 bar in rows 1-2 of a 1 x 4 cell, advance 2."""
+    cell_h, left = 4, {}
+
+    class font:
+        glyph = {ord("I"): 0}
+
+        @staticmethod
+        def advance(c):
+            return 2
+
+    @staticmethod
+    def bitmap(c):
+        return [[0], [1], [1], [0]]
+
+
+class TextTest(unittest.TestCase):
+    def setUp(self):
+        self.painter = imagetool.Painter(None)
+        self.painter.fonts["FONT12"] = StubFont
+        self.ink = lambda **e: sorted(self.painter.ink({"text": "I", "box": [0, 0, 8, 8], "align": "left", **e}))
+
+    def test_scale_bold_italic(self):
+        self.assertEqual(self.ink(), [(0, 3, 1), (0, 4, 2)])
+        self.assertEqual(self.ink(scale=2), [(0, 2, 1), (0, 3, 1), (0, 4, 2), (0, 5, 2),
+                                             (1, 2, 1), (1, 3, 1), (1, 4, 2), (1, 5, 2)])
+        self.assertEqual(self.ink(scale=[1, 2]), [(0, 2, 1), (0, 3, 1), (0, 4, 2), (0, 5, 2)])
+        self.assertEqual(self.ink(bold=1), [(0, 3, 1), (0, 4, 2), (1, 3, 1), (1, 4, 2)])
+        self.assertEqual(self.ink(italic=2), [(0, 4, 2), (1, 3, 1)])  # leans right going up
+
+    def test_shaded_colour_and_outline_rings(self):
+        p = Picture(texture(16, 8, [(0, 0, 16, 8)]), "3d")
+        p.rows = [[0] * 16 for _ in range(8)]
+        self.painter.paint(p, {"text": "I", "box": [4, 0, 8, 8], "align": "left", "colour": [7, 8, 9], "outline": [1, 2]})
+        self.assertEqual([r[4] for r in p.rows], [0, 2, 1, 8, 9, 1, 2, 0])
+        self.assertEqual(p.rows[3][2:7], [2, 1, 8, 1, 2])
+
 
 if __name__ == "__main__":
     unittest.main()
