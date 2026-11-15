@@ -241,19 +241,28 @@ def subtitled(text: str, blog: bool = False) -> bytes:
     letter goes full-width (two bytes). A space after an accent stays a plain space, as the fan
     translation wrote it ("está no": B2 20): with FAN_SPACE there a blog post lost its comment (seen
     in the game), and the subtitles come out as the fan translation's. The blog (blog=True) also
-    splits rows with real newlines; a subtitle has one row."""
+    splits rows with real newlines, and keeps %s as two plain bytes: the automatic posts put a
+    name there (func_ov018_0211b288 copies a byte from 0x80 up with the next one, so a space or an
+    accent before %s gets SPACER as its pair); a subtitle has one row."""
     out = bytearray()
     cs = [FAN_SPACE if c == 0x20 else c for c in codes(encode(text))]
+
+    def name(j: int) -> bool:  # %s of the blog at cs[j]
+        return blog and j + 1 < len(cs) and cs[j] == 0x25 and cs[j + 1] == 0x73
+
     i = 0
     while i < len(cs):
         c = cs[i]
         i += 1
         if c == 0x0A and blog:  # a row of the blog's table strings (a subtitle has one row)
             out.append(c)
+        elif name(i - 1):
+            out += b"%s"
+            i += 1
         elif c > 0xFF:
             out += bytes((c >> 8, c & 0xFF))
         elif c >= 0x80:  # a space or an accent: the next one-byte character is its pair
-            if i < len(cs) and cs[i] <= 0xFF and not (blog and cs[i] == 0x0A):
+            if i < len(cs) and cs[i] <= 0xFF and not (blog and cs[i] == 0x0A) and not name(i):
                 plain = cs[i] == FAN_SPACE and c != FAN_SPACE
                 out += bytes((c, 0x20 if plain else cs[i]))
                 i += 1

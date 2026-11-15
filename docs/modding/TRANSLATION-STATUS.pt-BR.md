@@ -76,7 +76,7 @@ O diálogo fica em `script/evet.pkb`. A chave de cada entrada é o número do ev
 | Táticas | `logic/tacticscmd.STR` | 0 | 0 % → 100 % (v1.2) |
 | Títulos da galeria de vídeos | `logic/movie_view_f.dat` | 0 | 0 % → 100 % (v1.4) |
 | Nomes de locais (talvez só internos, ver a fase 6) | `logic/fieldinf.dat` | 984 | 0 % |
-| Blog | `script/blogpost.dat`, `blogres.dat` | 3.010 | 13 % → 88 % (v1.18) |
+| Blog | `script/blogpost.dat`, `blogres.dat` | 3.010 | 13 % → 88 % (v1.18) → 100 % (v1.24) |
 | Outras tabelas (golpes, torneios, condições…) | `logic/*` | 4 (uma senha) | 96 % → 100 % (v1.5) |
 | Menus no código | overlays | 456 (senhas, nomes internos e sobras) | 28 % → 95 % (v1.4) |
 | Rótulos de quem fala nas partidas | `mch.pkb` | 0 | 0 % → 100 % (v1.4) |
@@ -474,10 +474,11 @@ traduzida precisa ser refeita.
 - [x] Blog (v1.18, `blogpost.dat`/`blogres.dat`): 30 títulos, 30 posts e 30 comentários, além dos 15 do CyberLife
   (exportados para `blogpost.json`/`blogres.json`). O `text.py` ganhou o conversor (tabelas de registros em
   `script/`, formato `BLOG`); ver as regras técnicas.
-- [ ] Os 10 posts automáticos do blog (recrutado pelo scout ou por contratação, quem entrou ou saiu do time,
-  downloads de jogador e de item: título e texto, 20 lugares) seguem em japonês. Os textos têm `%s` com o nome do
-  jogador, e no formato do blog o `%s` viraria largura cheia; falta saber como o nome entra nesse leitor (ver no
-  jogo depois de recrutar alguém pelo scout).
+- [x] Os 10 posts automáticos do blog (v1.24): recrutado pelo scout ou por contratação, quem entrou ou saiu do
+  time, downloads de jogador e de item (título e texto, 20 lugares). O `func_ov018_0211b288` troca o `%s` pelo nome
+  completo (`unitbase.dat` +0x00) e o segundo pelo nome das listas (+0x1C; nos downloads de item, o nome do item
+  duas vezes), copiados como estão; por isso o `BLOG` grava o `%s` em ASCII (ver as regras técnicas). O nome fica
+  numa linha só dele: até 27 letras em meia largura, uns 150 px.
 - [x] Imagens do blog (v1.21): o cabeçalho em inglês do CyberLife e os rótulos em japonês. O título
   サッカーブログ ("Football Blog") virou "Futblog", o nome que o CyberLife deu ao blog nos posts e na história, com as
   letras do próprio CyberLife (`stamps/blog-title.png`, pela edição nova `draw`) nas cores do original; os balões
@@ -560,6 +561,8 @@ traduzida precisa ser refeita.
 - [ ] Mensagens dos overlays: a primeira vista no jogo foi a "Precisamos de Endo!" do `ov044` (v1.10), em pares
   como as da galeria. A formação do save de teste não deixou provocar os avisos do `ov057`.
 - [ ] Rótulos de quem fala nas partidas 34010007 e 34010022 (`mch.pkb`)
+- [ ] Posts automáticos do blog (v1.24): só no `check` e nos bytes gerados (`%s` = `25 73`). Ver no jogo depois de
+  recrutar alguém pelo scout: o nome em meia largura passa pelo gancho `ruby_parse` (v1.23), ainda não visto
 - [ ] Título da loja (v1.23): "Comprar: G-Mart Inazuma" só no `check`. Ver no jogo uma loja (comprar e vender) e se o
   verbo em texto comum aparece pelo leitor de furigana
 - [ ] Descrições dos treinos (`ov045`), título da lista de técnicas (`ov070`), rótulos de status do `ov109`/`ov110`,
@@ -754,7 +757,10 @@ etc. (vieram do patch em inglês) e devem seguir esta lista quando forem traduzi
   passa pelo leitor de furigana, e o CyberLife escreveu como nas legendas; o `text.py` grava assim (`BLOG`), com
   `\n` como a quebra de linha de verdade. O espaço depois de um acento fica um espaço comum (`B2 20`, como o
   CyberLife): com o 0xCF ali, o post aparecia, mas o comentário embaixo dele sumia (visto no jogo). Tamanho medido na tela (Dados → Blog → tocar no post): título em uma linha de 200 px (a lista de posts),
-  texto em 5 linhas de 186 px (de x = 63 a 251), comentário em 2 linhas de 190 px (de x = 2 a 193).
+  texto em 5 linhas de 186 px (de x = 63 a 251), comentário em 2 linhas de 190 px (de x = 2 a 193). Nos posts
+  automáticos o `func_ov018_0211b288` copia o texto para outro buffer: um byte de 0x80 para cima vai com o seguinte,
+  e só um `%` sozinho seguido de `s` vira o nome. O `BLOG` grava o `%s` em ASCII e, antes dele, o espaço ou o acento
+  vai com o 0xDF como par (senão levaria o `%`).
 - **Nomes das lojas (`logic/ShopName.dat:linha`):** uma linha por loja, separadas por CR LF (`LINE_FILES` no
   `text.py`); o jogo lê o arquivo inteiro, e o `apply` o refaz. O `ov062` desenha "Comprar"/"Vender" (`ov062:0x7120`,
   `0x7128`, texto comum) e a linha, pelo leitor de furigana, numa tela de 128 px sem pixel entre as letras: a linha

@@ -4773,3 +4773,28 @@ perfil pelo leitor novo, igual ao original; o resto (loja, treinos, lista de té
   mochila é outra imagem, ainda em inglês.
 
 **Verificação:** `image.py check`: 386 imagens, 0 problema; `build --install`: 580 patches, versão 1.23 (sem commit).
+
+## 2026-11-15 — Posts automáticos do blog (CyberLifePlus 1.24)
+
+- Pedido: uma tarefa pendente da tradução, sem commit. Escolhido o item dos 10 posts automáticos do blog (fase 4),
+  os últimos 20 lugares do `translate.py todo pt-BR --japanese`.
+- **Quem monta o post:** o `ov018` (carrega `script/blogpost.dat`). O `func_ov018_0211b288` copia o modelo para
+  outro buffer: um byte de 0x80 para cima vai com o seguinte, `\n`/`\f` e os outros ASCII vão sozinhos, e um `%`
+  seguido de `s` vira um nome. O primeiro `%s` é o nome completo (`unitbase.dat` +0x00, pelo `func_0204bd64`) e o
+  segundo o nome das listas (+0x1C); nos posts 8 e 10 (download de item), o nome do item (+0x25 do registro) nas
+  duas vezes. O `func_0204294c` antes da cópia só mede a largura. O nome entra como está (no PT-BR, ASCII em meia
+  largura) e o post vai para o leitor de furigana, em que o gancho `ruby_parse` (v1.23) desenha o ASCII solto.
+- **`ntr/text.py`:** no `subtitled` com `blog=True`, o `%s` sai como `25 73` (antes viraria `％ｓ`), e um espaço
+  ou acento logo antes dele leva o 0xDF como par (senão o par seria o `%`, e o nome não entraria). Legendas sem
+  mudança. Quatro casos novos no `test_subtitles`.
+- **Textos:** títulos ("Novo jogador pelo scout!", "...por contratação!", "Um jogador saiu do time", "Novo item por
+  download!") e os textos, com o nome numa linha só dele. Os "３", "１", "２" dos modelos japoneses (cara de
+  rascunho) ficaram de fora. 引き抜き = contratação, 人脈システムのボード = quadro do mapa de contatos, 商店街奥の
+  スポーツショップ = loja de esportes no fundo do bairro de lojas (como nos scripts). Sem aspas: não há forma de
+  largura cheia.
+- **Medidas:** com "Ichirota Kazemaru" (89 px) no `%s`, a linha mais larga dá 144 px (cabem 186). O nome
+  completo vai até 27 letras (~148 px), sempre sozinho na linha; o segundo `%s` é o nome curto (16 bytes).
+- **Não visto no jogo:** precisa recrutar alguém pelo scout no save de teste. Ficou no checklist (fase 6).
+
+**Verificação:** 29 testes do `test_text` ok; `translate.py check pt-BR`: 53.657 linhas ok; `build --install`:
+580 patches, versão 1.24; no `blogpost.dat` gerado, `%s` = `25 73`; `survey`: blog 3.443 → 0 (100 %) (sem commit).

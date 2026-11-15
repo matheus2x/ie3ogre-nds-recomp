@@ -77,7 +77,7 @@ and the prefix says the kind.
 | Tactics | `logic/tacticscmd.STR` | 0 | 0 % → 100 % (v1.2) |
 | Video gallery titles | `logic/movie_view_f.dat` | 0 | 0 % → 100 % (v1.4) |
 | Place names (maybe internal only, see phase 6) | `logic/fieldinf.dat` | 984 | 0 % |
-| Blog | `script/blogpost.dat`, `blogres.dat` | 3,010 | 13 % → 88 % (v1.18) |
+| Blog | `script/blogpost.dat`, `blogres.dat` | 3,010 | 13 % → 88 % (v1.18) → 100 % (v1.24) |
 | Other tables (moves, tournaments, conditions…) | `logic/*` | 4 (a password) | 96 % → 100 % (v1.5) |
 | Menus in the code | overlays | 456 (passwords, internal names and leftovers) | 28 % → 95 % (v1.4) |
 | Labels of who speaks in matches | `mch.pkb` | 0 | 0 % → 100 % (v1.4) |
@@ -471,10 +471,11 @@ already translated line has to be redone.
 - [x] Blog (v1.18, `blogpost.dat`/`blogres.dat`): 30 titles, 30 posts and 30 comments, besides CyberLife's 15
   (exported to `blogpost.json`/`blogres.json`). `text.py` got the converter (record tables in `script/`, the `BLOG`
   form); see the technical rules.
-- [ ] The blog's 10 automatic posts (recruited by the scout or by hiring, who joined or left the team, player and
-  item downloads: title and text, 20 places) are still in Japanese. The texts have `%s` with the player's name, and
-  in the blog's form `%s` would become full-width; how the name goes into that parser is still unknown (look in the
-  game after recruiting someone with the scout).
+- [x] The blog's 10 automatic posts (v1.24): recruited by the scout or by hiring, who joined or left the team,
+  player and item downloads (title and text, 20 places). `func_ov018_0211b288` puts the full name (`unitbase.dat`
+  +0x00) in the first `%s` and the list name (+0x1C; for an item download, the item's name both times) in the
+  second, copied as they are; so `BLOG` writes `%s` in ASCII (see the technical rules). The name gets a row of its
+  own: up to 27 half-width letters, about 150 px.
 - [x] Blog pictures (v1.21): CyberLife's English header and the Japanese labels. The title サッカーブログ
   ("Football Blog") became "Futblog", the name CyberLife gave the blog in the posts and the story, with CyberLife's
   own letters (`stamps/blog-title.png`, through the new `draw` edit) in the original's colours; the speech bubbles
@@ -558,6 +559,9 @@ already translated line has to be redone.
 - [ ] Overlay messages: the first seen in the game was the "Precisamos de Endo!" of `ov044` (v1.10), in pairs like
   the gallery's. The test save's formation did not allow triggering the `ov057` notices.
 - [ ] Labels of who speaks in matches 34010007 and 34010022 (`mch.pkb`)
+- [ ] The blog's automatic posts (v1.24): only in `check` and in the bytes built (`%s` = `25 73`). See them in the
+  game after recruiting someone with the scout: the half-width name goes through the `ruby_parse` hook (v1.23),
+  not seen yet
 - [ ] Shop title (v1.23): "Comprar: G-Mart Inazuma" only in `check`. See a shop in the game (buy and sell) and
   whether the plain-text verb shows through the furigana parser
 - [ ] Training descriptions (`ov045`), technique list title (`ov070`), stat labels of `ov109`/`ov110`, "Equipar"
@@ -744,7 +748,9 @@ and should follow this list when translated.
   newline. A space after an accent stays a plain space (`B2 20`, as CyberLife): with 0xCF there, the post showed
   but the comment under it vanished (seen in the game). Size measured on screen (Dados →
   Blog → touch the post): title in one row of 200 px (the list of posts), text in 5 rows of 186 px (x = 63 to 251),
-  comment in 2 rows of 190 px (x = 2 to 193).
+  comment in 2 rows of 190 px (x = 2 to 193). For the automatic posts `func_ov018_0211b288` copies the text to
+  another buffer: a byte from 0x80 up goes with the next one, and only a lone `%` followed by `s` becomes the name.
+  `BLOG` writes `%s` in ASCII and, before it, a space or an accent gets 0xDF as its pair (or it would take the `%`).
 - **Shop names (`logic/ShopName.dat:line`):** one line per shop, separated by CR LF (`LINE_FILES` in `text.py`);
   the game reads the whole file, and `apply` writes it again. `ov062` draws "Comprar"/"Vender" (`ov062:0x7120`,
   `0x7128`, plain text) and the line, through the furigana parser, on a 128 px canvas with no pixel between

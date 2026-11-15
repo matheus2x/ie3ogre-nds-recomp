@@ -147,6 +147,11 @@ class TableTest(unittest.TestCase):
                          encode("á ") + wide("b").encode("cp932") + b"\n" + wide("c").encode("cp932"))
         self.assertEqual(subtitled("a b", True), subtitled("a b"))
         self.assertEqual(subtitled("é\na", True), encode("é" + SPACER) + b"\n" + wide("a").encode("cp932"))
+        # the automatic posts: %s plain for func_ov018_0211b288, never the pair of a space or an accent
+        self.assertEqual(subtitled("%s!", True), b"%s" + wide("!").encode("cp932"))
+        self.assertEqual(subtitled("a %s", True), wide("a").encode("cp932") + b"\xcf" + encode(SPACER) + b"%s")
+        self.assertEqual(subtitled("é%s", True), encode("é" + SPACER) + b"%s")
+        self.assertEqual(subtitled("%s"), wide("%s").encode("cp932"))  # a subtitle has no %s
         # records [first frame][last frame][size][text, NUL, padding to 4], then 0xFFFFFFFF
         rec = lambda a, b, t: struct.pack("<III", a, b, len(t)) + t  # noqa: E731
         d = rec(1, 2, b"ab\0\0") + rec(3, 4, b"cdefg\0\0\0") + b"\xff" * 4
