@@ -6,7 +6,8 @@ import zlib
 
 import image as imagetool
 from ntr import lz10
-from ntr.image import ImageError, Picture, colours, guess_width, read_spf, read_spl, sections, write_spf, write_spl
+from ntr.image import (ImageError, Picture, colours, guess_width, is_hashed, read_hashed, read_spf, read_spl, sections,
+                       write_hashed, write_spf, write_spl)
 from ntr.png import read_png
 
 
@@ -145,7 +146,42 @@ class SfpTest(unittest.TestCase):
         self.assertEqual(read_spf(new), [("X.PAC", tiled(3, 4))])
 
 
+class HashedPackTest(unittest.TestCase):
+    def test_names_and_rewrite(self):
+        a, b = lz10.compress(texture(16, 8, [(0, 0, 16, 8)])), lz10.compress(texture(16, 16, [(0, 0, 16, 16)]))
+        keys = sorted([zlib.crc32(b"arrow.pac_"), 0x12345678])
+        pkb = a + bytes(-len(a) % 16) + b
+        pkh = struct.pack("<4I", keys[0], 0, len(a), struct.unpack_from("<I", a)[0])
+        pkh += struct.pack("<4I", keys[1], len(a) + (-len(a) % 16), len(b), struct.unpack_from("<I", b)[0])
+        self.assertTrue(is_hashed(pkh))
+        self.assertFalse(is_hashed(b"PackNum 20080626" + bytes(32)))
+        names = {zlib.crc32(b"arrow.pac_"): "arrow.pac_", 0x12345678: "12345678.pac_"}
+        self.assertEqual(read_hashed(pkh, pkb), [(names[keys[0]], a if keys[0] < keys[1] else b),
+                                                 (names[keys[1]], b if keys[0] < keys[1] else a)])
+        self.assertEqual(write_hashed(pkh, pkb, {}), (pkh, pkb + bytes(-len(pkb) % 16)))
+        bigger = lz10.compress(texture(32, 32, [(0, 0, 32, 32)]))
+        first = read_hashed(pkh, pkb)[0][0]
+        h2, b2 = write_hashed(pkh, pkb, {first: bigger})
+        self.assertEqual(read_hashed(h2, b2)[0], (first, bigger))
+        self.assertEqual(read_hashed(h2, b2)[1], read_hashed(pkh, pkb)[1])
+        self.assertEqual(struct.unpack_from("<I", h2, 12)[0], struct.unpack_from("<I", bigger)[0])
+        self.assertEqual(struct.unpack_from("<I", h2, 20)[0] % 16, 0)
+
+
 class EditTest(unittest.TestCase):
+    def test_keep(self):
+        painter = imagetool.Painter(None)
+        p = Picture(texture(16, 8, [(0, 0, 16, 4), (0, 4, 16, 4)]), "3d")
+        painter.base = Picture(texture(16, 8, [(0, 0, 16, 8)]), "3d")
+        painter.base.rows = [[7] * 16 for _ in range(8)]
+        p.rows = [[5] * 16 for _ in range(8)]
+        for e in imagetool.placed(p, {"frames": [1], "keep": [2, 1, 3, 2]}):
+            self.assertEqual(painter.problems(p, e), [])
+            painter.paint(p, e)
+        self.assertEqual([r[1:6] for r in p.rows[4:8]], [[5] * 5, [5, 7, 7, 7, 5], [5, 7, 7, 7, 5], [5] * 5])
+        painter.base = Picture(texture(16, 16, [(0, 0, 16, 16)]), "3d")
+        self.assertIn("keep", painter.problems(p, {"keep": [0, 0, 1, 1]})[0])
+
     def test_frames_are_relative(self):
         p = Picture(texture(16, 8, [(0, 0, 16, 4), (0, 4, 16, 4)]), "3d")
         out = imagetool.placed(p, {"frames": [1], "erase": [2, 1, 3, 2], "from": 9})

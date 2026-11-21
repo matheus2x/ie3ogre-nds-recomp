@@ -157,11 +157,13 @@ houver problema.
 Menus desenhados (botões, faixas, avisos) são imagens. Há dois jeitos de traduzi-las:
 
 - **Texto sobre a imagem** (`images.json`): apaga o texto japonês de um retângulo e escreve o seu com a fonte do
-  mod. Formato no começo de `tools/image.py`; o `images.json` do PT-BR tem 386 exemplos. Para títulos e faixas
+  mod. Formato no começo de `tools/image.py`; o `images.json` do PT-BR tem 393 exemplos. Para títulos e faixas
   grandes, as letras da fonte podem ser ampliadas (`scale`), em degradê de cima para baixo (`colour` como lista),
   em negrito, itálico e com contorno duplo, como nas telas da partida. Para letras desenhadas à
   mão (um título no estilo da própria imagem), `draw` põe um PNG pequeno seu por cima da imagem (o transparente
   mantém a imagem); deixe-o fora de `images/`, por exemplo em `stamps/`, como o PT-BR faz com o título do blog.
+  Numa imagem que a base mudou em outros lugares, `keep` devolve um retângulo como a base o deixou (o resto da
+  edição parte da imagem japonesa).
 - **Imagem inteira** (`images/`): `python3 tools/translate.py images es --only 'pic3d/option'` exporta as imagens
   em PNG para `build/translate/es/images/`; redesenhe as que quiser e copie para `translations/es/images/`, nas
   mesmas pastas. Use as cores que a imagem já tem (cada imagem tem uma paleta de 16 ou 256 cores; uma cor fora

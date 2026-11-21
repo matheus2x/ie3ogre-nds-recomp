@@ -4798,3 +4798,42 @@ perfil pelo leitor novo, igual ao original; o resto (loja, treinos, lista de té
 
 **Verificação:** 29 testes do `test_text` ok; `translate.py check pt-BR`: 53.657 linhas ok; `build --install`:
 580 patches, versão 1.24; no `blogpost.dat` gerado, `%s` = `25 73`; `survey`: blog 3.443 → 0 (100 %) (sem commit).
+
+## 2026-11-20 — Imagens da partida no `pic3d/common.pkb` (CyberLifePlus 1.25)
+
+- Pedido: mais uma tarefa da tradução. Escolhido o item "o resto da partida está no `pic3d/common.pkb`" (fase 2,
+  imagens em inglês), que aparece em toda partida.
+- **Formato:** o `.pkh` do `common` não é PackNum: registros de 16 bytes (u32 hash, offset, tamanho, a primeira
+  palavra da entrada, ou seja o cabeçalho LZ10), em ordem de hash, entradas alinhadas em 16. O hash é o CRC32 do
+  nome do arquivo em minúsculas (`arrow.pac_`, `yddn_w00.pac_`…): os 37 nomes do `common` e os 27 do
+  `replaceunit` saíram por força bruta com os prefixos das strings dos overlays (o código monta a maioria com
+  `sprintf`). Seis pacotes de `pic3d` usam esse índice (`common`, `mbd_s`, `mf`, `replaceunit`, `script/mbv_c`,
+  `script/tcv_c`), todos com imagens 3D que o `Picture` já lia; o `ih`/`io` são PackNum e de outro conteúdo.
+- **`tools/ntr/image.py`:** `is_hashed`, `read_hashed`, `write_hashed` e `HASHED_NAMES` (entrada sem nome
+  conhecido vira `<hash>.pac_`). **`tools/image.py`:** os pacotes entram no `export`/`check`/`apply`
+  (`"pic3d/common.pkb": {"mbd_w00.pac_": [...]}`), e a edição nova `keep` devolve um retângulo como a base o
+  deixou (lido do mod em que as edições são escritas; no `build` é uma cópia nova da base). Ela resolve o caso das
+  imagens em que o CyberLife mudou mais coisas além do texto: aqui, os ícones de elemento no lugar dos kanji
+  風林山火 do `mbd_w00`, que voltavam ao japonês. Testes novos: `HashedPackTest`, `test_keep`.
+- **Imagens (7 das 9 que o CyberLife mudou):** `gmdn_u00` (faixas de fim de tempo: mesma paleta e mesmo layout do
+  `MPSAct:GMDN_U00`, então as mesmas edições), `mbd_w00`/`mbd_w01` ("Técnica", `FONT12` com contorno, do tamanho
+  do "Technic" do CyberLife), `gmdn_r00` (リプレイ = "Rever", em negrito como o original), `yddn_w00` (ねっけつ =
+  "Garra", como nos textos), `mln_p02` (トピックス/メンバー/サーチ/もくてき = Notícias/Membros/Busca/Objetivo, `FONT8`)
+  e `ply_bkr01` (balões de 32 px: ミス = "Errou!", ダイレクト = "Direto!", とっぱ = "Passou!", ナイス = "Boa!",
+  チェイン = "Cadeia", ブロック = "Defesa!"; `FONT8` com 1 px entre as letras: em negrito ou com `gap` 0 as letras
+  grudavam, e "Bloqueio" tem 33 px para 28). Ficaram como o CyberLife o Sim/Não do `mln_w01` (já em português), os
+  ícones do `ply_num` e "技LvUP!". No primeiro `erase` dos balões, o `from` 0 pegava o contorno do "Direct"
+  (coluna 0 não transparente): passou para a coluna 31.
+- **No jogo** (sem janela, `NTR_RTC` fixo, save `foxperks-1` copiado): A no 400, 900, 1150…2500, depois
+  esquerda/cima/direita/baixo em blocos de 60 quadros a partir do 3300 → batalha no ~5600; savestate no 5800 (o
+  antigo foi guardado e devolvido). Dali, `TOUCH@128,176` no 100 e toques em `150,40`: disputa no ~1480 com
+  "Técnica" sob os números das duas equipes, ícones do CyberLife no lugar. Na mesma tela continuam em inglês "Time
+  Limit", os botões dos comandos ("Catch"/"Punch", "Block"/"Sliding tackle", "Shoot") e o balão "To me!": não
+  estão no `common` (os botões devem estar no `pic2d/cmd/mbd_c.pkb`, PackNum de imagens 2D, que o CyberLife mudou).
+  A partida parou na escolha da força do chute; faixas, balões, Rever, Garra e as abas só no `check`.
+- **Ficou para depois** (no checklist): os botões dos comandos e o "Time Limit"; os nomes das técnicas e táticas
+  das animações (`script/mbv_c` 396 imagens, `tcv_c` 22), que o CyberLife pôs em romaji e inglês.
+
+**Verificação:** 79 testes ok; `image.py check`: 393 imagens, 0 problema; `translate.py build pt-BR --install`:
+580 patches, versão 1.25; o `common.pkb` gravado no mod tem as mesmas 7 imagens do `check`, e as outras iguais
+às do CyberLife (sem commit).

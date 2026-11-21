@@ -5,7 +5,8 @@
   python3 tools/image.py check boej.pak mods/CyberLifePlus translations/pt-BR [--png build/images/check]
   python3 tools/image.py apply boej.pak mods/CyberLifePlus translations/pt-BR
 
-export writes each picture of the archives (pic2d .SPF_, pic3d .SPL/.SPD) as an indexed PNG,
+export writes each picture of the archives (pic2d .SPF_, pic3d .SPL/.SPD and the hashed .pkb packs,
+whose entries are named as tools/ntr/image.py HASHED_NAMES lists them) as an indexed PNG,
 <archive>/<entry>.png, to look at; it is game data, so only under build/.
 
 A translation keeps its images in images.json: archive -> entry -> list of edits on the
@@ -40,6 +41,9 @@ draw puts a small PNG of the translation folder (its path from there) over the p
 top left corner "at" [x, y]: each pixel takes the nearest colour of the palette, and the
 see-through ones keep the picture (for letters drawn by hand, without copying the game's
 art into the folder; keep these PNGs out of the pictures folder, which replaces whole ones).
+keep puts back the rectangle [x, y, w, h] as the mod the edits are written over has it (the
+base, e.g. a picture the base changed in more places than the text, so that the rest of it does
+not go back to the retail one); the base's picture must have the same size and palette.
 "frames" repeats an edit on frames of a 3D picture, with x, y, "from" counted from each
 frame's corner. check lists what does not fit (--png writes the edited pictures to look
 at). apply puts the edited pictures in place of the mod's (the rest of each archive stays
@@ -59,7 +63,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import language  # noqa: E402
 import text as texttool  # noqa: E402
 from ntr import lz10  # noqa: E402
-from ntr.image import Glyphs, ImageError, Picture, read_spf, read_spl, write_spf, write_spl  # noqa: E402
+from ntr.image import (Glyphs, ImageError, Picture, is_hashed, read_hashed, read_spf, read_spl,  # noqa: E402
+                       write_hashed, write_spf, write_spl)
 from ntr.png import PngError, read_png  # noqa: E402
 from ntr.text import codes, encode, fit_font  # noqa: E402
 
@@ -70,7 +75,8 @@ OUTLINE = tuple((dx, dy) for dy in (-1, 0, 1) for dx in (-1, 0, 1) if dx or dy)
 
 
 def archives(game: texttool.Game) -> list[str]:
-    """pic2d .SPF_, pic3d archives (without .SPL/.SPD) and lone .pac_ pictures, as paths under data_iz."""
+    """pic2d .SPF_, pic3d archives (without .SPL/.SPD), pic3d .pkb packs with a hashed index and
+    lone .pac_ pictures, as paths under data_iz."""
     out = []
     for rel, _ in game.rom.files():
         rel = rel.lstrip("/")
@@ -81,6 +87,8 @@ def archives(game: texttool.Game) -> list[str]:
             out.append(rel)
         elif rel.endswith(".SPD"):
             out.append(rel[:-4])
+        elif rel.startswith("pic3d/") and rel.endswith(".pkb") and is_hashed(game.retail(f"{DATA}/{rel[:-4]}.pkh")):
+            out.append(rel)
     return sorted(out)
 
 
@@ -91,6 +99,9 @@ def load(get, arc: str) -> tuple[str, list[tuple[str, bytes]]]:
         return arc[3:5], [(arc.rsplit("/", 1)[-1], lz10.try_decompress(d) or d)]
     if arc.endswith(".SPF_"):
         return "2d", read_spf(get(f"{DATA}/{arc}"))
+    if arc.endswith(".pkb"):
+        entries = read_hashed(get(f"{DATA}/{arc[:-4]}.pkh"), get(f"{DATA}/{arc}"))
+        return "3d", [(n, lz10.decompress(d) if d[:1] == b"\x10" else d) for n, d in entries]
     entries = read_spl(get(f"{DATA}/{arc}.SPL"), get(f"{DATA}/{arc}.SPD"))
     return "3d", [(n, lz10.decompress(d) if d[:1] == b"\x10" else d) for n, d in entries]
 
@@ -101,6 +112,12 @@ def save(get, arc: str, new: dict[str, bytes]) -> dict[str, bytes]:
         return {f"{DATA}/{arc}": lz10.compress(new[arc.rsplit("/", 1)[-1]])}
     if arc.endswith(".SPF_"):
         return {f"{DATA}/{arc}": write_spf(get(f"{DATA}/{arc}"), new)}
+    if arc.endswith(".pkb"):
+        pkh, pkb = get(f"{DATA}/{arc[:-4]}.pkh"), get(f"{DATA}/{arc}")
+        stored = dict(read_hashed(pkh, pkb))
+        packed = {n: lz10.compress(d) if stored[n][:1] == b"\x10" else d for n, d in new.items()}
+        pkh, pkb = write_hashed(pkh, pkb, packed)
+        return {f"{DATA}/{arc[:-4]}.pkh": pkh, f"{DATA}/{arc}": pkb}
     stored = dict(read_spl(get(f"{DATA}/{arc}.SPL"), get(f"{DATA}/{arc}.SPD")))
     packed = {n: lz10.compress(d) if stored[n][:1] == b"\x10" else d for n, d in new.items()}
     spl, spd = write_spl(get(f"{DATA}/{arc}.SPL"), get(f"{DATA}/{arc}.SPD"), packed)
@@ -137,6 +154,7 @@ def cmd_export(args) -> int:
 class Painter:
     def __init__(self, game: texttool.Game, folder: Path | None = None):
         self.game, self.folder = game, folder
+        self.base: Picture | None = None  # the picture as the mod has it, for keep
         self.drawn: dict[str, tuple[int, int, list]] = {}
         self.fonts: dict[str, Glyphs] = {}
         self.others: dict[str, Picture] = {}
@@ -213,11 +231,15 @@ class Painter:
             x, y = e["at"]
             if x < 0 or y < 0 or x + w > pic.w or y + h > pic.h:
                 out.append(f"draw {e['draw']} ({w}x{h} at {x}, {y}) outside the {pic.w}x{pic.h} picture")
-        for key in ("erase", "box"):
+        for key in ("erase", "box", "keep"):
             if key in e:
                 x, y, w, h = e[key]
                 if x < 0 or y < 0 or x + w > pic.w or y + h > pic.h:
                     out.append(f"{key} {e[key]} outside the {pic.w}x{pic.h} picture")
+        if "keep" in e:
+            b = self.base
+            if b is None or (b.w, b.h, b.bpp, b.pal) != (pic.w, pic.h, pic.bpp, pic.pal):
+                out.append("keep: the mod's picture has another size or palette")
         if "rows" in e and not 0 <= e["rows"][0] <= e["rows"][1] < pic.h:
             out.append(f"rows {e['rows']} outside the {pic.w}x{pic.h} picture")
         return out
@@ -252,6 +274,10 @@ class Painter:
                             if near:
                                 row[x] = old[near[0]]
                                 break
+        if "keep" in e:
+            x0, y0, w, h = e["keep"]
+            for y in range(y0, y0 + h):
+                rows[y][x0:x0 + w] = self.base.rows[y][x0:x0 + w]
         if "draw" in e:
             _, _, px = self.stamp(e["draw"])
             x0, y0 = e["at"]
@@ -307,7 +333,7 @@ def placed(pic: Picture, e: dict) -> list[dict]:
         one = {k: v for k, v in e.items() if k != "frames"}
         if "at" in e:
             one["at"] = [e["at"][0] + fx, e["at"][1] + fy]
-        for key in ("erase", "box"):
+        for key in ("erase", "box", "keep"):
             if key in e:
                 x, y, w, h = e[key]
                 if x + w > fw or y + h > fh:
@@ -338,6 +364,7 @@ def pictures(game: texttool.Game, folder: Path):
             yield arc, {}, [f"{arc}: not an archive of pictures ({e})"]
             continue
         stored = dict(stored)
+        based = None  # the mod's entries, read when an edit keeps some of them
         done, bad = {}, []
         for name, spec in entries.items():
             if name not in stored:
@@ -345,6 +372,11 @@ def pictures(game: texttool.Game, folder: Path):
                 continue
             width = spec.get("width") if isinstance(spec, dict) else None
             pic = Picture(stored[name], kind, width)
+            painter.base = None
+            if any("keep" in e for e in (spec["edits"] if isinstance(spec, dict) else spec)):
+                if based is None:
+                    based = dict(load(game.modded, arc)[1])
+                painter.base = Picture(based[name], kind, width) if name in based else None
             if (arc, name) in pngs:
                 try:
                     near = pic.draw_png(pngs[arc, name].read_bytes())

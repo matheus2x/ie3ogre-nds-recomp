@@ -3822,5 +3822,61 @@
     {"erase": [19, 41, 24, 2], "ink": [15]},
     {"text": "OK", "box": [19, 31, 26, 12], "colour": 15, "outline": 13}
   ]
+},
+"pic3d/common.pkb": {
+  "gmdn_u00.pac_": [
+    {"erase": [0, 4, 256, 24], "ink": [1, 14, 9]},
+    {"text": "Intervalo", "box": [2, 2, 252, 26], "colour": [1, 1, 1, 1, 1, 1, 1, 14], "outline": 9, "scale": 2, "bold": 1},
+    {"erase": [0, 36, 256, 24], "ink": [1, 14, 9]},
+    {"text": "Fim do tempo normal", "box": [2, 34, 252, 26], "colour": [1, 1, 1, 1, 1, 1, 1, 14], "outline": 9, "scale": 2, "bold": 1},
+    {"erase": [0, 68, 256, 24], "ink": [1, 14, 9]},
+    {"text": "Prorrogação: intervalo", "box": [2, 66, 252, 26], "colour": [1, 1, 1, 1, 1, 1, 1, 14], "outline": 9, "scale": 2, "bold": 1},
+    {"erase": [0, 100, 256, 24], "ink": [1, 14, 9]},
+    {"text": "Fim da prorrogação", "box": [2, 98, 252, 26], "colour": [1, 1, 1, 1, 1, 1, 1, 14], "outline": 9, "scale": 2, "bold": 1},
+    {"erase": [0, 132, 256, 24], "ink": [2, 7, 8]},
+    {"text": "Fim de jogo", "box": [2, 130, 252, 26], "colour": [8, 8, 8, 8, 8, 8, 8, 7], "outline": 2, "scale": 2, "bold": 1},
+    {"erase": [0, 164, 256, 24], "ink": [7, 8, 9]},
+    {"text": "Pênaltis", "box": [2, 162, 252, 26], "colour": [8, 8, 8, 8, 8, 8, 8, 7], "outline": 9, "scale": 2, "bold": 1}
+  ],
+  "gmdn_r00.pac_": [
+    {"erase": [24, 6, 38, 10], "ink": [15]},
+    {"text": "Rever", "box": [23, 4, 39, 12], "colour": 15, "bold": 1}
+  ],
+  "mbd_w00.pac_": [
+    {"keep": [112, 0, 32, 26]},
+    {"erase": [44, 12, 44, 8], "from": 43},
+    {"text": "Técnica", "box": [40, 9, 52, 12], "colour": 8, "outline": 6},
+    {"erase": [168, 12, 44, 8], "from": 167},
+    {"text": "Técnica", "box": [164, 9, 52, 12], "colour": 10, "outline": 6}
+  ],
+  "mbd_w01.pac_": [
+    {"erase": [44, 12, 44, 8], "from": 43},
+    {"text": "Técnica", "box": [40, 9, 52, 12], "colour": 8, "outline": 6},
+    {"erase": [168, 12, 44, 8], "from": 167},
+    {"text": "Técnica", "box": [164, 9, 52, 12], "colour": 10, "outline": 6}
+  ],
+  "mln_p02.pac_": [
+    {"frames": [0, 1, 2, 3], "erase": [8, 7, 48, 7], "ink": [15]},
+    {"frames": [0], "text": "Notícias", "box": [8, 6, 48, 9], "font": "FONT8", "colour": 15},
+    {"frames": [1], "text": "Membros", "box": [8, 6, 48, 9], "font": "FONT8", "colour": 15},
+    {"frames": [2], "text": "Busca", "box": [8, 6, 48, 9], "font": "FONT8", "colour": 15},
+    {"frames": [3], "text": "Objetivo", "box": [8, 6, 48, 9], "font": "FONT8", "colour": 15}
+  ],
+  "ply_bkr01.pac_": [
+    {"frames": [2, 3, 4], "erase": [0, 0, 32, 16], "from": 31},
+    {"frames": [2], "text": "Errou!", "box": [0, 7, 32, 8], "font": "FONT8", "colour": 11, "outline": [15, 1]},
+    {"frames": [3], "text": "Direto!", "box": [0, 7, 32, 8], "font": "FONT8", "colour": [9, 9, 9, 9, 8, 8, 8, 8], "outline": 1},
+    {"frames": [4], "text": "Passou!", "box": [0, 7, 32, 8], "font": "FONT8", "colour": [14, 14, 14, 14, 13, 13, 13, 13], "outline": 1},
+    {"frames": [6], "erase": [3, 3, 26, 7], "ink": [9, 6]},
+    {"frames": [6], "text": "Boa!", "box": [3, 2, 26, 8], "font": "FONT8", "colour": 9},
+    {"frames": [9], "erase": [2, 6, 28, 7], "ink": [13, 12]},
+    {"frames": [9], "text": "Cadeia", "box": [2, 5, 28, 8], "font": "FONT8", "colour": 12},
+    {"frames": [10], "erase": [2, 6, 28, 7], "ink": [11, 10]},
+    {"frames": [10], "text": "Defesa!", "box": [2, 5, 28, 8], "font": "FONT8", "colour": 10}
+  ],
+  "yddn_w00.pac_": [
+    {"erase": [4, 5, 64, 11], "ink": [15]},
+    {"text": "Garra", "box": [4, 4, 64, 12], "colour": 15}
+  ]
 }
 }

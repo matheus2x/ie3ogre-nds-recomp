@@ -18,6 +18,7 @@ pixel, rows MSB first); CWDH gives (left, glyph width, advance) of each glyph.
 """
 
 import struct
+import zlib
 
 from . import lz10
 from .png import read_png, write_png  # noqa: F401 (write_png: also imported from here)
@@ -79,6 +80,49 @@ def read_spl(spl: bytes, spd: bytes) -> list[tuple[str, bytes]]:
 
 def write_spl(spl: bytes, spd: bytes, new: dict[str, bytes]) -> tuple[bytes, bytes]:
     idx, blob = _rebuild(spl, spd, 0, new)
+    return bytes(idx), bytes(blob)
+
+
+# --- packs with a hashed index ------------------------------------------------------------
+
+# Names of the entries of the hashed pic3d packs, found by their CRC32 (the code builds most of them
+# with sprintf, so they are not all strings of the game); an entry not listed is named by its hash.
+HASHED_NAMES = (
+    "arrow gmdn_c01 gmdn_c02 gmdn_c03 gmdn_r00 gmdn_u00 gmdn_w00 mbd_g00 mbd_g01 mbd_g02 mbd_g03 mbd_g04 "
+    "mbd_n00 mbd_p01 mbd_w00 mbd_w01 mln_door mln_i00 mln_i01 mln_p00 mln_p01 mln_p02 mln_parts mln_w00 "
+    "mln_w01 mln_w02 mln_w03 partsimg ply_bkr01 ply_name ply_num ply_s00 tcd_n00 tcd_n01 tcd_w00 tcd_w01 "
+    "yddn_w00 "  # common
+    "ccdn_b00 ccdn_b01 ccdn_b02 ccdn_b03 ccdn_b04 ccdn_bg00 ccdn_c00 ccdn_c10 ccdn_f00 ccdn_f01 ccdn_f02 "
+    "ccdn_f03 ccdn_f10 ccdn_f11 ccdn_f12 ccdn_i00 ccdn_i01 ccdn_i02 ccdn_i03 ccdn_t00 ccdn_w00 ccdn_w10 "
+    "ccdn_w11 ccdn_w12 ccdn_w13 ccdn_w20 ccdn_w21 "  # replaceunit
+    "mbv_c000"  # script/mbv_c
+).split()
+_BY_HASH = {zlib.crc32(f"{n}.pac_".encode()): f"{n}.pac_" for n in HASHED_NAMES}
+
+
+def is_hashed(pkh: bytes) -> bool:
+    """A .pkh of (u32 CRC32 of the lower-case file name, u32 offset, u32 size, u32 first word of the
+    entry) records, sorted by the hash (pic3d common, mbd_s, mf, replaceunit, script/mbv_c, tcv_c);
+    the other kind starts with "PackNum"."""
+    return pkh[:7] != b"PackNum" and len(pkh) % 16 == 0
+
+
+def read_hashed(pkh: bytes, pkb: bytes) -> list[tuple[str, bytes]]:
+    """Entries of a hashed .pkh/.pkb pair, as stored (LZ10), each named as HASHED_NAMES or "<hash>.pac_"."""
+    out = []
+    for k in range(0, len(pkh), 16):
+        key, at, size, _ = struct.unpack_from("<4I", pkh, k)
+        out.append((_BY_HASH.get(key, f"{key:08x}.pac_"), pkb[at:at + size]))
+    return out
+
+
+def write_hashed(pkh: bytes, pkb: bytes, new: dict[str, bytes]) -> tuple[bytes, bytes]:
+    """The pair with some entries replaced, the rest laid again in order, 16-byte aligned."""
+    idx, blob = bytearray(pkh), bytearray()
+    for k, (name, d) in enumerate(read_hashed(pkh, pkb)):
+        d = new.get(name, d)
+        struct.pack_into("<III", idx, k * 16 + 4, len(blob), len(d), struct.unpack_from("<I", d + bytes(4))[0])
+        blob += d + bytes(_align(len(d), 16) - len(d))
     return bytes(idx), bytes(blob)
 
 

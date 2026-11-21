@@ -258,9 +258,23 @@ etapa ficam no `docs/development/DIARY.pt-BR.md`.
   - [ ] botões em imagens com outros textos do CyberLife (13, feitas à mão depois): `menu_tournament:TMD_B08`,
     `ps_item:PIDN_B00`, `practice_rule:PRRD_W00`/`W03` (perguntas "Começar a partida?", "Salvar os dados?"),
     `waza_binder:WAZA_B01`, `trade:WTDN_B00`, `ps_replace_unit:PSDN_B00`, `ps_list:PSDN_B05`,
-    `MASTutorial:SYDN_B00` e quatro do `MMSlot`;
-  - [ ] o resto da partida está no `pic3d/common.pkb` (índice que não é o PackNum dos scripts): visto no jogo,
-    "Time Limit" em cima e "Technic", "Dodge", "Charge" nos comandos;
+    `MASTutorial:SYDN_B00` e quatro do `MMSlot`. Desde a v1.25 a edição `keep` devolve um retângulo como o
+    CyberLife deixou, então dá para trocar só os botões e manter o resto;
+  - [x] `pic3d/common.pkb` (v1.25): um pacote com índice em hash (CRC32 do nome do arquivo), que o `image.py`
+    agora lê, como os outros cinco do mesmo tipo (`mbd_s`, `mf`, `replaceunit`, `script/mbv_c`, `script/tcv_c`).
+    O CyberLife mudou 9 das 37 imagens; feitas 7: "Técnica" sob os números de técnica da disputa (`mbd_w00`/`w01`,
+    com os ícones de elemento do CyberLife mantidos por `keep`), as faixas de fim de tempo (`gmdn_u00`, iguais às
+    do `MPSAct`), Rever (`gmdn_r00`, リプレイ), Garra (`yddn_w00`, ねっけつ), as abas Notícias/Membros/Busca/
+    Objetivo (`mln_p02`) e os balões dos jogadores (`ply_bkr01`): Errou!, Direto!, Passou! (とっぱ), Boa!, Cadeia,
+    Defesa! (ブロック; "Bloqueio" não cabe). Ficaram como o CyberLife: Sim/Não (`mln_w01`, já em português), os
+    ícones de elemento (`ply_num`) e "技LvUP!". Visto no jogo: "Técnica" na disputa; o resto só no `check`;
+  - [ ] o resto da partida, que não está no `common.pkb`: "Time Limit" em cima, os botões dos comandos ("Catch",
+    "Punch", "Block", "Sliding tackle", "Shoot"; o CyberLife mudou o `pic2d/cmd/mbd_c.pkb`, um pacote PackNum de
+    imagens 2D que o `image.py` ainda não lê, e os `pic2d/mbd_c*.pac_`) e o balão "To me!" dos jogadores;
+  - [ ] nomes das técnicas e táticas nas imagens das animações (`pic3d/script/mbv_c.pkb`, 396 de 411, e
+    `tcv_c.pkb`, 22): o CyberLife pôs nomes em romaji e em inglês ("Mugen no Kabe", "Dimension Warp", "Saint
+    Flash"); decidir se ficam iguais aos da lista (romaji, `command.STR`). Os nomes das entradas não saíram pelo
+    CRC32 (só `mbv_c000`), então elas aparecem pelo hash;
 - [x] Tutorial das ligações (v1.8, `MTSPi`, 8 páginas de 8 bpp e 3 botões): as páginas do Superlink 2→3
   (`WPD_W00`–`W03`) e do Link Premium Ogre (`W04`–`W07`), em que o CyberLife só tinha trocado o botão. Os
   rótulos "Outro/Este console DS", as caixas de explicação, a tela de título do outro jogo (Conectar, Partida,
@@ -563,6 +577,8 @@ traduzida precisa ser refeita.
 - [ ] Rótulos de quem fala nas partidas 34010007 e 34010022 (`mch.pkb`)
 - [ ] Posts automáticos do blog (v1.24): só no `check` e nos bytes gerados (`%s` = `25 73`). Ver no jogo depois de
   recrutar alguém pelo scout: o nome em meia largura passa pelo gancho `ruby_parse` (v1.23), ainda não visto
+- [ ] Imagens da partida no `common.pkb` (v1.25): só "Técnica" visto no jogo (disputa numa batalha de campo do save
+  de teste). As faixas de fim de tempo, os balões dos jogadores, Rever, Garra e as abas do `mln_p02` só no `check`
 - [ ] Título da loja (v1.23): "Comprar: G-Mart Inazuma" só no `check`. Ver no jogo uma loja (comprar e vender) e se o
   verbo em texto comum aparece pelo leitor de furigana
 - [ ] Descrições dos treinos (`ov045`), título da lista de técnicas (`ov070`), rótulos de status do `ov109`/`ov110`,
@@ -809,13 +825,17 @@ etc. (vieram do patch em inglês) e devem seguir esta lista quando forem traduzi
   guarda as texturas num par `.SPL` (índice) + `.SPD` (dados), cada uma um PAC comprimido (LZ10) com a textura
   de 4 bpp, a paleta e os quadros (os pedaços que o menu mostra: um botão normal, selecionado, apagado…). pic2d
   guarda num `.SPF_` (índice e dados num arquivo só, LZ10) ou num `.pac_` sozinho, com paleta, mapa de tiles 8×8
-  e tiles; o mapa não diz a largura, que o `export` adivinha pelas emendas (`"width"` fixa). As edições partem
+  e tiles; o mapa não diz a largura, que o `export` adivinha pelas emendas (`"width"` fixa). Alguns pic3d são
+  pacotes `.pkh`/`.pkb` com índice em hash: registros de 16 bytes (CRC32 do nome em minúsculas, offset, tamanho e
+  a primeira palavra da entrada), em ordem de hash, entradas LZ10 alinhadas em 16; os nomes conhecidos ficam em
+  `HASHED_NAMES` (`tools/ntr/image.py`). As edições partem
   da imagem retail (japonesa) e trocam só as entradas editadas no arquivo do mod: `erase` apaga o texto
   (cores de tinta → o pixel não-tinta mais perto na linha, ou cada linha com a cor de uma coluna limpa, ou
   `under`: o pixel de outra imagem com o mesmo fundo), e `text` escreve com a `FONT12` do mod, centralizado, com
   sombra (direita e abaixo) ou contorno, como os rótulos originais; `draw` põe por cima um PNG pequeno da tradução
-  (letras desenhadas à mão; o transparente mantém a imagem, então a arte do jogo não vai para o repositório).
-  `"frames"` repete a edição nos quadros de
+  (letras desenhadas à mão; o transparente mantém a imagem, então a arte do jogo não vai para o repositório);
+  `keep` devolve um retângulo como a base (o CyberLife) o deixou, para trocar só uma parte de uma imagem que ele
+  mudou em outros lugares. `"frames"` repete a edição nos quadros de
   uma textura. Botões B pequenos (48 px) usam "Sair": "Voltar" não cabe com a sombra.
 - `%s` (nome) precisa continuar na fala. Os marcadores de furigana (`%1F`…) saem na tradução.
 - **Jogadores:** `unitbase.dat` tem 2.582 registros de 0x68 bytes: nome completo em +0x00 (28 bytes), o nome das
