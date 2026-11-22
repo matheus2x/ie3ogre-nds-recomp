@@ -4837,3 +4837,64 @@ perfil pelo leitor novo, igual ao original; o resto (loja, treinos, lista de té
 **Verificação:** 79 testes ok; `image.py check`: 393 imagens, 0 problema; `translate.py build pt-BR --install`:
 580 patches, versão 1.25; o `common.pkb` gravado no mod tem as mesmas 7 imagens do `check`, e as outras iguais
 às do CyberLife (sem commit).
+
+## 2026-11-21 — Botões fora dos modelos (CyberLifePlus 1.26)
+
+- Pedido: o item "botões em imagens com outros textos do CyberLife" (fase 2, imagens em inglês).
+- **O que eram as 13:** comparando o `export` do mod com o `--retail`, em 9 delas o CyberLife só tinha mudado os
+  botões. Elas ficaram de fora na v1.23 porque algum rótulo não estava nos 19 modelos (つぎへ, もらう, みる) ou estava
+  centrado num botão de 96 px, e aí a sobra parecia "outro texto". Como não há mais nada do CyberLife nelas, as
+  edições partem do original e o `keep` não foi preciso. Os quatro do `MMSlot` (janelas de carregar/salvar
+  `SFDN_W01`/`W03`/`W04`/`W06`/`W07`) já estão em português do CyberLife, botões incluídos (Sim/Não/Aceitar):
+  ficaram como estão.
+- **Edições geradas** por um script de trabalho (fora do repositório; o resultado fica no `images.json`), no
+  método da v1.23: em cada quadro de botão, a letra é a cor mais clara do rótulo (branco; no botão apagado o `c`)
+  e o contorno, a cor vizinha mais comum; o fundo de cada linha é a cor mais comum entre os pixels que não encostam
+  (3×3) na letra, e sai da tinta daquela linha (no botão apertado as últimas linhas têm o fundo da cor do
+  contorno). A caixa vai do pixel 19 até a borda direita do quadro; fonte `FONT12` com contorno, senão `FONT8`,
+  senão `FONT8` com `gap` 0. A primeira versão errava o fundo nas linhas cheias de letra (pegava a própria tinta)
+  e cortava a caixa nos botões apertados (a cor de dentro entrava como borda); corrigido antes de gravar.
+- **Rótulos:** つぎへ = "Próx." (como no blog; "Avançar" só cabia em `FONT8` sem espaço, apertado demais),
+  もらう = "Pegar" (receber um item no Passing), みる = Ver, おわる = Fim, けってい = OK, もどる = Sair, いれかえ =
+  Trocar, えらぶ = Escolher, きりかえ = Alternar, つかえるひと = Quem usa (em `FONT8`).
+- **Jogo-treino** (`practice_rule:PRRD_W00`/`W03`), feitas à mão: a pergunta é branca (cor 8) sem contorno, com
+  furigana na cor 15, sobre o verde com a bola d'água; apagada com `ink` [8, 15] e escrita em `FONT12`.
+  試合をはじめますか？ = "Começar a partida?"; データをセーブします。よろしいですか？ = "Os dados serão salvos." /
+  "Continuar?" (`line` 21, como as duas linhas do original; mesmo padrão das janelas do `MMSlot`). はい/いいえ =
+  Sim/Não (letra `e` com contorno `9`). No `W03` sobra uma marca quase invisível do contorno da bola à esquerda de
+  "Continuar?".
+- **Não visto no jogo:** ficou no checklist (fase 6). O torneio, o fichário de técnicas, o tutorial e o jogo-treino
+  dão para ver no save de teste; Passing e troca precisam de comunicação.
+
+**Verificação:** 79 testes ok; `image.py check`: 402 imagens, 0 problema; `translate.py build pt-BR --install`:
+580 patches, versão 1.26; as 25 imagens dos 8 arquivos exportadas do mod instalado são iguais às do `check`
+(sem commit).
+
+## 2026-11-21 — Nomes das técnicas e táticas nas animações (CyberLifePlus 1.27)
+
+- Pedido: o item "nomes das técnicas e táticas nas imagens das animações" (`pic3d/script/mbv_c.pkb`, `tcv_c.pkb`).
+  Mostrados ao usuário exemplos do que o CyberLife pôs (Tenma Shot, Pegasus Shot em トライペガサス, Dobugiri, Super
+  Scan OF, Invincible Lance, Full Moon Formation, Andes Lion, Triple God Hand, Inazuma-1, Bunshin D. Zone, Majin
+  The Hand, Million Hand). **Decisão do usuário: igual à lista em tudo** (`command.dat`/`tacticscmd.STR`).
+- **Nomes das entradas:** por força bruta no CRC32, `mbv_c%03d.pac_` (409 de 411; o número é o da técnica no
+  `command.dat`) e `tcv_c%03d.pac_` (1–22, na ordem da lista de táticas; Rolling Thunder está no 10 e no 20). Em
+  `tools/ntr/image.py`, o `HASHED_NAMES` ganha `mbv_c000`–`999` e `tcv_c000`–`999`.
+- **Por que redesenhar tudo:** ler o texto das imagens do CyberLife (recorte das letras e votos pelos nomes da lista)
+  não deu certo: letras coladas pelo kerning e cada nome estreitado na horizontal para caber (a mesma letra com
+  várias larguras), e faltam letras (V, Y, q, números). Como a decisão é igual à lista em tudo, todas as imagens
+  com nome foram refeitas do zero, sobre o original: imagem inteira em `translations/pt-BR/images/pic3d/script/`
+  (`mbv_c.pkb/mbv_c<nº>.pac_.png`, `tcv_c.pkb/tcv_c<nº>.pac_.png`), então o quadro e a paleta são os do japonês
+  (o CyberLife tinha mudado 175 quadros e a paleta, com um cinza-claro a mais).
+- **Desenho** (script de trabalho fora do repositório, ImageMagick só para gerar os PNG): fonte Adwaita Sans Black
+  (SIL OFL), 21 pt nas técnicas (maiúsculas de 15–16 px, como as do CyberLife), em tons quantizados para as cores do
+  original (branco 15, cinza 2 na borda) e contorno preto de 2 px (quadrado 5×5), o alto das letras na linha 5,
+  centrado no quadro com 4 px de margem; se não cabe, a imagem em cinza é estreitada antes de quantizar (207 cabem
+  inteiros; o mais apertado, "Honoo no Kazamidori", a 66 %). Táticas a 24 pt, com o degradê de 6 faixas do
+  original (cores 13→8, de cima para baixo), cinza 14 na borda e contorno branco 15, kerning +1.
+- **Fora:** 228 e 349 (sem nome nem no original) e as 53 imagens de outra paleta: avisos da jogada (1–10),
+  ícones (50–58) e nomes de times e lugares (901–939), que o CyberLife pôs em inglês ("Brainwashing" em 御影専農中,
+  "Otaku", "Farm"…). Ficou um item novo no checklist.
+- **Não visto no jogo:** item na fase 6.
+
+**Verificação:** 79 testes ok; `image.py check`: 778 imagens, 0 problema; `translate.py build pt-BR --install`:
+580 patches, versão 1.27; as 376 imagens exportadas do mod instalado são iguais às do `check` (sem commit).

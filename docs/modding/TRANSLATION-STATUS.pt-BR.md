@@ -255,11 +255,15 @@ etapa ficam no `docs/development/DIARY.pt-BR.md`.
     へんこう = Mudar, そうび = Equipar, チェック = Ver, せってい = Opções, おぼえる = Treinar, つかえるひと = Quem usa.
     Só entraram as imagens em que o CyberLife não mudou mais nada além dos botões (senão o resto voltaria ao
     japonês). Visto no jogo: Amigos (OK, Menu, Sair; Trocar, Menu, Fim) e mochila (Usar, Menu, Fim);
-  - [ ] botões em imagens com outros textos do CyberLife (13, feitas à mão depois): `menu_tournament:TMD_B08`,
-    `ps_item:PIDN_B00`, `practice_rule:PRRD_W00`/`W03` (perguntas "Começar a partida?", "Salvar os dados?"),
-    `waza_binder:WAZA_B01`, `trade:WTDN_B00`, `ps_replace_unit:PSDN_B00`, `ps_list:PSDN_B05`,
-    `MASTutorial:SYDN_B00` e quatro do `MMSlot`. Desde a v1.25 a edição `keep` devolve um retângulo como o
-    CyberLife deixou, então dá para trocar só os botões e manter o resto;
+  - [x] botões que ficaram de fora dos modelos (v1.26): nas 9 imagens o CyberLife só tinha mudado os botões (rótulos
+    fora dos 19 modelos, como つぎへ, もらう, みる, ou centrados), então as edições partem do original sem `keep`.
+    `menu_tournament:TMD_B08` (つぎへ = "Próx.", como no blog; "Avançar" só cabia em `FONT8` sem espaço; Fim),
+    `ps_item:PIDN_B00` (もらう = "Pegar", normal, apertado e apagado; Fim), `trade:WTDN_B00` (OK),
+    `ps_replace_unit:PSDN_B00` (OK, Trocar, Sair), `ps_list:PSDN_B05` (Escolher), `waza_binder:WAZA_B01`
+    (Alternar, Quem usa, OK, Sair) e `MASTutorial:SYDN_B00` (みる = Ver, Fim, OK, Sair); as janelas do jogo-treino
+    `practice_rule:PRRD_W00` ("Começar a partida?") e `PRRD_W03` ("Os dados serão salvos. / Continuar?"), com
+    Sim/Não. Os quatro do `MMSlot` que a lista antiga contava já estão em português do CyberLife (Sim/Não/Aceitar
+    e as frases): ficaram como estão. Só no `check`;
   - [x] `pic3d/common.pkb` (v1.25): um pacote com índice em hash (CRC32 do nome do arquivo), que o `image.py`
     agora lê, como os outros cinco do mesmo tipo (`mbd_s`, `mf`, `replaceunit`, `script/mbv_c`, `script/tcv_c`).
     O CyberLife mudou 9 das 37 imagens; feitas 7: "Técnica" sob os números de técnica da disputa (`mbd_w00`/`w01`,
@@ -271,10 +275,19 @@ etapa ficam no `docs/development/DIARY.pt-BR.md`.
   - [ ] o resto da partida, que não está no `common.pkb`: "Time Limit" em cima, os botões dos comandos ("Catch",
     "Punch", "Block", "Sliding tackle", "Shoot"; o CyberLife mudou o `pic2d/cmd/mbd_c.pkb`, um pacote PackNum de
     imagens 2D que o `image.py` ainda não lê, e os `pic2d/mbd_c*.pac_`) e o balão "To me!" dos jogadores;
-  - [ ] nomes das técnicas e táticas nas imagens das animações (`pic3d/script/mbv_c.pkb`, 396 de 411, e
-    `tcv_c.pkb`, 22): o CyberLife pôs nomes em romaji e em inglês ("Mugen no Kabe", "Dimension Warp", "Saint
-    Flash"); decidir se ficam iguais aos da lista (romaji, `command.STR`). Os nomes das entradas não saíram pelo
-    CRC32 (só `mbv_c000`), então elas aparecem pelo hash;
+  - [x] nomes das técnicas e táticas nas imagens das animações (v1.27): decidido que ficam **iguais aos da lista**
+    (`command.dat`/`tacticscmd.STR`), inclusive maiúsculas e ordem. O CyberLife tinha nomes em inglês
+    ("Invincible Lance", "Full Moon Formation", "Big Explosive Slap", "Koutei Penguin No. 2"), trocados ("Tenma
+    Shot" em ペガサスショット, "Pegasus Shot" em トライペガサス), com erro ("Dobugiri", "Super Scan OF") e
+    abreviados ("Bunshin D. Zone"). As entradas se chamam `mbv_c<nº da técnica>` (409 de 411) e `tcv_c001`–`022`,
+    agora no `HASHED_NAMES`. Todas as 354 técnicas com nome e as 22 táticas redesenhadas como imagem inteira
+    (`translations/pt-BR/images/pic3d/script/`), sobre o original (quadro e paleta do japonês): a fonte Adwaita
+    Sans Black (SIL OFL), branco com cinza na borda e contorno preto de 2 px nas técnicas; nas táticas, o degradê
+    de 6 faixas do original e contorno branco. O nome que não cabe no quadro é estreitado (o mais apertado, 66 %).
+    228 e 349 não têm nome (nem no original). Só no `check`;
+  - [ ] as outras imagens do `mbv_c` (53, de outra paleta): os avisos da jogada (1–10: "Failure!", "Power Down!",
+    "Chain!!", "Blocked!"), os ícones 50–58 e os nomes de times e lugares 901–939, que o CyberLife pôs em inglês
+    ("Wild", "Brainwashing" em 御影専農中, "Otaku", "Farm"…);
 - [x] Tutorial das ligações (v1.8, `MTSPi`, 8 páginas de 8 bpp e 3 botões): as páginas do Superlink 2→3
   (`WPD_W00`–`W03`) e do Link Premium Ogre (`W04`–`W07`), em que o CyberLife só tinha trocado o botão. Os
   rótulos "Outro/Este console DS", as caixas de explicação, a tela de título do outro jogo (Conectar, Partida,
@@ -579,6 +592,11 @@ traduzida precisa ser refeita.
   recrutar alguém pelo scout: o nome em meia largura passa pelo gancho `ruby_parse` (v1.23), ainda não visto
 - [ ] Imagens da partida no `common.pkb` (v1.25): só "Técnica" visto no jogo (disputa numa batalha de campo do save
   de teste). As faixas de fim de tempo, os balões dos jogadores, Rever, Garra e as abas do `mln_p02` só no `check`
+- [ ] Nomes das técnicas e táticas nas animações (v1.27): só no `check`. Ver no jogo uma técnica numa disputa
+  (batalha de campo do save de teste) e uma tática
+- [ ] Botões fora dos modelos e janelas do jogo-treino (v1.26): só no `check`. Ver no jogo o fichário de técnicas
+  (`WAZA_B01`), o tutorial (`SYDN_B00`), o torneio (`TMD_B08`), as janelas do jogo-treino (`PRRD_W00`/`W03`); os
+  do Passing e da troca (`PIDN_B00`, `PSDN_B00`/`B05`, `WTDN_B00`) precisam de comunicação
 - [ ] Título da loja (v1.23): "Comprar: G-Mart Inazuma" só no `check`. Ver no jogo uma loja (comprar e vender) e se o
   verbo em texto comum aparece pelo leitor de furigana
 - [ ] Descrições dos treinos (`ov045`), título da lista de técnicas (`ov070`), rótulos de status do `ov109`/`ov110`,
@@ -596,8 +614,8 @@ traduzida precisa ser refeita.
   traduziu.
 - [ ] Imagens: o mod mexe em 92 dos 250 arquivos de `pic2d` e em 296 dos 567 de `pic3d`, e em nenhum dos 15
   de `obj2d`. Os que sobraram precisam de inspeção visual para ver quais têm texto. O `image.py` ainda não lê
-  as texturas de 1, 2 e 8 bpp (uns 210 quadros, quase todos dos mapas `gmapNN`) nem os pacotes de imagens com
-  nome em hash (`common.pkb`, `mbv_c.pkb`, `tcv_c.pkb`…).
+  as texturas de 1, 2 e 8 bpp (uns 210 quadros, quase todos dos mapas `gmapNN`); os pacotes de imagens com nome
+  em hash (`common.pkb`, `mbv_c.pkb`, `tcv_c.pkb`…) ele lê desde a v1.25.
 - [x] Galeria no jogo (v1.6, save do teste do Windows): Extras, a lista, a tela dos vídeos, a de gerar senha
   (pergunta, senha, OK) e o aviso de saves, vistos. Não vistos: a ligação com o filme (`movielink`) e a com
   celular, que aparecem como "???" nesse save.

@@ -95,8 +95,8 @@ HASHED_NAMES = (
     "ccdn_b00 ccdn_b01 ccdn_b02 ccdn_b03 ccdn_b04 ccdn_bg00 ccdn_c00 ccdn_c10 ccdn_f00 ccdn_f01 ccdn_f02 "
     "ccdn_f03 ccdn_f10 ccdn_f11 ccdn_f12 ccdn_i00 ccdn_i01 ccdn_i02 ccdn_i03 ccdn_t00 ccdn_w00 ccdn_w10 "
     "ccdn_w11 ccdn_w12 ccdn_w13 ccdn_w20 ccdn_w21 "  # replaceunit
-    "mbv_c000"  # script/mbv_c
-).split()
+).split() + [f"{p}{i:03d}" for p in ("mbv_c", "tcv_c") for i in range(1000)]
+# script/mbv_c: the technique's number in command.dat (409 of 411 entries); script/tcv_c: 1-22
 _BY_HASH = {zlib.crc32(f"{n}.pac_".encode()): f"{n}.pac_" for n in HASHED_NAMES}
 
 

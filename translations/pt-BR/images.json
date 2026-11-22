@@ -2994,6 +2994,15 @@
     {"text": "OK", "box": [22, 6, 31, 12], "colour": 15, "outline": 10},
     {"erase": [22, 54, 24, 12], "ink": [9, 13]},
     {"text": "OK", "box": [22, 54, 31, 12], "colour": 13, "outline": 9}
+  ],
+  "TMD_B08.PAC_": [
+    {"frames": [0, 2], "erase": [18, 5, 26, 12], "ink": [10, 15]},
+    {"frames": [0], "text": "Próx.", "box": [19, 5, 26, 12], "colour": 15, "outline": 10},
+    {"frames": [1, 3], "erase": [18, 6, 27, 11], "ink": [7, 15]},
+    {"frames": [1, 3], "erase": [18, 17, 27, 1], "ink": [15]},
+    {"frames": [1], "text": "Próx.", "box": [19, 6, 27, 12], "colour": 15, "outline": 7},
+    {"frames": [2], "text": "Fim", "box": [19, 5, 26, 12], "colour": 15, "outline": 10},
+    {"frames": [3], "text": "Fim", "box": [19, 6, 27, 12], "colour": 15, "outline": 7}
   ]
 },
 "pic3d/ps_item": {
@@ -3020,6 +3029,20 @@
     {"erase": [8, 79, 32, 7], "ink": [13, 15]},
     {"erase": [8, 86, 32, 5], "ink": [15]},
     {"text": "Não", "box": [3, 79, 42, 12], "colour": 15, "outline": 13}
+  ],
+  "PIDN_B00.PAC_": [
+    {"frames": [0], "erase": [18, 6, 34, 12], "ink": [3, 15]},
+    {"frames": [0], "text": "Pegar", "box": [19, 6, 34, 12], "colour": 15, "outline": 3},
+    {"frames": [1], "erase": [18, 7, 35, 10], "ink": [13, 15]},
+    {"frames": [1], "erase": [18, 17, 35, 2], "ink": [15]},
+    {"frames": [1], "text": "Pegar", "box": [19, 7, 35, 12], "colour": 15, "outline": 13},
+    {"frames": [2], "erase": [18, 6, 35, 12], "ink": [2, 12]},
+    {"frames": [2], "text": "Pegar", "box": [19, 6, 35, 12], "colour": 12, "outline": 2},
+    {"frames": [3], "erase": [18, 5, 26, 12], "ink": [3, 15]},
+    {"frames": [3], "text": "Fim", "box": [19, 5, 26, 12], "colour": 15, "outline": 3},
+    {"frames": [4], "erase": [18, 6, 27, 11], "ink": [13, 15]},
+    {"frames": [4], "erase": [18, 17, 27, 1], "ink": [15]},
+    {"frames": [4], "text": "Fim", "box": [19, 6, 27, 12], "colour": 15, "outline": 13}
   ]
 },
 "pic3d/tokkun_chara_select": {
@@ -3118,6 +3141,22 @@
     {"erase": [8, 79, 32, 7], "ink": [13, 15]},
     {"erase": [8, 86, 32, 5], "ink": [15]},
     {"text": "Não", "box": [3, 79, 42, 12], "colour": 15, "outline": 13}
+  ],
+  "PRRD_W00.PAC_": [
+    {"erase": [6, 10, 180, 26], "ink": [8, 15]},
+    {"text": "Começar a partida?", "box": [6, 16, 180, 12], "colour": 8},
+    {"erase": [27, 46, 42, 12], "ink": [9, 14]},
+    {"text": "Sim", "box": [27, 46, 42, 12], "colour": 14, "outline": 9},
+    {"erase": [120, 46, 42, 12], "ink": [9, 14]},
+    {"text": "Não", "box": [120, 46, 42, 12], "colour": 14, "outline": 9}
+  ],
+  "PRRD_W03.PAC_": [
+    {"erase": [6, 10, 180, 43], "ink": [8, 15]},
+    {"text": "Os dados serão salvos.\nContinuar?", "box": [6, 15, 180, 42], "line": 21, "colour": 8},
+    {"erase": [27, 62, 42, 12], "ink": [9, 14]},
+    {"text": "Sim", "box": [27, 62, 42, 12], "colour": 14, "outline": 9},
+    {"erase": [120, 62, 42, 12], "ink": [9, 14]},
+    {"text": "Não", "box": [120, 62, 42, 12], "colour": 14, "outline": 9}
   ]
 },
 "pic3d/trade": {
@@ -3139,6 +3178,13 @@
     {"erase": [19, 30, 23, 11], "ink": [11, 15]},
     {"erase": [19, 41, 23, 2], "ink": [15]},
     {"text": "Sair", "box": [19, 30, 26, 12], "colour": 15, "outline": 11}
+  ],
+  "WTDN_B00.PAC_": [
+    {"frames": [0], "erase": [18, 6, 42, 12], "ink": [4, 15]},
+    {"frames": [0], "text": "OK", "box": [19, 6, 42, 12], "colour": 15, "outline": 4},
+    {"frames": [1], "erase": [18, 7, 43, 10], "ink": [11, 15]},
+    {"frames": [1], "erase": [18, 17, 43, 2], "ink": [15]},
+    {"frames": [1], "text": "OK", "box": [19, 7, 43, 12], "colour": 15, "outline": 11}
   ]
 },
 "pic3d/emblem_c": {
@@ -3467,6 +3513,23 @@
     {"text": "Sim", "box": [43, 54, 42, 12], "colour": 14, "outline": 9},
     {"erase": [144, 54, 32, 12], "ink": [9, 14]},
     {"text": "Não", "box": [139, 54, 42, 12], "colour": 14, "outline": 9}
+  ],
+  "PSDN_B00.PAC_": [
+    {"frames": [0, 3], "erase": [18, 6, 74, 12], "ink": [3, 15]},
+    {"frames": [0], "text": "OK", "box": [19, 6, 74, 12], "colour": 15, "outline": 3},
+    {"frames": [1, 4], "erase": [18, 7, 75, 10], "ink": [13, 15]},
+    {"frames": [1, 4], "erase": [18, 17, 75, 2], "ink": [15]},
+    {"frames": [1], "text": "OK", "box": [19, 7, 75, 12], "colour": 15, "outline": 13},
+    {"frames": [2, 5], "erase": [18, 6, 75, 12], "ink": [2, 12]},
+    {"frames": [2], "text": "OK", "box": [19, 6, 75, 12], "colour": 12, "outline": 2},
+    {"frames": [3], "text": "Trocar", "box": [19, 6, 74, 12], "colour": 15, "outline": 3},
+    {"frames": [4], "text": "Trocar", "box": [19, 7, 75, 12], "colour": 15, "outline": 13},
+    {"frames": [5], "text": "Trocar", "box": [19, 6, 75, 12], "colour": 12, "outline": 2},
+    {"frames": [6], "erase": [18, 5, 74, 12], "ink": [3, 15]},
+    {"frames": [6], "text": "Sair", "box": [19, 5, 74, 12], "colour": 15, "outline": 3},
+    {"frames": [7], "erase": [18, 6, 75, 11], "ink": [13, 15]},
+    {"frames": [7], "erase": [18, 17, 75, 1], "ink": [15]},
+    {"frames": [7], "text": "Sair", "box": [19, 6, 75, 12], "colour": 15, "outline": 13}
   ]
 },
 "pic3d/wc_member": {
@@ -3597,6 +3660,15 @@
     {"text": "Sim", "box": [43, 54, 42, 12], "colour": 14, "outline": 9},
     {"erase": [144, 54, 32, 12], "ink": [9, 14]},
     {"text": "Não", "box": [139, 54, 42, 12], "colour": 14, "outline": 9}
+  ],
+  "PSDN_B05.PAC_": [
+    {"frames": [0], "erase": [18, 5, 74, 12], "ink": [3, 15]},
+    {"frames": [0], "text": "Escolher", "box": [19, 5, 74, 12], "colour": 15, "outline": 3},
+    {"frames": [1], "erase": [18, 6, 75, 11], "ink": [13, 15]},
+    {"frames": [1], "erase": [18, 17, 75, 1], "ink": [15]},
+    {"frames": [1], "text": "Escolher", "box": [19, 6, 75, 12], "colour": 15, "outline": 13},
+    {"frames": [2], "erase": [18, 5, 75, 12], "ink": [2, 12]},
+    {"frames": [2], "text": "Escolher", "box": [19, 5, 75, 12], "colour": 12, "outline": 2}
   ]
 },
 "pic3d/practice": {
@@ -3877,6 +3949,58 @@
   "yddn_w00.pac_": [
     {"erase": [4, 5, 64, 11], "ink": [15]},
     {"text": "Garra", "box": [4, 4, 64, 12], "colour": 15}
+  ]
+},
+"pic3d/waza_binder": {
+  "WAZA_B01.PAC_": [
+    {"frames": [22], "erase": [18, 6, 58, 12], "ink": [3, 15]},
+    {"frames": [22], "text": "Alternar", "box": [19, 6, 58, 12], "colour": 15, "outline": 3},
+    {"frames": [23], "erase": [18, 7, 59, 10], "ink": [13, 15]},
+    {"frames": [23], "erase": [18, 17, 59, 2], "ink": [15]},
+    {"frames": [23], "text": "Alternar", "box": [19, 7, 59, 12], "colour": 15, "outline": 13},
+    {"frames": [24], "erase": [18, 6, 59, 12], "ink": [2, 12]},
+    {"frames": [24], "text": "Alternar", "box": [19, 6, 59, 12], "colour": 12, "outline": 2},
+    {"frames": [4], "erase": [18, 6, 42, 12], "ink": [3, 15]},
+    {"frames": [4], "text": "Quem usa", "box": [19, 6, 42, 12], "colour": 15, "font": "FONT8", "outline": 3},
+    {"frames": [5], "erase": [18, 7, 43, 10], "ink": [13, 15]},
+    {"frames": [5], "erase": [18, 17, 43, 2], "ink": [15]},
+    {"frames": [5], "text": "Quem usa", "box": [19, 7, 43, 12], "colour": 15, "font": "FONT8", "outline": 13},
+    {"frames": [6], "erase": [18, 6, 43, 12], "ink": [2, 12]},
+    {"frames": [6], "text": "Quem usa", "box": [19, 6, 43, 12], "colour": 12, "font": "FONT8", "outline": 2},
+    {"frames": [2], "erase": [18, 6, 26, 12], "ink": [3, 15]},
+    {"frames": [2], "text": "OK", "box": [19, 6, 26, 12], "colour": 15, "outline": 3},
+    {"frames": [3], "erase": [18, 7, 27, 10], "ink": [13, 15]},
+    {"frames": [3], "erase": [18, 17, 27, 2], "ink": [15]},
+    {"frames": [3], "text": "OK", "box": [19, 7, 27, 12], "colour": 15, "outline": 13},
+    {"frames": [0], "erase": [18, 5, 26, 12], "ink": [3, 15]},
+    {"frames": [0], "text": "Sair", "box": [19, 5, 26, 12], "colour": 15, "outline": 3},
+    {"frames": [1], "erase": [18, 6, 27, 11], "ink": [13, 15]},
+    {"frames": [1], "erase": [18, 17, 27, 1], "ink": [15]},
+    {"frames": [1], "text": "Sair", "box": [19, 6, 27, 12], "colour": 15, "outline": 13}
+  ]
+},
+"pic2d/menu/MASTutorial.SPF_": {
+  "SYDN_B00.PAC": [
+    {"erase": [18, 6, 26, 12], "ink": [3, 15]},
+    {"text": "Ver", "box": [19, 6, 26, 12], "colour": 15, "outline": 3},
+    {"erase": [18, 31, 27, 10], "ink": [13, 15]},
+    {"erase": [18, 41, 27, 2], "ink": [15]},
+    {"text": "Ver", "box": [19, 31, 27, 12], "colour": 15, "outline": 13},
+    {"erase": [18, 53, 26, 12], "ink": [3, 15]},
+    {"text": "Fim", "box": [19, 53, 26, 12], "colour": 15, "outline": 3},
+    {"erase": [18, 78, 27, 11], "ink": [13, 15]},
+    {"erase": [18, 89, 27, 1], "ink": [15]},
+    {"text": "Fim", "box": [19, 78, 27, 12], "colour": 15, "outline": 13},
+    {"erase": [18, 102, 26, 12], "ink": [3, 15]},
+    {"text": "OK", "box": [19, 102, 26, 12], "colour": 15, "outline": 3},
+    {"erase": [18, 127, 27, 10], "ink": [13, 15]},
+    {"erase": [18, 137, 27, 2], "ink": [15]},
+    {"text": "OK", "box": [19, 127, 27, 12], "colour": 15, "outline": 13},
+    {"erase": [18, 149, 26, 12], "ink": [3, 15]},
+    {"text": "Sair", "box": [19, 149, 26, 12], "colour": 15, "outline": 3},
+    {"erase": [18, 174, 27, 11], "ink": [13, 15]},
+    {"erase": [18, 185, 27, 1], "ink": [15]},
+    {"text": "Sair", "box": [19, 174, 27, 12], "colour": 15, "outline": 13}
   ]
 }
 }
